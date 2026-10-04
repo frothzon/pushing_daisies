@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"tile_set_blend",
+  "isCompatibility":true,
+  "isDnD":false,
+  "name":"tile_set_blend",
+  "parent":{
+    "name":"tile",
+    "path":"folders/Scripts/compatibility/tile.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}

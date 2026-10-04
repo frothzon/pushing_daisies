@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_remapValues",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_remapValues",
+  "parent":{
+    "name":"Back End",
+    "path":"folders/Scripts/Engine Data/Auto Tiling/Async Tile Builder/Back End.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
