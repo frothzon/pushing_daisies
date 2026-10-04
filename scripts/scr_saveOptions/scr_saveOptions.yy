@@ -5,8 +5,8 @@
   "isDnD":false,
   "name":"scr_saveOptions",
   "parent":{
-    "name":"O options",
-    "path":"folders/Scripts/File I/O options.yy",
+    "name":"File I-O Options",
+    "path":"folders/Scripts/File I-O Options.yy",
   },
   "resourceType":"GMScript",
   "resourceVersion":"2.0",

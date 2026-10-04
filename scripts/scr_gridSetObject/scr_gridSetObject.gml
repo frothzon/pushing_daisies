@@ -19,7 +19,7 @@ function scr_gridSetObject(argument0, argument1, argument2) {
 	        _x2 = _obj.bbox_right div _SW,
 	        _y2 = _obj.bbox_bottom div _SH;
     
-	    ds_grid_set_region(_grid,_x1,_y1,_x2,_y2,argument2);
+	    ds_grid_set_region(_grid,_x1,_y1,_x2-1,_y2-1,argument2);
 	}
 
 

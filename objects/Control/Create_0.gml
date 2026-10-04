@@ -13,10 +13,10 @@ scr_SetupBagSystem();   /// inventory system
 scr_iniTooltip(1.5);       /// setup tooltip
 
 /// camera box
-cam_box = array(0,0,0,0);
+cam_box = [0,0,0,0];
 
 /// tooltip location
-tool_pos = array(16,display_get_gui_height()-32);
+tool_pos = [16,display_get_gui_height()-32];
 
 /// load bag data
 

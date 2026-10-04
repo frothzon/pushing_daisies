@@ -35,7 +35,7 @@ function test_tile(argument0, argument1, argument2, argument3, argument4, argume
 
 
 	/// Get Tile Index
-	_tile_index = set_bitmask(_north_tile,_west_tile,_east_tile,_south_tile);
+	_tile_index = set_bitmask(_east_tile,_north_tile,_west_tile,_south_tile);
 
 	return(_tile_index);
 

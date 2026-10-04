@@ -22,6 +22,11 @@ function initialize_game() {
 	scr_loadOptions();
 
 	audio_channel_num((global.clutterDensity+0.1)*50);
+    
+    //======================  additional systems [10/4/26] ============================//
+    
+    /// Tile Manager System
+    global.tileSystem = new Sprite_Layer_Manager();
 
 
 

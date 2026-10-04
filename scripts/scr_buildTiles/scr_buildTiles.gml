@@ -24,19 +24,24 @@ function scr_buildTiles(argument0, argument1, argument2, argument3) {
     
     
 	if(_g[# _x, _y] > _min && _g[# _x, _y] < _max){
-	    /// get tile data for tiles nearby
-	    var _tile_index = test_tile(_g,_x,_y,_min,_max,load_max),
-	        _pos = scr_indexToCoord(_tile_index,_wc);
+        
+	    /// calculate the bitmask for the current tile
+	    var _tile_index = test_tile(_g,_x,_y,_min,_max,load_max);
+        var _xx = _x*_ww-0.016;
+        var _yy = _y*_hh-0.016;
+        var _scx = 1.01;
+        var _scy = 1.01;
+        
 	    /// set tiles
 	    if(_g[# _x,_y] == load_max){
-	        _pos = scr_indexToCoord(16,_wc);
-	        print("graveyard ground",_ww,"/",_hh);
-	        var _tile = tile_add(bck_tile_dirt,_pos[0]*_ww,_pos[1]*_hh,_ww,_hh, _x*_ww, _y*_hh, -45);
-	        tile_set_blend(_tile,make_colour_rgb(64, 37, 11));
-	    } else {
-	        var _tile = tile_add(_bg,_pos[0]*_ww,_pos[1]*_hh,_ww,_hh, _x*_ww, _y*_hh, _dp);
-	        tile_set_blend(_tile,_c1);
+            var _tile = global.tileSystem.add_tile(_xx, _yy, bck_tile_dirt_framed, 16, -45, _scx, _scy, make_colour_rgb(64, 37, 11));
+            
 	    }
+        else {
+            var _tile = global.tileSystem.add_tile(_xx, _yy, _bg, _tile_index, _dp, _scx, _scy, _c1);
+        }
+        
+	    
 	}
 
 

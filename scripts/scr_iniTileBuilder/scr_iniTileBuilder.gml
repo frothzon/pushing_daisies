@@ -28,7 +28,7 @@ function scr_iniTileBuilder(argument0, argument1, argument2, argument3, argument
 	var _wc = background_get_width(_bg) div _ww;
 
 	//---------------------- turn data into an array
-	var _data = array(height_,width_,_min,_max,_bg,_c1,_ww,_hh,_dp,_wc);
+	var _data = [height_,width_,_min,_max,_bg,_c1,_ww,_hh,_dp,_wc];
 
 	/// remap values
 	for_grid(grid_,scr_remapValues,_data);

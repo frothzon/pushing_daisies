@@ -8,7 +8,9 @@ function scr_main_startup() {
 	    ground_w = room_width>>5;
 	    ground_h = room_height>>5;
 	    load_max = 12;
-	    ground_map = perlin_map(ground_w,ground_h,6,random_get_seed(),load_max);
+        /// create_perlin_grid(_w, _h, _steps, _values, _seed=-1)
+        ground_map = create_perlin_grid(ground_w,ground_h,10,load_max,random_get_seed());
+	    //ground_map = perlin_map(ground_w,ground_h,6,random_get_seed(),load_max);
 	    scr_gridSetObject(ground_map,obj_raiseGround,load_max);
 	    sound_stop_all();
 	}
@@ -20,18 +22,18 @@ function scr_main_startup() {
 	    load_amount = load_counter/load_max;
 	    if(load_counter < load_max){
 	        /// default
-	        load_bg = bck_tile_thick;
+	        load_bg = bck_tile_thick_framed;
 	        /// layer 0
 	        if(load_counter < 3){
 	            _c2 = make_colour_rgb(199, 193, 135);
-	            load_bg = bck_tile_dirt;
+	            load_bg = bck_tile_dirt_framed;
 	        } else if(load_counter < 5){
 	            _c1 = make_colour_rgb(128, 115, 45);
 	            _c2 = c_orange;
-	            load_bg = bck_tile_sand;
+	            load_bg = bck_tile_sand_framed;
 	        } else if(load_counter < 9){
 	            _c2 = c_lime;
-	            load_bg = bck_tile_grass;
+	            load_bg = bck_tile_grass_framed;
 	        }
 	        var _depth = -load_counter*2+2;
 	        load_color = merge_colour(_c1,_c2,load_amount);
