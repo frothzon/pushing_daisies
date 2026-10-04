@@ -150,7 +150,10 @@ The Menu is the **reference implementation** for migrating them — copy its sha
   time / `object_get_name(object_index)` / instance id. Don't add `if(global.devMode)`
   around `print(...)` calls unless you are guarding expensive work.
 * **Guard every reference** before use:
-  `instance_exists()`, `variable_instance_exists()`, `is_array()`, `is_callable()`.
+  `instance_exists()`, `variable_instance_exists()`, `is_array()`, `is_callable()`,
+  and `sprite_exists()` before any `sprite_get_*` — an object with no sprite has
+  `sprite_index == -1`, which is a *fatal error* in GMS2
+  ([LL-012](./lessons_learned.md#ll-012)).
 * **Prefer `enum` + `switch`** over numeric state sentinels in anything you touch.
 * **Log prefixes**: `MENU  `, `BTN   `, `FADE  ` — keep them aligned so
   `grep -E 'MENU|BTN|FADE'` gives the whole trail. See

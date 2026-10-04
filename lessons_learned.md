@@ -32,9 +32,11 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-009](#ll-009) | A one-value change produces a 1000-line diff | `.yy`/`.yyp` are **not JSON** — trailing commas, key order, inline containers | **FIXED** |
 | [LL-010](#ll-010) | A state's "just entered" code runs twice, or never | **Changing state from inside a state** instead of requesting it for the next Step | **FIXED** |
 | [LL-011](#ll-011) | — | **How to instrument the game** so the next bug takes one run, not ten | **METHOD** |
+| [LL-012](#ll-012) | `sprite_get_height ... requested -1` once per step; a sprite flip that "does nothing" | A **text object has no sprite** (`sprite_index == -1`, fatal in GMS2) and the shared scale helper **overwrote `image_xscale`** | **FIXED** |
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
-`enum` `crlf` `room_speed` `built-in` `shadowing` `null` `log` `debug`.
+`enum` `crlf` `room_speed` `built-in` `shadowing` `null` `log` `debug`
+`flip` `image_xscale` `sprite_index` `sprite_get_width` `-1` `_text_rise`.
 
 ---
 
@@ -548,6 +550,92 @@ Not a bug — the method that finally made LL-001 and LL-002 obvious.
 * **A line that repeats identically every frame is a loop**, not a one-off — go
   read LL-002.
 * Never let a log line throw (LL-002): guard every variable you read.
+
+---
+
+<a name="ll-012"></a>
+## LL-012 — A text object has no sprite, so `sprite_get_width(-1)` is fatal (and rescaling eats your flip)
+
+**Symptom.** The console fills with this **once per step, for as long as any
+`_text_rise` exists**, so the error you are actually chasing is buried:
+
+```
+ERROR in action number 1
+of  Step Event0 for object _text_rise:
+sprite_get_height argument 1 invalid reference to (sprite) - requested -1 max is 122
+ at gml_Script_scr_scale_sprite (line 11) - 	image_yscale = argument1/sprite_get_height(sprite_index);
+gml_Script_scr_scale_sprite (line 11)
+gml_Object__text_rise_Step_0 (line 20) - scr_scale_sprite(_w,_h);
+```
+
+Usually reported together with *"my `image_xscale = -1` flip does nothing"*.
+
+**Root cause.** Two GM8 habits that GMS2 does not forgive:
+
+1. `_text_rise` draws text and has **no sprite** — `"spriteId":null` in
+   `objects/_text_rise/_text_rise.yy` — so `sprite_index == -1`. In GM8
+   `sprite_get_width(-1)` returned `0`; in GMS2 it is a **fatal error**, and
+   because the call sits in a Step it repeats every frame. The call is
+   vestigial: its comment says "resize text object for collisions", but no
+   sprite means no mask to resize (`place_meeting` / `scr_collide()` are inert
+   there for the same reason).
+2. `scr_scale_sprite(w,h)` ended in plain assignments, so it **overwrote both
+   scales**: a flip applied before the call was gone by the next frame, and it
+   divided by the sprite size, which is invalid when there is no sprite.
+
+**Fix.** `scripts/scr_scale_sprite/scr_scale_sprite.gml` — guard, then keep the
+facing:
+
+```gml
+	/// an object with no sprite has no dimensions to scale to, and
+	/// sprite_get_width(-1) is a *fatal error* in GMS2 (GM8 quietly
+	/// returned 0), so bail out instead of erroring every step - LL-012
+	var _spr = sprite_index;
+	if(is_undefined(_spr) || _spr < 0 || !sprite_exists(_spr)) return;
+
+	var _sw = sprite_get_width(_spr),
+	    _sh = sprite_get_height(_spr);
+
+	/// a zero sized sprite would divide by zero
+	if(_sw <= 0 || _sh <= 0) return;
+
+	/// a negative dimension flips that axis; otherwise keep whatever
+	/// facing the instance already has, so a flip is not undone here
+	var _flipx = (argument0 < 0 || image_xscale < 0) ? -1 : 1,
+	    _flipy = (argument1 < 0 || image_yscale < 0) ? -1 : 1;
+
+	image_xscale = abs(argument0) / _sw * _flipx;
+	image_yscale = abs(argument1) / _sh * _flipy;
+```
+
+**Flipping on x — pick the row that matches what you are flipping.**
+
+| Flipping | Write | Why |
+| --- | --- | --- |
+| an object that has a sprite | `image_xscale = -abs(image_xscale);` to face left, `abs(...)` to face right | the manual: negative values flip the sprite, exactly `-1` is a flip with no scaling. Project idiom: `scripts/scr_zomb_updatePosition` lines 10-14 |
+| a sprite whose size `scr_scale_sprite` sets | `scr_scale_sprite(-w, h);`, or set the flip and let it survive | the helper now rescales by magnitude and keeps a negative sign |
+| `_text_rise` or any text object | nothing in the Step — give `Draw_64`'s `draw_text_outline_scaled(...)` a negative `xsc` | `image_xscale` scales *the sprite assigned to the instance*; a text object has none, so there is nothing for it to flip |
+
+Never flip with `image_xscale = sign(...)`: `sign(0)` is `0`, so a mouse exactly
+on the instance makes it invisible for a frame and clamps the scale to ±1.
+`objects/obj_titleZomb/Step_0.gml` line 44 still does this.
+
+**Guard rails.**
+
+* **A helper that reads `sprite_index` must survive `sprite_index == -1`** —
+  test `sprite_exists()` (or `< 0`) before any `sprite_get_*`, and treat "no
+  sprite" as "nothing to scale", never as a 0×0 sprite.
+* **Before blaming a flip, find what re-derives the scale every step** —
+  `scr_scale_sprite`, `scr_scaleButton` or a `lerp` scale tween overwrites
+  `image_xscale` on every call.
+* An object with no sprite has no mask, so `place_meeting()`,
+  `position_meeting()` and `bbox_*` are dead code in it.
+
+**Status.** FIXED, 2026-10-03.
+
+**Files.** `scripts/scr_scale_sprite/scr_scale_sprite.gml`;
+`objects/_text_rise/Step_0.gml` line 20 (now a harmless no-op);
+`objects/_text_rise/_text_rise.yy` (`spriteId` is `null`).
 
 ---
 
