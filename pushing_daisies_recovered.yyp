@@ -192,6 +192,7 @@
     {"id":{"name":"fnt_size48","path":"fonts/fnt_size48/fnt_size48.yy",},},
     {"id":{"name":"compatibility_report_031026_210740740","path":"notes/compatibility_report_031026_210740740/compatibility_report_031026_210740740.yy",},},
     {"id":{"name":"notes","path":"notes/notes/notes.yy",},},
+    {"id":{"name":"systems_overview","path":"notes/systems_overview/systems_overview.yy",},},
     {"id":{"name":"_button","path":"objects/_button/_button.yy",},},
     {"id":{"name":"_dayCycle","path":"objects/_dayCycle/_dayCycle.yy",},},
     {"id":{"name":"_eff_acid","path":"objects/_eff_acid/_eff_acid.yy",},},
