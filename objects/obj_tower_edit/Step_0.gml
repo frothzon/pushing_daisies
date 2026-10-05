@@ -11,18 +11,42 @@ if(mouse_check_button_released(mb_left)){
         scr_playSound(snd_unable,false);
     } else {
         //--------------------------- check if clear
-        /// reset grid
+        /// Rebuild the placement grid as the world would be AFTER this tower
+        /// exists, then ask three questions in order of cost.
+        /// (roadmap 4.4.1: the old check asked only about the SPAWN, which is
+        /// how a tower could leave the spawn connected and still pocket a
+        /// monster that was already on the map.)
         path_clear_points(path_test);
         mp_grid_clear_all(LEVEL.placement_grid);
         mp_grid_add_instances(LEVEL.placement_grid, id, false);
         mp_grid_add_instances(LEVEL.placement_grid, obj_tower, false);
         mp_grid_add_instances(LEVEL.placement_grid, obj_wall, false);
-        
-        /// get path data
-        var path_loc = array(obj_despawn.x,obj_despawn.y);
-        var path_begin = array(obj_spawn.x,obj_spawn.y);
-        var _check = mp_grid_path(LEVEL.placement_grid,path_test,path_begin[0],path_begin[1],path_loc[0],path_loc[1],true);
-        if(!_check){
+
+        var _to_x = obj_despawn.x,
+            _to_y = obj_despawn.y,
+            _reject = "";
+
+        /// 1. a monster standing in this cell would be sealed in by the very
+        ///    tower placed on it - the cheapest test, and the one the old code
+        ///    had no equivalent of at all
+        if(scr_path_cell_blocked_by_monster(x,y,24)){
+            _reject = "a monster is standing in this cell";
+        }
+
+        /// 2. does the route from the spawn still exist at all?
+        if(_reject == "" && !scr_path_try(LEVEL.placement_grid,obj_spawn.x,obj_spawn.y,_to_x,_to_y,path_test)){
+            _reject = "that would seal the route from the spawn";
+        }
+
+        /// 3. can EVERY monster already on the map still reach the despawn
+        ///    from where it stands?  This is the check that makes a pocket
+        ///    impossible by construction.
+        if(_reject == "" && !scr_path_all_monsters_ok(LEVEL.placement_grid,path_test,_to_x,_to_y)){
+            _reject = "that would trap a monster already on the map";
+        }
+
+        if(_reject != ""){
+            scr_meta_log("PATH", "placement refused: ", _reject);
             scr_playSound(snd_unable,false);
             path_delete(path_test);
             instance_destroy();

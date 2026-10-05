@@ -21,11 +21,16 @@ x = spawn_object.x;
 y = spawn_object.y;
 pos_save = array(x,y);
 
+/// path_free starts true, but scr_zombie_path now OVERWRITES it from the
+/// real mp_grid_path result - the two must never disagree (roadmap
+/// 4.4.1, defect 4)
 path_free = true;
+path_retry = 0;      /// failed re-path attempts since the last success
+path_escape = false; /// true once we stop politely waiting for a route
 data = scr_makeMonster(0,0,0,0,0,0);
 
 /// show damage taken
-damage_timer = irandom(3)*room_speed;
+damage_timer = irandom(3)*game_get_speed(gamespeed_fps);
 damage_amount = 0;
 
 /// climb

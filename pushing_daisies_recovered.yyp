@@ -752,6 +752,7 @@
     {"id":{"name":"stage_data","path":"scripts/stage_data/stage_data.yy",},},
     {"id":{"name":"difficulty_data","path":"scripts/difficulty_data/difficulty_data.yy",},},
     {"id":{"name":"scr_level_state","path":"scripts/scr_level_state/scr_level_state.yy",},},
+    {"id":{"name":"scr_path_validate","path":"scripts/scr_path_validate/scr_path_validate.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",
