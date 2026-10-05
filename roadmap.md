@@ -22,7 +22,7 @@
 
 | Phase | Name | Depends on | Deliverable | Gate |
 | --- | --- | --- | --- | --- |
-| **0** | Foundations | — | a save that works, stage/difficulty data, level flow on `enum` + `switch`, `room_speed` fixed | a stage declared in **data** is playable and progress survives a restart |
+| **0** | Foundations | — | a save that works, stage/difficulty data, level flow on `enum` + `switch`, `room_speed` fixed | a stage declared in **data** is playable, progress survives a restart, and the three Phase-0 bugs of §4.4 pass their acceptance tests |
 | **1** | Vertical slice | Phase 0 | region 1: 10 stages, 3 difficulties, seeds, one clover branch, 3 badges, world map, Deploy screen, 6 towers | **clear → unlock → farm → badge → quit → still there** |
 | **2** | Combat depth | Phase 1 | crit, burn/slow/stun, persistent levels 1–5, specializations, the `scr_level_difficulty` rewrite | winnable *and* losable for the right reasons; two loadouts play differently |
 | **3** | Garden Book | Phase 2 | four trees, five master nodes, currency HUD, per-tower mastery | every currency earnable *and* spendable; nothing inert |
@@ -61,16 +61,134 @@
 | 0.6 | **Currency instrumentation** | new `scr_meta_log`, `print()` prefixes `META`/`SEED`/`CLOVER`/`SHARD`/`CANDY` | `economy.md` §9/§10 are guesswork without it |
 | 0.7 | **Fix the latent fatal in `create_perlin_grid`** | `scripts/create_perlin_grid` | it reads `vx`/`vy`, which do not exist — harmless today, fatal the moment biomes depend on it |
 | 0.8 | **Loadout/config globals** | `scripts/initialize_game` | one place for "current stage", "current difficulty", "current loadout" |
+| 0.9 | **Bug 1 — path integrity:** a placement must not be able to pocket a zombie, and a broken path must heal itself | `objects/obj_tower_edit/Step_0.gml`, `objects/obj_mon/Alarm_0.gml`, `scripts/scr_zombie_path`, `scripts/scr_level_wait` | §4.4.1 — a soft-lock is the worst class of bug in a 60-stage game |
+| 0.10 | **Bug 2 — the pause/exit screen is black:** the snapshot is captured at a mismatched size and gated on another state's fade variable | `scripts/scr_drawBlurScreen`, `objects/_mainControl/Draw_75.gml`, `scripts/scr_main_pause`, `scripts/scr_initResolution` | §4.4.2 |
+| 0.11 | **Bug 3 — the tower upgrade UI:** declutter, and show targets/DPS/upgrade deltas | `scripts/scr_drawTowerSelected`, `scripts/scr_drawTowerMod`, `scripts/scr_drawTowerStats`, `scripts/scr_dataToString`, `objects/obj_tower_edit/Draw_0.gml` | §4.4.3 |
+| 0.12 | **Deprecated / legacy API audit** — fix the calls in the files we touch, schedule the sweep | see §4.5 | `room_speed` alone is 64 hits in 36 files (LL-007) |
 
 ### 4.2 Gate
 
-A stage **declared in `stage_data`** plays: its waves spawn, it ends after its wave count, and the save file survives a full game restart with its versioned contents intact.
+A stage **declared in `stage_data`** plays: its waves spawn, it ends after its wave count, and the save file survives a full game restart with its versioned contents intact. **Plus all three bugs of §4.4 pass their acceptance tests** — a phase that adds a stage system on top of a soft-lockable path is a phase that cannot be tested.
 
 ### 4.3 Falsifier
 
 If wave counts or spawn mixes still live in `scr_setupSpawning` rather than in `stage_data`, Phase 1 cannot proceed — the data layer is the whole point of Phase 0.
 
-### 4.4 Explicitly NOT in Phase 0
+### 4.4 The three blockers (fixed before Phase 1)
+
+These are not polish. Two of them touch systems that Phase 1 and Phase 2 build directly on top of (pathing, and the tower panel that the loadout card will replace), and the first one can soft-lock a run so badly that only a restart recovers.
+
+#### 4.4.1 Bug 1 — blocking the path glitches, and the path stays broken forever
+
+**Symptom.** A tower placed so that it seals a zombie's route leaves the zombie frozen. The wave never ends, so the run is dead, and only restarting the game recovers.
+
+**Root cause — four separate defects, all in the pathing code:**
+
+| # | What actually happens | Where |
+| --- | --- | --- |
+| 1 | The placement check validates only **spawn → despawn**. A placement that leaves the spawn connected but **pockets a zombie already on the map** is accepted | `obj_tower_edit/Step_0.gml:22-24` |
+| 2 | The pocketed zombie re-paths from its own position, gets `false`, and is left with an **empty path** — it simply stops where it stands | `obj_mon/Alarm_0.gml:5-6` |
+| 3 | The retry loop re-runs forever with the identical result (`if(!path_free) alarm[0] = 0.5s`), so nothing ever changes and nothing ever heals | `obj_mon/Alarm_0.gml:9-11` |
+| 4 | The **first** path of every zombie **discards its return value** and leaves `path_free = true` from creation — so a failed initial path is completely silent and never even schedules a retry | `scr_zombie_path:8` vs `obj_mon/Create_0:24` |
+
+**A fifth vector:** a tower can be placed **on the cell a moving zombie is standing in** — the placement test only asks `position_meeting(x,y,obj_tower)`. That blocks the zombie's own start cell and produces the identical freeze.
+
+**The fix — refuse, then always heal.**
+
+*Refuse (make pockets impossible):*
+1. Reject the placement if any live `obj_mon` overlaps the target cell.
+2. Validate **every** live `obj_mon` from its current cell to the despawn against the candidate grid — not just the spawn.
+3. Keep the existing spawn → despawn test as the cheap first pass.
+
+*Heal (so no cause, present or future, can soft-lock the wave):*
+4. Capture the `mp_grid_path` return value at **every** call site, including `scr_zombie_path`.
+5. Escalating recovery in the monster: retry → after ~2 s, re-path on a **tower-ignoring grid** so the zombie can walk out over the tops of the towers → log a `PATH` warning under `devMode`. This guarantees `instance_number(obj_mon)` can always reach 0.
+6. A last-resort safety valve in the wave-end check, so a stuck monster can never hang a stage forever.
+
+**Acceptance.** All four of these must hold:
+
+| Test | Expected |
+| --- | --- |
+| Try to seal a zombie into a pocket | placement **refused**, `snd_unable` plays, no money spent |
+| Sell a tower mid-wave | every zombie re-paths and the wave still ends |
+| Dev-only: `mp_grid_clear_all(LEVEL.path_grid)` while a wave is live | zombies recover within ~2 s and the wave completes |
+| Normal play, `devMode` on | **zero** `PATH` warnings |
+
+**Lessons:** once fixed, `lessons_learned.md` gets an entry per root cause — "a discarded return value is a silent failure", and "validate the whole system, not the entrance to it".
+
+#### 4.4.2 Bug 2 — the pause / exit screen is black
+
+**Symptom.** Pausing blacks the screen. The game image is neither captured nor displayed, so the pause menu has nothing to sit on.
+
+**Root cause — three defects, and any one of them produces a black screen on its own:**
+
+| # | Defect | Where |
+| --- | --- | --- |
+| 1 | **Size mismatch.** The snapshot surface is created at GUI size, but `application_surface` is resized to `ideal_width`/`ideal_height`. Drawing an app surface into a differently sized surface leaves the remainder as the `draw_clear_alpha(c_black, 1)` fill — so the frame is mostly opaque black | `scr_drawBlurScreen:5-7`, `scr_initResolution:48`, `_mainControl/Draw_75.gml:43-45` |
+| 2 | **The snapshot is gated on another state's variable:** `draw_sprite_ext(..., clamp(1 - blackScreen, 0, 1))`. If `blackScreen` is 1, the snapshot draws at **alpha 0** while the black-screen block fills the frame. Worse, `instance_deactivate_all(true)` at `state_time == 10` freezes whatever ramps `blackScreen`, so it can stick there | `_mainControl/Draw_75.gml:31`, `:52-55`, `scr_main_pause:16-18` |
+| 3 | The capture happens **mid-Draw** (depth 75), so it grabs a partially composed frame — and Draw GUI runs after it, so the HUD is never in the snapshot | `_mainControl/Draw_75.gml:39-47` |
+
+**The fix:**
+
+1. Capture at the **application surface's own size** (`surface_get_width/height(application_surface)`) and then draw the resulting sprite **stretched to the GUI size**. No size assumption survives anywhere in the path.
+2. Give pause its **own** alpha (`pause_alpha`) and stop reading `blackScreen`. Reset `blackScreen` on entering pause so no other state's fade can darken it.
+3. Apply the same "never black" principle as the path fix: if the snapshot sprite is missing or zero-sized, **skip the black fill entirely** and let the frozen world show through. The worst case then becomes "pause without the blur", never "pause with nothing".
+4. Move the capture to the earliest draw pass (Draw Begin), so it always captures a complete, already-composed frame rather than a half-drawn one.
+
+**Diagnostic first, in `devMode`** (guarded so it cannot throw — LL-002): log `state`, `state_time`, `grab_surf`, `display_get_gui_width/height`, `surface_get_width/height(application_surface)`, `sprite_exists(pause_surf)`, and `blackScreen` at the moment of the grab. That single line tells us which of the three defects dominates on your machine, and it is the evidence that the fix worked.
+
+**Acceptance.**
+
+| Test | Expected |
+| --- | --- |
+| Press P mid-wave | world visible behind the overlay, HUD legible, vignette fades in |
+| Pause → resume → pause again | identical both times (no stuck alpha) |
+| Game over | same, with the GAME OVER treatment |
+| Log check | GUI size and app-surface size are both printed; if they differ, the stretched draw is what makes the image correct |
+| Dev-only: force `sprite_delete(pause_surf)` immediately after the grab | the pause screen degrades to "frozen world + overlay", never to black |
+
+#### 4.4.3 Bug 3 — the tower upgrade UI fights itself and hides the numbers
+
+**Symptom.** Two elements compete for attention — the range circle and a large upgrade panel in the middle of the screen — and the information shown is missing exactly what a purchase decision needs.
+
+**Root causes:**
+
+| # | Defect | Where |
+| --- | --- | --- |
+| 1 | The panel is a **256×256 box centred on the screen** (`tower_radius << 1`, with `tower_radius` a fixed 128), while the range circle uses the tower's real range (75–125). Two shapes, two radii, both mid-screen | `scr_drawTowerSelected:6-9`, `obj_tower_edit/Draw_0.gml:10`, `_levelControl/Create_0.gml:89` |
+| 2 | The two buttons float in their own grid over the same area | `scr_drawTowerMod`, `tower_dgrid` |
+| 3 | The stat string prints **only Range and Damage**: `array_last_index(_type)` is 2 for a 3-element array, so the loop stops before Fire-Rate — and **Targets was never in the list at all** | `scr_dataToString:11-16` |
+| 4 | No **DPS** and no **deltas**, so the player cannot tell what a purchase will do | `scr_drawTowerStats` |
+| 5 | The `var _count = array_last_index(_type),` / `for (...)` construction is a latent parse hazard | `scr_dataToString:13-16` |
+
+**The fix — one card, one place:**
+
+* **Layout:** a single **fixed card**, docked bottom-left, never under the mouse. Line 1: `NAME · Lv n`. Line 2: `DMG · RATE · RNG · TARGETS · DPS`. Line 3: the Upgrade and Sell buttons **inside the card**. The buttons stop floating and the two elements stop competing, because there is now only one element.
+* **Deltas:** the card shows `125 → 250` for the pending upgrade, so a purchase explains itself without a tooltip.
+* **The range circle becomes subordinate:** alpha ≈0.15, a 1px outline, drawn beneath the towers, and only while the pointer is over the tower on the map or over the card's *Range* row. Never while the card is being read.
+* **Link the two:** the selected tower pulses on the map — the `tower_hilight` flag already exists for it.
+* `scr_dataToString` prints all five fields, with its declaration cleaned up.
+
+**Acceptance.** With a tower selected: the card is legible at a glance, the range circle reads as clearly secondary, all five numbers plus the delta are present, and the buttons are inside the card. Before/after screenshots go into the Phase 0 record.
+
+**This is the one bug with a design decision inside it** (see the summary): a fixed bottom-left card, or a callout anchored to the selected tower. **Recommendation: the fixed card** — the loadout UI that replaces it in Phase 1 is a fixed panel too, so building it that way now means reusing the layout instead of rewriting it.
+
+### 4.5 Deprecated / legacy API audit
+
+Measured across the project today (files / occurrences):
+
+| API | Files | Hits | Replacement |
+| --- | --- | --- | --- |
+| `room_speed` | 36 | 64 | read `game_get_speed(gamespeed_fps)`; set `game_set_speed(60, gamespeed_fps)` (LL-007) |
+| `draw_set_blend_mode` | 13 | 27 | `gpu_set_blendmode` |
+| `action_inherited` | 11 | 15 | a no-op in GMS2 — delete the call |
+| `instance_create(` | 11 | 12 | `instance_create_depth` / `instance_create_layer` |
+| `display_get_width/height(` | 2 | 11 | `display_get_gui_width/height`, or the view size |
+| `string_width(` | 11 | 14 | valid, but prefer `string_width_ext` where wrapping matters |
+
+**Rule for Phase 0: fix the deprecated calls in the files we touch, and do not sweep the project.** A blanket sweep is its own risk (every file is a chance to change line endings — LL-006 — and to trip the IDE's buffers — LL-008) and it would make the three bug fixes unreviewable. The audit is recorded here so the sweep can be scheduled as its own commit, with the gates run over it, once the bugs are closed.
+
+### 4.6 Explicitly NOT in Phase 0
 
 No new screens, no currencies, no art, no balance. Phase 0 is invisible on purpose: it is the difference between a 60-stage game and a 60-times-repeated prototype.
 
@@ -286,7 +404,7 @@ And every commit is described in terms of **what the user should see in the log*
 | Phase | State | Notes |
 | --- | --- | --- |
 | Design (`goal.md`, `economy.md`, `roadmap.md`) | **done** | 2026-10-04 |
-| 0 — Foundations | not started | next |
+| 0 — Foundations | not started | next — now includes the three blocker bugs (§4.4) and the deprecated-API audit (§4.5) |
 | 1 — Vertical slice | not started | |
 | 2 — Combat depth | not started | |
 | 3 — Garden Book | not started | |
@@ -299,4 +417,5 @@ And every commit is described in terms of **what the user should see in the log*
 | Date | Change |
 | --- | --- |
 | 2026-10-04 | Created, out of the `goal.md` review and the approved design calls. |
+| 2026-10-04 | Phase 0 expanded with the three blocker bugs (§4.4.1 path integrity, §4.4.2 the black pause screen, §4.4.3 the tower card) — each with its root causes located in the source, a fix plan, and acceptance tests that can fail. Added the deprecated / legacy API audit (§4.5) and its numbers. |
 

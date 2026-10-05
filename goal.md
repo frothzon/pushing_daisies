@@ -1248,6 +1248,9 @@ Nothing is shown before it can be acted on. Four currencies on screen at stage 1
 * **Per-stage life**, not per-run: `life` starts at 20 in `_levelControl/Create_0.gml` and is decremented by `scripts/lose_life`.
 * **`room_speed` → `game_get_speed(gamespeed_fps)`** before any status-effect timing is written (LL-007).
 * **Level flow → `enum` + `switch`** before stage phases are layered on it (LL-004; the Menu is the reference implementation).
+* **Path integrity.** A placement must never be able to pocket a zombie, and a broken path must heal itself (`roadmap.md` §4.4.1). Any rule that can leave a wave un-completable is a soft-lock, and a soft-lock in a 60-stage campaign costs a player an entire session.
+* **The pause snapshot** must own its own alpha and assume nothing about surface sizes (`roadmap.md` §4.4.2). A UI overlay that reads another state's fade variable is a UI overlay that will one day be invisible.
+* **The tower card** is the surface the loadout and mastery UI will grow out of, so it is worth building once, properly (`roadmap.md` §4.4.3).
 
 ---
 
