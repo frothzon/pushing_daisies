@@ -22,7 +22,7 @@ Four meta currencies and one run currency. Nothing else in the game should ever 
 | 🌱 | **Seeds** | campaign | clearing stages | unlocking the 8 towers and their region gates — **content only** | save |
 | ☘️ | **Clovers** | garden | lives remaining at stage end | the four clover trees; the five master nodes | save |
 | 🩸 | **Blood Shards** | account | zombie kills (pity curve), bosses (guaranteed) | blood tree; candy recipes; candy stock | save |
-| 🍬 | **Candy** | run (stock) / account (recipes) | endless boxes, shard shop | consumed inside a run | save |
+| 🍬 | **Candy** | run (stock) / account (recipes, levels, duration) | endless boxes, shard shop | consumed inside a run — **each unit adds time, never magnitude** | save |
 
 **The rule that keeps this legible:** money is the only thing spent *while playing*. Everything else is spent between stages, in the Garden Book, where the player can think.
 
@@ -149,7 +149,7 @@ Each node raises **two** numbers by one level: the **cap** (how far a tower can 
 
 **Mastery is account-wide:** one garden, one floor, one ceiling, for every tower. Gates: node N requires clearing region N (so region N's enemy scaling assumes the mastery a player can plausibly hold by then).
 
-**Total to cap 10:** 3,280 ☘️ — deliberately more than the four trees (1,892) plus their spine, so mastery is the garden's long-term project rather than a checkpoint.
+**Total to cap 10:** 3,280 ☘️ — more than the four trees (1,892) combined, which makes mastery a genuine long-term project. It is *not* the longest one, though: the candy duration track (§3.5) costs three times as much again, and is deliberately the last thing a clover-rich player finishes.
 
 ### 3.4 Pacing checkpoints
 
@@ -161,6 +161,23 @@ Each node raises **two** numbers by one level: the **cap** (how far a tower can 
 | Cap 10 | post-campaign and Endless income |
 
 *A full campaign pays ~1,300 ☘️ (60 stages × ~22, mostly first clears). All four branches cost 1,892 — so the garden deliberately has a tail beyond the campaign. If that feels too slow in playtest, cut node 10's 150 to 120 before touching anything else.*
+
+### 3.5 The candy duration track — the garden's longest project
+
+Candy magnitude never stacks (`goal.md` §17): feeding in more of the same type buys **time**. Clovers buy the length of that time.
+
+| Purchase | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Effect | +10% | +20% | +30% | +40% | +50% | +60% | +70% | +80% | +90% | **+100%** |
+| Cost (☘️) | 10 | 20 | 40 | 80 | 160 | 320 | 640 | 1,280 | 2,560 | 5,120 |
+
+**Ten purchases, the price doubling each time, +100% at the cap: 10,230 ☘️ in total.** A maxed candy is 60 s instead of 30 s.
+
+**Why a doubling ladder is acceptable here, and nowhere else.** Doubling puts roughly half the total cost into the final purchase — exactly what a "keep this currency relevant forever" sink needs. It is only safe on a knob that **cannot break the power curve**, and duration is that knob: +100% adds no damage at all, it just means the player holds the same edge for twice as long. **Never put a doubling ladder on a stat.** That single rule is why this track exists at the end of the clover economy rather than inside a tree.
+
+**Where it sits:** 10,230 ☘️ is about three times the whole tree investment (1,892) plus the master nodes (3,280) — so it is deliberately the *last* thing a clover-rich player finishes, which is what keeps clovers relevant long after the campaign ends. *(If playtest says that is too long, change the base cost from 10 to 4 — a 4,092 total — before touching the doubling.)*
+
+**Why +10% and not +2%.** The original idea was +2% per purchase with the price doubling to a +100% cap. That is **50 purchases**, so the last costs `2^49 × base` — more clovers than exist in any number of playthroughs, which turns the +100% cap into a lie in the UI and leaves the effective ceiling around +16%. Either the cap comes down to ~+20% (ten purchases) or the step comes up to +10% (ten purchases). **Ten steps at +10% is chosen**, because it keeps the cap honest and the payoff legible — and it costs exactly what the +20% version would have.
 
 ---
 
@@ -303,32 +320,37 @@ Each level adds one unit of **that candy's own** stat, so the growth is always l
 
 | Candy | Tier | Effect at **L1** | Per level | At **L10** | Duration |
 | --- | --- | --- | --- | --- | --- |
-| 🍬 **Red Licorice** | 1 | +10% damage | +1% | **+19%** | 5 waves |
-| 🍬 **Jawbreaker** | 1 | +10% range | +1% | +19% | 5 waves |
-| 🍬 **Gummy Worm** | 1 | +15% slow effectiveness | +1.5% | +28% | 5 waves |
-| 🍬 **Sour Drop** | 2 | +10% crit chance | +0.5% | +14.5% | 5 waves |
-| 🍬 **Fireball Candy** | 2 | +20% burn damage | +2% | +38% | 5 waves |
-| 🍬 **Frosted Flake** | 2 | +10% fire rate | +1% | +19% | 5 waves |
-| 🍬 **Blood Bonbon** | 3 | +25% damage, +5% crit damage | +2% / +1% | +43% / +14% | 3 waves |
-| 🍬 **Everlasting Gob** | 3 | the previous candy lasts to the end of the run | +1 wave per 3 levels | +3 waves | — |
+| 🍬 **Red Licorice** | 1 | +10% damage | +1% | **+19%** | 30 s |
+| 🍬 **Jawbreaker** | 1 | +10% range | +1% | +19% | 30 s |
+| 🍬 **Gummy Worm** | 1 | +15% slow effectiveness | +1.5% | +28% | 30 s |
+| 🍬 **Sour Drop** | 2 | +10% crit chance | +0.5% | +14.5% | 30 s |
+| 🍬 **Fireball Candy** | 2 | +20% burn damage | +2% | +38% | 30 s |
+| 🍬 **Frosted Flake** | 2 | +10% fire rate | +1% | +19% | 30 s |
+| 🍬 **Blood Bonbon** | 3 | +25% damage, +5% crit damage | +2% / +1% | +43% / +14% | 30 s |
+| 🍬 **Everlasting Gob** | 3 | **freezes every active candy timer** for 1 wave (+1 wave per 3 levels) | +1 wave / 3 levels | 4 waves frozen | — |
 
-**Duration never changes with level** (except the Gob). The unit of candy is still "5 waves"; levels only decide how strong those five waves are. That keeps the decision in the pause menu simple: *which*, and *how much stock*, never *how long*.
+**Every candy lasts 30 seconds**, and **duration never changes with level** (except the Gob, which is *made* of duration). Levels buy magnitude; clovers buy time (`§3.5`). That keeps the pause-menu decision simple — *which candy, and when* — instead of *how many can I stack*.
 
-### 6.3 Stacking rules
+**The Gob is the tier-3 capstone** precisely because it is the only candy whose effect is time-shaped: it does not add power, it stops the clock on everything already running, which is what you want when a boss wave lands.
+
+### 6.3 Duration, not stacking
 
 | Rule | Value |
 | --- | --- |
-| Stacking | **additive** — 1 Red Licorice = +10%, 2 = +20%, 3 = +30%, 4 = +40% |
-| Cap per type | **10** (= +190% for a *fully levelled* Red Licorice, +100% for a fresh one) |
-| Cap in total | **20 active candies** |
-| Special (rare) candies | **1 of each type, ever** — Blood Orange and Money Honey never stack (§6.5) |
-| Order of operations | clovers set the base, **candy multiplies after** |
-| Activation | between waves, from the pause menu |
-| Expiry | on wave count, not on time — a wave survived is a wave spent |
+| Base duration | **30 seconds** per candy consumed |
+| Consuming more of the same type | **adds** 30 s to the remaining timer — it does not restart it |
+| Maximum duration | none from the rules; your **stock** is the limit |
+| Different types | run side by side, each with its own timer, one instance of each type at a time |
+| Magnitude | fixed by the candy's **level**; it never stacks, ever |
+| Duration bonus | up to **+100%** from the clover track (§3.5), so 60 s per candy |
+| When the timer ticks | **only while a wave is live** — not during the countdown, and not during the ~6 s between-wave wait |
+| Speed | the timer counts **game frames**, so fast-forward does not shorten it in waves; the pause menu freezes it |
 
-**Levels and stacking never interact.** A level raises one candy's own number; it does not raise the caps, add slots, or extend the duration. So the ceiling of a candy run is bounded exactly as before (20 candies, five waves) while the *quality* of each candy is the long-term shard project.
+**What this replaced, and why.** The earlier draft stacked candies additively — ten maxed Red Licorices were +190% damage. That is a blow-up waiting to happen, and it turned the pause menu into a "how much can I spike?" button. Under the duration model the same stock buys **+19% damage for as long as you feed it**, so the ceiling is bounded by *time* instead of by a cap table. Three things got simpler as a result: no per-type cap, no total cap, and no stacking exception needed for the rare candies (§6.5).
 
-*Worked example, the "absurd build" the design aims at: 10 maxed Red Licorice + 5 maxed Sour Drop + 5 maxed Fireball = **+190% damage, +72% crit chance, +190% burn damage**, for five waves. It should feel like breaking the game. It should also cost 20 candies and the shard investment of three maxed candies.*
+**The trade.** Candy stops being an explosion and becomes **reliability** — the thing you start before an elite wave and then hold. If the spike is missed in playtest, raise a candy's level-10 magnitude (say +19% → +25%); **never bring stacking back.**
+
+**30 s ≈ the old "5 waves"** (a wave runs roughly 6–10 s), so this is a legibility change as much as a balance one: a countdown the player can watch is more tangible than a wave counter, and "start it now, it lasts 30 seconds" is a decision anyone can make.
 
 ---
 
@@ -354,30 +376,30 @@ Sanity-checked against shard supply:
 
 So **the first two levels cost 5 shards** — about two thirds of one campaign sweep — which is why early investment is felt immediately. One candy to L10 is roughly **a dozen sweeps**; all eight is the lifetime project. That curve is the whole point: it is the only shard sink that never ends (`goal.md` §16).
 
-**A level never touches the caps.** Ten maxed Red Licorices are still ten candies against the 20-active cap, with the same five-wave expiry.
+**A level never touches the duration.** Levels buy magnitude, clovers buy time (§3.5): a level-10 candy is still exactly 30 seconds — 60 with the clover track maxed — it just does more per second.
 
 ### 6.5 Special candies — rare, meta, and deliberately single
 
-Two candies act on the **economies** rather than on combat. They are the only candies that do, and the only ones that cannot stack.
+Two candies act on the **economies** rather than on combat — and because nothing stacks any more (§6.3), they need no special rule to stay bounded.
 
 | Candy | Tier | Effect at **L1** | Per level | At **L10** | Duration |
 | --- | --- | --- | --- | --- | --- |
-| 🍊 **Blood Orange** | 4 (rare) | kills count **1.10×** toward the next blood shard | +0.10× | **2.00×** | 5 waves |
-| 🍯 **Money Honey** | 4 (rare) | **+15%** money from every kill | +1.5% | **+29%** | 5 waves |
+| 🍊 **Blood Orange** | 4 (rare) | kills count **1.10×** toward the next blood shard | +0.10× | **2.00×** | 30 s |
+| 🍯 **Money Honey** | 4 (rare) | **+15%** money from every kill | +1.5% | **+29%** | 30 s |
 
 **Recipe: 35 shards each. Gated:** Blood Orange requires the blood tree's tier 2 (*Hemorrhagic Harvest*); Money Honey requires region 4 cleared. Neither can therefore distort the early economy.
 
 **The class rules — so this stays two candies and never becomes twenty:**
 
 1. **Rare** — tier 4, 35 shards, and the gates above.
-2. **They never stack.** Maximum **one** of each active, at any level, regardless of how many are in stock. Ten stacked Blood Oranges would be 10× pity fill and would break the shard curve in half; one is a *plan*, ten would be an exploit.
+2. **Nothing stacks any more.** That is now the universal rule (§6.3), so the rare candies need no exception. Their specialness is their tier, their gate and their meta effect — and feeding more Blood Orange buys more *time*, never more than 2× pity fill.
 3. **They act on systems the player can see.** Money is already visible; **Blood Orange's other job is to make the pity counter visible** — while it is active, the counter and its multiplier are shown, counting up. An invisible statistical buff is not a reward (the §5.2 rule, restated for candy).
 4. **They accelerate; they never grant.** No candy can pay out a currency directly. That is the rule that keeps candy as *temporary power* instead of a farm, and it is what stops an "activate candy, get paid, repeat" loop.
 5. **Shared axes sum.** Money: Harvest (+5%) + Growth (+15%) + Money Honey (+29%) — one axis, added. Pity: blood tree + Blood Orange — one axis, added. Nothing multiplies with anything else on its own axis.
 
 **Why they earn their slot.** Every other candy answers *"how do I win this run?"*. These two answer *"what kind of run am I having?"* — one farms the account, one accelerates the garden. Each hooks into exactly one existing line (`scr_zomb_death:7` for kill money; the pity increment for shards), so they are cheap to add and impossible to accidentally over-couple.
 
-**Guarded risk:** a sustained Blood Orange could compress the shard economy. The bounds are structural rather than numeric — 5 waves per activation, one at a time, and the hard pity cap at 20,000 kills still applies, so the floor under the chase can never be pulled up far enough to make shards routine.
+**Guarded risk:** a sustained Blood Orange could compress the shard economy. The bounds are structural rather than numeric — 30 s per activation, one instance at a time, and the hard pity cap at 20,000 kills still applies, so the floor under the chase can never be pulled up far enough to make shards routine.
 
 ---
 
@@ -458,7 +480,9 @@ One medal per badge per stage, stored in the save. **No art in v1** — the reco
 | 7 | Nothing is inert | every currency earnable *and* spendable at every point in the campaign | Phase 3 gate |
 | 8 | First candy levels (L2–L3, 5 shards) | inside the first campaign after the first shard | Phase 4 |
 | 9 | First candy to L10 (95 shards) | ~a dozen campaign sweeps — long, but visibly progressing | Phase 4 |
-| 10 | A maxed Blood Orange + blood tree tier 2 | pity fills ~2× for 5 waves, never stacked — a *window*, not a farming engine | Phase 4 |
+| 10 | A maxed Blood Orange + blood tree tier 2 | pity fills ~2× for 30 s at a time, never stacked — a *window*, not a farming engine | Phase 4 |
+| 11 | Candy duration track — first purchase | 10 ☘️ for +10%, buyable inside region 1, so every player feels it | Phase 3 |
+| 12 | Candy duration track — the +100% cap | 10,230 ☘️ total, deliberately the last thing a clover-rich player finishes | Phase 3/6 |
 
 **Instrumentation this requires (Phase 0):** every currency event logs through `print()` under `global.devMode`, with the `META`, `SEED`, `CLOVER`, `SHARD` and `CANDY` prefixes, per the log-prefix convention in `AGENTS.md` §4. Without that log, Phase 6 tuning is guesswork.
 
@@ -469,14 +493,15 @@ One medal per badge per stage, stored in the save. **No art in v1** — the reco
 Adjust **one** of these at a time, log first, and only after the previous one has been played:
 
 1. **Blood pity window** (8,000 / 20,000) — the most sensitive number in the game
-2. **Candy level costs** — if the first two levels are not cheap enough to feel immediate, the entire track stops registering
-3. **Region base seeds** — if unlocks come too fast or too slow
-4. **Clover costs** — both the trees (473 per branch) and the master nodes (3,280 to cap 10)
-5. **Upgrade prices** (in-run money) — if the run economy feels tight or trivial
-6. **Tower stats**, then placement prices — Phase 2 tuning, not before
-7. **Candy caps and durations** — if a candy run stops feeling special
-8. **Box weights** — if Endless income dwarfs the campaign
-9. **Difficulty multipliers** — *last*, because they touch every other number on this page
+2. **Candy duration base** (30 s / 60 s) and the duration track's **base cost** — these two decide whether candy feels usable at all. **The doubling on that track is structural: do not tune it.**
+3. **Candy level costs** — if the first two levels are not cheap enough to feel immediate, the entire track stops registering
+4. **Region base seeds** — if unlocks come too fast or too slow
+5. **Clover costs** — the trees (473 per branch), the master nodes (3,280 to cap 10) and the duration track (10,230 to +100%)
+6. **Upgrade prices** (in-run money) — if the run economy feels tight or trivial
+7. **Tower stats**, then placement prices — Phase 2 tuning, not before
+8. **Candy magnitudes** — if losing the stacking spike (from +190% down to +19%) leaves candy feeling weak, raise the level-10 numbers, never the rule
+9. **Box weights** — if Endless income dwarfs the campaign
+10. **Difficulty multipliers** — *last*, because they touch every other number on this page
 
 ---
 
@@ -498,4 +523,5 @@ Adjust **one** of these at a time, log first, and only after the previous one ha
 | 2026-10-04 | v1 created out of the `goal.md` design review. All values first-pass; every one is expected to move in Phase 6. |
 | 2026-10-04 | Mastery redesigned on the user's call: clovers now raise the tower **floor and cap together** (`start = cap − 4`), so the money climb stays four rungs at every mastery. Seeds consequently buy **content only** (§2.3), and candy gained **levels 1–10** bought with shards (§6.4) as the game's unbounded shard sink. |
 | 2026-10-04 | Added the **special (rare) candies** (§6.5): 🍊 Blood Orange (pity fill ×1.10 → ×2.00) and 🍯 Money Honey (+15% → +29% kill money). Tier 4, 35 shards, gated, and the only candies that never stack. The shard one was reframed from "+10% drop rate" to pity fill because a +10% on 0.01% is imperceptible (§5.2's own rule), and it now also exposes the pity counter. Fixed the Growth tree's in-run money node from +75% to **+15%**, which contradicted the whole Harvest branch (+5%). |
+| 2026-10-04 | Candy redesigned from **stacking** to **duration** on the user's call: magnitude never stacks, each candy is 30 s, consuming more of a type *adds* time, and a clover track (§3.5) buys up to **+100%** duration. The +2% step became **+10%** (ten purchases, not fifty) so the +100% cap is honest rather than 2^49 clovers away; total 10,230 ☘️, making it the game's longest single clover sink. The timer counts **game frames** and ticks **only while a wave is live**. This is also the rule that a doubling ladder may only ever be attached to a knob that cannot break the power curve. |
 

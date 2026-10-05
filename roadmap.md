@@ -57,7 +57,7 @@
 | 0.2 | **`stage_data`** — region, stage, base seeds, wave count, spawn mix, biome, `par_spend`, `par_time`, boss flag | new script | removes the need for 60 rooms |
 | 0.3 | **`difficulty_data`** — seed/HP/speed/spawn/money multipliers | new script | one table for the whole game (`goal.md` §2) |
 | 0.4 | **Level flow → `enum` + `switch`** | `objects/_levelControl/Step_0.gml`, new `scr_level_state` | `scr_runState` + numeric sentinels will not survive stage phases (LL-004) |
-| 0.5 | **`room_speed` → `game_get_speed(gamespeed_fps)`** in the touched files | level flow first | every status-effect timer depends on it (LL-007) |
+| 0.5 | **`room_speed` → `game_get_speed(gamespeed_fps)`** in the touched files | level flow first | every status-effect timer depends on it (LL-007) — and **the candy timer is the first real timer in the game**, so it cannot be written until this lands |
 | 0.6 | **Currency instrumentation** | new `scr_meta_log`, `print()` prefixes `META`/`SEED`/`CLOVER`/`SHARD`/`CANDY` | `economy.md` §9/§10 are guesswork without it |
 | 0.7 | **Fix the latent fatal in `create_perlin_grid`** | `scripts/create_perlin_grid` | it reads `vx`/`vy`, which do not exist — harmless today, fatal the moment biomes depend on it |
 | 0.8 | **Loadout/config globals** | `scripts/initialize_game` | one place for "current stage", "current difficulty", "current loadout" |
@@ -274,7 +274,7 @@ If one tower or one status appears in every viable loadout, the counter-system o
 | 3.3 | **Mastery** — the five master nodes (floor **and** cap, `start = cap − 4`), plus a panel showing where each tower arrives and how far it can go | account-wide, so there are no per-tower level screens: the tree *is* the mastery UI |
 | 3.4 | **Currency HUD** — all four, with a "new" highlight when one changes | so nothing is earned invisibly |
 | 3.5 | **Respec** — specialization changes for seeds; tree respec for a clover fee | protects experimentation |
-| 3.6 | **Garden Book navigation** — tabs for the four trees, the shop, and (later) the blood tree | one screen, five tabs |
+| 3.6 | **Garden Book navigation** — tabs for the four trees, the shop, and (later) the blood tree and the **candy panel** | one screen, six tabs; the candy content lands in Phase 4, so the layout is proven here first |
 
 ### 7.2 Gate
 
@@ -297,12 +297,12 @@ Any node whose effect the player cannot perceive is a broken node (`goal.md` §1
 | 4.3 | **Loot box: choice of three** — tier weights, offer tables, the scaling formula, one re-roll | `economy.md` §7.2–§7.4 |
 | 4.4 | **Kill counter + pity curve + shard drops**, with the boss guarantee | `economy.md` §5.1 — log every roll under `devMode` |
 | 4.5 | **The blood tree** — five tiers, nodes in "−kills required" | |
-| 4.6 | **Candy** — recipes, **levels 1–10 bought with shards**, stock (boxes/shop), additive stacking, caps, wave-based expiry, pause-menu activation, **the two rare meta candies and the pity-counter readout they reveal** | `economy.md` §6; the level track is the unbounded shard sink, so it must ship with the blood tree |
+| 4.6 | **Candy** — recipes, **levels 1–10 (shards)**, stock, **duration instead of stacking** (30 s per candy, extended by feeding, +100% from the clover track), game-frame timers that tick **only while a wave is live**, a HUD + pause readout, the two rare meta candies, and the pity counter Blood Orange reveals | `economy.md` §6; the level track is the unbounded shard sink and the duration track is the longest clover sink, so both ship with the blood tree |
 | 4.7 | **Blood Fields modifier** — region 6's night: more elites, pity bonus | reuses 4.4 |
 
 ### 8.2 Gate
 
-An Endless run reaches **box 5 or beyond**; a blood shard drops during a **normal** play session (not a scripted one); and a candy build plays measurably differently from the same loadout without candy.
+An Endless run reaches **box 5 or beyond**; a blood shard drops during a **normal** play session (not a scripted one); and a candy build plays measurably differently from the same loadout without candy. Specifically: **30 s of candy covers 3–6 waves, the timer does not tick during the between-wave wait or the countdown, and it stops dead while paused.**
 
 ### 8.3 Falsifier
 
@@ -418,4 +418,5 @@ And every commit is described in terms of **what the user should see in the log*
 | --- | --- |
 | 2026-10-04 | Created, out of the `goal.md` review and the approved design calls. |
 | 2026-10-04 | Phase 0 expanded with the three blocker bugs (§4.4.1 path integrity, §4.4.2 the black pause screen, §4.4.3 the tower card) — each with its root causes located in the source, a fix plan, and acceptance tests that can fail. Added the deprecated / legacy API audit (§4.5) and its numbers. |
+| 2026-10-04 | Candy changed from stacking to **duration** in `goal.md` §16–§17 and `economy.md` §1/§3.5/§6.2–§6.5: 30 s per candy, feeding extends, and a clover track to +100%. Roadmap touched in three places — task 0.5 now owns the fact that the candy timer is the game's first real timer, task 3.6 proves the six-tab Garden Book layout, and task 4.6 plus the Phase 4 gate carry the duration system and its timer tests. |
 

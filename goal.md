@@ -747,69 +747,71 @@ This is where I think your idea gets particularly good.
 
 That resolves the three-sources problem in §1/§16/§20 without removing any of them, and it gives blood shards a *reliable*, never-finished sink.
 
+**And a fourth thing shards do not buy: time.** Candy's *duration* comes from ☘️ clovers — a doubling ladder from 30 s to 60 s per candy (`economy.md` §3.5). That is deliberate: duration is the one candy knob that cannot break the power curve, which makes it the only safe home for a doubling ladder, and it gives clovers something to want long after every tree and every master node is bought.
+
 **Why candy has levels.** The blood tree is finite — five tiers and it is done. Candy recipes are finite — eight of them. Candy *levels* are not: eight candies × nine paid levels is a refinement track that can never be exhausted. It turns every shard into something a player still wants, which is exactly what a rare drop needs in order to stay interesting a hundred hours in. **Candy levels are the game's only unbounded shard sink, on purpose.**
 
 Candy becomes the game's temporary power system.
 
-**Two of the candies are special.** A rare, meta-flavoured pair — 🍊 **Blood Orange** (kills count toward the next blood shard faster) and 🍯 **Money Honey** (+money from every kill) — act on the *economies* rather than on combat, and are the only candies that **cannot stack**: one of each, ever, at any level. They answer *"what kind of run am I having?"* instead of *"how do I win this run?"*, and Blood Orange exists partly to make the pity counter **visible** — an invisible statistical buff is not a reward. Full rules and numbers: `economy.md` §6.5.
+**Two of the candies are special.** A rare, meta-flavoured pair — 🍊 **Blood Orange** (kills count toward the next blood shard faster) and 🍯 **Money Honey** (+money from every kill) — act on the *economies* rather than on combat. They answer *"what kind of run am I having?"* instead of *"how do I win this run?"*, and Blood Orange exists partly to make the pity counter **visible** — an invisible statistical buff is not a reward. Full rules and numbers: `economy.md` §6.5.
 
 For example:
 
 ### 🍬 Red Licorice
 
-+10% damage for 5 waves.
++10% damage for **30 seconds**.
 
 ### 🍬 Jawbreaker
 
-+10% range for 5 waves.
++10% range for **30 seconds**.
 
 ### 🍬 Gummy Worm
 
-+15% slow effectiveness for 5 waves.
++15% slow effectiveness for **30 seconds**.
 
 ### 🍬 Sour Drop
 
-+10% crit chance for 5 waves.
++10% crit chance for **30 seconds**.
 
 ### 🍬 Fireball Candy
 
-+20% burn damage for 5 waves.
++20% burn damage for **30 seconds**.
+
+*(Those are the level-1 magnitudes. Every candy lasts 30 seconds and levels buy magnitude — `economy.md` §6.2.)*
 
 ---
 
-# 17. Candy Stacking
+# 17. Candy Duration — not stacking
 
-Your idea of making candy **additive** is good.
+**Candy does not stack in magnitude. Consuming another of the same type extends how long it is active.** That is the whole balance of the system: candy changes *how long* you can hold an edge, never *how big* the edge is, so the numbers cannot explode.
 
-For example:
+One Red Licorice at level 10 is **+19% damage** — and it stays +19% whether you feed it one unit or ten.
 
-One Red Licorice:
+What feeding it more *does*:
 
-**+10% damage**
+| Rule | Value |
+| --- | --- |
+| Base duration | **30 seconds** per candy consumed |
+| Another of the same type | **adds** 30 s to the remaining timer — it does not restart it, and there is no cap beyond your stock |
+| Different types | run side by side, each with its own timer — one instance of each type at a time |
+| Magnitude | fixed by the candy's **level** (shards). It never multiplies. |
+| Duration investment | up to **+100%** from ☘️ clovers (`economy.md` §3.5), so a maxed candy is 60 s |
+| When it ticks | only while a wave is live — never during the countdown or the between-wave wait |
+| Speed and pause | the timer counts game frames, so fast-forward does not shorten it in waves, and the pause menu freezes it |
 
-Two:
+**Three levers, three currencies, no overlap:**
 
-**+20%**
+| Lever | Currency | What it changes |
+| --- | --- | --- |
+| Candy **level** | 🩸 shards | magnitude — a level-10 Red Licorice is +19%, a fresh one +10% |
+| Candy **stock** | 🩸 boxes and the shard shop | how many times you can extend |
+| Candy **duration** | ☘️ clovers | 30 s → 60 s per candy |
 
-Three:
+**What we give up:** the "break the game" spike. One Red Licorice at level 10 is **+19% for as long as you feed it**, not +190% for five waves. Candy becomes *reliability* rather than an explosion — the thing you start before an elite wave and then hold — and the pause menu asks *"when do I start, and for how long?"* instead of *"how much can I spike?"*. If the spike is missed in playtest, raise a candy's level-10 magnitude (say +19% → +25%); never bring stacking back.
 
-**+30%**
+**30 seconds ≈ the old "5 waves"** (a wave runs about 6–10 s), so this is as much a legibility change as a balance one — a countdown the player can watch beats a wave counter they have to remember.
 
-Four:
-
-**+40%**
-
-But I'd introduce a soft cap.
-
-For example:
-
-> Maximum 10 active candies of the same type, and **20 active in total**.
-
-Candy is applied **after** clovers (clovers set the base, candy multiplies it), so the numbers stay readable and a clover upgrade never feels wasted on a candy run.
-
-**A candy's level raises *its own* buff; the stacking caps do not move.** A level-10 Red Licorice is worth +19% instead of +10% — so a fully levelled candy is roughly **twice** a fresh one, not ten times one. That is the whole balance of the candy level track: it buys quality, not a second axis of stacking. Ten maxed Red Licorices are still ten candies against the 20-active cap, and they still expire after five waves.
-
-**The two special (rare) candies never stack at all** — 🍊 Blood Orange and 🍯 Money Honey are capped at **one active**, whatever their level and however many are in stock. Ten stacked Blood Oranges would be 10× pity fill, which would break the shard curve rather than bend it.
+**The two special (rare) candies follow the same rule** — 🍊 Blood Orange and 🍯 Money Honey are one instance each, extended by feeding them. Their specialness is their tier, their gate and their meta effect, not a stacking exception, because stacking no longer exists anywhere.
 
 That lets players deliberately create absurd builds without letting the numbers become infinite.
 
@@ -1129,7 +1131,7 @@ Provides:
 
 …and **levels 1–10 on each candy**, bought with blood shards, which raise whichever of those the candy provides. Recipes and levels are permanent; the stock is consumed.
 
-Plus **two rare meta candies** that act on the economies instead of on combat — 🍊 Blood Orange (faster pity, and it makes the shard counter visible) and 🍯 Money Honey (+money from kills). They never stack: one of each, ever.
+Plus **two rare meta candies** that act on the economies instead of on combat — 🍊 Blood Orange (faster pity, and it makes the shard counter visible) and 🍯 Money Honey (+money from kills). Feeding them more buys **time**, never magnitude: nothing stacks any more (§17).
 
 **Question it answers:**\
 _"How do I make this particular run ridiculous?"_
@@ -1377,4 +1379,6 @@ So a Normal-only player **cannot** unlock the whole roster — they have to meet
 | Candy had recipes and stock only | candy also has **levels 1–10** bought with shards — the game's unbounded shard sink, which is what keeps a rare drop interesting forever (§16, `economy.md` §6.4) |
 | Candy as a combat-only system | two **rare meta candies** act on the shard and money economies, never stack, and Blood Orange makes the pity counter visible so the buff can actually be felt (§16, `economy.md` §6.5) |
 | A "+10% blood shard drop rate" candy | reframed to **pity fill rate** (kills count 1.10× → 2.00×), because +10% on a 0.01% chance is 0.011% and no player can perceive it — the §15 rule applied to candy |
+| Candy stacking additively (10 per type, 20 in total, +190% spike builds) | candy **does not stack at all**: consuming more of a type extends its timer — 30 s per unit, up to 60 s with the clover track — so the ceiling is **time**, not magnitude (§17, `economy.md` §6.3) |
+| A +2%-per-purchase clover duration ladder to +100% | ten purchases at **+10%** instead: +2% × 50 purchases with a doubling price is 2^49 clovers, so the cap would be a lie in the UI. Same cost curve, honest cap, same total (10,230 ☘️) |
 
