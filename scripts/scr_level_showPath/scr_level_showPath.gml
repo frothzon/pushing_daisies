@@ -4,7 +4,9 @@ function scr_level_showPath() {
 	    show the path for a bit
 	*/
 	/// spawn_wait_time
-	if(state_time == 0){
+	/// the state timer is level_state_time now (roadmap 0.4) - the old
+	/// runner's `state_time` no longer exists on the level
+	if(level_state_time == 0){
 	    ///scr_resetDrawPath();
 	    path_frame = 0;
 	}

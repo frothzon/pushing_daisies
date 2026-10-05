@@ -7,7 +7,10 @@ function scr_setupSpawning() {
 	spawn_count = 5;
 	spawn_current = 0;
 	wait_timer = 0;
-	spawn_wait_time = room_speed*5.9;
+	/// game_get_speed replaces the obsolete room_speed (LL-007): the
+	/// wait is a real duration, not a frame count that changes with the
+	/// runtime speed setting.
+	spawn_wait_time = game_get_speed(gamespeed_fps)*5.9;
 
 	//------------- creature list
 	/// monsters
@@ -25,6 +28,8 @@ function scr_setupSpawning() {
 
 	//------------- wave data
 	wave_count = 0;
+	wait_stuck = 0;      /// frames a wave has had monsters alive past its timer
+	is_boss_wave = false;
 
 
 

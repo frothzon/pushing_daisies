@@ -31,8 +31,8 @@ if(tower_hover < 0 && tower_index >= 0){
 }
 
 
-/// run state
-scr_runState(scr_level_start);
+/// run the level flow (roadmap 0.4)
+scr_level_step();
 
 /// update static inventory
 scr_update_statinv();

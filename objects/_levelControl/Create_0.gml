@@ -118,8 +118,18 @@ with(mouse_light){
     scr_scale_sprite(64,64);
 }
 
-/// setup state
-scr_setupState();
+/// setup the level flow (roadmap 0.4).  The Menu is the reference for
+/// this shape: an enum, a pending change, and a timer.  The old
+/// scr_setupState() held the state as a *function reference* and used
+/// the number -1 for "none" - the LL-004 trap - and two numeric
+/// sentinels cannot express a stage that has to deploy, fight, clear
+/// and reward.
+level_state      = LEVEL_STATE.NONE;
+level_state_next = LEVEL_STATE.START;
+level_state_time = 0;
+level_cleared    = false;
+wait_stuck       = 0;
+is_boss_wave     = false;
 
 show_start = false;
 show_position = array(
