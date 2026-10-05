@@ -86,12 +86,33 @@ tower_point = array(
 /// setup tower modifier
 
 tower_selection = noone;
-tower_radius = 128;
 tower_menu_selection = -1;
 tower_menu_hover = -1;
 
-tower_display = array(display_get_gui_width()*0.5,display_get_gui_height()*0.5);
-tower_dgrid = create_display_grid(tower_display[0]-16,tower_display[1]-16,32,64,1,2);
+/// ---- the tower card (roadmap 4.4.3) ----------------------------------
+/// ONE fixed card, docked bottom-left, never under the mouse.  It replaced a
+/// 256x256 panel centred on the screen (which competed with the range circle
+/// for attention) plus two buttons floating in their own grid over the same
+/// area.  Because the loadout UI in Phase 1 is a fixed panel too, building it
+/// this way now means reusing the layout rather than rewriting it.
+tower_card_w = 320;
+tower_card_h = 148;
+tower_card_x = 16;
+tower_card_y = display_get_gui_height() - tower_card_h - 16;
+
+/// the two buttons live INSIDE the card, so nothing floats over the world
+tower_dgrid = create_display_grid(tower_card_x+10, tower_card_y+tower_card_h-48, 150, 38, 2, 1);
+
+/// kept for the float-text popups that report a purchase
+tower_display = array(tower_card_x + tower_card_w*0.5, tower_card_y + tower_card_h*0.5);
+
+/// the band of the card that represents "range".  The range circle is shown
+/// while the pointer is over it, so the number and the shape are explicitly
+/// linked rather than merely adjacent.
+tower_card_range_rect = array(tower_card_x, tower_card_y+34, tower_card_x+tower_card_w, tower_card_y+96);
+
+/// the range circle is deliberately subordinate to the card
+tower_range_alpha = 0.15;
 
 //---------------- setup buttons
 tower_price_save = array(

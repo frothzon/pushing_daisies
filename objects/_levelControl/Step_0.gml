@@ -158,8 +158,12 @@ if(tower_timer < 999){
 }
 
 /// tower list opacity
-
-if(instance_exists(obj_tower_edit)){
+///
+/// The list and the card both dock bottom-left, so only ONE of them is on
+/// screen at a time: placing a tower hides the list, and SELECTING one does
+/// too (roadmap 4.4.3).  Without this the card would sit on top of the four
+/// tower slots and the corner would be unreadable again.
+if(instance_exists(obj_tower_edit) || scr_isValidInstance(tower_selection)){
     list_opacity = lerp(list_opacity,0,0.1);
 } else {
     list_opacity = lerp(list_opacity,1,0.05);

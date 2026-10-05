@@ -13,22 +13,25 @@ if(grid_opacity > 0.1){
 
 /// draw tower range
 
+/// ---- the range circle is SUBORDINATE to the card (roadmap 4.4.3) -----
+/// It used to draw at full strength next to a 256x256 panel that had its own
+/// "Tower Range" label AND a second copy of the stats: three elements
+/// fighting for attention in the middle of the screen.  It is now a faint
+/// decal, shown only while the pointer is over the tower itself or over the
+/// card's range band - so the number and the shape are connected instead of
+/// competing.
 if(scr_isValidInstance(tower_selection)){
-    var _range = tower_selection.data[TOWER.range],
-        _x1 = tower_selection.x - _range,
-        _y1 = tower_selection.y - _range;
-    draw_sprite_stretched(spr_towerRange,0,_x1,_y1,_range<<1,_range<<1);
-    /// draw text
-    draw_set_halign(fa_center);
-    draw_set_valign(fa_middle);
-    draw_set_font(fnt_size20);
-    draw_text_outline(_x1+_range,_y1+_range,"Tower Range",c_yellow,c_black,2);
-    draw_set_halign(fa_left);
-    draw_set_valign(fa_top);
-    
-    /// draw stats
-    with(tower_selection){
-        scr_drawTowerStats(c_lime);
+    var _m = points_to_gui(mouse_x,mouse_y,0),
+        _over_card = point_in_rectangle(_m[0],_m[1],
+                        tower_card_range_rect[0],tower_card_range_rect[1],
+                        tower_card_range_rect[2],tower_card_range_rect[3]),
+        _over_tower = tower_selection.tower_hilight;
+
+    if(_over_tower || _over_card){
+        var _range = tower_selection.data[TOWER.range];
+        draw_sprite_stretched_ext(spr_towerRange,0,
+            tower_selection.x - _range, tower_selection.y - _range,
+            _range << 1, _range << 1, c_white, tower_range_alpha);
     }
 }
 
