@@ -27,16 +27,23 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-004](#ll-004) | Buttons that never fire; code that tests `script >= 0` | GMS1→GMS2: a **script is a function reference, not an index** | **FIXED** |
 | [LL-005](#ll-005) | Engine functions behaving strangely | Project scripts **shadowing GameMaker built-ins** | **FIXED** |
 | [LL-006](#ll-006) | Whole-file diffs; the file literally contains `\r` as text | **Mixed LF/CRLF** in the project, plus escape-unaware writing | **FIXED** |
-| [LL-007](#ll-007) | Timings fire instantly or never; fades snap or hang | **`room_speed` is obsolete** in GMS2 (~35 files use it) | **OPEN** |
+| [LL-007](#ll-007) | Timings fire instantly or never; fades snap or hang | **`room_speed` is obsolete** in GMS2 (~35 files use it) | **PART FIXED** |
 | [LL-008](#ll-008) | Your edit "reverted" / the file changed under you | **GameMaker has the project open** and saves from its own buffers | **WATCH** |
 | [LL-009](#ll-009) | A one-value change produces a 1000-line diff | `.yy`/`.yyp` are **not JSON** — trailing commas, key order, inline containers | **FIXED** |
 | [LL-010](#ll-010) | A state's "just entered" code runs twice, or never | **Changing state from inside a state** instead of requesting it for the next Step | **FIXED** |
 | [LL-011](#ll-011) | — | **How to instrument the game** so the next bug takes one run, not ten | **METHOD** |
 | [LL-012](#ll-012) | `sprite_get_height ... requested -1` once per step; a sprite flip that "does nothing" | A **text object has no sprite** (`sprite_index == -1`, fatal in GMS2) and the shared scale helper **overwrote `image_xscale`** | **FIXED** |
+| [LL-013](#ll-013) | A zombie **freezes** on the map; the wave never ends; only a restart helps | A **placement that pockets a monster**, and a **discarded `mp_grid_path` return value** that made the failure silent | **FIXED** |
+| [LL-014](#ll-014) | The pause / exit screen is **black** | **One variable doing two jobs** - `blackScreen` is the game-over crossfade, and pause read it; plus a surface **size mismatch** and a **mid-frame grab** | **FIXED** |
+| [LL-015](#ll-015) | A UI is **missing information** that was never once displayed | **`array_last_index()` used as a count** hides the last element, and a label list that was never extended | **FIXED** |
+| [LL-016](#ll-016) | Nothing - yet | A **sibling function's parameter is not in scope**, so a fatal sat behind an unreachable branch | **FIXED** |
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `enum` `crlf` `room_speed` `built-in` `shadowing` `null` `log` `debug`
-`flip` `image_xscale` `sprite_index` `sprite_get_width` `-1` `_text_rise`.
+`flip` `image_xscale` `sprite_index` `sprite_get_width` `-1` `_text_rise`
+`soft-lock` `path` `mp_grid_path` `return value` `pocket` `black` `pause`
+`snapshot` `surface` `application_surface` `array_last_index` `scope`
+`sibling` `parameter` `RNG` `perlin`.
 
 ---
 
@@ -636,6 +643,251 @@ on the instance makes it invisible for a frame and clamps the scale to ±1.
 **Files.** `scripts/scr_scale_sprite/scr_scale_sprite.gml`;
 `objects/_text_rise/Step_0.gml` line 20 (now a harmless no-op);
 `objects/_text_rise/_text_rise.yy` (`spriteId` is `null`).
+
+---
+
+<a name="ll-013"></a>
+## LL-013 — A discarded return value is a silent failure (and validate the whole system, not the entrance)
+
+**Symptom.** A tower placed so that it seals a monster's route leaves the
+monster **frozen**. The wave never ends, so the run is dead, and only a restart
+recovers it. No error, no log — the zombie just stands there.
+
+**Root cause.** Four separate defects that all look like "blocking the path
+glitches", and any one of them alone freezes a wave:
+
+1. The placement check validated only `spawn → despawn`. A tower that left the
+   **spawn** connected but pocketed a monster *already on the map* was accepted.
+2. The pocketed monster re-pathed from its own position, got `false`, and was
+   left with an **empty path** — it stopped where it stood.
+3. The retry loop re-ran for ever with the identical result: same grid, same
+   start cell, same failure. Nothing ever changed.
+4. **The first path discarded its return value.** `scr_zombie_path` called
+   `mp_grid_path(...)` without capturing it, while `Create_0` had already set
+   `path_free = true`. So a failed *first* path was completely silent: the
+   monster walked forward on an empty path for ever and never even scheduled a
+   retry.
+
+Defect 4 is the one that explains "forever". A fifth vector existed too — a
+tower could be placed **on the cell a monster was standing in**, because the
+test only asked `position_meeting(x,y,obj_tower)`.
+
+**Fix.** Refuse, then always heal.
+
+```gml
+/// scripts/scr_path_validate - one place that answers "is this walkable"
+scr_path_try(_grid,_x1,_y1,_x2,_y2,_path)          /// clear, then mp_grid_path
+scr_path_cell_blocked_by_monster(_x,_y,_r)         /// is a monster in this cell
+scr_path_all_monsters_ok(_grid,_path,_to_x,_to_y)  /// can EVERY one still get out
+```
+
+* A placement is refused if a monster occupies the cell, if the spawn route is
+  sealed, **or if any monster on the map cannot reach the despawn**. That last
+  check is what makes a pocket impossible by construction.
+* `scr_zombie_path` captures the return value and schedules a retry on failure.
+* The monster's re-path alarm **escalates**: after ~2 s of polite retrying it
+  walks an **empty grid**, ignoring the towers entirely, so
+  `instance_number(obj_mon)` can always reach `0`.
+* `scr_level_wait` has a last-resort valve: monsters alive 6 s past the wave
+  timer are cleared, with a loud `PATH` warning.
+
+**Guard rails.**
+
+* **Capture every return value** that reports success/failure. `mp_grid_path`,
+  `file_*`, `ds_map_*` — `if(!ok){ ... }` on the same line as the call is the
+  cheapest guard you will ever write. A discarded `false` becomes "it just
+  doesn't work sometimes", which is the most expensive kind of bug.
+* **Validate the whole system, not the entrance to it.** "Is the spawn still
+  connected?" is not "can everything on the map still get out?".
+* **Any loop that can retry with identical inputs is an infinite loop.** If a
+  retry cannot change its inputs, it must change its *strategy*.
+* A soft-lock is the worst class of bug: in a 60-stage campaign it costs the
+  player the whole session. **Every wave must be able to end.**
+
+**Status.** FIXED, 2026-10-04.
+
+**Files.** `scripts/scr_path_validate`, `objects/obj_mon/Alarm_0.gml`,
+`objects/obj_mon/Create_0.gml`, `objects/obj_mon/Collision_obj_tower.gml`,
+`scripts/scr_zombie_path`, `objects/obj_tower_edit/Step_0.gml`,
+`objects/obj_tower/Destroy_0.gml`, `scripts/scr_level_wait`.
+
+---
+<a name="ll-014"></a>
+## LL-014 — One variable doing two jobs: the pause screen went black
+
+**Symptom.** Pausing blacks the screen. The game image is neither captured nor
+displayed, so the pause menu has nothing to sit on.
+
+**Root cause.** `blackScreen` drives the **GAME OVER crossfade into the high
+score table**. The pause path read it as if it were its own fade:
+
+```gml
+draw_sprite_ext(pause_surf,0,0,0,1,1,0,c_white,clamp(1-blackScreen,0,1));
+```
+
+So a pause **after a game over** inherited `blackScreen == 1` and drew the
+snapshot at **alpha 0**. `scr_draw_main_text` line 12 does
+`text_alpha*(1-blackScreen)` too, so the PAUSED text was invisible as well.
+Black was the *correct* output of that arithmetic — the bug was the input.
+
+Two more defects were waiting behind it:
+
+* **Size mismatch.** The snapshot surface was created at GUI size, while
+  `application_surface` is resized to `ideal_width/ideal_height` by
+  `scr_initResolution`. Drawing one into the other leaves the remainder as the
+  `draw_clear_alpha(c_black,1)` fill — most of the frame.
+* **Mid-frame capture.** The grab ran part-way through Draw. On this project the
+  ground sits at a negative depth and the towers and monsters at about `-60`,
+  all of which draw **after** depth 75 — so a mid-frame grab captures almost
+  nothing, which also reads as black.
+
+**Fix.** Three changes, each of which independently prevents black:
+
+* Capture at the **application surface's own size** and draw the result
+  **stretched to the GUI size**, so no size assumption survives anywhere.
+* Pause gets its **own** alpha (`pause_alpha`) and resets `blackScreen = 0` on
+  entry. The black score background is gated on the **state**
+  (`gameOver`/`highScore`), not on `blackScreen` alone.
+* The grab moved to the **very top of Draw_75** — which is the Draw GUI End
+  event (75), the *last* pass of the frame, so `application_surface` is fully
+  composed there.
+* **Never-black promise:** with no usable snapshot, draw the text over the
+  existing screen and skip everything that could darken it. The worst case is
+  "pause without the blur", never "pause with nothing".
+
+**Guard rails.**
+
+* **A variable that gates one state's transition must not be read by another
+  state.** If two states need "how faded am I", they need two variables.
+* **Never assume two surfaces are the same size.** `application_surface` is
+  resized explicitly at startup; `display_get_gui_width()` is a different thing.
+  Ask `surface_get_width(application_surface)`, and draw stretched.
+* **Capture at the last draw pass, not the middle of one.** If you are drawing
+  at depth 75 but the world draws at depth −60, depth 75 runs *first*.
+* `surface_create` off a GUI size and `sprite_create_from_surface` off a
+  different size is how "it's black" becomes "it's black and also half empty".
+
+**Status.** FIXED, 2026-10-04.
+
+**Files.** `scripts/scr_drawBlurScreen`, `objects/_mainControl/Draw_75.gml`,
+`objects/_mainControl/Other_5.gml`, `scripts/scr_main_pause`,
+`scripts/scr_setup_main`, `scripts/scr_initResolution`,
+`scripts/scr_draw_main_text`.
+
+---
+<a name="ll-015"></a>
+## LL-015 — `array_last_index()` is not a count, and a UI can hide its own numbers
+
+**Symptom.** The tower upgrade panel is missing information. Fire-Rate is
+**never** displayed anywhere in the game, and Targets is not displayed at all —
+not truncated, *absent*, as though it had never been written.
+
+**Root cause.** `array_last_index()` returns `length - 1`. It was being used as
+a loop bound:
+
+```gml
+var _type = array("Range - ", "Damage - ", "Fire-Rate - ");   /// 3 entries
+var _count = array_last_index(_type),                          /// 2, NOT 3
+for (var i=0; i<_count; i+=1){ ... }
+```
+
+So the loop stopped *before* Fire-Rate. And Targets was never in the list in the
+first place — it was added to the data array (`TOWER.targets`) but nobody ever
+added its label, so nothing could ever print it.
+
+**Fix.** Print every field, indexed by the same enum the data is, so the labels
+and the data cannot drift apart, and use `array_length` as the bound:
+
+```gml
+var _label = array("Range - ", "Damage - ", "Fire-Rate - ", "", "", "Targets - ");
+var _count = array_length(_label);
+for (var i = 0; i < _count; i += 1){
+    if(_label[i] == "") continue;   /// effect and level are not numbers
+    _str += concat(_label[i], round(_data[i]), "#");
+}
+```
+
+The same work replaced a **256×256 panel centred on the screen** (with its own
+"Tower Range" label *and* a second copy of the stats, while the range circle drew
+at full strength beside it) with **one fixed card** docked in a corner, showing
+`DMG · RATE · RNG · TGT · DPS` with the deltas a purchase buys.
+
+**Guard rails.**
+
+* **`array_last_index` is `length - 1`.** Use `array_length` for bounds. The
+  off-by-one is invisible when the dropped element is the least important one.
+* When you add a field to a data array, **grep for every place that enumerates
+  the array** and add the label there too. A field that exists but is never
+  printed is worse than a field that does not exist, because it looks finished.
+* **Index labels by the enum, not by position in a hand-written list.** Two
+  lists that must stay in step will not.
+* Two elements competing for the same screen space is a *layout* bug, not a
+  polish item: the fix is to make it one element.
+* A delta (`125 → 250`) explains a purchase better than any tooltip, and costs
+  two numbers. Compute it with the **same arithmetic the purchase uses**, so the
+  card cannot promise something the upgrade does not deliver.
+
+**Status.** FIXED, 2026-10-04.
+
+**Files.** `scripts/scr_dataToString`, `scripts/scr_drawTowerSelected`,
+`scripts/scr_drawTowerMod`,
+`objects/_levelControl/{Create_0,Draw_64,Draw_73,Step_0}.gml`.
+
+---
+
+<a name="ll-016"></a>
+## LL-016 — A parameter is not visible in a sibling function (and an unreachable line hides a fatal)
+
+**Symptom.** None — yet. `create_perlin_grid` has been generating maps happily,
+and this bug never appeared in a single play session.
+
+**Root cause.** Inside a struct, each method has its **own** scope:
+
+```gml
+dot_prod_grid: function(x, y, vx, vy){ ... },   /// vx, vy live HERE
+get: function(x, y) {
+    if (ds_map_exists(memory, to_key(x,y)))
+        return memory[? to_key(vx,vy)];          /// vx/vy DO NOT EXIST here
+    ...
+}
+```
+
+Reading a variable that does not exist in scope is a **fatal error** in GMS2. It
+never threw for one reason and one reason only: the cache key it tested could
+never already be present, so the `return` was never reached. The memoisation was
+dead weight, and a fatal error was sitting inside it, one cache hit away from
+being live.
+
+**Fix.** `to_key(x,y)` — the key the function was actually asked about. The memo
+now works, and there is no undefined variable to read.
+
+The same file also reseeded the **global** random sequence
+(`random_set_seed`/`randomize`), which a map generator has no business doing. It
+was harmless only because the caller happened to pass `random_get_seed()`, so the
+sequence was restored. Now it saves, uses, and restores explicitly:
+
+```gml
+var _seed_saved = random_get_seed();
+if(_seed >= 0) random_set_seed(_seed);
+   ...generate...
+random_set_seed(_seed_saved);
+```
+
+**Guard rails.**
+
+* **A parameter belongs to the function that declares it.** Inside a struct, do
+  not assume a sibling method's parameters are visible — they are not.
+* **An unreachable branch is not a test.** "It has never thrown" means the line
+  has never run. When you find a variable that does not exist in scope, fix it
+  even if it looks dead — the thing that made it dead is usually a bug itself.
+* **A generator must not reseed the global RNG.** Save `random_get_seed()`, use
+  your own, then restore.
+* If a guard can never be true, the guard is not protecting anything: check
+  whether the *condition* is wrong, not just the body.
+
+**Status.** FIXED, 2026-10-04.
+
+**Files.** `scripts/create_perlin_grid/create_perlin_grid.gml`.
 
 ---
 

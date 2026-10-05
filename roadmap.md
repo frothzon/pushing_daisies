@@ -194,6 +194,130 @@ No new screens, no currencies, no art, no balance. Phase 0 is invisible on purpo
 
 ---
 
+### 4.7 Phase 0 as built (the record)
+
+| # | Task | State | Where it landed |
+| --- | --- | --- | --- |
+| 0.1 | A save that works | **done** | `scr_meta_schema` (schema, defaults, merge), `scr_save_meta`, `scr_load_meta`; wired into `initialize_game`; `scr_autosave_statinv` — called from `_levelControl`'s Room End — is what persists it |
+| 0.2 | `stage_data` | **done** | `stage_data` — region 1's ten stages, plus `stage_row`/`stage_get`/`stage_current` |
+| 0.3 | `difficulty_data` | **done** | `difficulty_data` — the table, plus `difficulty_current`/`difficulty_name`/`stage_seed_reward` |
+| 0.4 | Level flow on `enum` + `switch` | **done** | `scr_level_state`; `scr_level_start/spawn/wait` are now the state bodies; `_levelControl/{Create_0,Step_0}` |
+| 0.5 | `room_speed` → `game_get_speed` | **done in the touched files** | level flow, `scr_setupSpawning`, `fadeout`, `scr_main_pause`, `obj_mon/*`. The project-wide sweep is still scheduled — LL-007 is **PART FIXED**, not FIXED |
+| 0.6 | Currency instrumentation | **done** | `scr_meta_log` — `META  [TAG] …`, dev-gated, and it cannot throw |
+| 0.7 | The latent fatal in `create_perlin_grid` | **done** | `to_key(x,y)` (it was reading `vx`/`vy`, which do not exist in that scope) + RNG save/restore |
+| 0.8 | Loadout / config globals | **done** | `initialize_game`: `global.region`, `global.stage`, `global.difficulty`, `global.loadout` |
+| 0.9 | Bug 1 — path integrity | **done** | `scr_path_validate` + 7 files; see §4.7.1 |
+| 0.10 | Bug 2 — the black pause screen | **done** | 6 files; see §4.7.2 |
+| 0.11 | Bug 3 — the tower UI | **done** | 7 files; see §4.7.3 |
+| 0.12 | Deprecated / legacy API audit | **done in the touched files** | and one entry corrected: `instance_create` is a GameMaker **compatibility script**, not a bug (§4.7.4) |
+
+**What is deliberately NOT done, and why:**
+
+* The **project-wide** `room_speed` sweep (~35 files) is still outstanding. It is
+  its own commit with the gates run over it; mixing it in would have buried the
+  three bug fixes. Until it lands, treat every remaining `room_speed` as a live
+  timing bug (LL-007).
+* **`stage_data` is not yet consumed by a Deploy screen** — that is Phase 1.
+  Phase 0 consumes it for the wave count and the spawn pool, which is what the
+  gate asks for.
+* **`scr_save_static` / `scr_load_static` stay in the tree, unwired.** A static
+  inventory is per-run state and should not be saved at all; they now document
+  that rather than pretending to work. The things that *do* persist live in
+  `global.meta`.
+* **Main flow still uses the old runner.** `_mainControl` keeps `scr_runState`;
+  migrating it is Phase 1's first task (§5.1). Only the *level* flow moved, which
+  is what Phase 0 needed.
+
+#### 4.7.1 Bug 1 as built — refuse, then always heal
+
+Four defects behind one symptom (a frozen zombie, and a wave that can never end):
+a placement that left the spawn connected but pocketed a monster already on the
+map; a monster left with an empty path; a retry loop that could not change its own
+inputs; and **a discarded `mp_grid_path` return value** — which is why a failed
+*first* path was silent and never even scheduled a retry.
+
+A placement is now refused if a monster occupies the cell, if the spawn route is
+sealed, or if **any** monster on the map cannot reach the despawn. That last check
+is what makes a pocket impossible by construction. And every failure path heals:
+escalating re-path, then an empty grid with the towers ignored, then a last-resort
+valve in `scr_level_wait` that clears stragglers and logs a `PATH` warning.
+Selling a tower now wakes every monster, because that is the moment a monster
+walking backwards can go forwards again.
+
+**Acceptance tests.** Seal a monster in → the placement is refused and
+`snd_unable` plays; no money is spent. Sell a tower mid-wave → every monster
+re-paths and the wave still ends. `mp_grid_clear_all(LEVEL.path_grid)` mid-wave
+(dev only) → monsters recover within ~2 s and the wave completes. Normal play →
+**zero** `PATH` warnings.
+
+#### 4.7.2 Bug 2 as built — one variable doing two jobs
+
+`blackScreen` drives the GAME OVER crossfade into the high score table, and the
+pause path read it as its own fade — so a pause *after* a game over drew the
+snapshot at alpha 0, over a black fill. (`scr_draw_main_text` multiplies its alpha
+by `1 - blackScreen` too, so the PAUSED text vanished with it.) Two more defects
+were waiting behind that one: the snapshot surface was created at **GUI** size
+while `application_surface` is resized to `ideal_width/ideal_height`, and the grab
+was taken part-way through Draw — where on this project almost nothing has been
+drawn yet, because the ground sits at a negative depth and the towers and monsters
+at about `-60`.
+
+Now: capture at the application surface's **own** size and draw it **stretched** to
+the GUI; pause has its own `pause_alpha` and resets `blackScreen` on entry; the
+black score background is gated on the **state**; and the grab runs at the top of
+`Draw_75` — the Draw GUI End event, the *last* pass of the frame, so the surface is
+fully composed by then. If there is no usable snapshot, everything that could
+darken the screen is skipped: the worst case is "pause without the blur", never
+"pause with nothing".
+
+**Acceptance tests.** Pause mid-wave → the world is visible behind the overlay,
+the HUD legible, the vignette fading in. Pause → resume → pause again → identical
+both times. Game over → the same treatment. The log prints **both** sizes, so a
+mismatch is visible rather than guessed. Force `sprite_delete(pause_surf)` after
+the grab (dev only) → it degrades to "frozen world + text", never to black.
+#### 4.7.3 Bug 3 as built — one card, one place
+
+A 256×256 panel centred on the screen (showing two values: Range and Damage), its
+buttons floating in their own grid over the same area, and the range circle at
+full strength beside them — three elements fighting for attention, while the two
+numbers a purchase decision needs were never printed. `scr_dataToString` used
+`array_last_index(_type)` as a **count**, so the loop stopped before Fire-Rate, and
+Targets had no label at all.
+
+Now: one fixed card docked bottom-left — `NAME · Level n` / `DMG · RNG · RATE ·
+TGT` / `DPS`, with `A -> B` deltas computed by the **same arithmetic the purchase
+uses**; the buttons inside the card; the range circle demoted to a 0.15-alpha decal
+shown only while the pointer is over the tower on the map or over the card's range
+band; and the tower list hides while a tower is selected, since both dock in the
+same corner.
+
+**Acceptance tests.** With a tower selected: the card is legible at a glance, all
+five numbers plus the delta are present, the buttons are inside the card, and the
+range circle reads as clearly secondary. Before/after screenshots go in the Phase 0
+record.
+
+#### 4.7.4 The audit's one correction
+
+`instance_create(` was listed in §4.5 as 11 files / 12 hits to replace. It is **not
+a bug**: `scripts/instance_create/instance_create.gml` is a GameMaker-generated
+**compatibility script** (`isCompatibility: true`) that wraps
+`instance_create_depth` using the object's own depth. Those calls are legitimate
+and were left alone. The other rows stand.
+
+#### 4.7.5 What the fixes taught, and where it is written down
+
+Four new entries in `lessons_learned.md`, because each one took real work to
+understand and each one will look like something else next time:
+
+| Entry | The rule it produced |
+| --- | --- |
+| [LL-013](../lessons_learned.md#ll-013) | **A discarded return value is a silent failure** — and *validate the whole system, not the entrance to it* |
+| [LL-014](../lessons_learned.md#ll-014) | **One variable doing two jobs** — a state's fade must not be read by another state; never assume two surfaces are the same size |
+| [LL-015](../lessons_learned.md#ll-015) | **`array_last_index()` is not a count** — and a field that exists but is never printed looks finished |
+| [LL-016](../lessons_learned.md#ll-016) | **A parameter is not visible in a sibling function** — and an unreachable branch is not a test |
+
+---
+
 ## 5. Phase 1 — Vertical slice: one region, a closed loop
 
 *This is the most important phase in the plan. Everything after it is content.*
@@ -404,7 +528,7 @@ And every commit is described in terms of **what the user should see in the log*
 | Phase | State | Notes |
 | --- | --- | --- |
 | Design (`goal.md`, `economy.md`, `roadmap.md`) | **done** | 2026-10-04 |
-| 0 — Foundations | not started | next — now includes the three blocker bugs (§4.4) and the deprecated-API audit (§4.5) |
+| 0 — Foundations | **done** | 2026-10-04 — save, `stage_data`, `difficulty_data`, level flow on `enum` + `switch`, instrumentation, the perlin fatal, config globals, and all three blocker bugs. Outstanding on purpose: the project-wide `room_speed` sweep, and a Deploy screen that reads `stage_data` (Phase 1). See §4.7 |
 | 1 — Vertical slice | not started | |
 | 2 — Combat depth | not started | |
 | 3 — Garden Book | not started | |
@@ -419,4 +543,5 @@ And every commit is described in terms of **what the user should see in the log*
 | 2026-10-04 | Created, out of the `goal.md` review and the approved design calls. |
 | 2026-10-04 | Phase 0 expanded with the three blocker bugs (§4.4.1 path integrity, §4.4.2 the black pause screen, §4.4.3 the tower card) — each with its root causes located in the source, a fix plan, and acceptance tests that can fail. Added the deprecated / legacy API audit (§4.5) and its numbers. |
 | 2026-10-04 | Candy changed from stacking to **duration** in `goal.md` §16–§17 and `economy.md` §1/§3.5/§6.2–§6.5: 30 s per candy, feeding extends, and a clover track to +100%. Roadmap touched in three places — task 0.5 now owns the fact that the candy timer is the game's first real timer, task 3.6 proves the six-tab Garden Book layout, and task 4.6 plus the Phase 4 gate carry the duration system and its timer tests. |
+| 2026-10-04 | **Phase 0 implemented.** Eight new scripts (`scr_meta_schema`, `scr_save_meta`, `scr_load_meta`, `scr_meta_log`, `stage_data`, `difficulty_data`, `scr_level_state`, `scr_path_validate`), the level flow moved onto `enum` + `switch`, `room_speed` fixed in every file touched, and all three blocker bugs closed with their acceptance tests. Added 4.7 (as built), the four new `lessons_learned.md` entries (LL-013 to LL-016), and promoted LL-007 to **PART FIXED**. Recorded one correction: `instance_create` is a compatibility script, not a bug. |
 

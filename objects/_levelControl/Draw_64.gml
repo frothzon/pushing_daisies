@@ -1,10 +1,13 @@
 /// @description  show timer
 
-if(state == scr_level_wait && instance_number(obj_mon) == 0){
+/// the level's state is the enum now (roadmap 0.4).  This used to
+/// read the old runner's `state` and `state_time`, which no longer
+/// exist on this object - an undefined variable read is fatal.
+if(level_state == LEVEL_STATE.WAIT && instance_number(obj_mon) == 0){
     draw_set_halign(fa_center);
     draw_set_valign(fa_middle);
     draw_set_font(fnt_size32);
-    draw_text_outline(show_position[0],show_position[1],spawn_timer div 60,c_white,c_black,2);
+    draw_text_outline(show_position[0],show_position[1],spawn_timer div game_get_speed(gamespeed_fps),c_white,c_black,2);
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
     draw_set_font(fnt_debug);
@@ -21,11 +24,11 @@ scr_draw_statinv();
 draw_set_halign(fa_center);
 draw_set_valign(fa_middle);
 draw_set_font(fnt_size32);
-if(state == scr_level_start && state_time > 5){
+if(level_state == LEVEL_STATE.START && level_state_time > 5){
     if(show_start){
         draw_text_outline(show_position[0],show_position[1],show_text,c_white,c_black,2);
     } else {
-        draw_text_outline(show_position[0],show_position[1],spawn_timer div 60,c_white,c_black,2);
+        draw_text_outline(show_position[0],show_position[1],spawn_timer div game_get_speed(gamespeed_fps),c_white,c_black,2);
     }
 }
 draw_set_halign(fa_left);
