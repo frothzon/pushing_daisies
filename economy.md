@@ -126,7 +126,7 @@ One branch at rank 1 across all 10 nodes: **473 ☘️**. All four branches: **1
 | --- | --- | --- |
 | 🌿 **Vitality** | +1 max life per rank (to 25) | −life-loss penalty, regen per wave, boss survival, +1 more life, +2 more life |
 | ⚔️ **Offense** | +2% tower damage per rank (to +10%) | +1% fire rate per rank, +1% crit chance, +5% crit damage, +2% more damage, +3% more damage |
-| 🌱 **Growth** | −5% upgrade cost per rank (to −25%) | +75% in-run money from kills, a third spec tier at L4, −10% master node cost, −20% master node cost, +2 starting money |
+| 🌱 **Growth** | −5% upgrade cost per rank (to −25%) | +15% in-run money from kills, a third spec tier at L4, −10% master node cost, −20% master node cost, +2 starting money |
 | 💰 **Harvest** | +1% zombie money per rank | +starting money, +boss reward %, +5% seeds, +10% seeds, +15% seeds |
 
 ### 3.3 The five master nodes (priced separately, outside the 473 totals)
@@ -277,6 +277,8 @@ The boss guarantee is the safety valve: even a player on a cold streak gets a sh
 
 **The blood tree is finite by design (46 shards total).** That is deliberate: a rare currency needs a *finished* goal and an *unfinished* one. The finished one is this tree; the unfinished one is **candy levels** (§6.4), which is where a shard goes forever after.
 
+**One axis, never two.** Blood Magnet (−10% kills required) and the rare **Blood Orange** candy (§6.5) both modify the *same* number — the pity fill rate — so they **add** into one multiplier: `fills = 1 + 0.10 + 0.10` at tier 1 with an L1 Blood Orange, never `1.10 × 1.10`. Without that rule the two systems would silently compound and the shard curve would drift every time a node or a candy was tuned.
+
 **Why "−kills required" and never "+drop rate":** the base chance is 0.01%. A +10% bonus on that is 0.011%, which no human can perceive in a lifetime of play. Every node in this tree must change something the player can *feel* — fewer kills needed, an extra shard, or a visibly different wave.
 
 *If `Crimson Appetite` and `Blood Moon` test as invisible in Phase 4, replace them with flat extra shards per boss (a number the player can see) rather than nerfing the idea away.*
@@ -319,6 +321,7 @@ Each level adds one unit of **that candy's own** stat, so the growth is always l
 | Stacking | **additive** — 1 Red Licorice = +10%, 2 = +20%, 3 = +30%, 4 = +40% |
 | Cap per type | **10** (= +190% for a *fully levelled* Red Licorice, +100% for a fresh one) |
 | Cap in total | **20 active candies** |
+| Special (rare) candies | **1 of each type, ever** — Blood Orange and Money Honey never stack (§6.5) |
 | Order of operations | clovers set the base, **candy multiplies after** |
 | Activation | between waves, from the pause menu |
 | Expiry | on wave count, not on time — a wave survived is a wave spent |
@@ -352,6 +355,29 @@ Sanity-checked against shard supply:
 So **the first two levels cost 5 shards** — about two thirds of one campaign sweep — which is why early investment is felt immediately. One candy to L10 is roughly **a dozen sweeps**; all eight is the lifetime project. That curve is the whole point: it is the only shard sink that never ends (`goal.md` §16).
 
 **A level never touches the caps.** Ten maxed Red Licorices are still ten candies against the 20-active cap, with the same five-wave expiry.
+
+### 6.5 Special candies — rare, meta, and deliberately single
+
+Two candies act on the **economies** rather than on combat. They are the only candies that do, and the only ones that cannot stack.
+
+| Candy | Tier | Effect at **L1** | Per level | At **L10** | Duration |
+| --- | --- | --- | --- | --- | --- |
+| 🍊 **Blood Orange** | 4 (rare) | kills count **1.10×** toward the next blood shard | +0.10× | **2.00×** | 5 waves |
+| 🍯 **Money Honey** | 4 (rare) | **+15%** money from every kill | +1.5% | **+29%** | 5 waves |
+
+**Recipe: 35 shards each. Gated:** Blood Orange requires the blood tree's tier 2 (*Hemorrhagic Harvest*); Money Honey requires region 4 cleared. Neither can therefore distort the early economy.
+
+**The class rules — so this stays two candies and never becomes twenty:**
+
+1. **Rare** — tier 4, 35 shards, and the gates above.
+2. **They never stack.** Maximum **one** of each active, at any level, regardless of how many are in stock. Ten stacked Blood Oranges would be 10× pity fill and would break the shard curve in half; one is a *plan*, ten would be an exploit.
+3. **They act on systems the player can see.** Money is already visible; **Blood Orange's other job is to make the pity counter visible** — while it is active, the counter and its multiplier are shown, counting up. An invisible statistical buff is not a reward (the §5.2 rule, restated for candy).
+4. **They accelerate; they never grant.** No candy can pay out a currency directly. That is the rule that keeps candy as *temporary power* instead of a farm, and it is what stops an "activate candy, get paid, repeat" loop.
+5. **Shared axes sum.** Money: Harvest (+5%) + Growth (+15%) + Money Honey (+29%) — one axis, added. Pity: blood tree + Blood Orange — one axis, added. Nothing multiplies with anything else on its own axis.
+
+**Why they earn their slot.** Every other candy answers *"how do I win this run?"*. These two answer *"what kind of run am I having?"* — one farms the account, one accelerates the garden. Each hooks into exactly one existing line (`scr_zomb_death:7` for kill money; the pity increment for shards), so they are cheap to add and impossible to accidentally over-couple.
+
+**Guarded risk:** a sustained Blood Orange could compress the shard economy. The bounds are structural rather than numeric — 5 waves per activation, one at a time, and the hard pity cap at 20,000 kills still applies, so the floor under the chase can never be pulled up far enough to make shards routine.
 
 ---
 
@@ -432,6 +458,7 @@ One medal per badge per stage, stored in the save. **No art in v1** — the reco
 | 7 | Nothing is inert | every currency earnable *and* spendable at every point in the campaign | Phase 3 gate |
 | 8 | First candy levels (L2–L3, 5 shards) | inside the first campaign after the first shard | Phase 4 |
 | 9 | First candy to L10 (95 shards) | ~a dozen campaign sweeps — long, but visibly progressing | Phase 4 |
+| 10 | A maxed Blood Orange + blood tree tier 2 | pity fills ~2× for 5 waves, never stacked — a *window*, not a farming engine | Phase 4 |
 
 **Instrumentation this requires (Phase 0):** every currency event logs through `print()` under `global.devMode`, with the `META`, `SEED`, `CLOVER`, `SHARD` and `CANDY` prefixes, per the log-prefix convention in `AGENTS.md` §4. Without that log, Phase 6 tuning is guesswork.
 
@@ -470,4 +497,5 @@ Adjust **one** of these at a time, log first, and only after the previous one ha
 | --- | --- |
 | 2026-10-04 | v1 created out of the `goal.md` design review. All values first-pass; every one is expected to move in Phase 6. |
 | 2026-10-04 | Mastery redesigned on the user's call: clovers now raise the tower **floor and cap together** (`start = cap − 4`), so the money climb stays four rungs at every mastery. Seeds consequently buy **content only** (§2.3), and candy gained **levels 1–10** bought with shards (§6.4) as the game's unbounded shard sink. |
+| 2026-10-04 | Added the **special (rare) candies** (§6.5): 🍊 Blood Orange (pity fill ×1.10 → ×2.00) and 🍯 Money Honey (+15% → +29% kill money). Tier 4, 35 shards, gated, and the only candies that never stack. The shard one was reframed from "+10% drop rate" to pity fill because a +10% on 0.01% is imperceptible (§5.2's own rule), and it now also exposes the pity counter. Fixed the Growth tree's in-run money node from +75% to **+15%**, which contradicted the whole Harvest branch (+5%). |
 

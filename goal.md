@@ -751,6 +751,8 @@ That resolves the three-sources problem in §1/§16/§20 without removing any of
 
 Candy becomes the game's temporary power system.
 
+**Two of the candies are special.** A rare, meta-flavoured pair — 🍊 **Blood Orange** (kills count toward the next blood shard faster) and 🍯 **Money Honey** (+money from every kill) — act on the *economies* rather than on combat, and are the only candies that **cannot stack**: one of each, ever, at any level. They answer *"what kind of run am I having?"* instead of *"how do I win this run?"*, and Blood Orange exists partly to make the pity counter **visible** — an invisible statistical buff is not a reward. Full rules and numbers: `economy.md` §6.5.
+
 For example:
 
 ### 🍬 Red Licorice
@@ -806,6 +808,8 @@ For example:
 Candy is applied **after** clovers (clovers set the base, candy multiplies it), so the numbers stay readable and a clover upgrade never feels wasted on a candy run.
 
 **A candy's level raises *its own* buff; the stacking caps do not move.** A level-10 Red Licorice is worth +19% instead of +10% — so a fully levelled candy is roughly **twice** a fresh one, not ten times one. That is the whole balance of the candy level track: it buys quality, not a second axis of stacking. Ten maxed Red Licorices are still ten candies against the 20-active cap, and they still expire after five waves.
+
+**The two special (rare) candies never stack at all** — 🍊 Blood Orange and 🍯 Money Honey are capped at **one active**, whatever their level and however many are in stock. Ten stacked Blood Oranges would be 10× pity fill, which would break the shard curve rather than bend it.
 
 That lets players deliberately create absurd builds without letting the numbers become infinite.
 
@@ -1125,6 +1129,8 @@ Provides:
 
 …and **levels 1–10 on each candy**, bought with blood shards, which raise whichever of those the candy provides. Recipes and levels are permanent; the stock is consumed.
 
+Plus **two rare meta candies** that act on the economies instead of on combat — 🍊 Blood Orange (faster pity, and it makes the shard counter visible) and 🍯 Money Honey (+money from kills). They never stack: one of each, ever.
+
 **Question it answers:**\
 _"How do I make this particular run ridiculous?"_
 
@@ -1369,4 +1375,6 @@ So a Normal-only player **cannot** unlock the whole roster — they have to meet
 | Seeds as a power currency (levels 6–10, 1,180 🌱 per tower) | seeds are **content only**; clovers grant the tower **floor and cap** (§4, §13), and leftover seeds convert to clovers at 20:1 |
 | Mastery raising only the cap | one node raises floor **and** cap, so the money climb is always four rungs — money never becomes irrelevant (§4) |
 | Candy had recipes and stock only | candy also has **levels 1–10** bought with shards — the game's unbounded shard sink, which is what keeps a rare drop interesting forever (§16, `economy.md` §6.4) |
+| Candy as a combat-only system | two **rare meta candies** act on the shard and money economies, never stack, and Blood Orange makes the pity counter visible so the buff can actually be felt (§16, `economy.md` §6.5) |
+| A "+10% blood shard drop rate" candy | reframed to **pity fill rate** (kills count 1.10× → 2.00×), because +10% on a 0.01% chance is 0.011% and no player can perceive it — the §15 rule applied to candy |
 

@@ -297,7 +297,7 @@ Any node whose effect the player cannot perceive is a broken node (`goal.md` §1
 | 4.3 | **Loot box: choice of three** — tier weights, offer tables, the scaling formula, one re-roll | `economy.md` §7.2–§7.4 |
 | 4.4 | **Kill counter + pity curve + shard drops**, with the boss guarantee | `economy.md` §5.1 — log every roll under `devMode` |
 | 4.5 | **The blood tree** — five tiers, nodes in "−kills required" | |
-| 4.6 | **Candy** — recipes, **levels 1–10 bought with shards**, stock (boxes/shop), additive stacking, caps, wave-based expiry, pause-menu activation | `economy.md` §6; the level track is the unbounded shard sink, so it must ship with the blood tree |
+| 4.6 | **Candy** — recipes, **levels 1–10 bought with shards**, stock (boxes/shop), additive stacking, caps, wave-based expiry, pause-menu activation, **the two rare meta candies and the pity-counter readout they reveal** | `economy.md` §6; the level track is the unbounded shard sink, so it must ship with the blood tree |
 | 4.7 | **Blood Fields modifier** — region 6's night: more elites, pity bonus | reuses 4.4 |
 
 ### 8.2 Gate
