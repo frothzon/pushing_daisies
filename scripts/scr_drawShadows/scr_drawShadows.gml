@@ -24,8 +24,13 @@ function scr_drawShadows() {
 	surface_reset_target();
 	draw_set_alpha_test(false);
 	var _resize = 1/_scale;
-	draw_surface_ext(shadow_surf,__view_get( e__VW.XView, 0 ),__view_get( e__VW.YView, 0 ),_resize,_resize,0,c_black,_dayCycle.shadow_intensity);
 
+	/// A volatile surface can disappear between frames, and _dayCycle is
+	/// created later during startup - so guard BOTH before reading
+	/// shadow_intensity from it (LL-012: guard every reference before use).
+	if(surface_exists(shadow_surf) && instance_exists(_dayCycle)){
+	    draw_surface_ext(shadow_surf,__view_get( e__VW.XView, 0 ),__view_get( e__VW.YView, 0 ),_resize,_resize,0,c_black,_dayCycle.shadow_intensity);
+	}
 
 
 }
