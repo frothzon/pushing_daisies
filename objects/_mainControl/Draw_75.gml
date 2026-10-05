@@ -1,4 +1,20 @@
-/// @description  load game
+/// @description  load game, overlays, high scores
+///---------------------- Grab the snapshot
+/// FIRST, before anything else is drawn, so the grab cannot capture a
+/// half-composed frame (roadmap 4.4.2, defect 3).  The old code drew the
+/// snapshot and only then grabbed it.
+///
+/// This is the Draw GUI End event (75) - the LAST pass of the frame - so
+/// application_surface holds the fully composed world here.  A grab taken
+/// from a mid-frame draw pass captures only what has been drawn so far,
+/// which in this project is very little: the ground sits at a negative
+/// depth and the towers and monsters at about -60, all of which draw AFTER
+/// depth 75.
+if(grab_surf){
+    grab_surf = false;
+    if(sprite_exists(pause_surf)) sprite_delete(pause_surf);
+    pause_surf = scr_drawBlurScreen();
+}
 
 if(state == scr_main_startup){
     var _w = display_get_gui_width(),
@@ -26,31 +42,44 @@ if(state == scr_main_startup){
 /// draw pause
 
 
-//----------------------- Draw Surface
-if(sprite_exists(pause_surf)){
-    draw_sprite_ext(pause_surf,0,0,0,1,1,0,c_white,clamp(1-blackScreen,0,1));
+//----------------------- Draw the snapshot
+var _snap = sprite_exists(pause_surf);
+if(_snap){
+    var _sw = max(sprite_get_width(pause_surf),1),
+        _sh = max(sprite_get_height(pause_surf),1),
+        _gw = display_get_gui_width(),
+        _gh = display_get_gui_height(),
+        /// Pause has its OWN alpha.  Reading blackScreen here is what made
+        /// pausing black: blackScreen drives the GAME OVER crossfade, so a
+        /// pause after a game over inherited 1 and drew the snapshot at
+        /// alpha 0 - invisible, behind a black fill (defect 2).
+        _alpha = (state == scr_main_pause)
+                 ? pause_alpha
+                 : clamp(1-blackScreen,0,1);
+    /// stretched to the GUI size: the snapshot is captured at the
+    /// application surface's size, which is NOT always the GUI size, so the
+    /// stretch is what makes the image correct (defect 1)
+    draw_sprite_ext(pause_surf,0,0,0,_gw/_sw,_gh/_sh,0,c_white,_alpha);
     scr_draw_main_text(pause_text, pause_color);
-    if(blackScreen >= 1){
-        sprite_delete(pause_surf);
-    }
+} else if(state == scr_main_pause || state == scr_main_gameOver){
+    /// THE NEVER-BLACK PROMISE.  With no usable snapshot, draw the text over
+    /// whatever is already on screen and skip everything that could darken
+    /// it.  The worst case is then "pause without the blur", never "pause
+    /// with nothing".
+    scr_draw_main_text(pause_text, pause_color);
 }
 
-///---------------------- Grab Surface
-if(grab_surf){
-    var _surf = scr_drawBlurScreen();
-    grab_surf = false;
-    /// snapshot of game
-    var _w = display_get_gui_width(),
-        _h = display_get_gui_height();
-    pause_surf = sprite_create_from_surface(_surf, 0, 0, _w, _h, false, false, 0, 0);
-    surface_free(_surf);
+/// the game-over crossfade retires its surface once the table takes over
+if(blackScreen >= 1 && _snap && state != scr_main_pause){
+    sprite_delete(pause_surf);
 }
 
 /// high score
-
-/// draw black screen
+/// The black score background belongs to the GAME OVER -> high score
+/// transition ONLY.  Gating it on the state rather than on blackScreen alone
+/// is the second half of the pause fix.
 var _mg = 16;
-if(blackScreen > 0){
+if(blackScreen > 0 && (state == scr_main_gameOver || state == scr_main_highScore)){
     draw_set_alpha(blackScreen);
     draw_background_stretched_ext(bck_scores,0,0,display_get_gui_width(),display_get_gui_height(),c_white,blackScreen);
     draw_set_halign(fa_center);

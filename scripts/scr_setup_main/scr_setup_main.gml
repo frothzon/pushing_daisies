@@ -12,6 +12,7 @@ function scr_setup_main() {
 	pause_surf = -1;
 	pause_text = "";
 	pause_color = c_black;
+	pause_alpha = 0;        /// the pause overlay's OWN alpha (roadmap 4.4.2)
 	grab_surf = false;
 	text_alpha = 0;
 	fade_in = false;
