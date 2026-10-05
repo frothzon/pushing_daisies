@@ -19,7 +19,7 @@ Four meta currencies and one run currency. Nothing else in the game should ever 
 | | Currency | Scope | Earned from | Spent on | Stored in |
 | --- | --- | --- | --- | --- | --- |
 | 💵 | **Money** | **the run** | zombie kills (1–3), bosses (`wave + 1`), economy towers | tower placement, levels L2–L5 | nowhere — it dies with the stage |
-| 🌱 | **Seeds** | campaign | clearing stages | unlocking the 8 towers; levels 6–10 | save |
+| 🌱 | **Seeds** | campaign | clearing stages | unlocking the 8 towers and their region gates — **content only** | save |
 | ☘️ | **Clovers** | garden | lives remaining at stage end | the four clover trees; the five master nodes | save |
 | 🩸 | **Blood Shards** | account | zombie kills (pity curve), bosses (guaranteed) | blood tree; candy recipes; candy stock | save |
 | 🍬 | **Candy** | run (stock) / account (recipes) | endless boxes, shard shop | consumed inside a run | save |
@@ -66,17 +66,20 @@ Four meta currencies and one run currency. Nothing else in the game should ever 
 
 **Total: 2,015 🌱.**
 
-### 2.3 Mastery (levels 6–10) — also seeds
+### 2.3 Seeds buy content, and nothing else
 
-| Level | Cost (seeds) | Requires |
-| --- | --- | --- |
-| 6 | 40 | Garden Mastery I (120 ☘️) |
-| 7 | 90 | Garden Mastery II (260 ☘️) |
-| 8 | 180 | Garden Mastery III (500 ☘️) |
-| 9 | 320 | Garden Mastery IV (900 ☘️) |
-| 10 | 550 | Garden Mastery V (1500 ☘️) |
+There is no seed cost for power anywhere in the game:
 
-Per tower, per level — **not** a global unlock. Taking one tower to 10 costs 1,180 🌱, more than half the roster: a fully mastered tower is meant to be a commitment and a story.
+| What buys power | Currency |
+| --- | --- |
+| The four rungs a tower climbs inside a stage | 💵 money (in-run) |
+| The garden's **floor and ceiling** | ☘️ clover master nodes (§3.3) |
+| Stat bonuses on everything | ☘️ clover trees (§3.2) |
+| Run-scoped burst power | 🍬 candy stock (§6) |
+
+Keeping seeds strictly content-only is what makes the four currencies readable at a glance (`goal.md` §1): *"Seeds unlock what you can play."*
+
+**Overflow.** Once the roster is complete (2,015 🌱 spent), further seeds convert to clovers at **20:1**. Deliberately bad — a safety valve so a late-game player's seeds are never inert, not a rate worth farming.
 
 ### 2.4 Pacing checkpoints
 
@@ -123,18 +126,30 @@ One branch at rank 1 across all 10 nodes: **473 ☘️**. All four branches: **1
 | --- | --- | --- |
 | 🌿 **Vitality** | +1 max life per rank (to 25) | −life-loss penalty, regen per wave, boss survival, +1 more life, +2 more life |
 | ⚔️ **Offense** | +2% tower damage per rank (to +10%) | +1% fire rate per rank, +1% crit chance, +5% crit damage, +2% more damage, +3% more damage |
-| 🌱 **Growth** | −5% upgrade cost per rank (to −25%) | +XP per kill, spec tier at L4, faster mastery, −10% mastery cost, −20% mastery cost |
+| 🌱 **Growth** | −5% upgrade cost per rank (to −25%) | +75% in-run money from kills, a third spec tier at L4, −10% master node cost, −20% master node cost, +2 starting money |
 | 💰 **Harvest** | +1% zombie money per rank | +starting money, +boss reward %, +5% seeds, +10% seeds, +15% seeds |
 
 ### 3.3 The five master nodes (priced separately, outside the 473 totals)
 
-| Node | Effect | Cost |
-| --- | --- | --- |
-| Garden Mastery I | tower cap **6** | 120 ☘️ |
-| Garden Mastery II | tower cap **7** | 260 ☘️ |
-| Garden Mastery III | tower cap **8** | 500 ☘️ |
-| Garden Mastery IV | tower cap **9** | 900 ☘️ |
-| Garden Mastery V | tower cap **10** | 1500 ☘️ |
+Each node raises **two** numbers by one level: the **cap** (how far a tower can go) and the **floor** (the level a tower arrives at, free, the moment it is placed).
+
+| Node | Tower cap | Towers arrive at | Cost |
+| --- | --- | --- | --- |
+| Garden Mastery I | 6 | 2 | 120 ☘️ |
+| Garden Mastery II | 7 | 3 | 260 ☘️ |
+| Garden Mastery III | 8 | 4 | 500 ☘️ |
+| Garden Mastery IV | 9 | 5 | 900 ☘️ |
+| Garden Mastery V | 10 | 6 | 1500 ☘️ |
+
+**`start = cap − 4`, always.** That single rule is what keeps the in-run money economy alive for the whole campaign:
+
+* Cap-only mastery would put the last rungs out of reach inside one stage, so the purchase would feel like an IOU.
+* Floor-only mastery would make money irrelevant.
+* Moving both keeps the money climb **exactly four rungs deep** forever — worth roughly +8% damage, +4% fire rate and +3% range each, at every stage of the game.
+
+**Mastery is account-wide:** one garden, one floor, one ceiling, for every tower. Gates: node N requires clearing region N (so region N's enemy scaling assumes the mastery a player can plausibly hold by then).
+
+**Total to cap 10:** 3,280 ☘️ — deliberately more than the four trees (1,892) plus their spine, so mastery is the garden's long-term project rather than a checkpoint.
 
 ### 3.4 Pacing checkpoints
 
@@ -210,6 +225,10 @@ One branch at rank 1 across all 10 nodes: **473 ☘️**. All four branches: **1
 
 **The coupling that must never be forgotten:** today's L5 is ×16 damage and `scr_level_difficulty` (`life *= power(2, wave/5−2) + 0.2*(wave−1)`) is written for that. Ship §4.4 without rewriting that scaling and the game becomes unplayable. They are one change.
 
+**Which rows money actually buys.** A tower *arrives* at the garden's floor (`goal.md` §4; `start = cap − 4`) and the four rows above that floor are the ones bought in-run. So at mastery V, money buys L7→L10 (×1.59 → ×2.00) — still about +8% per rung, because the rungs are defined against the base rather than compounding. **The relative value of money never changes, at any point in the campaign**; that is the entire reason the floor and the cap move together.
+
+**Visuals are normalised by a fixed 10**, not by the current cap — the existing `lerp(0.25, 0.70, level / tower_max_level)` in `_levelControl/Step_0.gml:117` must become `level / 10` with adjusted endpoints, or a tower placed at floor 6 would be indistinguishable from one placed at floor 3.
+
 ---
 
 ## 5. Blood Shards 🩸
@@ -256,6 +275,8 @@ The boss guarantee is the safety valve: even a player on a cold streak gets a sh
 | 4 | Blood Moon | a whole wave can roll boosted pity | 12 |
 | 5 | Crimson Garden | unlocks blood content (region 6) | 20 |
 
+**The blood tree is finite by design (46 shards total).** That is deliberate: a rare currency needs a *finished* goal and an *unfinished* one. The finished one is this tree; the unfinished one is **candy levels** (§6.4), which is where a shard goes forever after.
+
 **Why "−kills required" and never "+drop rate":** the base chance is 0.01%. A +10% bonus on that is 0.011%, which no human can perceive in a lifetime of play. Every node in this tree must change something the player can *feel* — fewer kills needed, an extra shard, or a visibly different wave.
 
 *If `Crimson Appetite` and `Blood Moon` test as invisible in Phase 4, replace them with flat extra shards per boss (a number the player can see) rather than nerfing the idea away.*
@@ -264,41 +285,73 @@ The boss guarantee is the safety valve: even a player on a cold streak gets a sh
 
 ## 6. Candy 🍬
 
-### 6.1 Recipes (unlocked with shards) and stock
+### 6.1 Recipes, levels, and stock — three different things
 
-| Tier | Recipe cost | Candies in this tier |
+| Thing | What it is | Cost / source |
 | --- | --- | --- |
-| 1 | 3 shards | Red Licorice, Jawbreaker, Gummy Worm |
-| 2 | 8 shards | Sour Drop, Fireball Candy, Frosted Flake |
-| 3 | 20 shards | Blood Bonbon, Everlasting Gob |
+| 🍬 **Recipe** | permanent unlock of one candy type | 3 / 8 / 20 shards for tiers 1 / 2 / 3 |
+| 🍬 **Level** | permanent power of that candy, 1 → 10 | shards, escalating (§6.4) |
+| 🍬 **Stock** | the units actually spent in a run | Endless boxes, and a shard shop at 1 shard = 5 candies |
 
-Stock comes from Endless boxes and the shard shop (**1 shard = 5 candies**).
+**Recipes and levels are permanent; stock is consumed.** A player's shard income therefore always has three jobs to choose between: *open a new candy*, *sharpen one they have*, or *buy a burst of stock for tonight's run*. That is the whole design of the blood economy after the blood tree is finished, and it is why shards never stop mattering.
 
-### 6.2 The candies
+### 6.2 The candies, and what a level does to them
 
-| Candy | Tier | Effect | Duration |
-| --- | --- | --- | --- |
-| 🍬 **Red Licorice** | 1 | +10% damage | 5 waves |
-| 🍬 **Jawbreaker** | 1 | +10% range | 5 waves |
-| 🍬 **Gummy Worm** | 1 | +15% slow effectiveness | 5 waves |
-| 🍬 **Sour Drop** | 2 | +10% crit chance | 5 waves |
-| 🍬 **Fireball Candy** | 2 | +20% burn damage | 5 waves |
-| 🍬 **Frosted Flake** | 2 | +10% fire rate | 5 waves |
-| 🍬 **Blood Bonbon** | 3 | +25% damage, +5% crit damage | 3 waves |
-| 🍬 **Everlasting Gob** | 3 | the previous candy lasts until the run ends | — |
+Each level adds one unit of **that candy's own** stat, so the growth is always legible in the UI as `+10% → +19%` rather than as an abstract "level".
+
+| Candy | Tier | Effect at **L1** | Per level | At **L10** | Duration |
+| --- | --- | --- | --- | --- | --- |
+| 🍬 **Red Licorice** | 1 | +10% damage | +1% | **+19%** | 5 waves |
+| 🍬 **Jawbreaker** | 1 | +10% range | +1% | +19% | 5 waves |
+| 🍬 **Gummy Worm** | 1 | +15% slow effectiveness | +1.5% | +28% | 5 waves |
+| 🍬 **Sour Drop** | 2 | +10% crit chance | +0.5% | +14.5% | 5 waves |
+| 🍬 **Fireball Candy** | 2 | +20% burn damage | +2% | +38% | 5 waves |
+| 🍬 **Frosted Flake** | 2 | +10% fire rate | +1% | +19% | 5 waves |
+| 🍬 **Blood Bonbon** | 3 | +25% damage, +5% crit damage | +2% / +1% | +43% / +14% | 3 waves |
+| 🍬 **Everlasting Gob** | 3 | the previous candy lasts to the end of the run | +1 wave per 3 levels | +3 waves | — |
+
+**Duration never changes with level** (except the Gob). The unit of candy is still "5 waves"; levels only decide how strong those five waves are. That keeps the decision in the pause menu simple: *which*, and *how much stock*, never *how long*.
 
 ### 6.3 Stacking rules
 
 | Rule | Value |
 | --- | --- |
 | Stacking | **additive** — 1 Red Licorice = +10%, 2 = +20%, 3 = +30%, 4 = +40% |
-| Cap per type | **10** (= +100% for Red Licorice) |
+| Cap per type | **10** (= +190% for a *fully levelled* Red Licorice, +100% for a fresh one) |
 | Cap in total | **20 active candies** |
 | Order of operations | clovers set the base, **candy multiplies after** |
 | Activation | between waves, from the pause menu |
 | Expiry | on wave count, not on time — a wave survived is a wave spent |
 
-*Worked example, the "absurd build" the design is aiming at: 10 Red Licorice + 5 Sour Drop + 5 Fireball = +100% damage, +50% crit chance, +100% burn damage, for 5 waves. It should feel like breaking the game. It should also cost 20 candies, which is most of a good box run.*
+**Levels and stacking never interact.** A level raises one candy's own number; it does not raise the caps, add slots, or extend the duration. So the ceiling of a candy run is bounded exactly as before (20 candies, five waves) while the *quality* of each candy is the long-term shard project.
+
+*Worked example, the "absurd build" the design aims at: 10 maxed Red Licorice + 5 maxed Sour Drop + 5 maxed Fireball = **+190% damage, +72% crit chance, +190% burn damage**, for five waves. It should feel like breaking the game. It should also cost 20 candies and the shard investment of three maxed candies.*
+
+---
+
+### 6.4 Candy levels — the unbounded shard sink
+
+Levels are permanent, per candy, and bought with shards:
+
+| Level | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Cost (shards)** | 2 | 3 | 4 | 6 | 8 | 11 | 15 | 20 | 26 |
+
+**95 shards per candy. 760 for all eight.**
+
+Sanity-checked against shard supply:
+
+| Source | Shards |
+| --- | --- |
+| One full campaign sweep (~12,000–15,000 kills) from the pity curve | ~1.5 |
+| Plus the 6 region bosses (guaranteed) | 6 |
+| **Per sweep** | **~7.5** |
+| A good Endless run (boxes 1–8) | 3–8 |
+| Blood tree, complete (one-off) | 46 |
+
+So **the first two levels cost 5 shards** — about two thirds of one campaign sweep — which is why early investment is felt immediately. One candy to L10 is roughly **a dozen sweeps**; all eight is the lifetime project. That curve is the whole point: it is the only shard sink that never ends (`goal.md` §16).
+
+**A level never touches the caps.** Ten maxed Red Licorices are still ten candies against the 20-active cap, with the same five-wave expiry.
 
 ---
 
@@ -373,10 +426,12 @@ One medal per badge per stage, stored in the save. **No art in v1** — the reco
 | 1 | First tower unlock | inside the first ~3 stages of meaningful play | Phase 1 playtest |
 | 2 | Early Brutal beats a Normal grind | a Brutal clear ≥ 3× a Normal clear (5× by construction) | Phase 1 by arithmetic |
 | 3 | Normal-only cannot buy the roster | 775 🌱 earned < 2,015 🌱 needed | arithmetic |
-| 4 | Tower cap 6 | ~stage 10–12 | Phase 3 |
+| 4 | Garden Mastery I — cap 6, towers arrive at **2** | ~stage 10–12 | Phase 3 |
 | 5 | First blood shard | region 3–4 | Phase 4, from the kill counter |
 | 6 | Every stage clearable by ≥ 3 loadouts | no stage has a single correct answer | Phase 2 |
 | 7 | Nothing is inert | every currency earnable *and* spendable at every point in the campaign | Phase 3 gate |
+| 8 | First candy levels (L2–L3, 5 shards) | inside the first campaign after the first shard | Phase 4 |
+| 9 | First candy to L10 (95 shards) | ~a dozen campaign sweeps — long, but visibly progressing | Phase 4 |
 
 **Instrumentation this requires (Phase 0):** every currency event logs through `print()` under `global.devMode`, with the `META`, `SEED`, `CLOVER`, `SHARD` and `CANDY` prefixes, per the log-prefix convention in `AGENTS.md` §4. Without that log, Phase 6 tuning is guesswork.
 
@@ -387,13 +442,14 @@ One medal per badge per stage, stored in the save. **No art in v1** — the reco
 Adjust **one** of these at a time, log first, and only after the previous one has been played:
 
 1. **Blood pity window** (8,000 / 20,000) — the most sensitive number in the game
-2. **Region base seeds** — if unlocks come too fast or too slow
-3. **Clover node costs** — if the trees feel like walls rather than projects
-4. **Upgrade prices** (in-run money) — if the run economy feels tight or trivial
-5. **Tower stats**, then placement prices — Phase 2 tuning, not before
-6. **Candy caps and durations** — if a candy run stops feeling special
-7. **Box weights** — if Endless income dwarfs the campaign
-8. **Difficulty multipliers** — *last*, because they touch every other number on this page
+2. **Candy level costs** — if the first two levels are not cheap enough to feel immediate, the entire track stops registering
+3. **Region base seeds** — if unlocks come too fast or too slow
+4. **Clover costs** — both the trees (473 per branch) and the master nodes (3,280 to cap 10)
+5. **Upgrade prices** (in-run money) — if the run economy feels tight or trivial
+6. **Tower stats**, then placement prices — Phase 2 tuning, not before
+7. **Candy caps and durations** — if a candy run stops feeling special
+8. **Box weights** — if Endless income dwarfs the campaign
+9. **Difficulty multipliers** — *last*, because they touch every other number on this page
 
 ---
 
@@ -413,4 +469,5 @@ Adjust **one** of these at a time, log first, and only after the previous one ha
 | Date | Change |
 | --- | --- |
 | 2026-10-04 | v1 created out of the `goal.md` design review. All values first-pass; every one is expected to move in Phase 6. |
+| 2026-10-04 | Mastery redesigned on the user's call: clovers now raise the tower **floor and cap together** (`start = cap − 4`), so the money climb stays four rungs at every mastery. Seeds consequently buy **content only** (§2.3), and candy gained **levels 1–10** bought with shards (§6.4) as the game's unbounded shard sink. |
 

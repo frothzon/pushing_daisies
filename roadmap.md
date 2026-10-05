@@ -271,7 +271,7 @@ If one tower or one status appears in every viable loadout, the counter-system o
 | --- | --- | --- |
 | 3.1 | **All four clover trees** — Vitality, Offense, Growth, Harvest, 10 nodes × 5 ranks | `economy.md` §3.2 |
 | 3.2 | **The five master nodes** — cap 6→10 | the campaign's long tail |
-| 3.3 | **Per-tower mastery screen** — spend seeds on L6–L10, see XP progress | the only place seeds and clovers meet |
+| 3.3 | **Mastery** — the five master nodes (floor **and** cap, `start = cap − 4`), plus a panel showing where each tower arrives and how far it can go | account-wide, so there are no per-tower level screens: the tree *is* the mastery UI |
 | 3.4 | **Currency HUD** — all four, with a "new" highlight when one changes | so nothing is earned invisibly |
 | 3.5 | **Respec** — specialization changes for seeds; tree respec for a clover fee | protects experimentation |
 | 3.6 | **Garden Book navigation** — tabs for the four trees, the shop, and (later) the blood tree | one screen, five tabs |
@@ -297,7 +297,7 @@ Any node whose effect the player cannot perceive is a broken node (`goal.md` §1
 | 4.3 | **Loot box: choice of three** — tier weights, offer tables, the scaling formula, one re-roll | `economy.md` §7.2–§7.4 |
 | 4.4 | **Kill counter + pity curve + shard drops**, with the boss guarantee | `economy.md` §5.1 — log every roll under `devMode` |
 | 4.5 | **The blood tree** — five tiers, nodes in "−kills required" | |
-| 4.6 | **Candy** — recipes (shards), stock (boxes/shop), additive stacking, caps, wave-based expiry, pause-menu activation | `economy.md` §6 |
+| 4.6 | **Candy** — recipes, **levels 1–10 bought with shards**, stock (boxes/shop), additive stacking, caps, wave-based expiry, pause-menu activation | `economy.md` §6; the level track is the unbounded shard sink, so it must ship with the blood tree |
 | 4.7 | **Blood Fields modifier** — region 6's night: more elites, pity bonus | reuses 4.4 |
 
 ### 8.2 Gate

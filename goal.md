@@ -141,15 +141,30 @@ This also makes unlocking towers exciting without making the actual battlefield 
 
 # 4. Tower Progression
 
-Every tower starts at **Level 1**, and the level **persists**: it belongs to the tower in your Garden Book, not to the instance you placed on this map.
+**Levels are bought in-run, with in-run money. What clovers buy is the *range* of levels a tower can occupy.** That split is deliberate:
 
-Levels 1–5 are bought **inside the stage with in-run money** (`Upgrade $`), exactly as they are today, so the moment-to-moment economy does not change. Levels 6–10 are **mastery**: unlocked with clovers (§13), paid for with seeds (§24), never with in-run money.
+* **💵 money** buys the four rungs between where a tower arrives and where it can go — this stage, gone next stage.
+* **☘️ clovers** raise the **floor** (the level a tower *arrives* at, free) and the **ceiling** (the highest rung it can be taken to) — permanently, for the whole garden.
 
-The permanent level cap initially is:
+So a tower has no persistent level of its own. It has a **floor and a ceiling granted by the garden**, and everything between them is earned inside the stage. Money therefore stays meaningful forever, and a clover purchase is visible the moment a tower is placed.
 
-**Level 5**
+**Start = cap − 4.** Both numbers move together, one level per master node, so the money climb is **always four rungs deep** at every point in the game:
 
-But Four-Leaf Clover upgrades can eventually raise the cap.
+| Garden mastery | Tower cap | Towers arrive at | Rungs bought with money | Base power on placement |
+| --- | --- | --- | --- | --- |
+| none | **5** | 1 | 4 — L2…L5 | ×1.00 |
+| ☘️ Mastery I | **6** | 2 | 4 — L3…L6 | ×1.08 |
+| ☘️ Mastery II | **7** | 3 | 4 — L4…L7 | ×1.17 |
+| ☘️ Mastery III | **8** | 4 | 4 — L5…L8 | ×1.26 |
+| ☘️ Mastery IV | **9** | 5 | 4 — L6…L9 | ×1.36 |
+| ☘️ Mastery V | **10** | 6 | 4 — L7…L10 | ×1.47 |
+
+**Four rules that keep that honest:**
+
+1. **The gap never widens.** If clovers raised only the ceiling, the last rungs would be unreachable inside one stage and mastery would feel like an IOU. If they raised only the floor, money would become irrelevant. One node raises both, so the climb is exactly as meaningful at the end of the campaign as at the start.
+2. **A placed tower arrives at its floor, free.** The four rungs above it are bought with money at the prices in `economy.md` §4.3 — unchanged, because it is the same currency those rungs have always taken.
+3. **Visual scaling is normalised by a fixed 10, never by the current cap** — otherwise a tower placed at floor 6 would look identical to one placed at floor 3, and the player would lose the one cue that says "the garden grew".
+4. **Mastery is gated by region clears** (`economy.md` §3.3), so region N's enemy scaling assumes the mastery a player can plausibly hold by region N. Without that pairing, mastery would trivialise old content.
 
 **What a level gives you — this replaces today's doubling.** Right now an L5 tower does 16× an L1's damage, and `scr_level_difficulty` is tuned around that, so these two changes must land together or the game becomes unplayable:
 
@@ -577,9 +592,9 @@ Improves towers.
 
 Improves progression.
 
-- Increased tower level cap (the master nodes, §13)
+- The five master nodes — floor **and** cap (§13)
 - Reduced upgrade cost (in-run: L2–L5 prices drop by up to 25%)
-- Increased tower XP/mastery (levels 6–10 arrive faster)
+- Cheaper clover master nodes (−10% then −20% off their cost)
 - A third specialization tier at L4 (§5)
 
 ## 💰 Harvest
@@ -623,15 +638,17 @@ This creates a meaningful long-term objective.
 
 | Node | Effect | Cost |
 | --- | --- | --- |
-| Garden Mastery I | tower cap **6** | 120 ☘️ |
-| Garden Mastery II | tower cap **7** | 260 ☘️ |
-| Garden Mastery III | tower cap **8** | 500 ☘️ |
-| Garden Mastery IV | tower cap **9** | 900 ☘️ |
-| Garden Mastery V | tower cap **10** | 1500 ☘️ |
+| Garden Mastery I | tower cap **6**, towers arrive at **2** | 120 ☘️ |
+| Garden Mastery II | tower cap **7**, arrive at **3** | 260 ☘️ |
+| Garden Mastery III | tower cap **8**, arrive at **4** | 500 ☘️ |
+| Garden Mastery IV | tower cap **9**, arrive at **5** | 900 ☘️ |
+| Garden Mastery V | tower cap **10**, arrive at **6** | 1500 ☘️ |
 
 Cap 6 lands around stage 10–12 on a Normal run; cap 10 is the endgame chase.
 
-**Mastery is per tower, not global.** Raising the cap only *permits* level 6+; the level itself is still bought, per tower, with seeds. That keeps the Garden Book a set of living projects instead of one purchase that upgrades everything at once.
+**Mastery is account-wide.** One garden, one floor, one ceiling — which is what "clover" means as a currency, and it keeps the Garden Book small enough to read at a glance. The cost of that simplicity is that each node is a milestone rather than a per-tower project: the *arrival* level rises with the campaign, so by region 4 a freshly placed tower already fights like an old L4 one, and the four rungs above it are what money is for.
+
+*(If per-tower floors are ever wanted, it is a data change on the same resolver — a master node would name a tower instead of the garden — not a rewrite. Build the account-wide version first.)*
 
 **Specializations are never bought.** They arrive automatically at L3 (§5, §27.5) — the choice *is* the reward — so the Seed Tree does not gate them (§24).
 
@@ -720,14 +737,17 @@ Unlocks special Blood Shard content.
 
 This is where I think your idea gets particularly good.
 
-**Shards unlock candy *recipes* permanently. Candy *stock* is what you actually spend.** Those are two different things, deliberately:
+**Shards do three different things to candy, and the third one is what keeps shards relevant forever.** They are deliberately separate:
 
 | Thing | What it is | Where it comes from |
 | --- | --- | --- |
 | 🍬 **Candy recipe** | permanent unlock of one candy type | 🩸 Blood Shards — 3 / 8 / 20 for tiers 1 / 2 / 3 |
-| 🍬 **Candy stock** | consumable units you spend in a run | 🩸 Endless loot boxes, plus a shard shop at 1 shard = 5 candies |
+| 🍬 **Candy level** | permanent power of that candy, **1 → 10** | 🩸 Blood Shards, on an escalating cost curve |
+| 🍬 **Candy stock** | the units you actually spend in a run | 🩸 Endless loot boxes, plus a shard shop at 1 shard = 5 candies |
 
-That resolves the three-sources problem in §1/§16/§20 without removing any of them, and it gives blood shards a second, *reliable* sink so a rare shard is never a dead item.
+That resolves the three-sources problem in §1/§16/§20 without removing any of them, and it gives blood shards a *reliable*, never-finished sink.
+
+**Why candy has levels.** The blood tree is finite — five tiers and it is done. Candy recipes are finite — eight of them. Candy *levels* are not: eight candies × nine paid levels is a refinement track that can never be exhausted. It turns every shard into something a player still wants, which is exactly what a rare drop needs in order to stay interesting a hundred hours in. **Candy levels are the game's only unbounded shard sink, on purpose.**
 
 Candy becomes the game's temporary power system.
 
@@ -784,6 +804,8 @@ For example:
 > Maximum 10 active candies of the same type, and **20 active in total**.
 
 Candy is applied **after** clovers (clovers set the base, candy multiplies it), so the numbers stay readable and a clover upgrade never feels wasted on a candy run.
+
+**A candy's level raises *its own* buff; the stacking caps do not move.** A level-10 Red Licorice is worth +19% instead of +10% — so a fully levelled candy is roughly **twice** a fresh one, not ten times one. That is the whole balance of the candy level track: it buys quality, not a second axis of stacking. Ten maxed Red Licorices are still ten candies against the 20-active cap, and they still expire after five waves.
 
 That lets players deliberately create absurd builds without letting the numbers become infinite.
 
@@ -1047,8 +1069,10 @@ Unlocks:
 - Towers (the 8 unlockables)
 - Regions
 - Campaign stages
-- Tower mastery — permits levels 6–10 (§13)
+- Region mechanics
 - Signature abilities at L5
+
+Seeds are **content only** (§1) — they never buy power, which is what keeps the four currencies from blurring. Once the roster is complete, leftover seeds convert to clovers at **20:1**, deliberately bad, so it is a safety valve rather than a strategy.
 
 **Question it answers:**\
 _"What can I play?"_
@@ -1059,7 +1083,7 @@ _"What can I play?"_
 
 Unlocks:
 
-- Tower level caps
+- Tower **floors and caps** — where a tower arrives, and how far it can go (§4, §13)
 - Global stat bonuses
 - Economy improvements
 - Starting bonuses
@@ -1080,6 +1104,8 @@ Unlocks:
 - Special candy recipes
 - Endgame systems
 
+**This tree is finite on purpose** — five tiers and it is finished. The unbounded shard sink is candy *levels* (§16), which is why shards stay interesting long after the tree is done.
+
 **Question it answers:**\
 _"What am I working toward long-term?"_
 
@@ -1096,6 +1122,8 @@ Provides:
 - Economy
 - Attack speed
 - Special effects
+
+…and **levels 1–10 on each candy**, bought with blood shards, which raise whichever of those the candy provides. Recipes and levels are permanent; the stock is consumed.
 
 **Question it answers:**\
 _"How do I make this particular run ridiculous?"_
@@ -1290,7 +1318,7 @@ So a Normal-only player **cannot** unlock the whole roster — they have to meet
 | Region/stage table, rewards, gates, badges | `stage_data` (new — Phase 0) |
 | Difficulty multipliers | `difficulty_data` (new — Phase 0) |
 | Tower stats, prices, specs | extend `tower_array` + `scr_towerData` (add crit/status fields) |
-| Mastery levels, currencies, badges, loadout | the save file (Phase 0) |
+| Mastery (**floor and cap**), candy levels, currencies, badges, loadout | the save file (Phase 0) |
 | Wave HP/speed scaling | `scr_level_difficulty`, rewritten with §4's curve |
 
 ## 28.4 The phases
@@ -1300,7 +1328,7 @@ So a Normal-only player **cannot** unlock the whole roster — they have to meet
 | **0. Foundations** | a save that works; `stage` / `region` / `difficulty` data; level flow → `enum` + `switch`; `room_speed` fixed | a stage declared in data is playable and progress survives a restart — *nothing player-visible ships* |
 | **1. Vertical slice** | region 1: 10 data-driven stages, 3 difficulties, seeds, one clover branch, badges, Deploy screen, world map, 6 towers | **clear stage 1 → unlock a tower → farm clovers → replay for a badge → quit → it is all still there** |
 | **2. Combat depth** | crit, burn/slow/stun, persistent levels 1–5, specializations, the `scr_level_difficulty` rewrite | a stage is winnable *and* losable for the right reasons; two loadouts play measurably differently |
-| **3. Garden Book** | the four trees, all five master nodes, currency HUD, mastery screens | every currency can be earned *and* spent; none is inert |
+| **3. Garden Book** | the four trees, all five master nodes, currency HUD, the mastery panel | every currency can be earned *and* spent; none is inert |
 | **4. Endless, candy, shards** | endless mode, 1.2× boxes, choice-of-three, the pity counter, the blood tree, candy recipes | a run reaches box 5+; a shard drops in a normal session |
 | **5. Content** | regions 2–6: 5 biomes, 5 mechanics, 5 bosses, 6 zombies, 6 towers, 50 stages | the full campaign is completable and the §28.2 checkpoints hold |
 | **6. Balance & polish** | retune from logs, audio, an onboarding pass | a fresh player reaches stage 5 unaided |
@@ -1338,4 +1366,7 @@ So a Normal-only player **cannot** unlock the whole roster — they have to meet
 | Cosmetic rewards assumed | medals in v1, cosmetics deferred (§25) |
 | §14's spliced sentence | repaired (§14) |
 | Loadout undefined | a full spec, and the first-game case in §3.1 |
+| Seeds as a power currency (levels 6–10, 1,180 🌱 per tower) | seeds are **content only**; clovers grant the tower **floor and cap** (§4, §13), and leftover seeds convert to clovers at 20:1 |
+| Mastery raising only the cap | one node raises floor **and** cap, so the money climb is always four rungs — money never becomes irrelevant (§4) |
+| Candy had recipes and stock only | candy also has **levels 1–10** bought with shards — the game's unbounded shard sink, which is what keeps a rare drop interesting forever (§16, `economy.md` §6.4) |
 
