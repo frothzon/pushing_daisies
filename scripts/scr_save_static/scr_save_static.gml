@@ -9,7 +9,10 @@ function scr_save_static(argument0, argument1) {
 	-------------------------------------*/
 
 	var _inv = static_list, /// inventory data to save
-	    _fn = working_directory + argument0,    /// file name to save to
+	    /// a plain relative name is the GMS2 save area.  Prepending
+	    /// working_directory (the old code) points at the game's own
+	    /// folder, which is read-only in an exported build.
+	    _fn = argument0,                        /// file name to save to
 	    _loc = argument1,   /// section in lists to save to
 	    // size of the inventory array
 	    _size = array_length(_inv);

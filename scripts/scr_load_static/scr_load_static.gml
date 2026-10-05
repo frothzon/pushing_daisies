@@ -7,7 +7,8 @@ function scr_load_static(argument0, argument1) {
 	-------------------------------------*/
 
 	var _inv = -1,          /// inventory to create
-	    _fn = working_directory + argument0,
+	    /// see scr_save_static: a plain name is the GMS2 save area
+	    _fn = argument0,
 	    _loc = argument1;
 	//------------------- Pass array values into ds list
 	var _temp = ds_list_create();
@@ -16,7 +17,7 @@ function scr_load_static(argument0, argument1) {
 	var _str = ini_read_string(section_name,_loc,"");
 	if (_str != ""){
 	    ds_list_read(_temp,_str);
-	    _size = ds_list_size(_temp);
+	    var _size = ds_list_size(_temp);
 	    for (var i=0; i<_size; i+=1)
 	    {
 	        _inv[i] = _temp[| i];

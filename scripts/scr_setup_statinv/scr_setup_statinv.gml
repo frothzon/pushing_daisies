@@ -32,8 +32,13 @@ function scr_setup_statinv() {
 	waves = create_static_item(spr_wave,"Wave");
 
 	//------------------------------------- Load File
-	///scr_load_static(savefile,savekey);
-
-
-
+	/// The meta save belongs to scr_load_meta() now (roadmap 0.1).
+	/// This call was commented out AND its path used working_directory,
+	/// which is read-only once the game is exported - so a "static"
+	/// inventory was never actually restored.  Left unwired on purpose:
+	/// the static inventory is per-run state (points/money/life/waves),
+	/// not saved data.  Per-run state is reset by the level, and the
+	/// things that DO persist (seeds, clovers, shards, unlocks) live in
+	/// global.meta.
+	//scr_load_static(savefile,savekey);
 }
