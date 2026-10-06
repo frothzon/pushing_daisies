@@ -966,7 +966,8 @@ to fix; it is a fact to stop mis-reading.
 **Fix.** Do not verify line endings against HEAD. Verify the thing the rule
 actually cares about:
 
-1. **No literal `\r`** - `data.count(b"\\r")` on the file bytes must be `0`.
+1. **No literal backslash-r** — the two-byte run must count as `0` in the
+   file's raw bytes (grep for it with a fixed-string match; see LL-006).
 2. **Composition** - count CRLF and bare LF and report the kind, and confirm
    the file did not *become a different kind* of file.
 3. **No wholesale rewrite** - `git diff --numstat` (added/removed per file)
