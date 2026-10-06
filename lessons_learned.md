@@ -37,13 +37,17 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-014](#ll-014) | The pause / exit screen is **black** | **One variable doing two jobs** - `blackScreen` is the game-over crossfade, and pause read it; plus a surface **size mismatch** and a **mid-frame grab** | **FIXED** |
 | [LL-015](#ll-015) | A UI is **missing information** that was never once displayed | **`array_last_index()` used as a count** hides the last element, and a label list that was never extended | **FIXED** |
 | [LL-016](#ll-016) | Nothing - yet | A **sibling function's parameter is not in scope**, so a fatal sat behind an unreachable branch | **FIXED** |
+| [LL-017](#ll-017) | A new "safety" guard crashes on a line that looks defensive, only before an object's Create has run | **`instance_exists()` on an unassigned `globalvar` is itself a read of an unset variable** | **FIXED** |
+| [LL-018](#ll-018) | A check script reports "line endings changed" for files nothing touched; `git diff` says otherwise | Comparing against **`git show HEAD:`** compares a *normalised* blob (LF) against a CRLF working tree | **FIXED** |
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `enum` `crlf` `room_speed` `built-in` `shadowing` `null` `log` `debug`
 `flip` `image_xscale` `sprite_index` `sprite_get_width` `-1` `_text_rise`
 `soft-lock` `path` `mp_grid_path` `return value` `pocket` `black` `pause`
 `snapshot` `surface` `application_surface` `array_last_index` `scope`
-`sibling` `parameter` `RNG` `perlin`.
+`sibling` `parameter` `RNG` `perlin` `globalvar` `instance_exists`
+`variable_global_exists` `guard` `git` `HEAD` `eol` `gitattributes`
+`verifier` `false positive`.
 
 ---
 
@@ -888,6 +892,99 @@ random_set_seed(_seed_saved);
 **Status.** FIXED, 2026-10-04.
 
 **Files.** `scripts/create_perlin_grid/create_perlin_grid.gml`.
+
+---
+
+<a name="ll-017"></a>
+## LL-017 — `instance_exists()` on an unassigned `globalvar` is itself a throw
+
+**Symptom.** A brand new guard, written to make something *safer*, becomes the
+new crash: `Variable <name> not set before reading it`, or an
+`instance_exists` failure, on a line that reads like defensive code. It only
+reproduces before the object that owns the global has run its Create event -
+so it looks intermittent, and it never reproduces on a reload from a saved
+session.
+
+**Root cause.** `globalvar LEVEL;` declares the name, but the **value is
+assigned at runtime** (`LEVEL = id;` inside `_levelControl`'s Create). Before
+that assignment the global exists but holds nothing useful, and passing that
+to `instance_exists()` is another read of an unset variable. The guard throws
+before the guarded line ever runs - the LL-002 shape ("a guard that can throw
+is not a guard") reached from a new direction.
+
+**Fix.** Ask whether the global *exists* before touching it:
+
+```gml
+	if(variable_global_exists("LEVEL")){
+		var _lvl = LEVEL;
+		if(instance_exists(_lvl)){
+			with(_lvl){
+				if(variable_instance_exists(id, "level_leaked")) level_leaked++;
+			}
+		}
+	}
+```
+
+**Guard rails.**
+* `instance_exists(x)` is not a validity test for `x`. It asserts something
+  about an instance id, so `x` must already be a valid id.
+* Any code that can run *before* an object's Create - a script called from
+  another object, a `Destroy`, a `lose_life`, a diagnostic - must test the
+  global with `variable_global_exists()` first, then the instance.
+* The same applies to `variable_instance_exists()`: it needs a live instance.
+
+**Status.** FIXED, 2026-10-04.
+
+**Files.** `scripts/lose_life/lose_life.gml`, `objects/_levelControl/Create_0.gml`.
+
+---
+
+<a name="ll-018"></a>
+## LL-018 — A verifier that compares against `git show HEAD:` lies about line endings
+
+**Symptom.** A check script reports **"ending changed" for files that were
+never touched by the edit** - in this project every CRLF file, every time. The
+`git diff` for the same commit shows a small, surgical change. Two tools, two
+answers, and the one that looks more rigorous is the wrong one.
+
+**Root cause.** `.gitattributes` says `*.gml text eol=lf`, so git **stores LF**
+and converts on checkout. `git show HEAD:file.gml` therefore returns the
+*normalised* blob (LF), while the working tree holds CRLF. Comparing the two
+compares a normalised copy against a raw one, and every CRLF file "changed" by
+definition. Git even says so, quietly, on every `git add`:
+
+```
+warning: in the working copy of 'objects/Menu/Step_0.gml',
+         CRLF will be replaced by LF the next time Git touches it
+```
+
+That warning is about the **store**, not the working tree. It is not a problem
+to fix; it is a fact to stop mis-reading.
+
+**Fix.** Do not verify line endings against HEAD. Verify the thing the rule
+actually cares about:
+
+1. **No literal `\r`** - `data.count(b"\\r")` on the file bytes must be `0`.
+2. **Composition** - count CRLF and bare LF and report the kind, and confirm
+   the file did not *become a different kind* of file.
+3. **No wholesale rewrite** - `git diff --numstat` (added/removed per file)
+   must match the size of the edit. A line-ending rewrite shows up as "every
+   line changed"; a real edit does not.
+
+**Guard rails.**
+* `editlib.replace_lines` writes new lines with the file's **own dominant
+  ending**, so it cannot convert a file. That is why the composition check is
+  the right one, and why a "before/after kind" comparison is the meaningful
+  assertion.
+* Any automated check that disagrees with `git diff` about *what changed* is
+  almost always wrong about *how git stores bytes*, not right about a bug.
+* Corollary for agents: a false-positive verifier costs as much time as a
+  missing one, because it sends you looking for a fault that does not exist.
+
+**Status.** FIXED, 2026-10-04.
+
+**Files.** `AGENTS.md` §1.3, this file's LL-006; the check lives in the Phase 1
+verification script.
 
 ---
 

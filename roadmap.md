@@ -359,6 +359,79 @@ If **any** step needs a restart to see its effect, or a currency can be earned b
 
 Regions 2–6, status effects, crit, specializations, endless, candy, blood shards, cosmetics. **Eight currencies/systems on screen at once is how the slice becomes a swamp.**
 
+### 5.6 Phase 1 as built (the record)
+
+| # | Task | State | Where it landed |
+| --- | --- | --- | --- |
+| 1.1 | World map | **done, as a Menu state** | `meta_draw_worldmap()` / `meta_worldmap_hit()` in `scr_meta_screen` |
+| 1.2 | Deploy screen | **done, as a Menu state** | `meta_draw_deploy()` + the `MENU_STATE.DEPLOY` case |
+| 1.3 | Loadout enforcement | **done** | `tower_array` is built from `loadout_current()`; `scr_tower_roster` holds the stats |
+| 1.4 | Stage parameterization | **done** | Phase 0 already drove the wave count and spawn pool from `stage_data`; the level now also **arms from the loadout** |
+| 1.5 | Stage results | **done in the level, not in `rm_score`** | the `CLEAR` state pays out, writes the banner and sets `global.menu_entry` |
+| 1.6 | Seeds + Clovers | **done** | `scr_meta_seeds`, `scr_meta_clovers`, `scr_meta_progress`, the `clears` save key |
+| 1.7 | Garden Book v1 | **done, as a Menu state** | `meta_draw_garden()`; `scr_clover_tree` (Offense), `scr_meta_unlock` (the shop) |
+| 1.8 | Badges v1 | **done** | `scr_badges`; counters in `_levelControl` and `lose_life` |
+| 1.9 | Region 1 content | **done** | the ten `stage_data` rows (Phase 0) |
+| 1.10 | Six towers | **done** | `scr_tower_roster` — four starters plus **Cannon Tulip** and **Meat Bulb** |
+| 1.11 | Art for the slice | **NOT done** | the two unlocks borrow the t3/t4 sprite trios as clearly-marked placeholders |
+
+#### 5.6.1 The one deviation: the screens are Menu states, not new rooms
+
+Roadmap 1.1/1.2/1.7 name `rm_worldmap`, `rm_deploy` and `rm_garden`. **Those
+rooms do not exist.** The reason is mechanical, not aesthetic:
+
+* `python_tools/gm` can create scripts and objects (`create_script`,
+  `create_object`) but **has no `create_room`**.
+* A room `.yy` is the most complex resource in the project — layers, instance
+  lists, view settings, physics — and hand-authoring one is exactly what
+  **LL-009 forbids**.
+
+So the three screens live as states of the existing `Menu` object, which is
+what §5.1 itself asks for ("built on the `objects/Menu` state-machine
+pattern"). Nothing assumes a single object: each screen is a `meta_draw_*()`
+plus a `case` in the Menu's switch, so moving one into its own room later is a
+cut-and-paste once the IDE has made the room.
+
+#### 5.6.2 The trap that was written down instead of walked into
+
+`meta_button_draw()` **only draws**; `meta_button_clicked()` **only tests**. A
+single helper doing both would be tested in the **Step** event and again in the
+**Draw** event of the same frame — `mouse_check_button_pressed` is true in both
+— so every click would fire twice, and the second fire would arrive *after* the
+state had already changed. Same class as LL-010 (a state entered twice),
+reached by a different route.
+
+#### 5.6.3 Two guards that were not obvious
+
+* **`instance_exists()` on an unassigned `globalvar` is not a safe test.** The
+  leak counter in `lose_life` has to reach the level, and the obvious
+  `if(instance_exists(LEVEL))` would itself throw before the level existed. It
+  asks `variable_global_exists("LEVEL")` **first** — a guard that can throw is
+  not a guard (LL-002).
+* **Every save write proves its target is a struct first.** A save from an
+  older build, or a hand-edited one, must not be able to make a purchase throw.
+
+#### 5.6.4 Acceptance tests
+
+| # | Test | Passes when |
+| --- | --- | --- |
+| P1-1 | Fresh save, open the menu | Start → world map; 60 nodes; region 1 stage 1 open, everything else locked |
+| P1-2 | Click stage 1-1 | Deploy: four slots already full (the starters), two towers greyed **with their requirement**, three difficulties |
+| P1-3 | Click Deploy | `META [LOADOUT] armed with 4 towers …` and the in-run shop shows exactly those four |
+| P1-4 | Clear the stage | `META [LEVEL] CLEAR … seeds=+3 clovers=+…`; `META [SEED]` / `META [CLOVER]` lines; the banner names the seeds, the clovers and any new medal |
+| P1-5 | Return | the menu opens on the **world map**, not the title screen; 1-1 is green and 1-2 is now open |
+| P1-6 | Garden Book | nodes show `rank 0/5` and a cost; clicking one with enough clovers buys a rank and saves |
+| P1-7 | Seed Shop, after ~9 Normal clears | 25 seeds and Cannon Tulip is affordable; buying it makes it appear in the Deploy wall |
+| P1-8 | Quit and relaunch | seeds, clovers, the unlocked tower, the tree rank, the clear and the medal are all still there |
+| P1-9 | Replay stage 1-1 | seeds and clovers are quartered (repeat), and the medal is **not** announced again |
+
+**What would falsify it:** any step needing a restart to take effect; a currency
+earnable but not spendable; the Deploy screen taking more than two clicks to
+repeat the last loadout. **What is deliberately weaker than intended:** on a
+brand new save *Untouched* and *Exterminator* both fire together, because
+"nothing reached the exit" and "nothing leaked and the safety valve never
+fired" only diverge once a stage can fail in a way that is not a leak.
+
 ---
 
 ## 6. Phase 2 — Combat depth
@@ -529,7 +602,7 @@ And every commit is described in terms of **what the user should see in the log*
 | --- | --- | --- |
 | Design (`goal.md`, `economy.md`, `roadmap.md`) | **done** | 2026-10-04 |
 | 0 — Foundations | **done** | 2026-10-04 — save, `stage_data`, `difficulty_data`, level flow on `enum` + `switch`, instrumentation, the perlin fatal, config globals, and all three blocker bugs. Outstanding on purpose: the project-wide `room_speed` sweep, and a Deploy screen that reads `stage_data` (Phase 1). See §4.7 |
-| 1 — Vertical slice | not started | |
+| 1 — Vertical slice | **done** | 2026-10-04 — world map, Deploy screen, Garden Book (Offense + seed shop), seeds, clovers, 3 badges, 6 towers, loadout enforcement, results in the level's `CLEAR` state. The three screens are **Menu states, not rooms** (see §5.6.1). Outstanding on purpose: art for the two unlockable towers (1.11), and the four remaining badges. See §5.6 |
 | 2 — Combat depth | not started | |
 | 3 — Garden Book | not started | |
 | 4 — Endless, candy, shards | not started | |
@@ -543,5 +616,6 @@ And every commit is described in terms of **what the user should see in the log*
 | 2026-10-04 | Created, out of the `goal.md` review and the approved design calls. |
 | 2026-10-04 | Phase 0 expanded with the three blocker bugs (§4.4.1 path integrity, §4.4.2 the black pause screen, §4.4.3 the tower card) — each with its root causes located in the source, a fix plan, and acceptance tests that can fail. Added the deprecated / legacy API audit (§4.5) and its numbers. |
 | 2026-10-04 | Candy changed from stacking to **duration** in `goal.md` §16–§17 and `economy.md` §1/§3.5/§6.2–§6.5: 30 s per candy, feeding extends, and a clover track to +100%. Roadmap touched in three places — task 0.5 now owns the fact that the candy timer is the game's first real timer, task 3.6 proves the six-tab Garden Book layout, and task 4.6 plus the Phase 4 gate carry the duration system and its timer tests. |
+| 2026-10-04 | **Phase 1 implemented.** Nine new scripts (`scr_tower_roster`, `scr_loadout`, `scr_meta_progress`, `scr_meta_seeds`, `scr_meta_clovers`, `scr_clover_tree`, `scr_meta_unlock`, `scr_badges`, `scr_meta_screen`), the Meta's three screens built as Menu states, the level armed from the loadout, and the clear now paying seeds, clovers and badges. Added §5.6 (as built) with the deviation, the double-click trap, the two guards and nine acceptance tests. The two new `lessons_learned.md` entries (LL-017, LL-018) came out of it. |
 | 2026-10-04 | **Phase 0 implemented.** Eight new scripts (`scr_meta_schema`, `scr_save_meta`, `scr_load_meta`, `scr_meta_log`, `stage_data`, `difficulty_data`, `scr_level_state`, `scr_path_validate`), the level flow moved onto `enum` + `switch`, `room_speed` fixed in every file touched, and all three blocker bugs closed with their acceptance tests. Added 4.7 (as built), the four new `lessons_learned.md` entries (LL-013 to LL-016), and promoted LL-007 to **PART FIXED**. Recorded one correction: `instance_create` is a compatibility script, not a bug. |
 
