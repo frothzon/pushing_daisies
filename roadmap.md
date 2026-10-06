@@ -432,6 +432,30 @@ brand new save *Untouched* and *Exterminator* both fire together, because
 "nothing reached the exit" and "nothing leaked and the safety valve never
 fired" only diverge once a stage can fail in a way that is not a leak.
 
+#### 5.6.5 Playtest round 1 — three things the first run found
+
+| # | What it looked like | What it was | Fix |
+| --- | --- | --- | --- |
+| 1 | "I can't remove towers" | `loadout_current()` did two jobs — sanitise **and** pad to four — so a removed tower was put straight back | split into `loadout_stored()` (the selection, 0–4) and `loadout_current()` (what a run needs); `loadout_ready()` gates Deploy |
+| 2 | Art and names clipped in the slots | a guessed `0.8` scale, and a name drawn with one unwrapped `draw_text` | `meta_sprite_fit()` (uniform scale, aspect kept), `meta_wrap()` / `meta_text_fit()` (two lines, space-preferred, hyphen only mid-word) |
+| 3 | Start / Options / Quit stayed clickable over the new screens | **`scr_button_index_hide()` had never hidden anything** — `visible = false` only affects the built-in sprite draw, and `_button` has its own Draw event | `scr_draButtonGUI()` and `scr_stpButton()` now exit on `!visible`; the Menu hides the title buttons on the three meta states |
+
+**Change 3 is bigger than Phase 1.** It is a project-wide defect: every
+"hidden" button in the game was still drawn, and a hidden one still played
+`snd_button` when clicked through. It is now **LL-019**, and the fix is at the
+root rather than in the Menu.
+
+**A visible consequence worth expecting:** the Options screen will now look
+different, and correctly so — Start / Options / Quit disappear behind the
+Return button, which is what that state's `hide` calls always meant.
+
+| # | Test (additions) | Passes when |
+| --- | --- | --- |
+| P1-10 | Clear a slot, then try Deploy | the slot shows `empty`, Deploy is greyed, and clicking it prints `MENU deploy blocked - 3/4 slots filled` |
+| P1-11 | Refill the slot | Deploy enables and the run arms with the four chosen towers |
+| P1-12 | Open the world map / Deploy / Garden | no Start / Options / Quit buttons anywhere on screen |
+| P1-13 | Options, then Return | the title buttons come back and respond |
+
 ---
 
 ## 6. Phase 2 — Combat depth
@@ -616,6 +640,7 @@ And every commit is described in terms of **what the user should see in the log*
 | 2026-10-04 | Created, out of the `goal.md` review and the approved design calls. |
 | 2026-10-04 | Phase 0 expanded with the three blocker bugs (§4.4.1 path integrity, §4.4.2 the black pause screen, §4.4.3 the tower card) — each with its root causes located in the source, a fix plan, and acceptance tests that can fail. Added the deprecated / legacy API audit (§4.5) and its numbers. |
 | 2026-10-04 | Candy changed from stacking to **duration** in `goal.md` §16–§17 and `economy.md` §1/§3.5/§6.2–§6.5: 30 s per candy, feeding extends, and a clover track to +100%. Roadmap touched in three places — task 0.5 now owns the fact that the candy timer is the game's first real timer, task 3.6 proves the six-tab Garden Book layout, and task 4.6 plus the Phase 4 gate carry the duration system and its timer tests. |
+| 2026-10-04 | **Playtest round 1 fixes** (§5.6.5). Three issues from the first run: slots could not be cleared (`loadout_current()` padded them back — split into `loadout_stored()` + `loadout_ready()`); art and names clipped (added `meta_sprite_fit`, `meta_wrap`, `meta_text_fit`); and the title buttons stayed live over the new screens, which turned out to be a **project-wide** defect — `scr_button_index_hide()` had never hidden anything, because `visible = false` does not affect an object with its own Draw event. Recorded as **LL-019**. |
 | 2026-10-04 | **Phase 1 implemented.** Nine new scripts (`scr_tower_roster`, `scr_loadout`, `scr_meta_progress`, `scr_meta_seeds`, `scr_meta_clovers`, `scr_clover_tree`, `scr_meta_unlock`, `scr_badges`, `scr_meta_screen`), the Meta's three screens built as Menu states, the level armed from the loadout, and the clear now paying seeds, clovers and badges. Added §5.6 (as built) with the deviation, the double-click trap, the two guards and nine acceptance tests. The two new `lessons_learned.md` entries (LL-017, LL-018) came out of it. |
 | 2026-10-04 | **Phase 0 implemented.** Eight new scripts (`scr_meta_schema`, `scr_save_meta`, `scr_load_meta`, `scr_meta_log`, `stage_data`, `difficulty_data`, `scr_level_state`, `scr_path_validate`), the level flow moved onto `enum` + `switch`, `room_speed` fixed in every file touched, and all three blocker bugs closed with their acceptance tests. Added 4.7 (as built), the four new `lessons_learned.md` entries (LL-013 to LL-016), and promoted LL-007 to **PART FIXED**. Recorded one correction: `instance_create` is a compatibility script, not a bug. |
 

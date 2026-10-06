@@ -39,6 +39,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-016](#ll-016) | Nothing - yet | A **sibling function's parameter is not in scope**, so a fatal sat behind an unreachable branch | **FIXED** |
 | [LL-017](#ll-017) | A new "safety" guard crashes on a line that looks defensive, only before an object's Create has run | **`instance_exists()` on an unassigned `globalvar` is itself a read of an unset variable** | **FIXED** |
 | [LL-018](#ll-018) | A check script reports "line endings changed" for files nothing touched; `git diff` says otherwise | Comparing against **`git show HEAD:`** compares a *normalised* blob (LF) against a CRLF working tree | **FIXED** |
+| [LL-019](#ll-019) | Buttons that were "hidden" are **still drawn**, still hover, still beep, and sit over the screen that replaced them | **`visible = false` only affects the built-in sprite draw** - an object with its own Draw event must check it itself | **FIXED** |
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `enum` `crlf` `room_speed` `built-in` `shadowing` `null` `log` `debug`
@@ -47,7 +48,8 @@ Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `snapshot` `surface` `application_surface` `array_last_index` `scope`
 `sibling` `parameter` `RNG` `perlin` `globalvar` `instance_exists`
 `variable_global_exists` `guard` `git` `HEAD` `eol` `gitattributes`
-`verifier` `false positive`.
+`verifier` `false positive` `visible` `hide` `draw event` `button`
+`draw_sprite_ext` `aspect ratio` `text wrap` `loadout`.
 
 ---
 
@@ -985,6 +987,68 @@ actually cares about:
 
 **Files.** `AGENTS.md` §1.3, this file's LL-006; the check lives in the Phase 1
 verification script.
+
+---
+
+<a name="ll-019"></a>
+## LL-019 — `visible = false` does not hide an object that has its own Draw event
+
+**Symptom.** Buttons that were supposed to be hidden are **still drawn, still
+hover, and still play the click sound** - and they sit *on top of* whatever
+screen replaced them. The helper that was called to hide them
+(`scr_button_index_hide`) reports that it ran. A related symptom with no
+obvious link: the title buttons stayed clickable over the world map, so a click
+aimed at a stage node landed on **Start**.
+
+**Root cause.** `scr_button_index_hide()` sets `visible = false`, which is
+correct-looking code. But `visible` only suppresses GameMaker's **built-in
+sprite draw**, and an object that has its own Draw event does not get the
+built-in draw at all. `_button` has `Draw_64`, which calls
+`scr_draButtonGUI()` - and that function drew unconditionally:
+
+```gml
+function scr_draButtonGUI() {
+	var _tx = x + sprite_width*0.5, ...   /// no visible check
+	draw9slice(sprite_index, ...);        /// draws every frame
+```
+
+So **every "hidden" button in this project had been visible all along.** The
+options screen and the Continue button were carrying this defect the whole
+time; nothing had ever depended on the difference, so nobody noticed.
+
+The same applied to input: `scr_stpButton()` tested the mouse and played
+`snd_button` *before* it checked `active`, so a hidden button still beeped
+when clicked through (only its script was correctly suppressed).
+
+**Fix.** Make the flag mean something at both ends.
+
+```gml
+	/// scr_draButtonGUI() - a Draw event ignores `visible`
+	if(!visible) exit;
+
+	/// scr_stpButton() - a hidden button is not a button
+	if(!visible) exit;
+```
+
+**Guard rails.**
+* **`visible` is not a cross-cutting "hide me" flag.** It is a draw hint for
+  the built-in renderer. Any object with a custom Draw event must check it
+  itself - so check it in *every* custom Draw, and in any Step code that
+  reacts to the mouse.
+* When a helper "hides" something, **verify it visually in one run**, not by
+  reading the helper. The helper here was correct; the consumer was not.
+* Grep for the pattern: a script that sets `visible`, and the object's Draw
+  event that never reads it.
+* `active = false` alone is not a hide. It stops the *action* and leaves the
+  button on screen and noisily clickable - which is more confusing than not
+  disabling it at all.
+
+**Status.** FIXED, 2026-10-04.
+
+**Files.** `scripts/scr_draButtonGUI/scr_draButtonGUI.gml`,
+`scripts/scr_stpButton/scr_stpButton.gml`,
+`scripts/scr_button_index_hide/scr_button_index_hide.gml`,
+`objects/Menu/Step_0.gml`.
 
 ---
 
