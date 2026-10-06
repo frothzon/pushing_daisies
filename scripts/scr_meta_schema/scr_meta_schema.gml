@@ -33,6 +33,7 @@ function scr_meta_default() {
 		towers       : {},      /// tower name -> true
 		loadout      : [],      /// the last used four tower names
 		stages       : {},      /// "region:stage" -> best difficulty cleared
+		clears       : {},      /// "region:stage" -> how many times cleared
 		badges       : {},      /// "region:stage:badge" -> true
 
 		/// ---- permanent power ----

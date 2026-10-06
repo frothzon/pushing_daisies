@@ -15,6 +15,16 @@ enum MENU_STATE {
 	OPTIONS,
 	RETURN,
 	QUIT,
+
+	/// ---- the meta screens (roadmap 1.1/1.2/1.7) ----------------------
+	/// Phase 1 builds these as states of the Menu rather than as separate
+	/// rooms: the toolkit cannot create a room, and hand-authoring a room
+	/// .yy is exactly what LL-009 forbids.  They reuse the Menu's own
+	/// switch, cursor and frame, which is the shape the roadmap asks for
+	/// ("built on the objects/Menu state-machine pattern").
+	WORLD_MAP,
+	DEPLOY,
+	GARDEN,
 }
 
 /// Human readable state name, used by the debug logging.
@@ -25,7 +35,10 @@ function scr_menu_state_name(_state) {
 		case MENU_STATE.CONTINUE: return "CONTINUE";
 		case MENU_STATE.OPTIONS:  return "OPTIONS";
 		case MENU_STATE.RETURN:   return "RETURN";
-		case MENU_STATE.QUIT:     return "QUIT";
+		case MENU_STATE.QUIT:      return "QUIT";
+		case MENU_STATE.WORLD_MAP: return "WORLD_MAP";
+		case MENU_STATE.DEPLOY:    return "DEPLOY";
+		case MENU_STATE.GARDEN:    return "GARDEN";
 	}
 	return "UNKNOWN(" + string(_state) + ")";
 }

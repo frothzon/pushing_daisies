@@ -40,7 +40,15 @@ if(menu_state == MENU_STATE.OPTIONS && menu_state_time > 5){
     };
     
 }
-draw_set_font(fnt_debug); 
+draw_set_font(fnt_debug);
+
+/// ---- the meta screens (roadmap 1.1/1.2/1.7).  Each one draws itself.
+/// The click handling lives in the Step event: a helper that both drew
+/// and tested would see the same mouse press twice in one frame, once in
+/// Step and once in Draw, and every click would fire twice.
+if(menu_state == MENU_STATE.WORLD_MAP) meta_draw_worldmap();
+if(menu_state == MENU_STATE.DEPLOY)    meta_draw_deploy();
+if(menu_state == MENU_STATE.GARDEN)    meta_draw_garden();
 
 draw_text(bbox_right + 25, y + 8, $"State: {menu_state}");
 

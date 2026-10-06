@@ -56,14 +56,49 @@ set_item_value(waves,1);
 
 /// setup tower editor
 
-/// list of towers
-tower_array = array(
-    /// 0 sprite, 1 name, 2 price, 3 data, 4 object
-    array(array(spr_t1_idle,spr_t1_attack,spr_t1_return),"Daisy Pusher",5,scr_towerData(100,4,3,_eff_puff,1)), /// 240 d/$
-    array(array(spr_t2_idle,spr_t2_attack,spr_t2_return),"Burning Ivy",15,scr_towerData(80,40,2,_eff_acid,1)), /// 426 d/$
-    array(array(spr_t4_idle,spr_t4_attack,spr_t4_return),"Slender Mandrake",45,scr_towerData(125,125,1,_eff_spikes,3)), /// 1041 d/$
-    array(array(spr_t3_idle,spr_t3_attack,spr_t3_return),"Pina Collider",100,scr_towerData(75,200,1,_eff_xplod,10))  /// 1500 d/$ -- AoE
-);
+/// list of towers - the four the player brought this run
+///
+/// This used to be a literal array of the four towers that existed, which
+/// made "which towers exist" and "which towers are in this run" the same
+/// question.  It is now built from the loadout, so the shop can only ever
+/// offer the towers the player chose, and a tower they have not unlocked
+/// cannot appear at all - which is what the four-slot rule is for
+/// (goal.md 3.1, roadmap 1.3).  The stats live in tower_roster() now.
+tower_array = [];
+var _load       = loadout_current(),
+    _dmg_bonus  = clover_damage_bonus(),
+    _rate_bonus = clover_firerate_bonus(),
+    _armed      = 0;
+
+for(var _ti = 0; _ti < array_length(_load); _ti++){
+    var _entry = tower_entry_find(_load[_ti]);
+    if(is_undefined(_entry)) continue;
+
+    /// the tower's own data, then the garden's permanent bonuses applied
+    /// once.  Phase 2 replaces this with a single resolver that folds
+    /// level, specialization, clovers, candy and auras together in a
+    /// fixed order (economy.md 4.3); until then one multiplication at
+    /// build time is the whole pipeline, and it is enough to prove that
+    /// spending a clover changes what happens in a run.
+    var _data = array_duplicate(_entry.data);
+    _data[TOWER.damage]    = _data[TOWER.damage]    * (1 + _dmg_bonus);
+    _data[TOWER.fire_rate] = _data[TOWER.fire_rate] * (1 + _rate_bonus);
+
+    tower_array[_armed] = array(_entry.sprites, _entry.name, _entry.price, _data);
+    _armed++;
+}
+
+scr_meta_log("LOADOUT", "armed with ", _armed, " towers ", string(_load),
+             " | clover damage +", _dmg_bonus*100, "%",
+             " fire rate +", _rate_bonus*100, "%");
+
+/// ---- badge tracking (roadmap 1.8).  Untouched reads the life left at
+/// the end, but Exterminator needs its own counters: "no life lost" and
+/// "nothing reached the exit, and no straggler had to be force-cleared"
+/// are different questions, and a stage that needed the safety valve in
+/// scr_level_wait() should not earn the exterminator medal.
+level_leaked = 0;
+level_forced = false;
 
 /// calculate position to draw towers
 var _x = 16,

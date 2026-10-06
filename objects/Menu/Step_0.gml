@@ -9,6 +9,9 @@ if(menu_state_next != -1){
     menu_state_next  = -1;
     menu_state_time  = 0;
     print("MENU  now ", scr_menu_state_name(menu_state));
+    /// The entry request is one-shot.  Consume it, so a later return to
+    /// the menu does not bounce straight back to the world map.
+    if(variable_global_exists("menu_entry")) global.menu_entry = MENU_STATE.START;
     scr_menu_debug(id, "state entered");
 } else {
     menu_state_time++;
@@ -95,6 +98,183 @@ switch(menu_state){
         if(menu_state_time > room_speed*0.5){
             audio_stop_all();
             game_end();
+        }
+        break;
+
+    //----------------------------------- the world map (roadmap 1.1)
+    case MENU_STATE.WORLD_MAP:
+        if(menu_state_time == 0){
+            print("MENU  world map  ->  region ", global.region,
+                  " stage ", global.stage, " seeds ", seeds_get());
+        }
+        {
+            var _wgeom = meta_worldmap_geom(),
+                _wclick = mouse_check_button_pressed(mb_left);
+
+            /// a stage node first: it is the biggest target on the screen
+            if(_wclick){
+                var _wnode = meta_worldmap_hit();
+                if(_wnode >= 0){
+                    var _rgn = 1 + (_wnode div 10),
+                        _stg = 1 + (_wnode mod 10);
+                    if(stage_unlocked(_rgn, _stg)){
+                        global.region = _rgn;
+                        global.stage  = _stg;
+                        scr_playSound(snd_button, false);
+                        print("MENU  chose stage ", _rgn, "-", _stg);
+                        scr_menu_changeState(MENU_STATE.DEPLOY);
+                    } else {
+                        print("MENU  stage ", _rgn, "-", _stg, " is locked");
+                    }
+                } else if(meta_button_clicked(_wgeom.garden, true)){
+                    scr_menu_changeState(MENU_STATE.GARDEN);
+                } else if(meta_button_clicked(_wgeom.title, true)){
+                    /// "Title" returns to the start menu, which is the state
+                    /// that owns Start / Options / Quit
+                    scr_menu_changeState(MENU_STATE.START);
+                }
+            }
+        }
+        break;
+
+    //----------------------------------- the deploy screen (roadmap 1.2)
+    case MENU_STATE.DEPLOY:
+        if(menu_state_time == 0){
+            /// re-read what the player actually owns, so the screen always
+            /// opens on a real loadout
+            global.loadout = loadout_current();
+            print("MENU  deploy  ->  region ", global.region,
+                  " stage ", global.stage,
+                  " ", difficulty_name(global.difficulty),
+                  " loadout ", string(global.loadout));
+        }
+        {
+            var _dgeom  = meta_deploy_geom(),
+                _dclick = mouse_check_button_pressed(mb_left);
+
+            if(_dclick){
+                var _dm   = points_to_gui(mouse_x, mouse_y, 0),
+                    _done = false;
+
+                /// 1. difficulty
+                for(var _di = 0; _di < array_length(_dgeom.diffs); _di++){
+                    if(meta_in_rect(_dgeom.diffs[_di], _dm[0], _dm[1])){
+                        global.difficulty = _di;
+                        scr_playSound(snd_button, false);
+                        print("MENU  difficulty -> ", difficulty_name(_di));
+                        _done = true;
+                        break;
+                    }
+                }
+
+                /// 2. the tower wall: toggle a tower in / out of the loadout
+                if(!_done){
+                    var _wrects = meta_deploy_wall();
+                    for(var _wi = 0; _wi < array_length(_wrects); _wi++){
+                        if(meta_in_rect(_wrects[_wi], _dm[0], _dm[1])){
+                            var _roster = tower_roster();
+                            if(_wi < array_length(_roster)){
+                                var _tname = _roster[_wi].name;
+                                if(loadout_toggle(_tname)){
+                                    scr_playSound(snd_button, false);
+                                } else if(!loadout_unlocked(_tname)){
+                                    print("MENU  '", _tname, "' is locked");
+                                } else if(loadout_selected(_tname)){
+                                    print("MENU  loadout is full (",
+                                          loadout_size(), " towers)");
+                                }
+                            }
+                            _done = true;
+                            break;
+                        }
+                    }
+                }
+
+                /// 3. the slots: clicking a slotted tower takes it back out
+                if(!_done){
+                    var _srects = meta_deploy_slots(),
+                        _sload  = loadout_current();
+                    for(var _si = 0; _si < array_length(_srects); _si++){
+                        if(_si < array_length(_sload)
+                           && meta_in_rect(_srects[_si], _dm[0], _dm[1])){
+                            loadout_toggle(_sload[_si]);
+                            scr_playSound(snd_button, false);
+                            _done = true;
+                            break;
+                        }
+                    }
+                }
+
+                /// 4. the two actions.  Deploy is only possible with a full
+                ///    loadout - which the four free starters make always true.
+                if(!_done && meta_button_clicked(_dgeom.deploy,
+                        array_length(loadout_current()) >= loadout_size())){
+                    loadout_set(loadout_current());
+                    scr_save_meta();
+                    print("MENU  deploy!  region ", global.region,
+                          " stage ", global.stage,
+                          " ", difficulty_name(global.difficulty),
+                          " with ", string(loadout_current()));
+                    audio_stop_all();
+                    fadeout(global.startRoom, c_black, 1, 0, 0);
+                    _done = true;
+                }
+                if(!_done && meta_button_clicked(_dgeom.back, true)){
+                    scr_menu_changeState(MENU_STATE.WORLD_MAP);
+                }
+            }
+        }
+        break;
+
+    //----------------------------------- the garden book (roadmap 1.7)
+    case MENU_STATE.GARDEN:
+        if(menu_state_time == 0){
+            print("MENU  garden book  ->  seeds ", seeds_get(),
+                  " clovers ", clovers_get(),
+                  " towers ", tower_owned_count(), "/", array_length(tower_roster()));
+        }
+        {
+            var _ggeom  = meta_garden_geom(),
+                _gclick = mouse_check_button_pressed(mb_left);
+
+            if(_gclick){
+                var _gnode = meta_garden_hit();
+                if(_gnode >= 0){
+                    var _nodes = clover_nodes();
+                    if(_gnode < array_length(_nodes)){
+                        var _nid = _nodes[_gnode].id;
+                        if(clover_buy(_nid)){
+                            scr_playSound(snd_button, false);
+                            scr_save_meta();
+                            print("MENU  bought ", _nid,
+                                  " rank ", clover_rank(_nid),
+                                  " clovers left ", clovers_get());
+                        } else {
+                            print("MENU  cannot buy ", _nid,
+                                  " (next rank ", clover_cost(_nid),
+                                  ", have ", clovers_get(), ")");
+                        }
+                    }
+                } else {
+                    var _shop = meta_garden_shop_hit(),
+                        _all  = tower_roster();
+                    if(_shop >= 0 && _shop < array_length(_all)){
+                        var _sname = _all[_shop].name;
+                        if(tower_unlock(_sname)){
+                            scr_playSound(snd_button, false);
+                            scr_save_meta();
+                            print("MENU  unlocked '", _sname,
+                                  "' seeds left ", seeds_get());
+                        } else if(!tower_owned(_sname)){
+                            print("MENU  cannot unlock '", _sname,
+                                  "' (cost ", tower_unlock_cost(_sname),
+                                  ", have ", seeds_get(), ")");
+                        }
+                    } else if(meta_button_clicked(_ggeom.back, true)){
+                        scr_menu_changeState(MENU_STATE.WORLD_MAP);
+                    }
+                }
+            }
         }
         break;
 

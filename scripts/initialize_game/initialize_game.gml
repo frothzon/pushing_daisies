@@ -21,7 +21,12 @@ function initialize_game() {
 	global.region     = 1;                    /// region, 1..6
 	global.stage      = 1;                    /// stage inside the region, 1..10
 	global.difficulty = DIFFICULTY.NORMAL;    /// see difficulty_data()
-	global.loadout    = [];                   /// the four towers brought in
+	global.loadout    = [];                   /// the four towers brought in - filled once the save is loaded
+
+	/// Which Menu state to open on.  The level sets this before it fades
+	/// back, so a finished stage returns to the world map rather than to
+	/// the title screen (roadmap 1.5).  The Menu resets it as it reads it.
+	global.menu_entry = MENU_STATE.START;
 
 	/// Graphics Settings
 	global.shadowQuality = 1.0;
@@ -34,6 +39,13 @@ function initialize_game() {
 	/// never stop the game starting, so this always hands back a usable
 	/// struct - the worst case is a fresh save.
 	global.meta = scr_load_meta();
+
+	/// The loadout is the four towers the player brought into this run.
+	/// loadout_current() fills it from the save and tops it up from the
+	/// free starters, so it is always four usable towers - including on a
+	/// brand new save, where there is not yet anything to choose between
+	/// (goal.md 3.1).
+	global.loadout = loadout_current();
 
 	audio_channel_num((global.clutterDensity+0.1)*50);
     

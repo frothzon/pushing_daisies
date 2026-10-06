@@ -28,6 +28,10 @@ function scr_level_wait() {
 	        scr_meta_log("PATH", "WARNING: ", instance_number(obj_mon),
 	                     " monster(s) still alive 6s past the wave -",
 	                     " forcing the wave to end so the stage cannot hang");
+	        /// remember it: a stage that needed the valve does not earn the
+	        /// Exterminator badge, which is what keeps that badge distinct
+	        /// from Untouched (roadmap 1.8)
+	        level_forced = true;
 	        with(obj_mon){
 	            instance_destroy();
 	        }

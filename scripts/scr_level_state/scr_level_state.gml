@@ -73,33 +73,56 @@ function scr_level_step() {
 /// meta save, so it is also the first proof that the save works.
 function scr_level_clear() {
 	if(level_state_time == 0){
-		var _row  = stage_current(),
-		    _key  = string(_row.region) + ":" + string(_row.stage),
-		    _won  = global.meta[$ "stages"],
-		    _first = !variable_struct_exists(_won, _key),
-		    _seeds = stage_seed_reward(_row, global.difficulty, _first);
+		var _row    = stage_current(),
+		    _lives  = get_item_value(STATINV.life),
+		    _before = stage_clears(_row.region, _row.stage);
 
-		/// record the clear BEFORE the reward, so a crash between the two
-		/// cannot pay the first-clear bonus twice
-		_won[$ _key] = global.difficulty;
-		global.meta[$ "seeds"] += _seeds;
+		/// seeds: records the clear and pays it in one call - full value on
+		/// a first clear, a quarter of that on a repeat
+		var _seeds   = seeds_award_stage(_row, global.difficulty),
+		    _clovers = clovers_award_stage(_lives, global.difficulty, _before);
 
-		scr_meta_log("SEED", "cleared ", _row.region, "-", _row.stage,
-		             " difficulty=", difficulty_name(global.difficulty),
-		             " first=", _first,
-		             " reward=+", _seeds,
-		             " total=", global.meta[$ "seeds"]);
+		/// badges.  Only the NEW ones go into the banner, so replaying a
+		/// stage does not announce a medal the player already has.
+		///   Untouched    - nothing reached the exit
+		///   Exterminator - that, AND the safety valve never had to fire
+		///   Brutalist    - cleared on Brutal
+		var _earned = "";
+		if(level_leaked == 0){
+			if(badge_award(_row.region, _row.stage, BADGE.UNTOUCHED)){
+				_earned += "   " + badge_name(BADGE.UNTOUCHED);
+			}
+			if(!level_forced
+			   && badge_award(_row.region, _row.stage, BADGE.EXTERMINATOR)){
+				_earned += "   " + badge_name(BADGE.EXTERMINATOR);
+			}
+		}
+		if(global.difficulty == DIFFICULTY.BRUTAL
+		   && badge_award(_row.region, _row.stage, BADGE.BRUTALIST)){
+			_earned += "   " + badge_name(BADGE.BRUTALIST);
+		}
+
+		scr_meta_log("LEVEL", "CLEAR ", _row.region, "-", _row.stage,
+		             " lives=", _lives, " leaked=", level_leaked,
+		             " forced=", level_forced,
+		             " seeds=+", _seeds, " clovers=+", _clovers,
+		             " badges=[", _earned, "]");
 
 		scr_save_meta();
-		show_text  = "STAGE CLEAR";
+
+		show_text     = "STAGE CLEAR   +" + string(_seeds) + " seeds   +"
+		                + string(_clovers) + " clovers" + _earned;
 		level_cleared = false;
+
+		/// the stage is over, so come back to the WORLD MAP rather than the
+		/// title screen (roadmap 1.5).  The Menu reads this as it is
+		/// created, which is the only moment the request can be honoured.
+		global.menu_entry = MENU_STATE.WORLD_MAP;
 	}
 
 	if(level_state_time > 5 && !level_cleared){
-		/// end the stage: back to the menu, which is where Phase 1 will put
-		/// the world map
 		level_cleared = true;
-		scr_meta_log("LEVEL", "fading out to the menu");
+		scr_meta_log("LEVEL", "fading out to the world map");
 		fadeout(rm_menu, c_black, 0.8, 0, 0);
 	}
 }

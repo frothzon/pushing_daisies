@@ -15,7 +15,9 @@ buttons_loaded = false;
 
 /// state machine (plain switch - see the Step event)
 menu_state      = -1;                    /// set on the first step
-menu_state_next = MENU_STATE.START;
+/// Open on whichever screen sent us here - the title screen normally,
+/// but the world map when a stage has just finished (roadmap 1.5).
+menu_state_next = variable_global_exists("menu_entry") ? global.menu_entry : MENU_STATE.START;
 menu_state_prev = -1;
 menu_state_time = 0;
 
