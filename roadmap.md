@@ -439,6 +439,7 @@ fired" only diverge once a stage can fail in a way that is not a leak.
 | 1 | "I can't remove towers" | `loadout_current()` did two jobs — sanitise **and** pad to four — so a removed tower was put straight back | split into `loadout_stored()` (the selection, 0–4) and `loadout_current()` (what a run needs); `loadout_ready()` gates Deploy |
 | 2 | Art and names clipped in the slots | a guessed `0.8` scale, and a name drawn with one unwrapped `draw_text` | `meta_sprite_fit()` (uniform scale, aspect kept), `meta_wrap()` / `meta_text_fit()` (two lines, space-preferred, hyphen only mid-word) |
 | 3 | Start / Options / Quit stayed clickable over the new screens | **`scr_button_index_hide()` had never hidden anything** — `visible = false` only affects the built-in sprite draw, and `_button` has its own Draw event | `scr_draButtonGUI()` and `scr_stpButton()` now exit on `!visible`; the Menu hides the title buttons on the three meta states |
+| 4 | *(found while fixing 1)* a chosen loadout would not survive a relaunch | `initialize_game` set `global.loadout = []` **before** the save was loaded, and `loadout_current()` reads `global.loadout` — so the pad topped up an empty array and the **saved loadout was never read** | read `global.meta["loadout"]` into `global.loadout` **before** calling `loadout_current()` |
 
 **Change 3 is bigger than Phase 1.** It is a project-wide defect: every
 "hidden" button in the game was still drawn, and a hidden one still played
@@ -455,6 +456,7 @@ Return button, which is what that state's `hide` calls always meant.
 | P1-11 | Refill the slot | Deploy enables and the run arms with the four chosen towers |
 | P1-12 | Open the world map / Deploy / Garden | no Start / Options / Quit buttons anywhere on screen |
 | P1-13 | Options, then Return | the title buttons come back and respond |
+| P1-14 | Slot Cannon Tulip, Deploy, quit, relaunch | the Deploy screen still shows Cannon Tulip in the slot (**not** the four starters) |
 
 ---
 

@@ -41,10 +41,18 @@ function initialize_game() {
 	global.meta = scr_load_meta();
 
 	/// The loadout is the four towers the player brought into this run.
-	/// loadout_current() fills it from the save and tops it up from the
-	/// free starters, so it is always four usable towers - including on a
-	/// brand new save, where there is not yet anything to choose between
+	///
+	/// It comes OUT OF THE SAVE - meta_default seeds `loadout` as an empty
+	/// array, so a first run has none - and loadout_current() then tops it
+	/// up from the free starters, so it is always four usable towers
 	/// (goal.md 3.1).
+	///
+	/// THE ORDER MATTERS.  loadout_current() reads global.loadout, so
+	/// global.loadout has to be filled from the save BEFORE it is called -
+	/// otherwise the pad reads the empty array it was just handed, and
+	/// silently replaces a real loadout with the starters on every launch.
+	global.loadout = is_array(global.meta[$ "loadout"])
+	                 ? global.meta[$ "loadout"] : [];
 	global.loadout = loadout_current();
 
 	audio_channel_num((global.clutterDensity+0.1)*50);
