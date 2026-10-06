@@ -5,13 +5,22 @@
 /// shown locked with their unlock requirement, so the whole fleet is visible
 /// from the first minute - an aspirational wall, not a hidden list.
 ///
-/// On a brand new save the four starters auto-fill every slot.  The screen is
-/// STILL shown, with nothing to choose, because that is how the rule is
-/// taught: the player sees the four slots and the locked towers before they
-/// have any choice about either.
+/// On a brand new save the four starters pre-fill every slot, so there is
+/// something to remove before there is anything to add.
 ///
-/// The rule only works if four towers are always available, which is why the
-/// starters are free and cannot be sold, lost or deselected.
+/// THE SELECTION AND A LEGAL RUN ARE TWO DIFFERENT QUESTIONS
+/// --------------------------------------------------------
+///   loadout_stored()   what the player has actually slotted.  ALLOWED TO BE
+///                      SHORT, OR EMPTY.  This is what the Deploy screen
+///                      edits and draws.
+///   loadout_current()  what a run needs: exactly four - the stored selection
+///                      topped up from the starters.
+///
+/// Keeping them apart is what makes clearing a slot possible.  When one
+/// function did both jobs it re-filled every slot it was asked about, so
+/// removing a tower appeared to do nothing - the pad put it straight back.
+/// What stops an empty loadout reaching a stage is the Deploy button, which
+/// stays disabled until all four slots are filled again.
 
 /// How many towers a loadout holds.
 function loadout_size() {
@@ -49,45 +58,58 @@ function loadout_unlocked(_name) {
 	return variable_struct_exists(_owned, _name);
 }
 
-/// The current loadout, cleaned so that it always holds exactly
-/// `loadout_size()` usable, unlocked, non-duplicated tower names.
+/// The player's SELECTION, cleaned: unlocked, no duplicates, never more than
+/// loadout_size() - but NOT padded.  It may be shorter than four, or empty.
 ///
-/// This is the function every other reader calls, so no caller ever has to
-/// sanitise a loadout itself - a save that names a tower this build does not
-/// have, or a loadout left short by an old version, still yields four towers.
-function loadout_current() {
+/// On a fresh game this is the four starters, because initialize_game seeds
+/// global.loadout with loadout_current() once, at boot.
+function loadout_stored() {
 	var _size = loadout_size(),
 	    _out  = [],
 	    _src  = (variable_global_exists("loadout") && is_array(global.loadout))
 	            ? global.loadout : [];
 
-	/// 1. keep the saved four, if they are still valid and unlocked
 	for(var _i = 0; _i < array_length(_src); _i++){
 		if(array_length(_out) >= _size) break;
 		var _n = _src[_i];
-		if(!is_string(_n))            continue;
-		if(!loadout_unlocked(_n))     continue;
-		if(loadout_has(_out, _n))     continue;
+		if(!is_string(_n))        continue;
+		if(!loadout_unlocked(_n)) continue;
+		if(loadout_has(_out, _n)) continue;
 		_out[array_length(_out)] = _n;
 	}
+	return _out;
+}
 
-	/// 2. top up from the starters (always present, always unlocked)
-	var _fill = loadout_starters();
+/// What a RUN needs: exactly loadout_size() towers - the stored selection,
+/// topped up from the free starters.
+///
+/// A stage can only be deployed to with a full loadout, so in practice this
+/// never has to top anything up; the pad is the proof that the four-slot
+/// guarantee holds even against a hand-edited save.
+function loadout_current() {
+	var _size = loadout_size(),
+	    _out  = loadout_stored(),
+	    _fill = loadout_starters();
+
 	for(var _i = 0; _i < array_length(_fill); _i++){
 		if(array_length(_out) >= _size) break;
 		if(loadout_has(_out, _fill[_i])) continue;
 		_out[array_length(_out)] = _fill[_i];
 	}
 
-	/// 3. last resort, only reachable if the starter list itself were empty.
-	///    A loadout must never be short: four slots are promised.
+	/// last resort, reachable only if the starter list itself were empty
 	while(array_length(_out) < _size && array_length(_fill) > 0){
 		_out[array_length(_out)] = _fill[0];
 	}
 	return _out;
 }
 
-/// Write a loadout into the save and mirror it into the global the rest of
+/// Is the selection ready to deploy?  Only a full one is.
+function loadout_ready() {
+	return array_length(loadout_stored()) >= loadout_size();
+}
+
+/// Write a selection into the save and mirror it into the global the rest of
 /// the game reads.  The caller is responsible for calling scr_save_meta();
 /// this only changes the in-memory state, so a half-finished edit on the
 /// Deploy screen is not written to disk every frame.
@@ -100,22 +122,22 @@ function loadout_set(_arr) {
 	return true;
 }
 
-/// Add or remove one tower from the live loadout - the Deploy screen's click.
+/// Add or remove one tower - the Deploy screen's click.
 ///
-/// Locked towers are refused.  Removing the last tower is refused too: a run
-/// with no towers is not a run, and the four-slot guarantee exists so that
-/// cannot happen.
+/// Removing the LAST tower is allowed on purpose: clearing a slot is how a
+/// player tries a different tower, and a screen that refuses to empty is a
+/// screen you cannot experiment on.  Adding one to a full loadout is still
+/// refused, because four is the limit.
 function loadout_toggle(_name) {
 	if(!loadout_unlocked(_name)) return false;
 
-	var _cur = loadout_current(),
+	var _cur = loadout_stored(),
 	    _at  = -1;
 	for(var _i = 0; _i < array_length(_cur); _i++){
 		if(_cur[_i] == _name){ _at = _i; break; }
 	}
 
 	if(_at >= 0){
-		if(array_length(_cur) <= 1) return false;
 		/// rebuild without the one at _at (array_delete is not available here)
 		var _new = [];
 		for(var _i = 0; _i < array_length(_cur); _i++){
@@ -127,11 +149,14 @@ function loadout_toggle(_name) {
 		_cur[array_length(_cur)] = _name;
 		loadout_set(_cur);
 	}
-	scr_meta_log("LOADOUT", _name, " -> ", string(loadout_current()));
+
+	var _now = loadout_stored();
+	scr_meta_log("LOADOUT", _name, " -> ", string(_now),
+	             " (", array_length(_now), "/", loadout_size(), ")");
 	return true;
 }
 
-/// Is this tower in the current loadout?
+/// Is this tower in the current selection?  (Drives the wall highlight.)
 function loadout_selected(_name) {
-	return loadout_has(loadout_current(), _name);
+	return loadout_has(loadout_stored(), _name);
 }

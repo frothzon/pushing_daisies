@@ -2,7 +2,15 @@
 function scr_draButtonGUI() {
 	/*
 	    draw the button
+
+	    `visible` has to be checked HERE.  An object with its own Draw
+	    event does not get the built-in sprite draw, so `visible = false`
+	    suppresses nothing on its own - which is why
+	    scr_button_index_hide() never actually hid a button until this
+	    line existed.
 	*/
+	if(!visible) exit;
+
 	var _tx = x + sprite_width*0.5,
 	    _ty = y + sprite_height*0.5,
 	    _offset = array(0,0);

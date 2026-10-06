@@ -1,9 +1,15 @@
 /// @description  scr_stpButton();
 function scr_stpButton() {
 	/*
-	    Update button appearance 
+	    Update button appearance
 	    and run code when clicked
+
+	    A hidden button is not a button: it must not hover, must not play
+	    the click sound, and must not be able to run its script.  Only
+	    `active` stopped the script before, so a hidden button would still
+	    beep when clicked through.
 	*/
+	if(!visible) exit;
 
 
 

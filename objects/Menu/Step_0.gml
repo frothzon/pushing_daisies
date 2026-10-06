@@ -12,6 +12,20 @@ if(menu_state_next != -1){
     /// The entry request is one-shot.  Consume it, so a later return to
     /// the menu does not bounce straight back to the world map.
     if(variable_global_exists("menu_entry")) global.menu_entry = MENU_STATE.START;
+
+    /// The title buttons belong to the START screen alone.  Hide them the
+    /// moment a meta screen takes the input, or a click aimed at a stage
+    /// node lands on Start / Options / Quit underneath it.  This is what
+    /// scr_button_index_hide was always meant to do: the buttons' Draw
+    /// event used to ignore `visible`, so hiding one never worked.
+    switch(menu_state){
+        case MENU_STATE.WORLD_MAP:
+        case MENU_STATE.DEPLOY:
+        case MENU_STATE.GARDEN:
+            for_array(menu_button,  scr_button_index_hide);
+            for_array(menu_options, scr_button_index_hide);
+            break;
+    }
     scr_menu_debug(id, "state entered");
 } else {
     menu_state_time++;
@@ -140,9 +154,11 @@ switch(menu_state){
     //----------------------------------- the deploy screen (roadmap 1.2)
     case MENU_STATE.DEPLOY:
         if(menu_state_time == 0){
-            /// re-read what the player actually owns, so the screen always
-            /// opens on a real loadout
-            global.loadout = loadout_current();
+            /// Re-read what the player actually owns.  loadout_stored(),
+            /// NOT loadout_current(): the editor must see the selection as
+            /// it is, empty slots and all.  Padding it here is exactly what
+            /// used to undo a removal the moment the screen reopened.
+            global.loadout = loadout_stored();
             print("MENU  deploy  ->  region ", global.region,
                   " stage ", global.stage,
                   " ", difficulty_name(global.difficulty),
@@ -193,7 +209,7 @@ switch(menu_state){
                 /// 3. the slots: clicking a slotted tower takes it back out
                 if(!_done){
                     var _srects = meta_deploy_slots(),
-                        _sload  = loadout_current();
+                        _sload  = loadout_stored();
                     for(var _si = 0; _si < array_length(_srects); _si++){
                         if(_si < array_length(_sload)
                            && meta_in_rect(_srects[_si], _dm[0], _dm[1])){
@@ -205,19 +221,30 @@ switch(menu_state){
                     }
                 }
 
-                /// 4. the two actions.  Deploy is only possible with a full
-                ///    loadout - which the four free starters make always true.
-                if(!_done && meta_button_clicked(_dgeom.deploy,
-                        array_length(loadout_current()) >= loadout_size())){
-                    loadout_set(loadout_current());
-                    scr_save_meta();
-                    print("MENU  deploy!  region ", global.region,
-                          " stage ", global.stage,
-                          " ", difficulty_name(global.difficulty),
-                          " with ", string(loadout_current()));
-                    audio_stop_all();
-                    fadeout(global.startRoom, c_black, 1, 0, 0);
-                    _done = true;
+                /// 4. the two actions.  Deploy needs a FULL loadout, so
+                ///    clearing a slot and walking away cannot start an
+                ///    unwinnable run.  A greyed button still answers a
+                ///    click - with a reason - so it is never silent.
+                if(!_done){
+                    if(loadout_ready()
+                       && meta_button_clicked(_dgeom.deploy, true)){
+                        loadout_set(loadout_stored());
+                        scr_save_meta();
+                        print("MENU  deploy!  region ", global.region,
+                              " stage ", global.stage,
+                              " ", difficulty_name(global.difficulty),
+                              " with ", string(loadout_stored()));
+                        audio_stop_all();
+                        fadeout(global.startRoom, c_black, 1, 0, 0);
+                        _done = true;
+                    } else if(!loadout_ready()
+                       && meta_button_clicked(_dgeom.deploy, true)){
+                        print("MENU  deploy blocked - ",
+                              array_length(loadout_stored()), "/",
+                              loadout_size(), " slots filled ",
+                              string(loadout_stored()));
+                        _done = true;
+                    }
                 }
                 if(!_done && meta_button_clicked(_dgeom.back, true)){
                     scr_menu_changeState(MENU_STATE.WORLD_MAP);

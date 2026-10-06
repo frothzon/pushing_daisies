@@ -96,36 +96,29 @@ function meta_draw_tower_wall(_x, _y, _cell, _cols) {
 		if(!_unlocked) _bg = make_colour_rgb(24, 24, 28);
 		meta_panel(_cx, _cy, _w, _h, _bg, _selected ? c_lime : c_black);
 
-		/// the sprite, greyed when locked.  sprite_exists is not decoration:
-		/// a sprite that is not there would make draw_sprite_ext fatal
-		/// (LL-012), and a future roster entry might land before its art.
-		var _spr = _e.sprites[0];
-		if(sprite_exists(_spr)){
-			var _sw = sprite_get_width(_spr),
-			    _sh = sprite_get_height(_spr),
-			    _sc = min(1, 44 / max(_sw, 1), 44 / max(_sh, 1));
-			draw_set_alpha(_unlocked ? 1 : 0.6);
-			draw_sprite_ext(_spr, 0, _cx + _w*0.5, _cy + 30, _sc, _sc, 0,
-			                _unlocked ? c_white : c_gray, 1);
-			draw_set_alpha(1);
-		}
+		/// the sprite, MEASURED rather than a guessed scale, and greyed when
+		/// locked.  meta_sprite_fit keeps the aspect ratio and checks
+		/// sprite_exists itself (LL-012).
+		meta_sprite_fit(_e.sprites[0], _cx + _w*0.5, _cy + 34, _w - 12, 52,
+		                _unlocked ? c_white : c_gray, _unlocked ? 1 : 0.6);
 
-		draw_set_halign(fa_center);
-		draw_set_colour(_unlocked ? c_white : c_dkgray);
-		draw_text(_cx + _w*0.5, _cy + _h - 30, _e.name);
+		/// the name, wrapped onto a second line if it will not fit on one -
+		/// see meta_wrap.  The font must be set before measuring.
+		draw_set_font(fnt_debug);
+		meta_text_fit(_cx + _w*0.5, _cy + 64, _e.name,
+		              _unlocked ? c_white : c_dkgray, fa_center, _w - 8, 11);
 
 		if(!_unlocked){
 			/// say WHY it is locked, not merely that it is
-			draw_set_colour(c_silver);
 			var _req;
 			if(_e.gate > 0 && !region_cleared(_e.gate)){
 				_req = "Clear region " + string(_e.gate);
 			} else {
 				_req = string(_e.unlock) + " seeds";
 			}
-			draw_text(_cx + _w*0.5, _cy + _h - 18, _req);
+			meta_text_fit(_cx + _w*0.5, _cy + 92, _req,
+			              c_silver, fa_center, _w - 8, 10);
 		}
-		draw_set_halign(fa_left);
 
 		_out[_i] = [_cx, _cy, _cx + _w, _cy + _h];
 	}
@@ -359,7 +352,8 @@ function meta_draw_deploy() {
 	var _g     = meta_deploy_geom(),
 	    _row   = stage_get(global.region, global.stage),
 	    _slots = meta_deploy_slots(),
-	    _load  = loadout_current();
+	    /// the SELECTION, not what a run needs: a slot may be empty
+	    _load  = loadout_stored();
 
 	meta_title("Deploy");
 	meta_currency_line(80, 24);
@@ -411,21 +405,21 @@ function meta_draw_deploy() {
 		           (_nm == "") ? c_black : c_silver);
 
 		var _e = tower_entry_find(_nm);
-		if(!is_undefined(_e) && sprite_exists(_e.sprites[0])){
-			draw_sprite_ext(_e.sprites[0], 0, (_sr[0]+_sr[2])*0.5, _sr[1] + 44,
-			                0.8, 0.8, 0, c_white, 1);
+		if(!is_undefined(_e)){
+			meta_sprite_fit(_e.sprites[0], (_sr[0]+_sr[2])*0.5, _sr[1] + 36,
+			                _g.slot_w - 14, 58, c_white, 1);
 		}
 		draw_set_font(fnt_debug);
-		draw_set_halign(fa_center);
-		draw_set_colour((_nm == "") ? c_dkgray : c_white);
-		draw_text((_sr[0]+_sr[2])*0.5, _sr[3] - 22, (_nm == "") ? "empty" : _nm);
-		draw_set_halign(fa_left);
+		meta_text_fit((_sr[0]+_sr[2])*0.5, _sr[3] - 40,
+		              (_nm == "") ? "empty" : _nm,
+		              (_nm == "") ? c_silver : c_white,
+		              fa_center, _g.slot_w - 10, 11);
 	}
 
 	/// ---- the actions.  Deploy is refused when a slot is empty, which the
 	/// four free starters make unreachable - so the guard is the proof that
 	/// the guarantee holds rather than a screen the player will ever see.
-	var _ready = (array_length(loadout_current()) >= loadout_size());
+	var _ready = loadout_ready();
 	meta_button_draw(_g.deploy, "Deploy", _ready);
 	meta_button_draw(_g.back,   "Back",   true);
 	if(!_ready){
@@ -564,4 +558,105 @@ function meta_draw_garden() {
 	}
 
 	meta_button_draw(_g.back, "Return", true);
+}
+
+//==============================================================================
+// FITTING THINGS INTO BOXES
+//==============================================================================
+//
+// Both the tower wall and the four loadout slots are fixed-size boxes holding
+// content of variable size: six towers with six different silhouettes and six
+// different name lengths.  Measuring, rather than guessing a scale and hoping,
+// is the difference between a grid that reads and one that clips.
+
+/// Draw a sprite scaled to fit a box, centred, KEEPING ITS ASPECT RATIO.
+///
+/// A tower stretched to fill a wide slot reads as a DIFFERENT tower - the
+/// silhouette is half of how a tower is recognised - so the scale is uniform:
+/// the smaller of the two ratios, never more than 1, so a small sprite is not
+/// blown up into a blur.
+///
+/// `sprite_exists` is not decoration.  A sprite that is not there makes a raw
+/// draw_sprite_ext fatal (LL-012), and a future roster entry can land before
+/// its art does.
+///
+/// Returns the scale used, or 0 when it drew nothing.
+function meta_sprite_fit(_spr, _cx, _cy, _maxw, _maxh, _blend, _alpha) {
+	if(!sprite_exists(_spr)) return 0;
+
+	var _sw = max(sprite_get_width(_spr), 1),
+	    _sh = max(sprite_get_height(_spr), 1),
+	    _sc = min(_maxw / _sw, _maxh / _sh);
+
+	draw_sprite_ext(_spr, 0, _cx, _cy, _sc, _sc, 0, _blend, _alpha);
+	return _sc;
+}
+
+/// Break `_text` into at most `_max_lines` pieces, each of which fits `_maxw`
+/// where that is possible.  Prefers a space; breaks mid-word with a hyphen
+/// only when there is no space available.
+///
+/// THE LAST LINE TAKES WHATEVER IS LEFT, even if that overflows the box, so no
+/// character is ever dropped.  A tower name is not negotiable content, and a
+/// name silently truncated to fit is worse than a name that spills.
+///
+/// Uses the font that is currently set - so set the font first.
+function meta_wrap(_text, _maxw, _max_lines) {
+	var _out = [],
+	    _n   = string_length(_text);
+
+	if(_n <= 0)      return [""];
+	if(_max_lines <= 1) return [_text];
+	if(string_width(_text) <= _maxw) return [_text];
+
+	var _i = 1;
+	while(_i <= _n && array_length(_out) < _max_lines){
+		var _last = (array_length(_out) == _max_lines - 1);
+
+		/// how far can we get from _i, and was there a space on the way?
+		var _fit = _i - 1,   /// last index whose text still fits
+		    _spc = -1;       /// last index that is a space AND fits
+		for(var _j = _i; _j <= _n; _j++){
+			if(string_width(string_copy(_text, _i, _j - _i + 1)) > _maxw) break;
+			_fit = _j;
+			if(string_copy(_text, _j, 1) == " ") _spc = _j;
+		}
+		if(_fit < _i) _fit = _i;   /// not even one character fits - take it
+
+		var _end    = _fit,
+		    _hyphen = false;
+
+		if(_last){
+			_end = _n;                     /// the last line takes the rest
+		} else if(_spc > _i){
+			_end = _spc - 1;               /// break cleanly at the space
+		} else if(_fit < _n){
+			_hyphen = true;                /// mid-word: mark the break
+		}
+
+		_out[array_length(_out)] =
+		    string_copy(_text, _i, _end - _i + 1) + (_hyphen ? "-" : "");
+
+		/// next segment, skipping the space we broke at
+		_i = _end + 1;
+		while(_i <= _n && string_copy(_text, _i, 1) == " ") _i++;
+	}
+
+	if(array_length(_out) == 0) _out[0] = _text;
+	return _out;
+}
+
+/// Draw text that has to fit inside `_maxw`, wrapping to at most two lines.
+/// Returns how many lines it used, so a caller can lay out what follows.
+function meta_text_fit(_x, _y, _text, _col, _align, _maxw, _linegap) {
+	draw_set_colour(_col);
+	draw_set_halign(_align);
+
+	var _lines = meta_wrap(_text, _maxw, 2);
+	for(var _i = 0; _i < array_length(_lines); _i++){
+		draw_text(_x, _y + _i * _linegap, _lines[_i]);
+	}
+
+	draw_set_halign(fa_left);
+	return array_length(_lines);
 }
