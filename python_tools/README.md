@@ -63,6 +63,12 @@ python -m gm new-object obj_enemy --sprite spr_mon --parent obj_mon_base
 
 # Verify every .yy/.yyp round-trips byte-for-byte
 python -m gm roundtrip
+
+# The progress tracker (progress.json -> PROGRESS.md + progress.html)
+python -m gm progress            # check: valid, and the views match the JSON
+python -m gm progress build      # regenerate both views
+python -m gm progress list       # a compact board in the terminal
+python -m gm progress set <id> status=done
 ```
 
 Add `-p /path/to/project` (or `--project`) to any command to point at a
@@ -136,6 +142,7 @@ contains both LF and CRLF `.gml` files).
 | `gm/gml.py` | GML read/write plus function-level editing |
 | `gm/events.py` | `eventType`/`eventNum` ↔ `Create_0.gml` mapping |
 | `gm/project.py` | `Project`, `Resource`, key-path helpers, creation helpers |
+| `gm/progress.py` | The progress tracker: schema, validation, the two generated views |
 | `gm/cli.py`, `gm/__main__.py` | `python -m gm ...` command line interface |
 | `tests/test_gm.py` | Round-trip and editing tests |
 

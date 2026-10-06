@@ -33,6 +33,25 @@ function difficulty_current() {
 	return _rows[clamp(_d, 0, array_length(_rows) - 1)];
 }
 
+/// ---- what the current difficulty DOES -------------------------------------
+///
+/// These columns used to be inert: nothing called difficulty_current(), so
+/// Normal / Hard / Brutal differed only in payout.  A difficulty that does not
+/// change the fight is not a difficulty.  They are now read where they belong:
+///
+///   hp    -> scr_level_difficulty   (monster life)
+///   speed -> scr_zomb_pathSpeed     (path speed)
+///   count -> scr_level_spawn        (extra zombies per wave)
+///   money -> scr_zomb_death         (kill payout)
+///   life  -> _levelControl/Create   (starting money - the column is named
+///                                    `life` in difficulty_row, which is a
+///                                    legacy of money once being called life)
+function difficulty_hp_mult()     { return difficulty_current().hp;    }
+function difficulty_speed_mult()  { return difficulty_current().speed; }
+function difficulty_count_bonus() { return difficulty_current().count; }
+function difficulty_money_mult()  { return difficulty_current().money; }
+function difficulty_start_money_mult() { return difficulty_current().life; }
+
 function difficulty_name(_d) {
 	var _rows = difficulty_data();
 	return _rows[clamp(_d, 0, array_length(_rows) - 1)].name;

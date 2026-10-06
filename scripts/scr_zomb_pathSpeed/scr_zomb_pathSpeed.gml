@@ -37,10 +37,13 @@ function scr_zomb_pathSpeed() {
 	_spd += .01*_wave;
 
 	///------------------ Move forward, if collision move backwards
+	/// the difficulty column scales speed too (goal.md 2): a "harder" stage
+	/// that only adds HP is a longer stage, not a harder one
+	var _spd_mult = difficulty_speed_mult();
 	if(path_free){
-	    path_speed = _spd*data[MON.speed];
+	    path_speed = _spd*data[MON.speed]*_spd_mult;
 	} else {
-	    path_speed = -_spd*data[MON.speed];
+	    path_speed = -_spd*data[MON.speed]*_spd_mult;
 	}
 
 

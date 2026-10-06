@@ -2,8 +2,13 @@
 function scr_iniLighting() {
 
 
-	/// create shadow object
-	instance_create_depth(0,0,-50,_shadows);
+	/// create the shadow renderer, but only once.  It is persistent, so a
+	/// later level - which re-runs startup, and therefore this script - must
+	/// reuse the instance that survived instead of stacking one more shadow
+	/// pass on top of it every level (LL-020).
+	if(!instance_exists(_shadows)){
+	    instance_create_depth(0,0,-50,_shadows);
+	}
 
 	/// Static Values
 	shadow_distance     = 80;   /// appx shadow length

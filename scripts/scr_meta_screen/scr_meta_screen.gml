@@ -253,14 +253,22 @@ function meta_draw_worldmap() {
 		draw_set_halign(fa_left);
 
 		for(var _s = 1; _s <= 10; _s++){
+			/// every node resolves through the ONE level list, so a node with
+			/// no authored level is drawn but is inert - it can never be
+			/// hovered or entered (the Menu Step gates the click on
+			/// level_exists()).  Nothing on the map is created by the map.
 			var _idx  = (_r-1)*10 + (_s-1),
 			    _rect = _rc[_idx],
-			    _open = stage_unlocked(_r, _s),
-			    _done = stage_cleared(_r, _s),
-			    _hov  = meta_in_rect(_rect, _m[0], _m[1]);
+			    _lvl  = level_get(_r, _s),
+			    _has  = !is_undefined(_lvl),
+			    _open = (_has && stage_unlocked(_r, _s)),
+			    _done = (_has && stage_cleared(_r, _s)),
+			    _hov  = (_has && meta_in_rect(_rect, _m[0], _m[1]));
 
-			/// done is green, open is grey-blue, locked is very dark
-			var _bg = make_colour_rgb(28, 28, 34);
+			/// done is green, open is grey-blue, locked is very dark, and a
+			/// node with no level is darkest of all
+			var _bg = make_colour_rgb(20, 20, 24);
+			if(_has)  _bg = make_colour_rgb(28, 28, 34);
 			if(_open) _bg = make_colour_rgb(52, 56, 70);
 			if(_done) _bg = make_colour_rgb(46, 92, 50);
 			if(_open && _hov) _bg = make_colour_rgb(84, 92, 120);
@@ -271,8 +279,10 @@ function meta_draw_worldmap() {
 			draw_set_font(fnt_debug);
 			draw_set_halign(fa_center);
 			draw_set_colour(_open ? c_white : c_dkgray);
+			/// a node with no level shows a dash, not a stage number: the
+			/// number would promise a stage that does not exist
 			draw_text((_rect[0]+_rect[2])*0.5, (_rect[1]+_rect[3])*0.5 - 8,
-			          string(_s));
+			          _has ? string(_s) : "-");
 			draw_set_halign(fa_left);
 
 			/// a cleared node shows the medals it earned, so the map doubles
@@ -287,20 +297,25 @@ function meta_draw_worldmap() {
 		}
 	}
 
-	/// spell out whatever the pointer is over
+	/// spell out whatever the pointer is over.  A node with no level says so
+	/// rather than pretending to be merely locked.
 	var _hit = meta_worldmap_hit();
 	if(_hit >= 0){
 		var _hr = 1 + (_hit div 10),
 		    _hs = 1 + (_hit mod 10),
-		    _row = stage_get(_hr, _hs),
+		    _lvl = level_get(_hr, _hs),
 		    _bar = _g.y0 + 6*_g.ch + 10;
 		meta_panel(_g.x0, _bar, 460, 30, make_colour_rgb(20, 20, 24), c_black);
 		draw_set_font(fnt_debug);
-		if(stage_unlocked(_hr, _hs) && !is_undefined(_row)){
+		if(is_undefined(_lvl)){
 			meta_text(_g.x0 + 8, _bar + 6,
-			          "Stage " + string(_hr) + "-" + string(_hs) +
-			          "   waves " + string(_row.waves) +
-			          "   seeds " + string(_row.seeds) +
+			          "Region " + string(_hr) + " is not available yet",
+			          c_dkgray, fa_left);
+		} else if(stage_unlocked(_hr, _hs)){
+			meta_text(_g.x0 + 8, _bar + 6,
+			          _lvl.label() +
+			          "   waves " + string(_lvl.waves) +
+			          "   seeds " + string(_lvl.seeds) +
 			          (stage_cleared(_hr, _hs) ? "   cleared" : ""),
 			          c_white, fa_left);
 		} else {

@@ -5,6 +5,15 @@ function scr_drawShadows() {
 
 	var _scale = clamp(global.shadowQuality,0.1,1);
 
+	/// _shadows is persistent, but the _dayCycle it reads is not, and is created
+	/// late in startup - so for the first frames of every level (and in any room
+	/// with no cycle) there is nothing to derive a shadow from.  Draw nothing
+	/// rather than throw on _DAY.shadow_offset (LL-020); the pass resumes the
+	/// frame _dayCycle exists again.
+	if(!instance_exists(_dayCycle)){
+	    return;
+	}
+
 	if(!surface_exists(shadow_surf)){
 	    shadow_surf = surface_create(__view_get( e__VW.WView, 0 )*_scale,__view_get( e__VW.HView, 0 )*_scale);
 	}

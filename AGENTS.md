@@ -7,7 +7,17 @@ Most of the bugs here come from that gap.
 
 ---
 
-## 0. START HERE — consult `lessons_learned.md` before you debug
+## 0. START HERE
+
+### 0.1 What are we working on?
+
+**Read [`progress.json`](./progress.json) first — the `focus` block, and every
+card with `"awaiting": "rayu"`.** That is the standing answer to "what is on the
+board?", and the top strip of [`progress.html`](./progress.html) is the same
+answer rendered. Work that is not on the board gets a card before it gets code
+(§6).
+
+### 0.2 Consult `lessons_learned.md` before you debug
 
 **Before forming a theory about any bug, read
 [`lessons_learned.md`](./lessons_learned.md).**
@@ -37,7 +47,7 @@ so a symptom match means you are almost certainly looking at the same bug.
 
 ## 1. Working rules (non-negotiable)
 
-These six rules each exist because breaking them cost hours. Each links to the
+These seven rules each exist because breaking them cost hours. Each links to the
 lesson that explains why.
 
 | # | Rule | Lesson |
@@ -48,6 +58,7 @@ lesson that explains why.
 | 4 | **Never add a script whose name matches a GameMaker built-in** | [LL-005](./lessons_learned.md#ll-005) |
 | 5 | **A diagnostic must never be able to throw** — guard every variable a log line reads | [LL-002](./lessons_learned.md#ll-002) |
 | 6 | **Pass what a function needs as arguments; read another instance's variables only inside `with()`** | [LL-003](./lessons_learned.md#ll-003) |
+| 7 | **Keep [`progress.json`](./progress.json) true, in the same task** — it is the answer to "what are we doing?". Update it, then `gm progress build`. | [§6](#6-the-progress-tracker) |
 
 ### 1.1 GameMaker holds the files
 The IDE keeps resources in memory and rewrites `.yy`, `.yyp`, `.resource_order`
@@ -57,10 +68,13 @@ edit, ask the user to close the project; before they test, ask them to reload it
 
 ### 1.2 Version control
 A local repo was initialised on **2026-10-03** (`git init -b main`, one initial
-commit, 2425 files). It has **no remote**, so "undo" goes back exactly one
-commit. `.gitignore` already excludes `*.resource_order` and `Build`. Still copy
-anything you are about to restructure into `/tmp`
-(`/tmp/menu_refactor_backup/`, `/tmp/gmfix_backup/` are from previous sessions).
+commit, 2425 files). It has **one commit and no history**, so "undo" goes back to
+the start of the session, not one step — copy anything you are about to
+restructure into `/tmp` first (`/tmp/menu_refactor_backup/`,
+`/tmp/gmfix_backup/` are from previous sessions). `origin` is
+`github.com/frothzon/pushing_daisies`; pushes are the owner's call. `.gitignore`
+excludes `*.resource_order` and `Build`, so a clean checkout has no
+`.resource_order` until GameMaker writes one.
 
 ### 1.3 Line endings
 Measure before you assume. The 465 `.gml` files are **375 LF-only | 89 mixed |
@@ -84,11 +98,11 @@ Full EOL census commands: [LL-006](./lessons_learned.md#ll-006).
 cd /home/rayu/GameMakerProjects/pushing_daisies_recovered
 
 # 1. every .yy/.yyp/.resource_order round-trips byte-for-byte
-#    expect: 566 file(s) round-trip byte-for-byte, 0 differ
+#    expect: 595 file(s) round-trip byte-for-byte, 0 differ
 PYTHONPATH=python_tools python3 -m gm roundtrip
 
 # 2. toolkit test suite
-#    expect: Ran 16 tests ... OK
+#    expect: Ran 32 tests ... OK
 PYTHONPATH=python_tools python3 -m unittest discover -s python_tools/tests
 
 # 3. the GML you changed still parses, and has the functions you expect
@@ -99,6 +113,10 @@ PYTHONPATH=python_tools python3 -m gm list GMScript       # spot built-in collis
 
 # 4. no stray escapes in the files you touched (each must print 0)
 grep -cF '\r' objects/Menu/Step_0.gml
+
+# 5. the tracker still describes reality (section 6)
+#    expect: "progress.json, PROGRESS.md and progress.html agree"
+PYTHONPATH=python_tools python3 -m gm progress check
 ```
 
 **Green tooling is not a fix.** The real gate is a run with
@@ -119,6 +137,7 @@ the exact log lines to look for, and name what would falsify your fix.
 | Fade | `scripts/{fadeout,ini_fadeout,draw_fadeout,draw_reset}`, `objects/_fadeout/` |
 | Globals | `scripts/initialize_game/initialize_game.gml` — `global.devMode`, `global.saveName`, `global.startRoom` |
 | Logging | `scripts/print/print.gml` (already gated on `global.devMode`) |
+| **Progress tracker** | `progress.json` (source) → `PROGRESS.md`, `progress.html` (generated) — §6 |
 | Python toolkit | `python_tools/` — read `python_tools/README.md` first |
 
 **Legacy state machines that are NOT yet migrated** (they still use
@@ -172,4 +191,62 @@ A task is finished only when **all** of these are true:
 - [ ] The change has been described in terms of **what the user should see in the
       log** when they reload and run — including what would prove it *didn't* work.
 - [ ] No debug logging was left that can throw (LL-002).
+- [ ] `progress.json` updated for this task, and `gm progress check` is green (§6).
+
+---
+
+## 6. The progress tracker
+
+Three files at the repo root, and only **one** of them is ever edited:
+
+| File | What it is |
+| --- | --- |
+| `progress.json` | **The source of truth.** Cards and their fields, nothing else. |
+| `PROGRESS.md` | **Generated.** Renders on GitHub and at the top of the project. |
+| `progress.html` | **Generated.** The board: kanban columns, with a "waiting on you" strip on top. |
+
+```bash
+PYTHONPATH=python_tools python3 -m gm progress                     # check - this is the gate
+PYTHONPATH=python_tools python3 -m gm progress build               # regenerate both views
+PYTHONPATH=python_tools python3 -m gm progress list --awaiting rayu
+PYTHONPATH=python_tools python3 -m gm progress set econ-rung-price status=done
+PYTHONPATH=python_tools python3 -m gm progress add fix-thing title="Fix the thing" area=code
+```
+
+Editing the JSON by hand is fine — the gate catches typos — but `gm progress set`
+keeps the canonical key order, which keeps the diffs small. Every generated file
+carries a `progress-sha`, and `check` **fails** when any of the three disagree,
+so "forgot to rebuild" is a red gate rather than a stale board.
+
+### 6.1 The fields that matter
+
+| Field | Values | Meaning |
+| --- | --- | --- |
+| `status` | `backlog` `next` `doing` `review` `done` | where the work is |
+| `awaiting` | `rayu` `cline` `none` `external` | **whose turn it is** |
+| `owner` | `rayu` `cline` `both` | who does the work |
+| `area` | `code` `art` `sound` `design` `docs` `tools` `data` | what kind of work |
+| `needs` | one line | **what the awaited person must actually do** |
+| `phase` / `size` / `prio` | roadmap phase / `S` `M` `L` / `1` `2` `3` | the shape of the board |
+| `refs` | real file paths (a `#fragment` is allowed) | **the gate checks they exist** |
+| `focus.now` / `focus.next` / `focus.note` | card ids | what this session is on |
+
+There is deliberately **no `blocked` status**: `awaiting != none` on an unfinished
+card *is* blocked, so it cannot go stale. And a `backlog` card may not be
+`awaiting` a person — the gate refuses it. If someone really has to act, the card
+is `next`, not `backlog`. That way a name in the top strip always means "someone
+is expected to move", instead of the strip slowly filling up with the wishlist.
+
+Keep a card at the size of one session's work. If a card needs a sentence with an
+"and" in it, split it.
+
+### 6.2 When to touch it — part of the task, not optional cleanup
+
+1. **Starting work** → `status=doing`, and set `awaiting` to whoever moves next.
+2. **Handing something to the user** → `awaiting=rayu` **and a `needs` line**
+   saying exactly what to do. The gate refuses an awaiting card with no `needs`.
+3. **Finishing** → `status=done` (the CLI stamps the date and clears `awaiting`),
+   then append a `log` line — the log is how progress becomes visible.
+4. **Finding a new open question** → a new card, *never* a TODO comment.
+5. Then `gm progress build` in the same change, or the gate goes red.
 

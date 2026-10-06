@@ -43,8 +43,10 @@ scr_setup_statinv();
 /// set up score system
 set_item_value(points,0);
 
-/// set starting money (15 start)
-set_item_value(money,15);
+/// set starting money.  economy.md 4.1 raises the base from 15 to 25 (a
+/// rung costs less than a doubling now), and the difficulty column scales
+/// it - Brutal starts with a quarter more.
+set_item_value(money, round(25 * difficulty_start_money_mult()));
 
 /// set starting life
 set_item_value(life,20);
@@ -68,29 +70,30 @@ tower_array = [];
 var _load       = loadout_current(),
     _dmg_bonus  = clover_damage_bonus(),
     _rate_bonus = clover_firerate_bonus(),
+    _floor      = tower_floor(),
     _armed      = 0;
 
 for(var _ti = 0; _ti < array_length(_load); _ti++){
     var _entry = tower_entry_find(_load[_ti]);
     if(is_undefined(_entry)) continue;
 
-    /// the tower's own data, then the garden's permanent bonuses applied
-    /// once.  Phase 2 replaces this with a single resolver that folds
-    /// level, specialization, clovers, candy and auras together in a
-    /// fixed order (economy.md 4.3); until then one multiplication at
-    /// build time is the whole pipeline, and it is enough to prove that
-    /// spending a clover changes what happens in a run.
-    var _data = array_duplicate(_entry.data);
-    _data[TOWER.damage]    = _data[TOWER.damage]    * (1 + _dmg_bonus);
-    _data[TOWER.fire_rate] = _data[TOWER.fire_rate] * (1 + _rate_bonus);
+    /// ONE resolver folds the tower's own data, the garden's permanent
+    /// bonuses and the level ladder together in a fixed order
+    /// (economy.md 4.3, tower_levels.gml).  A tower ARRIVES at the
+    /// garden's floor, free; the four rungs above it are what money buys
+    /// (goal.md 4).  The BASE data rides along on the entry as well,
+    /// because a rung is measured against the base and an upgrade has to
+    /// be able to re-resolve exactly the way a placement did.
+    var _data = tower_data_at_level(_entry.data, _floor, _dmg_bonus, _rate_bonus);
 
-    tower_array[_armed] = array(_entry.sprites, _entry.name, _entry.price, _data);
+    tower_array[_armed] = array(_entry.sprites, _entry.name, _entry.price,
+                                _data, _entry.data);
     _armed++;
 }
-
 scr_meta_log("LOADOUT", "armed with ", _armed, " towers ", string(_load),
              " | clover damage +", _dmg_bonus*100, "%",
-             " fire rate +", _rate_bonus*100, "%");
+             " fire rate +", _rate_bonus*100, "%",
+             " | floor ", _floor, " cap ", tower_cap());
 
 /// ---- badge tracking (roadmap 1.8).  Untouched reads the life left at
 /// the end, but Exterminator needs its own counters: "no life lost" and
@@ -157,7 +160,9 @@ tower_price_save = array(
 tower_text = array("","");
 tower_price_check = array(false,false);
 tower_timer = 0;
-tower_max_level = 5;
+/// the CAP comes from the garden, not a constant: a master node raises
+/// the cap and the arrival floor together (goal.md 4/13, tower_levels.gml)
+tower_max_level = tower_cap();
 
 /// drawing a path 
 

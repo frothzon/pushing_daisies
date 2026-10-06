@@ -246,6 +246,70 @@ Candy magnitude never stacks (`goal.md` §17): feeding in more of the same type 
 
 **Visuals are normalised by a fixed 10**, not by the current cap — the existing `lerp(0.25, 0.70, level / tower_max_level)` in `_levelControl/Step_0.gml:117` must become `level / 10` with adjusted endpoints, or a tower placed at floor 6 would be indistinguishable from one placed at floor 3.
 
+### 4.5 The wave count and the biome curve — as built 2026-10-05
+
+Waves are no longer authored per stage. They are a **rule**, held in `region_data()`:
+
+| | Value |
+| --- | --- |
+| Waves in stage 1 | **15** |
+| Extra waves per stage | **+5** |
+| Stage 10 | **60** |
+
+Every biome starts at 15 and climbs by the same 5, so **all six regions share the
+15…60 wave counts**. What separates them is the *curve*:
+
+```
+m(w) = 1 + (curve_end - 1) * ((w - 1) / (waves - 1)) ^ curve_pow
+```
+
+| Region | Biome | curve_end | curve_pow |
+| --- | --- | --- | --- |
+| 1 | Grass | 30 | 2 |
+| 2 | Swamp | 45 | 2 |
+| 3 | Desert | 62 | 2 |
+| 4 | Jungle | 80 | 2 |
+| 5 | Graveyard | 100 | 2 |
+| 6 | Blood Fields | 125 | 2 |
+
+`m(1) = 1.00` in **every** biome — *"wave 1 of any stage in the game is the same
+fight"* — which is what lets one set of tower numbers survive sixty stages. The
+bend is 2 because a stage's money grows with the **square** of the wave number
+(§4.1: `spawn_count + wave div 5` kills a wave); a straight line makes the late
+waves relatively *easier*, which is the opposite of a ramp.
+
+This replaces `life *= power(2, wave/5 - 2) + 0.2*(wave - 1)`, which reached
+**×1036 at wave 60**. First pass; retuned from logs (§10).
+
+### 4.6 The rung price and the rung's worth disagree — found 2026-10-05
+
+§4.3's prices and §4.4's ladder are inconsistent, and the code now implements
+both faithfully, so the inconsistency is live:
+
+| per **1 unit** of money | DPS added |
+| --- | --- |
+| Place another tower | **+1.00 ×** base |
+| Buy the four rungs (§4.4) | +0.59 × base for 3.75 units = **+0.16** |
+| *(the old doubling, for comparison)* | *+15 × base for 7.5 units = **+2.00*** |
+
+So a rung is **~6× worse value than another placement**, and "money buys the
+four rungs" stops being a decision — which defeats goal.md §4 and the whole
+point of the floor/cap pair. The inequality to satisfy is:
+
+```
+ΔDPS from the four rungs  ÷  Σ(rung prices)   ≥   DPS-per-money of a placement
+```
+
+Two ways out, and either is a one-table change:
+
+* **Steepen the ladder** (preferred — keeps §4.4's legible non-compounding
+  shape): damage ×1.00 / 1.60 / 2.20 / 2.80 / 3.40, DPS ×3.9 at L5 for 3.75
+  units ⇒ ≈1.0 per unit, so a rung pays for itself.
+* **Cut the rung prices** to total ≈1.0 unit (0.15 / 0.25 / 0.30 / 0.30).
+
+Decide this before Phase 2 tuning, because every wave curve value in §4.5 is
+measured against whichever answer wins.
+
 ---
 
 ## 5. Blood Shards 🩸

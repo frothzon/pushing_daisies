@@ -58,6 +58,12 @@ Each stage has three difficulties:
 
 Difficulty applies the **same** multipliers to every stage in the game; per-stage scaling is separate and lives in `scr_level_difficulty` (§28.3). Keeping the two apart is what lets one difficulty table work for 60 stages.
 
+**Waves are a rule, not a per-stage number** (as built 2026-10-05). Stage 1 of
+every region has **15** waves and each stage adds **5**, so stage 10 has 60 — and
+every region starts on the *same* wave-1 fight, separating only by how steeply
+its curve climbs. The wave rule and the per-region curve both live in
+`region_data()`; `economy.md` §4.5 has the table.
+
 **First clear pays full seeds. Repeats pay 25%** (minimum 1). That single rule is what makes farming impossible while still letting a player go back for a badge or a better clover haul — and it means §11's "remaining lives" reward never needs a second anti-farm mechanism.
 
 I'd actually make the **5× Brutal reward intentional**: Brutal shouldn't merely be "Hard but harder." It should be the primary way skilled players accelerate tower collection.
@@ -1323,11 +1329,14 @@ So a Normal-only player **cannot** unlock the whole roster — they have to meet
 
 | Number | File |
 | --- | --- |
-| Region/stage table, rewards, gates, badges | `stage_data` (new — Phase 0) |
+| Per-stage table — seeds, spawn mix, bosses, par | `stage_data` |
+| Per-region table — biome, **wave rule (15 + 5 a stage)**, **curve_end / curve_pow**, boss cadence | `region_data` (new — 2026-10-05) |
 | Difficulty multipliers | `difficulty_data` (new — Phase 0) |
 | Tower stats, prices, specs | extend `tower_array` + `scr_towerData` (add crit/status fields) |
+| **Tower level ladder, rung prices, mastery floor/cap** | `tower_levels` (new — 2026-10-05) |
 | Mastery (**floor and cap**), candy levels, currencies, badges, loadout | the save file (Phase 0) |
-| Wave HP/speed scaling | `scr_level_difficulty`, rewritten with §4's curve |
+| Wave HP/speed scaling | `scr_level_difficulty` + `GameLevelData.life_mult()`, over `region_data()`'s curve |
+| What makes a level a level | `GameLevelData` (new — 2026-10-05), built once into `global.level_data` |
 
 ## 28.4 The phases
 

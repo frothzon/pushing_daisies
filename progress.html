@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pushing Daisies — progress</title>
+<meta name="progress-sha" content="4a42b3324ee6110c">
+<meta name="generator" content="python -m gm progress build">
+<style>
+:root{
+  --bg:#14171c; --panel:#1b1f26; --panel2:#222831; --line:#2c333d;
+  --fg:#e7eaef; --dim:#96a0ae; --accent:#6fb1e8; --warn:#e8a33d;
+  --ok:#6fcf97; --bad:#e8736f; --radius:10px;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 26px 60px;background:var(--bg);color:var(--fg);
+  font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+h1{font-size:21px;margin:0 0 3px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim);
+  margin:26px 0 10px;font-weight:600}
+.sub{color:var(--dim);font-size:12.5px}
+.stale{background:#3a2320;border:1px solid var(--bad);color:#ffd9d6;padding:9px 13px;
+  border-radius:var(--radius);margin:14px 0;font-size:13px}
+.filters{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0 4px}
+button.chip{cursor:pointer;background:var(--panel2);color:var(--dim);border:1px solid var(--line);
+  border-radius:999px;padding:4px 11px;font-size:12px;font-family:inherit}
+button.chip:hover{color:var(--fg);border-color:var(--accent)}
+button.chip.on{background:var(--accent);border-color:var(--accent);color:#0d1116;font-weight:600}
+.strip{display:flex;flex-wrap:wrap;gap:10px}
+.strip.secondary .card{opacity:.72}
+.board{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:10px;min-height:70px}
+.col>h3{margin:0 0 9px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--dim);display:flex;justify-content:space-between}
+.col.doing>h3{color:var(--accent)}
+.col.review>h3{color:var(--warn)}
+.card{background:var(--panel2);border:1px solid var(--line);border-left:3px solid #3d4756;
+  border-radius:8px;padding:9px 10px;width:250px;max-width:100%;position:relative}
+.card.prio1{border-left-color:var(--bad)}
+.card.prio2{border-left-color:var(--warn)}
+.card.prio3{border-left-color:#4b5768}
+.card .ttl{font-weight:600;margin-bottom:6px;padding-right:56px}
+.card .id{position:absolute;top:8px;right:9px;font:11px ui-monospace,monospace;color:var(--dim);
+  opacity:.75}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.chip.pill{font-size:11px;padding:1px 7px;border-radius:999px;background:#2b323c;
+  border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.await{background:#3a2f1d;border-color:#5c4a24;color:var(--warn)}
+.needs{font-size:12.5px;color:var(--warn);margin:4px 0 2px}
+.needs b{color:var(--warn)}
+.notes{font-size:12.5px;color:var(--dim);margin-top:4px}
+.refs{font:11px ui-monospace,monospace;color:var(--dim);margin-top:6px;opacity:.85;
+  word-break:break-all}
+.copy{cursor:pointer;background:none;border:1px solid var(--line);border-radius:6px;
+  color:var(--dim);font:11px inherit;padding:2px 7px;margin-top:7px}
+.copy:hover{color:var(--fg);border-color:var(--accent)}
+.age{font-size:11px;color:var(--dim);opacity:.7}
+.stale-card .age{color:var(--bad);opacity:1}
+.focusrow{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.focusrow div{font-size:13px}
+.focusrow span.k{color:var(--dim);text-transform:uppercase;font-size:11px;
+  letter-spacing:.08em;display:block}
+table{border-collapse:collapse;font-size:13px;width:100%;max-width:900px}
+th,td{text-align:left;padding:5px 9px;border-bottom:1px solid var(--line)}
+th{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+.bar{font:12px ui-monospace,monospace;color:var(--accent);white-space:nowrap}
+.log{font-size:12.5px;color:var(--dim);max-width:900px}
+.log li{margin:3px 0}
+.log b{color:var(--fg)}
+footer{margin-top:34px;color:var(--dim);font-size:11.5px}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title"></h1>
+  <div class="sub" id="sub"></div>
+  <div class="filters" id="filters"></div>
+</header>
+<div class="stale" id="stale" hidden></div>
+<section id="waiting"></section>
+<h2>Right now</h2>
+<section class="focusrow" id="focusrow"></section>
+<h2>Board</h2>
+<section class="board" id="board"></section>
+<h2>Progress by phase</h2>
+<section id="phases"></section>
+<h2>Log</h2>
+<ul class="log" id="log"></ul>
+<footer id="footer"></footer>
+<script type="application/json" id="progress-data" data-sig="2026-10-05|23|art-biome-tiles:backlog:2026-10-05,art-garden-book:backlog:2026-10-05,art-new-zombies:backlog:2026-10-05,art-tower-trios:backlog:2026-10-05,curve-diagnostic:next:2026-10-05,curve-playtest:next:2026-10-05,difficulty-wiring:done:2026-10-05,econ-rung-price:next:2026-10-05,git-commit-curve:next:2026-10-05,gm-reload-verify:next:2026-10-05,hud-wave-offbyone:backlog:2026-10-05,infra-progress-tracker:review:2026-10-05,ll-020-lighting:done:2026-10-04,ll-021-level-data:done:2026-10-04,mastery-xp:backlog:2026-10-05,par-reauthor:backlog:2026-10-05,phase3-garden-book:backlog:2026-10-05,phase4-candy:backlog:2026-10-05,phase5-regions:backlog:2026-10-05,push-to-github:next:2026-10-05,tower-ladder-44:done:2026-10-05,towers-other-three:backlog:2026-10-05,wave-curve:done:2026-10-05">{
+  "meta": {
+    "schema": 1,
+    "project": "Pushing Daisies",
+    "updated": "2026-10-05",
+    "viewer": "rayu",
+    "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set \u003cid> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
+  },
+  "people": {
+    "cline": {
+      "name": "Cline",
+      "role": "programming, docs, bug fixing",
+      "color": "#6fb1e8"
+    },
+    "rayu": {
+      "name": "Rayu",
+      "role": "art + programming",
+      "color": "#e8a33d"
+    }
+  },
+  "focus": {
+    "now": [
+      "infra-progress-tracker"
+    ],
+    "next": [
+      "gm-reload-verify",
+      "econ-rung-price"
+    ],
+    "note": "The wave/biome curve and the §4.4 tower ladder landed together (LL-022). The tracker itself is now the thing to eyeball, then it is the §4.6 decision and a playtest."
+  },
+  "tasks": [
+    {
+      "id": "art-biome-tiles",
+      "title": "Art direction and tilesets for regions 2-6",
+      "status": "backlog",
+      "owner": "rayu",
+      "awaiting": "none",
+      "area": "art",
+      "phase": "5",
+      "size": "L",
+      "prio": 3,
+      "needs": "",
+      "notes": "Six biomes exist in the data (Grass, Swamp, Desert, Jungle, Graveyard, Blood Fields). Only Grass has art, so region 2 cannot be authored until at least its tileset exists.",
+      "refs": [
+        "roadmap.md",
+        "goal.md"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "art-garden-book",
+      "title": "Art for the Garden Book and meta screens",
+      "status": "backlog",
+      "owner": "rayu",
+      "awaiting": "none",
+      "area": "art",
+      "phase": "3",
+      "size": "M",
+      "prio": 3,
+      "needs": "",
+      "notes": "Mastery nodes, the clover and blood trees, candy slots and the badge sheet.",
+      "refs": [
+        "roadmap.md"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "art-new-zombies",
+      "title": "Draw one or two new zombies",
+      "status": "backlog",
+      "owner": "rayu",
+      "awaiting": "none",
+      "area": "art",
+      "phase": "2",
+      "size": "M",
+      "prio": 3,
+      "needs": "",
+      "notes": "There are three rigs (spawn_mon 0-2) and every authored stage draws from those. A fourth would let region 2's mix differ from region 1's.",
+      "refs": [
+        "roadmap.md",
+        "goal.md"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "art-tower-trios",
+      "title": "Draw the four tower trios (12 sprites)",
+      "status": "backlog",
+      "owner": "rayu",
+      "awaiting": "none",
+      "area": "art",
+      "phase": "2",
+      "size": "L",
+      "prio": 2,
+      "needs": "",
+      "notes": "Each tower needs idle / attack / return, matching the current spr_tower style. Roadmap 2.9 calls this the largest single art push in v1, and tower 2.8 (the other three towers) is waiting on it.",
+      "refs": [
+        "sprites/spr_tower",
+        "roadmap.md"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "curve-diagnostic",
+      "title": "Add a dev-only LEVEL [CURVE] diagnostic",
+      "status": "next",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "",
+      "notes": "Print m(w) at both ends of every biome plus the projected dps/required ratio, so a curve that has gone wrong is visible in the log instead of after a 60-wave playtest. Target: floor bite >= 0.35, ceiling bite \u003c= 0.90 on Normal, \u003c= 0.90 on Brutal with candy.",
+      "refs": [
+        "scripts/scr_level_difficulty/scr_level_difficulty.gml",
+        "economy.md#4.5"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "curve-playtest",
+      "title": "Play stage 1-1 and report the new curve",
+      "status": "next",
+      "owner": "rayu",
+      "awaiting": "rayu",
+      "area": "design",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "Play one stage with global.devMode = true and paste the LEVEL log lines, plus how it actually felt",
+      "notes": "Expect: 'wave 1/15', a boss on wave 10 and again on 15, and life rising gently to about x30 on the last wave (the old exponential hit x1036). If waves 12-15 feel flat the curve is too shallow; if money runs out before wave 10 it is too steep.",
+      "refs": [
+        "scripts/region_data/region_data.gml",
+        "roadmap.md#6.4"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "difficulty-wiring",
+      "title": "Make the difficulty columns actually change the fight",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "",
+      "notes": "difficulty_current() had zero callers, so Normal / Hard / Brutal differed only in payout. hp, speed, count, money and the starting-money column are now read where they belong.",
+      "refs": [
+        "scripts/difficulty_data/difficulty_data.gml",
+        "economy.md"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": "2026-10-05"
+    },
+    {
+      "id": "econ-rung-price",
+      "title": "Decide the rung price vs rung worth fix",
+      "status": "next",
+      "owner": "both",
+      "awaiting": "rayu",
+      "area": "design",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "One decision: steepen the ladder to x3.4 damage at L5 (keep the 4.3 prices), or cut the rung prices to about 1.0 unit total",
+      "notes": "economy.md 4.6. One unit of money buys +1.00 dps as a placement but only +0.16 as a rung, so upgrading is a trap and 'money buys the four rungs' stops being a choice. Every curve number in 4.5 is measured against whichever answer wins, so this goes first.",
+      "refs": [
+        "economy.md#4.6",
+        "scripts/tower_levels/tower_levels.gml"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "git-commit-curve",
+      "title": "Commit the curve work, the tracker and the docs",
+      "status": "next",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "infra",
+      "size": "S",
+      "prio": 1,
+      "needs": "",
+      "notes": "Untracked and must be git add-ed: scripts/GameLevelData, scripts/region_data, scripts/tower_levels, plus the new root files progress.json, PROGRESS.md, progress.html and README.md, and python_tools/gm/progress.py. One commit and no history, so nothing here is recoverable until it is committed.",
+      "refs": [
+        "scripts/GameLevelData/GameLevelData.gml",
+        "scripts/region_data/region_data.gml",
+        "scripts/tower_levels/tower_levels.gml"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "gm-reload-verify",
+      "title": "Reload GameMaker and confirm the three new scripts",
+      "status": "next",
+      "owner": "rayu",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "Close GameMaker, reopen the project, and check that region_data, tower_levels and GameLevelData appear under Scripts",
+      "notes": "pushing_daisies_recovered.yyp gained three resource lines. If the IDE was open while that happened, its next save rewrites the .yyp from its own buffer and the new scripts vanish (LL-008) - the error would be 'variable not set before reading' on a function this repo does define.",
+      "refs": [
+        "pushing_daisies_recovered.yyp",
+        "AGENTS.md"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "hud-wave-offbyone",
+      "title": "The HUD wave counter is one ahead of wave_count",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 3,
+      "needs": "",
+      "notes": "STATINV.waves starts at 1 while wave_count starts at 0, so the display reads one high and scr_zomb_pathSpeed computes speed for the wrong wave. Deliberately left alone during the curve change to keep that edit's blast radius small.",
+      "refs": [
+        "objects/_levelControl/Create_0.gml",
+        "scripts/scr_zomb_pathSpeed/scr_zomb_pathSpeed.gml"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "infra-progress-tracker",
+      "title": "Build the progress tracker (this board)",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "tools",
+      "phase": "infra",
+      "size": "M",
+      "prio": 1,
+      "needs": "Open progress.html and say whether the board and the top strip are the shape you want - then tell me what to add, merge or cut",
+      "notes": "progress.json is the source; PROGRESS.md and progress.html are generated from it and gm progress check fails if they disagree. The seed is a first pass, not a contract.",
+      "refs": [
+        "progress.json",
+        "python_tools/gm/progress.py"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "ll-020-lighting",
+      "title": "Fix the per-frame 'Unable to find instance' from _shadows",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "1",
+      "size": "M",
+      "prio": 1,
+      "needs": "",
+      "notes": "A persistent instance whose dependency did not persist: _shadows survives the room change, _dayCycle does not.",
+      "refs": [
+        "lessons_learned.md#ll-020",
+        "scripts/scr_iniLighting/scr_iniLighting.gml"
+      ],
+      "created": "2026-10-04",
+      "updated": "2026-10-04",
+      "done": "2026-10-04"
+    },
+    {
+      "id": "ll-021-level-data",
+      "title": "One level object, and a deploy gate the data can pass",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "1",
+      "size": "M",
+      "prio": 1,
+      "needs": "",
+      "notes": "The world map's 6x10 grid and the authored stage table were two sources of truth that never compared, so a stage could be deployed to that had no data and it silently played stage 1.",
+      "refs": [
+        "lessons_learned.md#ll-021",
+        "scripts/GameLevelData/GameLevelData.gml"
+      ],
+      "created": "2026-10-04",
+      "updated": "2026-10-04",
+      "done": "2026-10-04"
+    },
+    {
+      "id": "mastery-xp",
+      "title": "Persistent tower mastery XP per kill (the rest of 2.4)",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "2",
+      "size": "L",
+      "prio": 2,
+      "needs": "",
+      "notes": "Money buys L1-L5 inside a run today; the tower LEVEL is supposed to persist in the save, which is what makes mastery progress between runs. The save schema already has the mastery key, so this is the earning and the spend.",
+      "refs": [
+        "scripts/scr_meta_schema/scr_meta_schema.gml",
+        "roadmap.md"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "par-reauthor",
+      "title": "Re-author par_spend and par_time for 15-60 wave stages",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "data",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "",
+      "notes": "Par is still the old 5-10 wave value, so the Frugal and Speed Grower badges are effectively unearnable. Stage 1 now pays out far more money than it did, which means every par number has to be re-derived rather than guessed.",
+      "refs": [
+        "scripts/stage_data/stage_data.gml",
+        "scripts/scr_badges/scr_badges.gml"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "phase3-garden-book",
+      "title": "Phase 3: the Garden Book (mastery, clover and blood trees, candy UI)",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "3",
+      "size": "L",
+      "prio": 3,
+      "needs": "",
+      "notes": "The meta layer's face. tower_cap()/tower_floor() already read global.meta.mastery, so the floor-and-cap-by-mastery rule is in place and waiting for the screen that spends the nodes.",
+      "refs": [
+        "roadmap.md",
+        "scripts/tower_levels/tower_levels.gml"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "phase4-candy",
+      "title": "Phase 4: candy recipes and in-run play",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "4",
+      "size": "L",
+      "prio": 3,
+      "needs": "",
+      "notes": "tower_data_at_level() is the single place candy and auras fold into a tower, so this phase adds a term there and nothing else has to move.",
+      "refs": [
+        "roadmap.md",
+        "scripts/tower_levels/tower_levels.gml"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "phase5-regions",
+      "title": "Phase 5: author stages for regions 2-6",
+      "status": "backlog",
+      "owner": "both",
+      "awaiting": "none",
+      "area": "data",
+      "phase": "5",
+      "size": "L",
+      "prio": 3,
+      "needs": "",
+      "notes": "region_data already carries the curve, the seeds and the wave rule for all six biomes, so this is table-filling plus art - which is exactly what roadmap 5.6 promised. Blocked in practice on the biome art, not on code.",
+      "refs": [
+        "scripts/region_data/region_data.gml",
+        "roadmap.md"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "push-to-github",
+      "title": "Push the repo (and the board) to GitHub",
+      "status": "next",
+      "owner": "rayu",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "infra",
+      "size": "S",
+      "prio": 2,
+      "needs": "say whether I should push to origin/frothzon pushing_daisies, and whether it stays private - the board only lives in the github once it is up there",
+      "notes": "origin already exists. AGENTS.md 1.2 claimed there was no remote; corrected. Until this is pushed, the repo has one commit and a clone gets nothing.",
+      "refs": [
+        "AGENTS.md",
+        "progress.json"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "tower-ladder-44",
+      "title": "Land the 4.4 non-compounding tower ladder",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 1,
+      "needs": "",
+      "notes": "A level was free compounding power: each purchase added the tower's CURRENT damage, so an L5 did 16x an L1. A level is now base x ladder, cap and floor come from the garden, rung prices come from a table, and selling refunds 60% of everything invested.",
+      "refs": [
+        "scripts/tower_levels/tower_levels.gml",
+        "economy.md#4.4"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": "2026-10-05"
+    },
+    {
+      "id": "towers-other-three",
+      "title": "The other three towers: Chillip, Bindweed, Belladonna Blitz, Thornamental",
+      "status": "backlog",
+      "owner": "both",
+      "awaiting": "none",
+      "area": "design",
+      "phase": "2",
+      "size": "L",
+      "prio": 3,
+      "needs": "",
+      "notes": "Slow, root, poison and crit. Their systems exist, so this is stats, art and a roster row each - but the art push (art-tower-trios) comes first.",
+      "refs": [
+        "scripts/scr_tower_roster/scr_tower_roster.gml",
+        "roadmap.md"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "wave-curve",
+      "title": "15 + 5 wave rule and the per-biome difficulty curve",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 1,
+      "needs": "",
+      "notes": "Waves are a rule now (15 in stage 1, +5 a stage, in every biome) and the ramp is per biome: 1.00 on wave 1 everywhere, rising to the region's curve_end on the last wave, bent quadratically because money grows with the square of the wave. This replaced 2^(wave/5-2) + 0.2(w-1), which hit x1036 at wave 60.",
+      "refs": [
+        "scripts/region_data/region_data.gml",
+        "scripts/GameLevelData/GameLevelData.gml"
+      ],
+      "created": "2026-10-05",
+      "updated": "2026-10-05",
+      "done": "2026-10-05"
+    }
+  ],
+  "log": [
+    {
+      "date": "2026-10-04",
+      "who": "cline",
+      "task": "ll-020-lighting",
+      "what": "Fixed the per-frame 'Unable to find instance for object index 1': a persistent instance whose dependency did not persist."
+    },
+    {
+      "date": "2026-10-04",
+      "who": "cline",
+      "task": "ll-021-level-data",
+      "what": "One level object (GameLevelData) and a deploy gate the level data can pass, so the world map cannot offer a stage that has no data."
+    },
+    {
+      "date": "2026-10-05",
+      "who": "cline",
+      "task": "wave-curve",
+      "what": "Waves became a rule (15 + 5 a stage, all six biomes) and the ramp became region_data's per-biome curve, replacing the exponential that hit x1036 at wave 60."
+    },
+    {
+      "date": "2026-10-05",
+      "who": "cline",
+      "task": "tower-ladder-44",
+      "what": "The 4.4 ladder: a level is base x ladder and never compounds; cap and floor come from the garden; rungs are re-priced and selling refunds 60% of what went in."
+    },
+    {
+      "date": "2026-10-05",
+      "who": "cline",
+      "task": "difficulty-wiring",
+      "what": "The difficulty columns are read at last - hp, speed, count, money and starting money. Before this, Brutal only paid better; it never fought harder."
+    },
+    {
+      "date": "2026-10-05",
+      "who": "cline",
+      "task": "econ-rung-price",
+      "what": "Found that 4.3's prices and 4.4's ladder disagree: a rung returns +0.16 dps per unit of money against +1.00 for another placement. Written up as economy.md 4.6 and left open for a decision."
+    },
+    {
+      "date": "2026-10-05",
+      "who": "cline",
+      "task": "infra-progress-tracker",
+      "what": "Built the progress tracker: progress.json as the source, PROGRESS.md and progress.html generated from it, and gm progress check failing when the three disagree."
+    },
+    {
+      "date": "2026-10-05",
+      "who": "cline",
+      "task": "infra-progress-tracker",
+      "what": "Tightened the tracker: a backlog card may no longer be awaiting a person, because the top strip filled with parked work within the hour (LL-023)."
+    }
+  ]
+}
+</script>
+<script>
+const DATA = JSON.parse(document.getElementById('progress-data').textContent);
+const SIG = document.getElementById('progress-data').dataset.sig;
+let DOC = DATA;
+const STATUSES = ['backlog', 'next', 'doing', 'review', 'done'];
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g,
+  (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* Mirrors progress.loose_signature() exactly: sort by id with code-point
+   comparison, then join id:status:updated.  If the files this page was built
+   from have moved on, we say so instead of showing a stale board. */
+function looseSig(d) {
+  const rows = (d.tasks || []).map((t) => [t.id || '', t.status || '', t.updated || '']);
+  rows.sort((a, b) => (a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : 0)));
+  const meta = d.meta || {};
+  return (meta.updated || '') + '|' + rows.length + '|' + rows.map((r) => r.join(':')).join(',');
+}
+
+function daysSince(iso) {
+  const t = Date.parse(iso || '');
+  if (isNaN(t)) return null;
+  return Math.floor((Date.now() - t) / 86400000);
+}
+
+const personName = (key) => ((DOC.people || {})[key] || {}).name || key;
+const personColor = (key) => ((DOC.people || {})[key] || {}).color || '#96a0ae';
+const taskById = (id) => (DOC.tasks || []).find((t) => t.id === id);
+
+/* Prefs are cosmetic only - the JSON stays the source of truth - so keeping
+   them in localStorage is safe and makes the page open where you left it. */
+const PREF_KEY = 'pd-progress-prefs';
+let prefs = { who: 'all', area: 'all' };
+try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF_KEY) || '{}')); } catch (e) {}
+function savePrefs() { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) {} }
+
+function visible(t) {
+  if (prefs.who !== 'all') {
+    const owned = t.owner === prefs.who || t.owner === 'both';
+    if (!owned && t.awaiting !== prefs.who) return false;
+  }
+  if (prefs.area !== 'all' && t.area !== prefs.area) return false;
+  return true;
+}
+
+const prio = (t) => t.prio || 9;
+const byBoardOrder = (a, b) =>
+  (prio(a) - prio(b)) || String(a.phase).localeCompare(String(b.phase)) || a.id.localeCompare(b.id);
+
+function card(t, mode) {
+  const chips = [`<span class="chip pill" style="color:${esc(personColor(t.owner === 'both' ? (DOC.meta.viewer || '') : t.owner))}">${esc(t.owner === 'both' ? 'both' : personName(t.owner))}</span>`];
+  if (t.area) chips.push(`<span class="chip pill">${esc(t.area)}</span>`);
+  if (t.size) chips.push(`<span class="chip pill">${esc(t.size)}</span>`);
+  if (t.phase) chips.push(`<span class="chip pill">ph&nbsp;${esc(t.phase)}</span>`);
+  chips.push(`<span class="chip pill">P${esc(t.prio)}</span>`);
+  if (t.awaiting && t.awaiting !== 'none') {
+    chips.push(`<span class="chip pill await">waiting on ${esc(personName(t.awaiting))}</span>`);
+  }
+  const age = daysSince(t.updated);
+  const stale = age !== null && age > 14 && t.status !== 'done';
+  const refs = (t.refs && t.refs.length)
+    ? `<div class="refs">${t.refs.map(esc).join(' · ')}</div>` : '';
+  const needs = t.needs ? `<div class="needs">&rarr; ${esc(t.needs)}</div>` : '';
+  const notes = t.notes ? `<div class="notes">${esc(t.notes)}</div>` : '';
+  const when = mode === 'done'
+    ? `done ${esc(t.done || '')}`
+    : `updated ${esc(t.updated || '')}${age !== null ? ' · ' + age + 'd' : ''}`;
+  return `<article class="card prio${esc(t.prio)}${stale ? ' stale-card' : ''}" data-id="${esc(t.id)}">
+    <div class="id">${esc(t.id)}</div>
+    <div class="ttl">${esc(t.title)}</div>
+    <div class="chips">${chips.join('')}</div>
+    ${needs}${notes}${refs}
+    <div class="age">${when}</div>
+    <button class="copy" data-copy="${esc(t.id)}">copy JSON</button>
+  </article>`;
+}
+
+function filterChips() {
+  const out = [];
+  const who = [['all', 'Everyone']].concat(Object.keys(DOC.people || {}).map((k) => [k, personName(k)]));
+  out.push('<span class="sub" style="align-self:center;margin-right:2px">who</span>');
+  who.forEach(([key, label]) => out.push(
+    `<button class="chip${prefs.who === key ? ' on' : ''}" data-who="${esc(key)}">${esc(label)}</button>`));
+  const areas = ['all'].concat([...new Set((DOC.tasks || []).map((t) => t.area))].sort());
+  out.push('<span class="sub" style="align-self:center;margin:0 2px 0 12px">area</span>');
+  areas.forEach((key) => out.push(
+    `<button class="chip${prefs.area === key ? ' on' : ''}" data-area="${esc(key)}">${key === 'all' ? 'All areas' : esc(key)}</button>`));
+  return out.join('');
+}
+
+function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+  return Promise.resolve();
+}
+
+function render() {
+  const meta = DOC.meta || {};
+  const viewer = meta.viewer || Object.keys(DOC.people || {})[0];
+  const all = DOC.tasks || [];
+  const title = (meta.project || 'Progress') + ' — progress';
+  document.title = title;
+  $('title').textContent = title;
+
+  const counts = {};
+  STATUSES.forEach((s) => { counts[s] = all.filter((t) => t.status === s).length; });
+  $('sub').textContent = 'Updated ' + (meta.updated || '?') + ' · ' + all.length + ' cards · '
+    + STATUSES.filter((s) => counts[s]).map((s) => counts[s] + ' ' + s).join(' · ');
+  $('filters').innerHTML = filterChips();
+
+  /* ---- the strip: who has the ball ---------------------------------- */
+  const open = all.filter((t) => t.status !== 'done');
+  let strip = '';
+  Object.keys(DOC.people || {}).forEach((key) => {
+    const waiting = open.filter((t) => t.awaiting === key).sort(byBoardOrder).filter(visible);
+    if (!waiting.length) return;
+    const you = key === viewer;
+    strip += '<h2>' + (you ? '⚠ ' : '') + 'Waiting on ' + (you ? 'you (' : '')
+      + esc(personName(key)) + (you ? ')' : '') + ' — ' + waiting.length + '</h2>'
+      + '<div class="strip' + (you ? '' : ' secondary') + '">'
+      + waiting.map((t) => card(t)).join('') + '</div>';
+  });
+  $('waiting').innerHTML = strip
+    || '<h2>Nothing is waiting on anyone</h2><div class="sub">Every open card has a free ball.</div>';
+
+  /* ---- right now ---------------------------------------------------- */
+  const focus = DOC.focus || {};
+  const listOf = (ids) => (ids || []).map((id) => '<code>' + esc(id) + '</code>').join(', ') || '—';
+  $('focusrow').innerHTML =
+    (focus.note ? '<div style="flex:1 1 100%">' + esc(focus.note) + '</div>' : '')
+    + '<div><span class="k">Now</span>' + listOf(focus.now) + '</div>'
+    + '<div><span class="k">Next</span>' + listOf(focus.next) + '</div>';
+
+  /* ---- the board ---------------------------------------------------- */
+  const board = STATUSES.filter((s) => s !== 'done').map((status) => {
+    let group = all.filter((t) => t.status === status && visible(t)).sort(byBoardOrder);
+    return '<section class="col ' + status + '"><h3><span>' + status + '</span><span>'
+      + group.length + '</span></h3>'
+      + group.map((t) => card(t)).join('') + '</section>';
+  }).join('');
+  const done = all.filter((t) => t.status === 'done' && visible(t))
+    .sort((a, b) => String(b.done || '').localeCompare(String(a.done || ''))).slice(0, 8);
+  $('board').innerHTML = board
+    + '<section class="col done"><h3><span>done — newest ' + done.length + ' of ' + counts.done
+    + '</span></h3>' + done.map((t) => card(t, 'done')).join('') + '</section>';
+
+  /* ---- phases and the log ------------------------------------------- */
+  const phases = [...new Set(all.map((t) => String(t.phase)))].sort();
+  const bar = (d, n) => {
+    const filled = n ? Math.round(10 * d / n) : 0;
+    return '▓'.repeat(filled) + '░'.repeat(10 - filled) + ' ' + (n ? Math.round(100 * d / n) : 0) + '%';
+  };
+  $('phases').innerHTML = '<table><tr><th>phase</th><th>done</th><th>total</th><th></th></tr>'
+    + phases.map((p) => {
+        const group = all.filter((t) => String(t.phase) === p);
+        const d = group.filter((t) => t.status === 'done').length;
+        return '<tr><td>' + esc(p) + '</td><td>' + d + '</td><td>' + group.length
+          + '</td><td class="bar">' + bar(d, group.length) + '</td></tr>';
+      }).join('') + '</table>';
+
+  $('log').innerHTML = (DOC.log || []).slice(-15).reverse().map((e) =>
+    '<li><b>' + esc(e.date) + '</b> ' + esc(personName(e.who)) + ' — ' + esc(e.what)
+    + (e.task ? ' <code>' + esc(e.task) + '</code>' : '') + '</li>').join('');
+
+  $('footer').textContent = 'Source of truth: progress.json (sha ' + SIG + '). '
+    + (meta.how_to || '');
+}
+
+document.addEventListener('click', (ev) => {
+  const who = ev.target.closest('[data-who]');
+  if (who) { prefs.who = who.dataset.who; savePrefs(); render(); return; }
+  const area = ev.target.closest('[data-area]');
+  if (area) { prefs.area = area.dataset.area; savePrefs(); render(); return; }
+  const copy = ev.target.closest('[data-copy]');
+  if (copy) {
+    const t = taskById(copy.dataset.copy);
+    copyText(JSON.stringify(t, null, 2)).then(
+      () => { copy.textContent = 'copied!'; setTimeout(() => { copy.textContent = 'copy JSON'; }, 1400); },
+      () => { copy.textContent = 'clipboard blocked'; });
+  }
+});
+
+render();
+
+/* Opened from the file system?  fetch() rejects and we keep the embedded
+   snapshot.  Served?  Re-read the JSON and shout if this page is behind it. */
+fetch('progress.json', { cache: 'no-store' })
+  .then((r) => (r.ok ? r.json() : null))
+  .then((d) => {
+    if (!d || looseSig(d) === SIG) return;
+    DOC = d;
+    const el = $('stale');
+    el.hidden = false;
+    el.textContent = 'This page was built from an older progress.json. '
+      + 'Run  PYTHONPATH=python_tools python3 -m gm progress build  — '
+      + 'showing the newer file below.';
+    render();
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>

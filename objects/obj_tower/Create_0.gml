@@ -31,6 +31,15 @@ image_yscale = 0.5;
 tower_clickBox = array(0,0,0,0);
 tower_hilight = false;
 
+/// The level ladder is measured against the BASE stats and the BASE price,
+/// so a tower carries all three (tower_levels.gml, economy.md 4.4).  They
+/// are DEFAULTED here rather than read, because the creator assigns data and
+/// price AFTER instance_create - reading them now would be a fatal
+/// unset-variable read (LL-002).
+base_data  = undefined;
+base_price = 0;
+invested   = 0;
+
 /// get if submerged
 
 var _x = clamp(x>>5,0,ds_grid_width(LEVEL.ground_map)-1),

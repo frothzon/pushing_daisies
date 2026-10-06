@@ -20,6 +20,15 @@ function scr_placeTower(argument0) {
         
 	        _tObj.name = _tower[1];
 	        _tObj.sprite_index = _sprites[0];
+	        /// The BASE stats and the BASE price go on the tower as well as the
+	        /// resolved ones: a rung is measured against the base, and a rung's
+	        /// price is a multiple of the base price (tower_levels.gml,
+	        /// economy.md 4.4).  `_tower[4]` is the roster's own data, kept so an
+	        /// upgrade can re-resolve exactly what a placement resolved.
+	        var _base = (array_length(_tower) > 4) ? _tower[4] : _tower[3];
+	        _tObj.base_data  = array_duplicate(_base);
+	        _tObj.base_price = _price;
+	        _tObj.invested   = _price;
 	        _tObj.data = array_duplicate(_tower[3]);
 	        _tObj.price = _price;
 	        _tObj.tower_string = scr_dataToString(_tObj.data);

@@ -131,7 +131,11 @@ switch(menu_state){
                 if(_wnode >= 0){
                     var _rgn = 1 + (_wnode div 10),
                         _stg = 1 + (_wnode mod 10);
-                    if(stage_unlocked(_rgn, _stg)){
+                    /// a node with no authored level is inert, whatever the
+                    /// unlock rules say - the map must not create a stage
+                    if(!level_exists(_rgn, _stg)){
+                        print("MENU  stage ", _rgn, "-", _stg, " has no level yet");
+                    } else if(stage_unlocked(_rgn, _stg)){
                         global.region = _rgn;
                         global.stage  = _stg;
                         scr_playSound(snd_button, false);

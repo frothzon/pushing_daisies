@@ -13,6 +13,7 @@ from typing import Any, List, Optional, Tuple
 
 from . import events as events_mod
 from . import gml as gml_mod
+from . import progress as progress_mod
 from . import project as project_mod
 from . import yy
 
@@ -357,6 +358,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--sprite")
     p.add_argument("--parent")
     p.set_defaults(func=cmd_new_object)
+
+    p = sub.add_parser("progress", help="the progress tracker (check/build/list/set/add)")
+    p.add_argument("action", nargs="?", default="check",
+                   choices=["check", "build", "list", "set", "add"])
+    p.add_argument("rest", nargs="*", help="for set/add: <id> key=value ...")
+    p.add_argument("--owner", help="list: only cards this person owns")
+    p.add_argument("--awaiting", help="list: only cards waiting on this person")
+    p.add_argument("--done", action="store_true", help="list: include finished cards")
+    p.set_defaults(func=progress_mod.cmd_progress)
 
     p = sub.add_parser("roundtrip", help="verify .yy files round-trip byte-for-byte")
     p.add_argument("paths", nargs="*")

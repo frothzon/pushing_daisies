@@ -4,6 +4,14 @@ function scr_drawLight(argument0) {
 
 	var _scale = argument0;
 
+	/// _dayCycle is created later during startup and does NOT persist across
+	/// rooms, while _shadows does - so this can run with no day cycle to read.
+	/// Guard before dereferencing it (LL-012): a missing day cycle means "no
+	/// shadow this frame", not a fatal error.
+	if(!instance_exists(_dayCycle)){
+	    return;
+	}
+
 	if(depth < 0){
 	    var _DAY = _dayCycle,
 	        _wn = sprite_width*0.5,

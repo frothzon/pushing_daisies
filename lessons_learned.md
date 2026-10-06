@@ -40,6 +40,10 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-017](#ll-017) | A new "safety" guard crashes on a line that looks defensive, only before an object's Create has run | **`instance_exists()` on an unassigned `globalvar` is itself a read of an unset variable** | **FIXED** |
 | [LL-018](#ll-018) | A check script reports "line endings changed" for files nothing touched; `git diff` says otherwise | Comparing against **`git show HEAD:`** compares a *normalised* blob (LF) against a CRLF working tree | **FIXED** |
 | [LL-019](#ll-019) | Buttons that were "hidden" are **still drawn**, still hover, still beep, and sit over the screen that replaced them | **`visible = false` only affects the built-in sprite draw** - an object with its own Draw event must check it itself | **FIXED** |
+| [LL-020](#ll-020) | `Unable to find instance for object index 1` from `_shadows` Draw, every frame, after finishing a level | A **persistent instance whose dependency did not persist** — `_shadows` survives the room change, `_dayCycle` does not | **FIXED** |
+| [LL-022](#ll-022) | 60-wave stages come out either trivial or unbeatable, depending on which half gets landed first | The wave ramp and the tower-level ladder are **two curves that only mean something together** | **FIXED** |
+| [LL-023](#ll-023) | The board's "waiting on you" strip slowly fills with parked work | A rule that lives in **prose only** — the validator checked each field's shape but never compared two fields | **FIXED** |
+| [LL-021](#ll-021) | A stage can be Deployed to that has no level data, and it silently plays stage 1 | The world map's 6x10 grid and the authored stage table are **two sources of truth** that never compared | **FIXED** |
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `enum` `crlf` `room_speed` `built-in` `shadowing` `null` `log` `debug`
@@ -49,7 +53,15 @@ Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `sibling` `parameter` `RNG` `perlin` `globalvar` `instance_exists`
 `variable_global_exists` `guard` `git` `HEAD` `eol` `gitattributes`
 `verifier` `false positive` `visible` `hide` `draw event` `button`
-`draw_sprite_ext` `aspect ratio` `text wrap` `loadout`.
+`draw_sprite_ext` `aspect ratio` `text wrap` `loadout`
+`persistent` `room change` `_shadows` `_dayCycle` `day cycle`
+`level start` `missing instance` `Unable to find instance`
+`single source of truth` `world map` `level data` `level_exists`
+`GameLevelData` `phantom stage` `deploy`
+`coupled constants` `wave curve` `tower ladder` `exponential` `base-relative`
+`region_data` `difficulty wiring` `money is quadratic` `balance` `rung price`
+`executable rule` `invariant` `derived field` `checked-in artefact` `gate`
+`progress tracker` `single source of truth` `stale view`.
 
 ---
 
@@ -1050,6 +1062,253 @@ when clicked through (only its script was correctly suppressed).
 `scripts/scr_stpButton/scr_stpButton.gml`,
 `scripts/scr_button_index_hide/scr_button_index_hide.gml`,
 `objects/Menu/Step_0.gml`.
+
+---
+
+<a name="ll-020"></a>
+## LL-020 — A persistent instance outlives the non-persistent data it draws
+
+**Symptom.** Finish a level, return to the world map, pick the next stage, and
+the game throws the **same error every frame** while entering the play room:
+
+```
+ERROR in action number 1
+of Draw Event for object _shadows:
+Unable to find instance for object index 1
+ at gml_Script_scr_drawLight (line 13) -         _sx = _DAY.shadow_offset[0],
+gml_Script_scr_drawShadows (line 22) -     scr_drawLight(_scale);
+gml_Object__shadows_Draw_0 (line 2) - scr_drawShadows();
+```
+
+`_DAY` is `_dayCycle`, and "object index 1" is that object with **no live
+instance**. Level one is fine; every level *after* it is not.
+
+**Root cause.** Two objects are created as a pair, but only one of them was
+marked persistent:
+
+* `_shadows` — `persistent: true`.
+* `_dayCycle` — `persistent: false`.
+
+`scr_iniLighting()` creates `_shadows` from `_dayCycle`'s Create event, so on the
+first level they appear together. But a stage is a fresh entry to `rm_test`: the
+main flow re-runs (`Control` → `_mainControl` → `scr_main_startup`), which
+recreates `_dayCycle` **after** the loading sequence, while the persistent
+`_shadows` from the previous level is already in the room. For the first frames
+of the new stage the wall shadows are drawn *before* `_dayCycle` exists again,
+and `scr_drawLight` dereferenced it without a guard.
+
+The same asymmetry had a second half: because `_shadows` is persistent and
+`scr_iniLighting` created unconditionally, **every** level stacked one more
+`_shadows` on top of the last - an ever-growing pile of shadow passes.
+
+`scr_drawShadows` had already been half-guarded (`instance_exists(_dayCycle)`
+before the final `draw_surface_ext`), but the `with(_shadow)` / `with(obj_wall)`
+blocks that call `scr_drawLight` ran *before* that, so the fatal still fired.
+
+**Fix.** Guard the reference (the LL-012 shape) *and* stop the pile.
+
+```gml
+/// scr_drawLight() - the day cycle may not exist yet, or at all
+if(!instance_exists(_dayCycle)){
+    return;
+}
+
+/// scr_drawShadows() - no day cycle, no shadow pass at all
+if(!instance_exists(_dayCycle)){
+    return;
+}
+
+/// scr_iniLighting() - create the renderer once, reuse the survivor
+if(!instance_exists(_shadows)){
+    instance_create_depth(0,0,-50,_shadows);
+}
+```
+
+**Guard rails.**
+* **An instance may only outlive another if the thing it reads outlives it
+  too.** `_shadows` reads `_dayCycle` every frame, so they must share a
+  lifetime - either both persist or neither does. Grep the pair, not just the
+  object named in the error.
+* A guard **at the consumer** (`instance_exists()` before a `.var` read) turns
+  a fatal into "it did not draw this frame". Put it in *every* function that
+  dereferences a sibling, not only in the Draw event that happened to call it.
+* **Creation inside a re-run initialiser must be idempotent.** An
+  `instance_create*` in a `scr_ini*` that runs once per level is a duplicate
+  generator the moment the object is persistent.
+
+**Status.** FIXED, 2026-10-05.
+
+**Files.** `scripts/scr_drawLight/scr_drawLight.gml`,
+`scripts/scr_drawShadows/scr_drawShadows.gml`,
+`scripts/scr_iniLighting/scr_iniLighting.gml`.
+
+---
+
+<a name="ll-021"></a>
+## LL-021 — Two sources of truth for "what a level is": a map that can create a stage
+
+**Symptom.** Nothing, until it did.  The world map draws a **6 x 10** grid of
+region/stage nodes and every unlocked node is clickable.  After clearing region
+1 the next region opens (the gate is `region_cleared(1)`) - but the authored
+stage table only ever held **region 1's ten rows**.  Clicking 2-1 Deployed, the
+level ran, and it was **stage 1-1 again**: `stage_current()` fell back to
+`stage_get(1, 1)` when the lookup came back `undefined`.  A level the map
+"created" that the data never defined - on screen, and payable, and wrong.
+
+**Root cause.** The shape of the campaign lived in two places that could not
+disagree out loud:
+
+* the **map** - `meta_worldmap_geom()` / `meta_worldmap_rects()` hardcode
+  6 regions x 10 stages, and `Menu/Step_0` turned *any* node index into a
+  region+stage and deployed it;
+* the **data** - `stage_data()` had ten rows.
+
+Nothing compared the two, so a node could exist with no level behind it, and the
+level flow's own safety fallback (`stage_get(1,1)`) hid the mismatch instead of
+surfacing it.
+
+**Fix.** One source of truth, and a gate at the door.  `GameLevelData`
+(`scripts/GameLevelData`) is what a level IS; `global.level_data` is built
+**once** in `initialize_game()` from the authored rows, and `level_get()` /
+`level_exists()` / `level_current()` read it.  The map resolves every node
+through `level_get()`, draws a node with no level as an inert dash, and the
+Menu refuses the Deploy:
+
+```gml
+if(!level_exists(_rgn, _stg)){
+    print("MENU  stage ", _rgn, "-", _stg, " has no level yet");
+} else if(stage_unlocked(_rgn, _stg)){
+    ... deploy ...
+}
+```
+
+`stage_get()` / `stage_current()` / `stage_count()` are now thin wrappers over
+the one list, so every existing caller moved without changing.
+
+**Guard rails.**
+* **A screen that enumerates things must enumerate the same list the game plays
+  from.**  A hardcoded count (`6 x 10`) beside a data table is two truths that
+  will drift the moment one is edited.
+* **A fallback that swallows "not found" hides exactly the bug you want to
+  see.**  Keep the fallback so nothing throws (LL-002), but add a gate that
+  refuses the input *before* the fallback can matter.
+* Build shared data **once, at init**, and hand everyone the same list - a list
+  rebuilt per screen is a list that can be a different list per screen.
+
+**Status.** FIXED, 2026-10-05.
+
+**Files.** `scripts/GameLevelData/GameLevelData.gml` (new),
+`scripts/stage_data/stage_data.gml`, `scripts/initialize_game/initialize_game.gml`,
+`scripts/scr_meta_screen/scr_meta_screen.gml`, `objects/Menu/Step_0.gml`.
+
+---
+
+<a name="ll-022"></a>
+## LL-022 — Two curves that only mean something together (wave ramp vs tower ladder)
+
+**Symptom.** "Just raise the wave count" is not a one-line change.  Set a stage
+to 60 waves with the old ramp and the game is unbeatable; land the new tower
+ladder without the new ramp and the game is trivial.  Both directions present as
+*"the balance is broken"* and neither points at the cause.
+
+**Root cause.** Two constants whose values only have meaning relative to each
+other:
+
+* `scr_level_difficulty` did `life *= power(2, wave/5 - 2) + 0.2*(wave - 1)` —
+  ×1.0 at wave 1, ×2.8 at wave 10, **×1036 at wave 60**;
+* a tower's L5 did **×16** an L1's damage, because each purchase added the
+  tower's *current* damage.  The exponential ramp was written to match *that*
+  and nothing else.
+
+Change either alone and the product moves by an order of magnitude.  Stage
+stages used to be 5-10 waves, which is why nobody noticed: the exponential
+never got past ×2.8.
+
+**Fix.** Make both of them data, then make the shape legible.
+
+* Waves became a **rule** in `region_data()` — 15 in stage 1, +5 a stage, in
+  every biome — and the ramp became a per-biome curve:
+
+  ```gml
+  m(w) = 1 + (curve_end - 1) * ((w - 1) / (waves - 1)) ^ curve_pow
+  ```
+
+  `m(1) = 1.00` in EVERY biome (so one set of tower numbers survives sixty
+  stages), `curve_end` per region (30 → 125), and `curve_pow = 2` because a
+  stage's money grows with the **square** of the wave number.
+* The ladder became `tower_levels.gml` — a level is `base × ladder` and never
+  compounds, and cap/floor come from the garden — and it landed in the **same
+  change** as the curve.
+
+**Guard rails.**
+* **A constant tuned against another constant is not a constant, it is a
+  coupling.**  Write it down next to its partner.  `economy.md` §4.4 and
+  `goal.md` §4 both said "they are one change" and it was *still* nearly landed
+  in two halves.
+* **Check a curve where it is steepest, not where it is comfortable.**  The old
+  ramp is perfectly reasonable at wave 10 and absurd at wave 60.
+* **Match the ramp to the income, not to a feeling.**  Rewards per wave grow
+  ~quadratically (`spawn_count + wave div 5`); a ramp that tracks that stays
+  reachable, and an exponential one never can.
+* When two tables must agree (a price and a worth), **write the inequality
+  down** — `Δdps ÷ Σprice ≥ dps-per-money` — so a violation is arithmetic
+  rather than an argument.  Doing that is how §4.6 was found.
+
+**Status.** FIXED for the waves, the curve and the difficulty wiring,
+2026-10-05.  The **rung price vs rung worth** mismatch it exposed is OPEN and
+recorded as `economy.md` §4.6.
+
+**Files.** `scripts/region_data/region_data.gml` (new),
+`scripts/tower_levels/tower_levels.gml` (new), `scripts/GameLevelData/GameLevelData.gml`,
+`scripts/stage_data/stage_data.gml`, `scripts/scr_level_difficulty/scr_level_difficulty.gml`,
+`scripts/difficulty_data/difficulty_data.gml`, `scripts/scr_level_spawn/scr_level_spawn.gml`,
+`scripts/scr_zomb_death/scr_zomb_death.gml`, `scripts/scr_zomb_pathSpeed/scr_zomb_pathSpeed.gml`,
+`objects/_levelControl/{Create_0,Step_0}.gml`, `objects/obj_tower/Create_0.gml`,
+`objects/obj_tower_edit/Step_0.gml`, `scripts/scr_placeTower/scr_placeTower.gml`.
+
+---
+
+<a name="ll-023"></a>
+## LL-023 — A convention nobody checks gets broken by its author, within the hour
+
+**Symptom.** `progress.json`'s own documentation said *"a `backlog` card has
+`awaiting: "none"` because nobody is holding it yet."* Within the hour the board
+had a `backlog` card awaiting Rayu, and the top strip — the one place that is
+supposed to mean *"this is on you right now"* — had started filling with parked
+work. Nothing errored. Nothing looked broken. The board was just quietly less
+useful than it claimed to be.
+
+**Root cause.** The rule lived in **prose only**. The validator checked the *shape*
+of every field (enums, ids, dates, cross-references) and never compared two fields
+to each other, so a document could be perfectly well-formed and still mean the
+wrong thing. Prose in a doc is not a constraint; it is a hope with good formatting.
+
+**Fix.** Make the invariant executable, and give it a test:
+
+```python
+if status == "backlog" and t.get("awaiting") not in (None, "none", "external"):
+    errs.append("%s: a backlog card must not be awaiting a person "
+                "(promote it to next if they really need to act)" % where)
+```
+
+**Guard rails.**
+* **If a doc states a rule, ask which command enforces it.** If the answer is
+  "none", the rule is a wish. This is [LL-021](#ll-021) one level up: not two
+  data sources that never compared, but a data source and *its own documentation*.
+* **Derive a field when you can, instead of storing it.** There is no `blocked`
+  status in the tracker — it is `awaiting != none` on an unfinished card, and a
+  derived field cannot disagree with itself.
+* **Any checked-in file built from another file needs a gate.** `PROGRESS.md` and
+  `progress.html` carry a `progress-sha` and `gm progress check` fails when they
+  disagree with `progress.json`, so "forgot to rebuild" is a red test instead of a
+  board that quietly lies. Verify the gate *bites*: edit the JSON, watch it go red.
+* **Put the rule where it is cheap to obey.** A validation error is a fix; a
+  paragraph in `AGENTS.md` is a reminder.
+
+**Status.** FIXED, 2026-10-05.
+
+**Files.** `python_tools/gm/progress.py` (`validate`), `python_tools/tests/test_gm.py`
+(`ProgressTests`), `progress.json`, `AGENTS.md` §6.
 
 ---
 

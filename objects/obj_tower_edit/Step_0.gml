@@ -61,6 +61,12 @@ if(mouse_check_button_released(mb_left)){
         _tObj.sprite_index = sprite_index;
         _tObj.data = data;
         _tObj.price = price;
+        /// the ladder is measured against the BASE and a rung's price is a
+        /// multiple of the BASE price, so both travel with the tower
+        /// (tower_levels.gml, economy.md 4.4)
+        _tObj.base_data  = base_data;
+        _tObj.base_price = base_price;
+        _tObj.invested   = invested;
         _tObj.tower_string = tower_string;
         _tObj.sprite_list = sprite_list;
         _tObj.image_blend = c_gray;

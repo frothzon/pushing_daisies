@@ -28,6 +28,15 @@ function initialize_game() {
 	/// the title screen (roadmap 1.5).  The Menu resets it as it reads it.
 	global.menu_entry = MENU_STATE.START;
 
+	/// ---- the levels (roadmap 1.4) ----
+	/// Every level the game knows about, in ONE list, built once here from
+	/// the authored stage table (GameLevelData.gml).  The world map and the
+	/// level flow both read this, so a node cannot exist without its level
+	/// data and a level cannot be created twice or lost between screens.
+	global.level_data = [];
+	global.level_data = level_data_build();
+	scr_meta_log("LEVEL", "authored ", array_length(global.level_data), " levels");
+
 	/// Graphics Settings
 	global.shadowQuality = 1.0;
 	global.clutterDensity = 1.0;

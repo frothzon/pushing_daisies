@@ -4,7 +4,10 @@ function scr_zomb_death() {
 	if(data[MON.life] <= 0){
 
 	    // add points and score
-	    add_item_value(STATINV.money,data[MON.kill_money]);
+	    /// the difficulty column scales what a kill pays (goal.md 2: Brutal
+	    /// pays 1.5x).  Rounded, because money is a count, not a fraction.
+	    add_item_value(STATINV.money,
+	                   round(data[MON.kill_money]*difficulty_money_mult()));
 	    var _points = floor(sqrt(data[MON.maxLife]))+1;
 	    add_item_value(STATINV.points,_points);
 	    float_text(x,y-32,concat("+",_points," Pts"),c_ltgray);

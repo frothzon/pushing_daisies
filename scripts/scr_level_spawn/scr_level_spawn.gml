@@ -19,15 +19,22 @@ function scr_level_spawn() {
 	    scr_playSound(snd_zomb_emerge,false);
 
 	    /// a stage names its own spawners.  Its boss, if it has one, is the
-	    /// final wave; a stage without one falls back to every ten waves.
+	    /// FINAL wave - a stage ends on its climax.
+	    ///
+	    /// The cadence of mid-stage bosses comes from the LEVEL data
+	    /// (`boss_every`, region_data.gml) rather than a magic `% 10`.  At the
+	    /// 5-10 waves a stage used to have that constant never once fired; at
+	    /// 15-60 it would fire five times a stage and the last wave would not
+	    /// be a boss at all - the shape of the stage, inverted.
 	    var _pool   = _row.spawns,
-	        _bosses = _row.bosses;
+	        _bosses = _row.bosses,
+	        _every  = _row.boss_every;
 	    if(array_length(_pool) == 0) _pool = [0];
+	    if(!is_real(_every) || _every < 0) _every = 0;
 
-	    if(array_length(_bosses) > 0){
-	        is_boss_wave = (wave_count >= _row.waves);
-	    } else {
-	        is_boss_wave = (wave_count % 10 == 0 && wave_count > 1);
+	    is_boss_wave = (_every > 0 && wave_count % _every == 0 && wave_count > 1);
+	    if(array_length(_bosses) > 0 && wave_count >= _row.waves){
+	        is_boss_wave = true;   /// the named boss always closes the stage
 	    }
 
 	    if(is_boss_wave && array_length(_bosses) > 0){
@@ -56,7 +63,10 @@ function scr_level_spawn() {
 	    _mon[@ MON.kill_money] = (wave_count + 1);
 	}
 
-	var MAX = _mon[MON.spawn_count] + wave_count div 5;
+	/// how many of this wave's creature to spawn.  Grows with the wave, and
+	/// the difficulty column adds its own extra (Brutal sends one more).
+	var MAX = _mon[MON.spawn_count] + wave_count div 5 + difficulty_count_bonus();
+	if(MAX < 1) MAX = 1;
 	if(is_boss_wave) MAX = 1;
 
 	if(MAX > spawn_current){

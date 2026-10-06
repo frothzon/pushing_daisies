@@ -484,6 +484,28 @@ A stage is winnable **and** losable for the right reasons (not because a number 
 
 If one tower or one status appears in every viable loadout, the counter-system of `goal.md` §3 is not working and the numbers — not the plan — need another pass.
 
+### 6.4 Landed early — wave counts, the biome curve and the §4.4 ladder (2026-10-05)
+
+Three Phase 2 items were pulled forward, because the wave count could not be
+changed without them: `economy.md` §4.4/§4.5 and `goal.md` §4 all say the wave
+ramp and the level ladder are **one change**.
+
+| # | What | Where |
+| --- | --- | --- |
+| — | Waves are a **rule**: 15 in stage 1, +5 a stage, in every biome | `region_data` (new) |
+| — | The per-biome HP curve — the same wave-1 fight everywhere, steeper per region | `region_data` + `GameLevelData.life_mult()` |
+| 2.6 | `scr_level_difficulty` rewritten off that curve (was `2^(wave/5-2) + 0.2(w-1)`: ×1036 at wave 60) | `scripts/scr_level_difficulty` |
+| 2.4 part | The §4.4 ladder — a level is `base × ladder` and never compounds; cap and floor come from the garden | `tower_levels` (new) |
+| — | `difficulty_data`'s hp / speed / count / money columns are now **read**. Before this, Brutal only paid better; it never fought harder. | `difficulty_data` + 4 call sites |
+
+**Still open, in order:** (1) the rung-price vs rung-worth mismatch —
+`economy.md` §4.6, a one-table fix; (2) persistent mastery XP per kill (the rest
+of 2.4); (3) `par_spend` / `par_time` re-authored for 15–60 wave stages.
+
+**Falsifier for this block.** If biome 2's wave 1 is harder than biome 1's, the
+shared base is broken. If a stage's money runs out before wave 10, the curve is
+too steep. If clearing a stage needs no upgrades at all, the ladder is too flat.
+
 ---
 
 ## 7. Phase 3 — The Garden Book (the meta layer's face)
