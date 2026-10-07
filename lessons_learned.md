@@ -44,6 +44,11 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-022](#ll-022) | 60-wave stages come out either trivial or unbeatable, depending on which half gets landed first | The wave ramp and the tower-level ladder are **two curves that only mean something together** | **FIXED** |
 | [LL-023](#ll-023) | The board's "waiting on you" strip slowly fills with parked work | A rule that lives in **prose only** — the validator checked each field's shape but never compared two fields | **FIXED** |
 | [LL-021](#ll-021) | A stage can be Deployed to that has no level data, and it silently plays stage 1 | The world map's 6x10 grid and the authored stage table are **two sources of truth** that never compared | **FIXED** |
+| [LL-024](#ll-024) | `Variable <caller>.<name> not set before reading it` for a name you *know* is a function; the numbers in the parentheses look like corrupt arguments | The function was **never defined** — GameMaker names the **calling scope**, and the parentheses are *(instance id, internal id)*, **not the arguments** | **FIXED** |
+| [LL-025](#ll-025) | Monsters walk **north, straight through walls**, mid-wave, even when the level has a clear route; the wave then ends via the 6 s valve | A **draw-only `y` offset applied twice** (Pre Draw *and* Post Draw) that only bites once `Alarm_0` has **thrown the live path away on a failed re-path** — a monster with no path is a monster nothing rewrites | **FIXED** |
+| [LL-026](#ll-026) | The same `Variable Input.<name> not set before reading it` every step, naming a function that event never calls | A **saved function reference**: an array of listeners (`key_type`) was persisted through `ds_list_write` and came back callable-but-stale - it ran whatever script the handle then indexed (see [LL-028](#ll-028)) | **FIXED** |
+| [LL-027](#ll-027) | Pathfinding is still off: monsters take odd routes or cannot leave their pen, as if a tower or wall covered more than its cell; **no error** | **`mp_grid_add_rectangle`/`mp_grid_add_instances` floor BOTH edges and iterate INCLUSIVELY**, so a rectangle the size of one cell blocks two (a 2x2) — block a **cell by index** instead | **FIXED** |
+| [LL-028](#ll-028) | The LL-026 error again, but naming a **different** script and an unrelated object, changing each rebuild | A saved function reference comes back **still callable**, on a handle that shifts when the project gains a script; `is_callable()` cannot spot it, so `key_type` must never be loaded | **FIXED** |
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `enum` `crlf` `room_speed` `built-in` `shadowing` `null` `log` `debug`
@@ -58,10 +63,17 @@ Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `level start` `missing instance` `Unable to find instance`
 `single source of truth` `world map` `level data` `level_exists`
 `GameLevelData` `phantom stage` `deploy`
+`undefined function` `not set before reading it` `Read Variable` `caller scope`
+`function` `grep function` `tower_upgrade_price` `tower_sell_refund`
 `coupled constants` `wave curve` `tower ladder` `exponential` `base-relative`
 `region_data` `difficulty wiring` `money is quadratic` `balance` `rung price`
 `executable rule` `invariant` `derived field` `checked-in artefact` `gate`
+`climb` `z_climb` `pre draw` `post draw` `draw offset` `drift` `march north`
+`no path` `path cache` `probe then commit` `phantom block` `grid_block`
 `progress tracker` `single source of truth` `stale view`.
+`key_type` `script_execute` `is_callable` `asset_get_index` `ds_list_write` `function reference` `saved binding` `_objSwitch`
+`mp_grid_add_rectangle` `mp_grid_add_instances` `mp_grid_add_cell` `inclusive` `2x2` `footprint` `cell`
+`callable but stale` `handle` `key_type` `ds_list_read` `never load a function` `obj_spawn` `scr_drawSwitchTimer` `purge slot`
 
 ---
 
@@ -1309,6 +1321,488 @@ if status == "backlog" and t.get("awaiting") not in (None, "none", "external"):
 
 **Files.** `python_tools/gm/progress.py` (`validate`), `python_tools/tests/test_gm.py`
 (`ProgressTests`), `progress.json`, `AGENTS.md` §6.
+
+---
+
+<a name="ll-024"></a>
+## LL-024 — A call to a function that was never defined reports as a *variable* read, in the CALLER's scope
+
+**Symptom.** Selecting a tower in a level threw, every time:
+
+```
+of  Step Event0 for object _levelControl:
+Variable _levelControl.tower_upgrade_price(101533, -2147483648) not set before reading it.
+ at gml_Object__levelControl_Step_0 (line 94) -  tower_price_save[0] = tower_upgrade_price(tower_selection.base_price,
+```
+
+The first instinct is to read the parentheses as the arguments: `base_price` is
+`101533` (not a price — that looks like an instance id!) and `level` is
+`-2147483648` (`INT_MIN`!). From there you go hunting for a corrupt tower, a
+mis-set `tower_selection`, or a `data[TOWER.level]` that was never written. **All
+of that is a dead end**, and the real cause is much duller.
+
+**Root cause.** Two things, one of them a documentation trap.
+
+1. **The function did not exist.** The Phase 1 economy refactor rewrote
+   `_levelControl/Step_0.gml` to *call* `tower_upgrade_price(...)` and
+   `tower_sell_refund(...)`, but the functions themselves were never added to any
+   script. Grep for `` `function tower_upgrade_price` `` returns **zero hits**.
+2. **GameMaker names the caller, not the missing file.** A call to an unknown
+   identifier is compiled as a *variable read* of that name in the current scope,
+   so the message is `Variable <calling object>.<the name> not set before reading
+   it` — here `<caller>` is `_levelControl` even though the function "belongs" to
+   `tower_levels`. An undefined **function** and an undefined **variable** produce
+   the *same* error text.
+3. **The numbers in the parentheses are not the arguments.** The manual
+   (`Runner Errors`) is explicit: the first value is *the instance ID of the
+   instance running the code* and the second is *an internal value … that can be
+   ignored*. `101533` is not the selected tower (`100181` in the log) and `-2147483648`
+   is not a level — they are runner bookkeeping. Reading them as data sends you
+   after the wrong bug.
+
+**Fix.** Define the two functions, next to the rest of the ladder they belong to
+(`scripts/tower_levels/tower_levels.gml`, all reads guarded per [LL-002](#ll-002)):
+
+```gml
+function tower_upgrade_price(_base_price, _level) {
+	if(!is_real(_base_price) || !is_real(_level)) return -1;
+	if(_level >= tower_cap()) return -1;              /// -1 = "at the cap" sentinel
+	var _rung = round(_level) - tower_floor() + 1,    /// rungs counted from the FLOOR
+	    _cost = tower_rung_cost(_rung);
+	if(_cost < 0) return -1;
+	return round(_base_price * _cost);                /// economy.md 4.3
+}
+
+function tower_sell_refund(_invested) {
+	if(!is_real(_invested)) return 0;
+	return round(_invested * 0.60);                   /// 60% of everything invested
+}
+```
+
+**Guard rails.**
+* **When the failing name looks like a function, grep for its definition before
+  you chase its arguments:** `grep -rn 'function <name>' --include='*.gml' .`.
+  Zero hits means "never defined", full stop — not "set later".
+* **A `not set before reading it` error proves nothing about which file is at
+  fault.** The scope in the message is *the caller*. Read it as *"this call site
+  is unbound"*, then go find (or write) the other end.
+* **Never treat the parenthesised values in a runner error as arguments.**
+  They are *(instance id, internal id)*. If they look like garbage to an argument
+  reading, that is because they are not arguments.
+* **A refactor that adds call sites needs a "does it define?" pass** in the same
+  change. After touching an event, list its `name(` calls and confirm each has a
+  `function name` somewhere (or is a real built-in). This is the same shape as the
+  wave-curve lesson ([LL-022](#ll-022)): two ends of one change that must land
+  together.
+
+**Status.** FIXED, 2026-10-06.
+
+**Files.** `objects/_levelControl/Step_0.gml` (the call sites, lines 54/94/167),
+`scripts/tower_levels/tower_levels.gml` (the definitions).
+
+---
+
+<a name="ll-025"></a>
+## LL-025 — A monster marches north through every wall (because its path was thrown away first)
+
+**Symptom.** Part-way through a wave the zombies stop following the route and
+**walk north**, in a straight line, **through towers and walls**, until they are
+off the top of the map. It happens even when the level plainly has a clear route,
+and it starts around the moment a tower is placed. The only log line is usually
+the last-resort valve:
+
+```
+PATH  WARNING: 3 monster(s) still alive 6s past the wave - forcing the wave to end so the stage cannot hang
+```
+
+**Root cause.** Two defects, one hiding the other.
+
+1. `obj_mon/Draw_72.gml` is **Pre Draw** and `obj_mon/Draw_73.gml` is **Post
+   Draw**. They are the fake "climb" height and must be a *balanced pair*: Pre
+   Draw lifts the sprite, Post Draw puts the instance back. **Both subtracted**
+   `z_climb*2-12`, so the instance's `y` stepped north by `2*(z_climb*2-12)`
+   (**~16-24 px**) *every frame*. It was invisible for as long as a monster was on
+   a path, because the path follower rewrites `x`/`y` every step and discards the
+   offset.
+
+2. `obj_mon/Alarm_0.gml` opened with
+
+   ```gml
+   path_end();
+   path_clear_points(myPath);     /// ... and only THEN asked the grid for a new one
+   ```
+
+   so a **single failed re-path** — a tower just placed, a monster brushing one;
+   `Collision_obj_tower` forces a re-path on mere *proximity* — left the monster
+   with **no path at all**. A monster with no path is a monster **nothing
+   rewrites each step**, so defect 1 stopped being invisible and walked it off the
+   map. And once it is outside `LEVEL.path_grid`, every later `mp_grid_path`
+   starts from an off-grid cell and fails, so it never comes back. That is why the
+   report sounded like a placement glitch: the placement is what *triggered* the
+   re-path.
+
+A third, smaller defect fed the trigger: `obj_tower/Create_0` blocked `bbox_*` at
+`image_xscale == 1` (32 px) while `Destroy_0` cleared `bbox_*` at `0.5` (16 px),
+so the clear was **always a smaller rectangle than the block** and every removed
+tower left phantom blocked cells behind; and the placement check added the *edit*
+object at `0.25` while the placed tower blocked at `1.0`, so the check reasoned
+about a footprint the tower would not actually have.
+
+**Fix.** Never move the instance in Draw, and never throw away a route you cannot
+replace.
+
+```gml
+/// obj_mon/Draw_73.gml  POST DRAW restores what PRE DRAW applied
+y += z_climb*2-12;
+
+/// scripts/scr_path_validate  - probe first, commit only on success
+function scr_path_replace(_grid, _x1, _y1, _x2, _y2, _dst, _probe) {
+	path_clear_points(_probe);
+	if(!mp_grid_path(_grid, _probe, _x1, _y1, _x2, _y2, true)) return false;
+	path_clear_points(_dst);                  /// only now is _dst touched
+	mp_grid_path(_grid, _dst, _x1, _y1, _x2, _y2, true);
+	return true;
+}
+```
+
+* `obj_mon/Alarm_0` — both the polite re-path and the last-resort escape — and
+  the first path in `scr_zombie_path` now go through `scr_path_replace(...)`: the
+  monster keeps walking what it has until a *replacement* exists, and is only ever
+  `path_start`ed on a path that has points.
+* `obj_mon/Create_0` adds a scratch `path_probe`; `Destroy_0` frees both paths
+  (neither was ever freed, so every zombie leaked its path).
+* `obj_tower/Create_0` blocks **the cell** and remembers it in `grid_block`;
+  `Destroy_0` clears that same rectangle; `obj_tower_edit/Step_0` checks that same
+  footprint — so add, clear and check finally agree.
+
+**Guard rails.**
+* **A draw-only offset must be applied and removed in the same frame.** Pre
+  Draw/Begin Draw shifts, Post Draw/End Draw restores, and the restore is the
+  exact inverse (`-=` then `+=`, never `-=` twice). An unmatched write of `x`/`y`
+  in a Draw event drifts the instance at the frame rate.
+* **Never destroy state you cannot rebuild.** Emptying a path/array/queue before
+  you know the new value exists turns "this failed" into "there is nothing here
+  any more". Probe, then commit.
+* **Whatever moves an instance must be rewritten every step.** Here motion is
+  "the path follower re-writes `x`/`y`"; when that stops, *any* other write —
+  even one in a Draw event — becomes movement. Ask "who writes x/y this step?"
+  whenever an instance starts drifting.
+* **An add and its remove must be the same rectangle.** Derive it once and keep
+  it (`grid_block`); recomputing from `bbox_*` after a scale change leaks blocked
+  cells, and a phantom block reads exactly like "the path is blocked but there is
+  nothing in the way".
+* **A monster with no path should freeze, not fly.** The escape route plus the
+  6 s valve in `scr_level_wait` still guarantee a wave can end, but nothing should
+  be able to move a monster off the grid in the first place.
+
+**Status.** FIXED, 2026-10-06.
+
+**Files.** `objects/obj_mon/Draw_72.gml`, `objects/obj_mon/Draw_73.gml`,
+`objects/obj_mon/Alarm_0.gml`, `objects/obj_mon/Create_0.gml`,
+`objects/obj_mon/Destroy_0.gml`, `scripts/scr_zombie_path/scr_zombie_path.gml`,
+`scripts/scr_path_validate/scr_path_validate.gml`,
+`objects/obj_tower/Create_0.gml`, `objects/obj_tower/Destroy_0.gml`,
+`objects/obj_tower_edit/Step_0.gml`.
+
+---
+
+<a name="ll-026"></a>
+## LL-026 — A persisted function reference comes back as a number, and `script_execute()` runs the wrong script
+
+**Symptom.** Every Step, from *Input* — and nothing in `Input/Step_0` mentions
+`scr_drawTimerExt`, nor does anything in the project call it, so the stack "looks
+wrong":
+
+```text
+ERROR in action number 1
+of  Step Event0 for object Input:
+Variable Input._objSwitch(100808, -2147483648) not set before reading it.
+ at gml_Script_scr_drawTimerExt (line 10) - 	var _logAmt = instance_number(_objSwitch);
+gml_Script_scr_drawTimerExt (line 10)
+gml_Object_Input_Step_0 (line 4)
+Script_Free called with 934 and global 392
+```
+
+**Root cause.** `Input/Step_0` dispatches the key listeners with
+
+```gml
+key[i] = script_execute(key_type[i],key_code[i]);
+```
+
+and `key_type` holds **function references** (`scr_key_get`, `scr_keyDown_get`,
+`scr_gamepad_get`, `scr_gamepadDown_get`) set up by `scr_add_key` in
+`scr_setup_keyboard` / `scr_setup_gamepad`. Then `scr_setup_keyboard` overwrites
+them from the save file:
+
+```text
+scr_setup_keyboard()  ->  scr_load_keys(global.saveName)
+scr_load_keys()       ->  scr_loadArray(...)              ->  ds_list_read
+scr_save_keys()       ->  scr_saveArray(key_type, ...)    ->  ds_list_write
+```
+
+`ds_list_write` / `ds_list_read` carry **only reals and strings**. A function
+reference is written as a plain number — the save file's `KeyInputData/1` held
+`41880100`, `3f880100`, ... (100417 / 100415) — so on the next launch `key_type`
+is an array of *numbers*. `script_execute(<number>)` then resolves the number as
+a **script index** and runs that script; in this build that was
+`scr_drawTimerExt`, an orphan from the "Simple Game Engine" asset pack that reads
+`_objSwitch`, an object **never recovered into this project**. Hence the error
+names a function nobody calls, in an object that does not exist, from an event
+that never mentions it.
+
+It only bites *after the first save*: a fresh run builds `key_type` correctly and
+`scr_loadArray` returns `-1` when there is no file, so the good array survives.
+The first `scr_save_keys` (Input's Game End event) writes the poisoned version,
+and every run from then on crashes.
+
+**Fix.** Never persist a function, never dispatch a value you have not checked,
+and never read a possibly-missing object as a bare name.
+
+```gml
+/// Input/Step_0.gml - dispatch through run_script(), which calls only a real function
+key[i] = run_script(key_type[i], noone, [key_code[i]]);
+
+/// scr_load_keys.gml - keep the freshly built key_type unless the saved one is all-callable
+var _typeOk = is_array(_key_type) && array_length(_key_type) > 0;
+if(_typeOk){
+    for (var _i=0; _i<array_length(_key_type); _i+=1){
+        if(!is_callable(_key_type[_i])){ _typeOk = false; break; }
+    }
+}
+if(_typeOk){ key_type = _key_type; };
+
+/// scr_save_keys.gml - do not save key_type at all (it cannot round-trip)
+scr_saveArray(key,_fname,_sec,"0");
+scr_saveArray(key_name,_fname,_sec,"2");
+
+/// scr_drawTimerExt.gml - resolve the object by name, bail when it is gone
+var _objSwitch = asset_get_index("_objSwitch");
+if(_objSwitch == -1) return;
+```
+
+`key_type` is fixed by the device (keyboard or gamepad), not the player, so
+rebuilding it every launch is always correct; only `key` and `key_name` are
+worth saving.
+
+**Correction ([LL-028](#ll-028)).** The saved value is not a plain number:
+it comes back **still callable**, so an `is_callable()` guard accepts it and
+the dispatch runs whatever script the handle now indexes. The value has to be
+bounded at the *load* - never read `key_type` at all - which is why the guard
+below was not enough on its own.
+
+**Guard rails.**
+* **`ds_list_write`/`ds_list_read` cannot store a function** (nor can an
+  `ini`/`json` round-trip). Anything holding callables — key listeners, button
+  callbacks, timer scripts — must be *rebuilt* on load, or saved as a **name**
+  and resolved with `asset_get_index()`.
+* **Never `script_execute()` a value that might not be a function - dispatch
+  through `run_script()` (LL-028).** It checks `is_undefined()` and
+  `is_callable()` first, binds the call to a target instance with `method()`
+  when asked, and forwards an `arguments_list` array. (LL-004 is the same
+  GMS1→GMS2 gap from the other side.) **That guard is half the fix**: a
+  value read back from a save file is callable *and* wrong, so `is_callable()`
+  passes it - the load has to refuse it instead (LL-028).
+* **A saved value outlives the code that wrote it.** Asset indices are not stable
+  across a conversion or a growing project, so a numeric reference on disk is a
+  landmine; never let one reach a dispatcher.
+* **When the stack names a function you never call, read the caller's *dispatch*
+  line, not the caller's text.** Line 4 dispatched an array element; the
+  function it named was never written in that file. (LL-024 is the mirror
+  image — there the
+  *callee* was the surprise.)
+* **`asset_get_index("name")` is the safe way to read an object that may not
+  exist** — a missing object is `-1`, where a bare `_objSwitch` is a fatal
+  "variable not set" (LL-002 / LL-012).
+* **A defect in a helper has siblings — grep for them.** The gamepad pair
+  `scr_save_gamepad` / `scr_load_gamepad` had the same persisted-function bug and
+  were fixed with the keyboard pair. They still disagree on the save *section*
+  (`"scr_save_gamepad"` vs `"GamepadInputData"`), so the gamepad path is inert
+  today; if it is ever wired up, keep the `is_callable()` guard.
+
+**Status.** FIXED, 2026-10-06.
+
+**Files.** `objects/Input/Step_0.gml`, `scripts/scr_load_keys/scr_load_keys.gml`,
+`scripts/scr_save_keys/scr_save_keys.gml`,
+`scripts/scr_drawTimerExt/scr_drawTimerExt.gml`,
+`scripts/scr_save_gamepad/scr_save_gamepad.gml`,
+`scripts/scr_load_gamepad/scr_load_gamepad.gml`.  Every one of its
+`script_execute()` dispatches now goes through `scripts/run_script/` (LL-028).
+
+---
+
+<a name="ll-027"></a>
+## LL-027 — `mp_grid_add_rectangle` / `mp_grid_add_instances` walk their range INCLUSIVELY, so a rectangle the size of one cell blocks two
+
+**Symptom.** Pathfinding is "still not fixed" even after LL-025: monsters take
+odd routes, or cannot leave the walled pen they spawn in at all, as though the
+towers were bigger than the 32x32 cell they stand on. **Nothing errors** - the
+grid is just wrong, so the route that comes back is not the route you drew.
+
+**Root cause.** The tower's grid footprint was a rectangle around its centre:
+
+```gml
+mp_grid_add_rectangle(LEVEL.path_grid,
+                      x - LEVEL.cell_w*0.5, y - LEVEL.cell_h*0.5,
+                      x + LEVEL.cell_w*0.5, y + LEVEL.cell_h*0.5);
+```
+
+A placed tower snaps to its cell centre (`((mouse_x>>5)<<5)+16`), so its far
+edge is `x + cell_w*0.5` - **exactly** the boundary of the NEXT cell. GameMaker
+floors *both* edges and iterates **inclusively**:
+
+```text
+_FA = floor((min(x1,x2) - originX) / cellW)
+_GA = floor((max(x1,x2) - originX) / cellW)
+for (i = _FA; i <= _GA; i++) add_cell(i, ...)
+```
+
+For a tower at `x = 112` (grid origin `-32`, cell 32): `_FA = floor(144/32) = 4`,
+`_GA = floor(160/32) = 5`, so **columns 4 and 5** are marked - and likewise two
+rows. Every tower therefore blocked a **2x2 block of four cells**, not the one
+it occupied. `mp_grid_add_instances()` has the identical floor/inclusive loop
+with the instance's bbox, so any instance whose far edge lands on a boundary
+over-blocks the same way. The level is a **walled pen** around the spawn with a
+one-cell exit, so one over-blocked wall cell can seal the exit and the whole
+horde is trapped - which is what "pathfinding is broken" actually looked like.
+
+**Fix.** Block the **cell an instance's origin falls in**, by index, everywhere.
+Never a rectangle.
+
+```gml
+/// the grid origin is (-cell_w,-cell_h), so a point's cell is (x+cell_w) div cell_w
+grid_col = (x + LEVEL.cell_w) div LEVEL.cell_w;
+grid_row = (y + LEVEL.cell_h) div LEVEL.cell_h;
+mp_grid_add_cell(LEVEL.path_grid, grid_col, grid_row);
+```
+
+* `obj_tower/Create_0` blocks its one cell and remembers `grid_col`/`grid_row`;
+  `obj_tower/Destroy_0` clears exactly that cell, so add and clear cannot drift
+  apart whatever the tower's `image_xscale` has become.
+* `obj_tower_edit/Step_0` blocks one cell for the candidate and one cell per
+  existing blocker.
+* A new helper `scr_grid_block_instances(grid, obj)` (in `scr_path_validate`)
+  replaces **every** `mp_grid_add_instances(...)` over the live grid -
+  `scr_resetDrawPath` and `obj_mon/Alarm_0` - one cell per instance, from `x/y`.
+
+**Guard rails.**
+* **A rectangle is not a cell.** `mp_grid_add_rectangle` and
+  `mp_grid_add_instances` are inclusive on the far edge, so a rectangle whose
+  edges land on cell boundaries marks one cell too many on each axis. When you
+  mean "one cell", say `mp_grid_add_cell`.
+* **A footprint must not depend on `image_xscale`.** The old code blocked
+  `bbox_*`, which changes when a tower is re-scaled on upgrade. Deriving the cell
+  from `x/y` is scale-independent. (This is *why* LL-025 moved off `bbox_*` - the
+  move just picked the wrong replacement.)
+* **Add and clear must be the same quantity.** Remember the cell on the
+  instance and clear that; never re-derive it later.
+* **A grid a "draw the path" helper mutates is a side effect.** `scr_resetDrawPath`
+  writes to the LIVE `path_grid` - which is how walls reached the path grid at
+  all. Be suspicious of a helper that blocks a grid it was only meant to read.
+* **Sprites here are authored 32x32 on the 32px grid**, so the cell that
+  contains an instance's `x/y` *is* the cell it occupies - for a centre-origin
+  tower and a top-left-origin wall alike.
+
+**Status.** FIXED, 2026-10-06.
+
+**Files.** `objects/obj_tower/Create_0.gml`, `objects/obj_tower/Destroy_0.gml`,
+`objects/obj_tower_edit/Step_0.gml`,
+`scripts/scr_path_validate/scr_path_validate.gml`,
+`scripts/scr_resetDrawPath/scr_resetDrawPath.gml`, `objects/obj_mon/Alarm_0.gml`.
+
+---
+
+<a name="ll-028"></a>
+## LL-028 — A saved function reference comes back **still callable**, and its handle shifts when the project gains a script
+
+**Symptom.** The LL-026 error returns, but naming a **different** script and an
+unrelated object each time the project is rebuilt:
+
+```text
+ERROR in action number 1
+of  Step Event0 for object Input:
+Variable obj_spawn.time_keeper(100807, -2147483648) not set before reading it.
+ at gml_Script_scr_drawSwitchTimer (line 11) - 	    var _time = (time_keeper - state_time) div room_speed,
+
+gml_Script_scr_drawSwitchTimer (line 11)
+gml_Script_run_script (line 41) - 	    case 1: return _fn(arguments_list[0]);
+gml_Object_Input_Step_0 (line 8) -     key[i] = run_script(key_type[i], noone, [key_code[i]]);
+```
+
+`Input`'s Step event names a script it never mentions, and the failing scope is
+some unrelated object (`obj_spawn`) — because that script takes its argument as
+an instance to `with()`.
+
+**Root cause.** LL-026 was right that a saved listener array is poison, and wrong
+about *why*. `ds_list_write`/`ds_list_read` **do** survive a function reference —
+they do not give back a plain number, they give back a value that is **still
+callable** — but the *handle* inside it indexes a table that shifts whenever the
+project gains or loses a script. The save file proves it: the `key` array's
+elements carry type-marker **5** (real) while `key_type`'s carry type-marker
+**15** holding **100417 / 100415** — a different kind of value:
+
+```text
+[KeyInputData]
+0="2F01000008000000 05000000 05000000 ..."          <- key:   8 x real
+1="2F01000008000000 0F00000041880100 ... "          <- key_type: 8 x 100417/100415
+```
+
+So the guard in `scr_load_keys` — *"accept the saved `key_type` only when every
+entry `is_callable()`"* — **passes**, `key_type` is replaced by the stale array,
+and the dispatch runs whatever script now sits at that handle. Adding one script
+(`run_script`) shifted the table, which moved `100417` from `scr_drawTimerExt`
+(LL-026's symptom) to `scr_drawSwitchTimer` (this one). **No runtime check can see
+it**: the value is not undefined, not a number, and not non-callable — it is a
+well-formed handle to the wrong function.
+
+**Fix.** Refuse the value at the boundary. A function reference must never be
+*read back*:
+
+```gml
+/// scr_load_keys.gml - load key/key_name, and never slot "1"
+var _key = scr_loadArray(_fname,concat(_sec),"0"),
+    _key_name = scr_loadArray(_fname,concat(_sec),"2");
+/// key_type is NOT read back - not even guarded.
+```
+
+and purge what is already on disk, so an older build cannot read it either:
+
+```gml
+/// scr_save_keys.gml - blank the stale slot; scr_loadArray() then returns -1
+ini_open(_fname);
+ini_write_string(_sec,"1","");
+ini_close();
+```
+
+Every dispatch in the project now also goes through `run_script()` (LL-026),
+which refuses an undefined or non-callable name. That closes the *other* half of
+the hole — a genuinely non-function value — but it cannot close this one.
+
+**Guard rails.**
+* **A saved function reference is still a function.** `is_callable()` is not a
+  validity check; do not use it to "sanitise" a value that came off disk. The
+  only safe rule is **never to load one**: rebuild it, or store a `string` name
+  and resolve it with `asset_get_index()`.
+* **An index that survives a save is a landmine.** Adding or removing any
+  resource renumbers the table, so a handle from an old save silently points at a
+  *different* function. When a dispatch "changes its mind" after an unrelated
+  change, suspect a saved reference.
+* **The listener belongs to the device, not the player.** `key_type` is built by
+  `scr_setup_keyboard()`/`scr_setup_gamepad()` and has no business in a save file
+  — which is also why validating it could not fix the bug.
+* **Check for siblings.** `key_type` was the only function *array* ever written to
+  a save file here (options, bags, high score and the static inventory are all
+  numbers), but `scr_saveArray`/`scr_loadArray` is shared: audit anything new that
+  puts a callable in one.
+* **A save file outlives the build that wrote it.** Blank slot "1" on save and
+  keep the read gone even so.
+
+**Status.** FIXED, 2026-10-06.
+
+**Files.** `scripts/scr_load_keys/scr_load_keys.gml`,
+`scripts/scr_save_keys/scr_save_keys.gml`,
+`scripts/scr_load_gamepad/scr_load_gamepad.gml`,
+`scripts/scr_save_gamepad/scr_save_gamepad.gml`,
+`scripts/run_script/run_script.gml`, `objects/Input/Step_0.gml`.
 
 ---
 

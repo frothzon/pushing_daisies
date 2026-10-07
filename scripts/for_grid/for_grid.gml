@@ -17,7 +17,7 @@ function for_grid(argument0, argument1, argument2) {
 	{
 	    for (i=0; i<_ww; i+=1)
 	    {
-	        script_execute(_scr,_grid,i,j,_dd);
+	        run_script(_scr, noone, [_grid, i, j, _dd]);
 	    };
     
 	};

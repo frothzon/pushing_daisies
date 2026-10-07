@@ -7,6 +7,13 @@ function scr_drawTimerExt() {
 	    _ind = 0;
 
 	//----------------------- Draw Timer
+	/// _objSwitch belonged to the "Simple Game Engine" asset pack; its switch
+	/// objects (_objSwitch/_objSwitchToggle/_objSwitchHold) were never recovered
+	/// into this project.  Reading a missing object as a plain variable is a
+	/// FATAL error in GMS2, so resolve it by name and bail out when absent.
+	var _objSwitch = asset_get_index("_objSwitch");
+	if(_objSwitch == -1) return;
+
 	var _logAmt = instance_number(_objSwitch);
 	draw_set_colour(c_black);
 	draw_set_halign(fa_center);

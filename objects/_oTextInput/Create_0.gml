@@ -1,1 +1,1 @@
-script_execute(scr_setup_textInput,0,0,0,0,0);
+run_script(scr_setup_textInput, id);

@@ -18,9 +18,17 @@ if(mouse_check_button_released(mb_left)){
         /// monster that was already on the map.)
         path_clear_points(path_test);
         mp_grid_clear_all(LEVEL.placement_grid);
-        mp_grid_add_instances(LEVEL.placement_grid, id, false);
-        mp_grid_add_instances(LEVEL.placement_grid, obj_tower, false);
-        mp_grid_add_instances(LEVEL.placement_grid, obj_wall, false);
+        /// block EXACTLY the ONE cell the tower will stand in - the same
+        /// cell obj_tower/Create_0 blocks, so the check reasons about the
+        /// real footprint.  The grid origin is (-cell_w,-cell_h), so a
+        /// point's cell index is (x + cell_w) div cell_w (LL-027).
+        mp_grid_add_cell(LEVEL.placement_grid,
+                         (x + LEVEL.cell_w) div LEVEL.cell_w,
+                         (y + LEVEL.cell_h) div LEVEL.cell_h);
+        /// one cell per existing tower and per wall - the same footprint
+        /// the live grid gives them (scr_grid_block_instances, LL-027)
+        scr_grid_block_instances(LEVEL.placement_grid, obj_tower);
+        scr_grid_block_instances(LEVEL.placement_grid, obj_wall);
 
         var _to_x = obj_despawn.x,
             _to_y = obj_despawn.y,

@@ -11,7 +11,7 @@ function scr_titleParticles() {
 	pt_drift = part_type_create();
 	part_type_shape(pt_drift, pt_shape_flare);
 	part_type_sprite(pt_drift,pt_bee,1,0,0);
-	part_type_size(pt_drift, 0.2, 1, 0, 0.02);
+	part_type_size(pt_drift, 0.3, 0.5, 0, 0.02);
 	part_type_scale(pt_drift, 1, 1);
 	part_type_orientation(pt_drift, 0, 0, 0, 0, 1);
 	part_type_color3(pt_drift, c_white, c_white, c_white);
@@ -29,7 +29,7 @@ function scr_titleParticles() {
 	part_type_scale(pt_dusty, 1, 1);
 	part_type_orientation(pt_dusty, 0, 0, 0, 0, 0);
 	part_type_color3(pt_dusty, c_white, c_white, c_white);
-	part_type_alpha3(pt_dusty, 0.25, 1, 0);
+	part_type_alpha3(pt_dusty, 0.15, 0.25, 0);
 	part_type_life(pt_dusty, 1, 10);
 	part_type_speed(pt_dusty, 0, 2, 0, 0);
 	part_type_direction(pt_dusty, 0, 360, 5, 0);
@@ -48,7 +48,7 @@ function scr_titleParticles() {
 	x2 = bbox_right;
 	y2 = bbox_bottom;
 	part_emitter_region(ps, pe_drift, x1, x2, y1, y2, ps_shape_rectangle, ps_distr_linear);
-	part_emitter_stream(ps, pe_drift, pt_drift, 1);
+	part_emitter_stream(ps, pe_drift, pt_drift, -25);
 
 	//Destroying Emitters
 	//part_emitter_destroy(ps, pe_title_smoke);

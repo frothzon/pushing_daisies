@@ -32,7 +32,7 @@ function for_collGrid(argument0, argument1, argument2, argument3, argument4) {
 	    for (var j=_y1; j<_y2; j+=1)
 	    {
 	        var _data = _grid[# i,j];
-	        script_execute(_scr,i,j,_data);
+	        run_script(_scr, noone, [i, j, _data]);
 	    };
     
 	};

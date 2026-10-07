@@ -1,1 +1,1 @@
-script_execute(scr_draw_textInput,0,0,0,0,0);
+run_script(scr_draw_textInput, id);

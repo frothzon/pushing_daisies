@@ -8,17 +8,13 @@ function scr_updateReciever() {
 	/// set data
 	if(!collisionIsSet){
 	    if(!value){
-	        if(script_exists(switch_on_script)){
-	            script_execute(switch_on_script);
-	        }
+	        run_script(switch_on_script, id);
 	        collisionIsSet = true
 	    }
 	}
 	if(collisionIsSet){
 	    if(value){
-	        if(script_exists(switch_off_script)){
-	            script_execute(switch_off_script);
-	        }
+	        run_script(switch_off_script, id);
 	        collisionIsSet = false;
 	    }
 	}

@@ -1,5 +1,13 @@
 /// @description  change draw position
-y -= z_climb*2-12;
+///
+/// POST DRAW must EXACTLY undo the lift PRE DRAW applied (Draw_72).
+/// It used to subtract the same amount a second time, so the instance's
+/// y stepped NORTH by 2*(z_climb*2-12) every frame.  On a path that was
+/// invisible - the path follower rewrites x/y every step - but the
+/// moment a monster had no path, which is exactly what a failed re-path
+/// used to leave behind, nothing rewrote y and the zombie marched off
+/// the top of the map, through every wall and tower (LL-025).
+y += z_climb*2-12;
 
 /// draw life
 

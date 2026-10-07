@@ -8,6 +8,12 @@ scr_setupState();
 
 myPath = path_add();
 
+/// a SCRATCH path, used to TEST a route before committing it to
+/// myPath: an attempt that might fail must never destroy the route the
+/// monster is already walking, so every re-path goes through
+/// scr_path_replace() and leaves this one alone (LL-025).
+path_probe = path_add();
+
 //--------------------- get randomized spawn location
 var _count = instance_number(obj_spawn),
     _rand = irandom(_count - 1);

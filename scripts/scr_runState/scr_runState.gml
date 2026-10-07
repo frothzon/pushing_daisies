@@ -19,7 +19,7 @@ function scr_runState(argument0) {
 	}
 
 	/// run state code
-	script_execute(state);
+	run_script(state, id);
 
 	// increment state_time if state not changed
 	if(!state_changed) state_time++;

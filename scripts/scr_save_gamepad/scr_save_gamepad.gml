@@ -11,8 +11,10 @@ function scr_save_gamepad(argument0) {
 
    
 	//-------------------------- Save Data
+	/// key_type is deliberately NOT saved (see scr_save_keys / LL-026): it holds
+	/// function references, which a save file restores as CALLABLE but STALE
+	/// handles.
 	scr_saveArray(key,_fname,_sec,"0");
-	scr_saveArray(key_type,_fname,_sec,"1");
 	scr_saveArray(key_name,_fname,_sec,"2");
 
 

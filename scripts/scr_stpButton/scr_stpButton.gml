@@ -43,7 +43,7 @@ function scr_stpButton() {
 	            /// indices, so the old "script >= 0" test meant nothing.
 	            if(is_callable(script)){
 	                print("BTN   call   '", text, "'");
-	                script_execute(script);
+	                run_script(script, id);
 	                print("BTN   return '", text, "'");
 	            } else {
 	                print("BTN   SKIP   '", text, "' - script is not callable");

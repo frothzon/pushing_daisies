@@ -12,6 +12,31 @@ function scr_path_try(_grid, _x1, _y1, _x2, _y2, _path) {
 	return mp_grid_path(_grid, _path, _x1, _y1, _x2, _y2, true);
 }
 
+/// Give `_dst` a route from the grid, but ONLY when one exists.
+///
+/// Returns true when `_dst` now holds a usable route.  Returns false when
+/// the grid cannot route it - and in that case `_dst` is left EXACTLY as
+/// it was, so a monster already walking it carries on walking it.
+///
+/// This is the LL-025 rule: an attempt that can fail must never be allowed
+/// to destroy a route that already works.  The old code emptied the
+/// monster's path FIRST and asked the grid SECOND, so one failed attempt -
+/// a tower just placed, a monster brushing one - left the zombie with no
+/// path at all, and a monster with no path is a monster nothing rewrites.
+///
+///      scr_path_try(...)      clear, then try    - "is this walkable"
+///      scr_path_replace(...)  try, then commit   - "keep what works"
+function scr_path_replace(_grid, _x1, _y1, _x2, _y2, _dst, _probe) {
+	path_clear_points(_probe);
+	if(!mp_grid_path(_grid, _probe, _x1, _y1, _x2, _y2, true)) return false;
+
+	/// the grid cannot change between the probe and this rebuild, so the
+	/// two calls must agree; `_dst` is only touched once a route exists
+	path_clear_points(_dst);
+	mp_grid_path(_grid, _dst, _x1, _y1, _x2, _y2, true);
+	return true;
+}
+
 /// True when a live monster is standing in the cell the player is trying to
 /// build on.
 ///
@@ -62,3 +87,24 @@ function scr_path_open_grid_make() {
 	                      _lev.grid_w + 2, _lev.grid_h + 2,
 	                      _lev.cell_w, _lev.cell_h);
 }
+
+/// Add EVERY instance of `_obj` to a grid - ONE cell per instance, taken
+/// from the instance's own x/y.
+///
+/// mp_grid_add_instances() must not be used for this: like
+/// mp_grid_add_rectangle() it floors both edges and walks them INCLUSIVELY,
+/// so an instance whose far edge lands on a cell boundary marks the NEXT
+/// cell too (LL-027).  Every sprite here is authored 32x32 and placed on the
+/// 32px grid, so the cell that CONTAINS the instance's x/y is the cell it
+/// occupies - and that is scale-independent, unlike a bbox.  (The grid
+/// origin is (-cell_w,-cell_h), hence the +cell_w before the divide.)
+function scr_grid_block_instances(_grid, _obj) {
+	var _n = instance_number(_obj);
+	for(var _i = 0; _i < _n; _i++){
+		var _o = instance_find(_obj, _i);
+		mp_grid_add_cell(_grid,
+		                 (_o.x + LEVEL.cell_w) div LEVEL.cell_w,
+		                 (_o.y + LEVEL.cell_h) div LEVEL.cell_h);
+	}
+}
+

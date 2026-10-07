@@ -10,7 +10,7 @@ function for_2darray(argument0, argument1) {
 
 	for (var i = 0; i < aw; ++i) {
 	    for (var j = 0; j < ah; ++j) {
-	        script_execute(argument1,argument0,i,j);
+	        run_script(argument1, noone, [argument0, i, j]);
 	    }
 	}
 

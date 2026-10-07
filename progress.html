@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Pushing Daisies — progress</title>
-<meta name="progress-sha" content="4a42b3324ee6110c">
+<meta name="progress-sha" content="cc8a825d0c682cf9">
 <meta name="generator" content="python -m gm progress build">
 <style>
 :root{
@@ -88,11 +88,11 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
 <h2>Log</h2>
 <ul class="log" id="log"></ul>
 <footer id="footer"></footer>
-<script type="application/json" id="progress-data" data-sig="2026-10-05|23|art-biome-tiles:backlog:2026-10-05,art-garden-book:backlog:2026-10-05,art-new-zombies:backlog:2026-10-05,art-tower-trios:backlog:2026-10-05,curve-diagnostic:next:2026-10-05,curve-playtest:next:2026-10-05,difficulty-wiring:done:2026-10-05,econ-rung-price:next:2026-10-05,git-commit-curve:next:2026-10-05,gm-reload-verify:next:2026-10-05,hud-wave-offbyone:backlog:2026-10-05,infra-progress-tracker:review:2026-10-05,ll-020-lighting:done:2026-10-04,ll-021-level-data:done:2026-10-04,mastery-xp:backlog:2026-10-05,par-reauthor:backlog:2026-10-05,phase3-garden-book:backlog:2026-10-05,phase4-candy:backlog:2026-10-05,phase5-regions:backlog:2026-10-05,push-to-github:next:2026-10-05,tower-ladder-44:done:2026-10-05,towers-other-three:backlog:2026-10-05,wave-curve:done:2026-10-05">{
+<script type="application/json" id="progress-data" data-sig="2026-10-06|29|art-biome-tiles:backlog:2026-10-05,art-garden-book:backlog:2026-10-05,art-new-zombies:backlog:2026-10-05,art-tower-trios:backlog:2026-10-05,curve-diagnostic:next:2026-10-05,curve-playtest:next:2026-10-05,difficulty-wiring:done:2026-10-05,econ-rung-price:next:2026-10-05,fix-keytype-dispatch:review:2026-10-06,fix-saved-keytype:review:2026-10-06,fix-tower-cell-footprint:review:2026-10-06,fix-tower-upgrade-crash:done:2026-10-06,fix-zombie-north-drift:review:2026-10-06,git-commit-curve:done:2026-10-06,gm-reload-verify:next:2026-10-05,hud-wave-offbyone:backlog:2026-10-05,infra-progress-tracker:review:2026-10-05,ll-020-lighting:done:2026-10-04,ll-021-level-data:done:2026-10-04,mastery-xp:backlog:2026-10-05,par-reauthor:backlog:2026-10-05,phase3-garden-book:backlog:2026-10-05,phase4-candy:backlog:2026-10-05,phase5-regions:backlog:2026-10-05,push-to-github:next:2026-10-05,run-script-dispatch:review:2026-10-06,tower-ladder-44:done:2026-10-05,towers-other-three:backlog:2026-10-05,wave-curve:done:2026-10-05">{
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-05",
+    "updated": "2026-10-06",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set \u003cid> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -110,13 +110,13 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
   },
   "focus": {
     "now": [
-      "infra-progress-tracker"
+      "fix-saved-keytype"
     ],
     "next": [
       "gm-reload-verify",
       "econ-rung-price"
     ],
-    "note": "The wave/biome curve and the §4.4 tower ladder landed together (LL-022). The tracker itself is now the thing to eyeball, then it is the §4.6 decision and a playtest."
+    "note": "The Input crash was the LL-026 poison still in the save file - a saved function reference comes back CALLABLE but on a shifted handle. key_type is no longer read; slot 1 is purged. Handed back for a reload + play."
   },
   "tasks": [
     {
@@ -279,9 +279,132 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "done": null
     },
     {
+      "id": "fix-keytype-dispatch",
+      "title": "Saved key bindings dispatch a random script (the scr_drawTimerExt crash)",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "Close and reload GameMaker (LL-008), then run: the per-step \"Variable Input._objSwitch not set before reading it\" spam must be gone, and WASD must still move the player.",
+      "notes": "key_type holds function references (scr_key_get, scr_gamepad_get, ...) but scr_save_keys persisted the array through ds_list_write, which cannot represent a function. On the next launch scr_load_keys restored plain numbers (about 100417) into key_type, and Input/Step_0 did script_execute(key_type[i], key_code[i]) - GameMaker ran whatever script that number indexes, which was scr_drawTimerExt, an asset-pack script that reads _objSwitch, an object never recovered into this project. Fixed: scr_save_keys no longer persists key_type; scr_load_keys rejects a loaded key_type that is not all-callable and keeps the freshly built one; Input/Step_0 only script_execute()s a callable; scr_drawTimerExt resolves _objSwitch with asset_get_index and bails when absent. Written up as LL-026.",
+      "refs": [
+        "objects/Input/Step_0.gml",
+        "scripts/scr_load_keys/scr_load_keys.gml",
+        "scripts/scr_save_keys/scr_save_keys.gml",
+        "scripts/scr_drawTimerExt/scr_drawTimerExt.gml",
+        "scripts/scr_save_gamepad/scr_save_gamepad.gml",
+        "scripts/scr_load_gamepad/scr_load_gamepad.gml",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-06",
+      "updated": "2026-10-06",
+      "done": null
+    },
+    {
+      "id": "fix-saved-keytype",
+      "title": "A saved key_type restores callable-but-stale - never read it",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 1,
+      "needs": "Reload GameMaker (LL-008), then run: Input must stop throwing Variable \u003cobject>.\u003cvar> not set before reading it from a script its Step event never calls, and WASD/ESC/gamepad must still respond.",
+      "notes": "The LL-026 error returned, naming a different script and an unrelated object (obj_spawn) - because adding run_script shifted the script table. Decoding the save file [KeyInputData] 1 showed the key_type entries are type-marker 15 (not 5=real) holding 100417/100415: ds_list_write/read DO survive a function reference, as a value that is STILL CALLABLE, so scr_load_keys is_callable guard passed and key_type became the stale array; the dispatch then ran whatever script the handle now indexed. run_script guard cannot detect it (not undefined, not a number, not non-callable). Fix: scr_load_keys/scr_load_gamepad no longer read slot 1 at all; scr_save_keys/save_gamepad blank slot 1 so an older build cannot read it either. The live save was purged (backup /tmp/test.data.bak-before-purge). Written up as LL-028, which corrects LL-026 premise.",
+      "refs": [
+        "scripts/scr_load_keys/scr_load_keys.gml",
+        "scripts/scr_save_keys/scr_save_keys.gml",
+        "scripts/scr_load_gamepad/scr_load_gamepad.gml",
+        "scripts/scr_save_gamepad/scr_save_gamepad.gml",
+        "objects/Input/Step_0.gml",
+        "scripts/run_script/run_script.gml",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-06",
+      "updated": "2026-10-06",
+      "done": null
+    },
+    {
+      "id": "fix-tower-cell-footprint",
+      "title": "Plants block one 32x32 grid cell, not a 2x2",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "Reload GameMaker (LL-008), play a wave, and confirm the horde leaves the walled pen and takes the route you expect; place a tower and check it blocks only the cell it sits on.",
+      "notes": "mp_grid_add_rectangle/add_instances floor BOTH edges and iterate INCLUSIVELY, so the tower rect x+-16 (far edge on the next cell boundary) marked a 2x2 - as did any instance whose bbox far edge landed on a boundary. Fixed: obj_tower Create/Destroy block and clear the ONE cell (grid_col/grid_row) by index; obj_tower_edit does the same for the candidate and per existing blocker; a new scr_grid_block_instances() replaces mp_grid_add_instances over the live grid in scr_resetDrawPath and obj_mon/Alarm_0 (one cell per instance, from x/y). The walled pen around the spawn has a one-cell exit that over-blocked walls could seal. Written up as LL-027.",
+      "refs": [
+        "objects/obj_tower/Create_0.gml",
+        "objects/obj_tower/Destroy_0.gml",
+        "objects/obj_tower_edit/Step_0.gml",
+        "scripts/scr_path_validate/scr_path_validate.gml",
+        "scripts/scr_resetDrawPath/scr_resetDrawPath.gml",
+        "objects/obj_mon/Alarm_0.gml",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-06",
+      "updated": "2026-10-06",
+      "done": null
+    },
+    {
+      "id": "fix-tower-upgrade-crash",
+      "title": "Fix the tower-card crash: tower_upgrade_price / tower_sell_refund were never defined",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "",
+      "notes": "Selecting a tower threw 'Variable _levelControl.tower_upgrade_price not set before reading it' at _levelControl/Step_0.gml:94. The Phase 1 economy refactor wired the call sites but never added the two functions. Defined both in tower_levels.gml: tower_upgrade_price(base, level) counts rungs from the garden FLOOR and returns -1 at the cap (economy.md 4.3); tower_sell_refund(invested) is 60% of everything invested.",
+      "refs": [
+        "scripts/tower_levels/tower_levels.gml",
+        "objects/_levelControl/Step_0.gml"
+      ],
+      "created": "2026-10-06",
+      "updated": "2026-10-06",
+      "done": "2026-10-06"
+    },
+    {
+      "id": "fix-zombie-north-drift",
+      "title": "Zombies walk north through the walls when their path is destroyed",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 1,
+      "needs": "Reload the project, play a wave with global.devMode = true, and watch the horde: no zombie should leave the route or cross a wall, and the log should show no 'monster(s) still alive 6s past the wave' valve line. Paste anything that still drifts.",
+      "notes": "A tower placed near the horde forced a re-path (Collision_obj_tower fires on proximity). Alarm_0 called path_end() and path_clear_points(myPath) BEFORE it asked the grid, so one failed re-path left the monster with no path - and a monster with no path is a monster nothing rewrites each step. obj_mon/Draw_72 (Pre Draw) and Draw_73 (Post Draw) both did 'y -= z_climb*2-12', a draw-only offset applied twice, so with no path follower to reset y the zombie stepped north ~16-24px a frame, straight through the walls, and once off-grid it could never re-path again. Fixed: Draw_73 restores (y += ...), scr_path_replace() probes into a scratch path and only commits when a route exists (so the last valid path is kept), and obj_tower now blocks/clears the SAME cell rectangle (the old code blocked bbox at scale 1 and cleared at 0.5, leaking phantom blocked cells).",
+      "refs": [
+        "objects/obj_mon/Draw_72.gml",
+        "objects/obj_mon/Draw_73.gml",
+        "objects/obj_mon/Alarm_0.gml",
+        "objects/obj_mon/Create_0.gml",
+        "objects/obj_mon/Destroy_0.gml",
+        "scripts/scr_zombie_path/scr_zombie_path.gml",
+        "scripts/scr_path_validate/scr_path_validate.gml",
+        "objects/obj_tower/Create_0.gml",
+        "objects/obj_tower/Destroy_0.gml",
+        "objects/obj_tower_edit/Step_0.gml"
+      ],
+      "created": "2026-10-06",
+      "updated": "2026-10-06",
+      "done": null
+    },
+    {
       "id": "git-commit-curve",
       "title": "Commit the curve work, the tracker and the docs",
-      "status": "next",
+      "status": "done",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -289,15 +412,15 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "size": "S",
       "prio": 1,
       "needs": "",
-      "notes": "Untracked and must be git add-ed: scripts/GameLevelData, scripts/region_data, scripts/tower_levels, plus the new root files progress.json, PROGRESS.md, progress.html and README.md, and python_tools/gm/progress.py. One commit and no history, so nothing here is recoverable until it is committed.",
+      "notes": "Verified 2026-10-06: every path this card listed is already committed in HEAD (checked with git ls-tree) and git status shows no untracked files, so the git-add step it asked for is already done. Closed rather than left as a card claiming files are unsaved when they are not.",
       "refs": [
         "scripts/GameLevelData/GameLevelData.gml",
         "scripts/region_data/region_data.gml",
         "scripts/tower_levels/tower_levels.gml"
       ],
       "created": "2026-10-05",
-      "updated": "2026-10-05",
-      "done": null
+      "updated": "2026-10-06",
+      "done": "2026-10-06"
     },
     {
       "id": "gm-reload-verify",
@@ -520,6 +643,36 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "done": null
     },
     {
+      "id": "run-script-dispatch",
+      "title": "All script_execute dispatch goes through run_script()",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 1,
+      "needs": "Reload GameMaker (LL-008), then play: menus, buttons, towers, zombies and the wave path preview must all still behave; place a tower and swap input device.",
+      "notes": "Replaced every script_execute() (14 sites, 12 files) with one run_script(script_name, target=noone, arguments_list=[]). It returns undefined unless the name is neither undefined nor non-callable, binds via method(target, script_name) when target != noone and instance_exists(target) so the call runs in that instance scope, and otherwise runs in the caller scope. GML has no argument spread, so arguments_list is forwarded through a switch on array_length (0..4 - the widest site, for_grid, passes 4); anything longer logs via scr_meta_log rather than failing silently. Sites: Input/Step_0, scr_runState, scr_stpButton, scr_updateReciever, for_array/for_dgrid/for_2darray/for_grid/for_collGrid, _oTextInput Create/Step/Draw. run_script is not a GameMaker built-in (LL-005 checked).",
+      "refs": [
+        "scripts/run_script/run_script.gml",
+        "objects/Input/Step_0.gml",
+        "scripts/scr_runState/scr_runState.gml",
+        "scripts/scr_stpButton/scr_stpButton.gml",
+        "scripts/scr_updateReciever/scr_updateReciever.gml",
+        "scripts/for_array/for_array.gml",
+        "scripts/for_grid/for_grid.gml",
+        "scripts/for_dgrid/for_dgrid.gml",
+        "scripts/for_2darray/for_2darray.gml",
+        "scripts/for_collGrid/for_collGrid.gml",
+        "objects/_oTextInput/Create_0.gml",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-06",
+      "updated": "2026-10-06",
+      "done": null
+    },
+    {
       "id": "tower-ladder-44",
       "title": "Land the 4.4 non-compounding tower ladder",
       "status": "done",
@@ -628,6 +781,48 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "who": "cline",
       "task": "infra-progress-tracker",
       "what": "Tightened the tracker: a backlog card may no longer be awaiting a person, because the top strip filled with parked work within the hour (LL-023)."
+    },
+    {
+      "date": "2026-10-06",
+      "who": "cline",
+      "task": "fix-tower-upgrade-crash",
+      "what": "Fixed the tower-card crash: the Phase 1 economy refactor called tower_upgrade_price() and tower_sell_refund() but never defined them, so selecting a tower died at _levelControl/Step_0.gml:94. Both now live in tower_levels.gml beside tower_rung_cost()."
+    },
+    {
+      "date": "2026-10-06",
+      "who": "cline",
+      "task": "git-commit-curve",
+      "what": "Closed the 'commit the curve work' card: every file it said was untracked is already committed in HEAD and git status is clean, so the card had gone stale. Noted the LL-024 lesson (a call to an undefined function reports as a variable read in the CALLER's scope)."
+    },
+    {
+      "date": "2026-10-06",
+      "who": "cline",
+      "task": "fix-zombie-north-drift",
+      "what": "Zombies marched north through the walls. obj_mon/Draw_72 (Pre Draw) and Draw_73 (Post Draw) both subtracted z_climb*2-12 - a draw-only offset applied twice - and Alarm_0 threw the live path away (path_end + path_clear_points) before asking the grid for a new one, so one failed re-path left the monster with no path and nothing rewriting its y. Draw_73 now restores the offset, and scr_path_replace() probes a scratch path and only commits on success, so the last valid path is kept. Also made the tower's grid block and its clear the same rectangle. Written up as LL-025."
+    },
+    {
+      "date": "2026-10-06",
+      "who": "cline",
+      "task": "fix-keytype-dispatch",
+      "what": "Fixed the Input._objSwitch crash. key_type holds function references, but scr_save_keys persisted it through ds_list_write, which cannot represent a function - so on the next launch key_type came back as numbers and Input/Step_0's script_execute() ran whatever script that number indexed (scr_drawTimerExt, which reads the unrecovered _objSwitch). scr_save_keys no longer saves key_type, scr_load_keys rejects a non-callable loaded key_type and keeps the freshly built one, Input/Step_0 only script_execute()s a callable, and scr_drawTimerExt resolves _objSwitch with asset_get_index and bails when absent. Written up as LL-026."
+    },
+    {
+      "date": "2026-10-06",
+      "who": "cline",
+      "task": "fix-tower-cell-footprint",
+      "what": "Pathfinding was still wrong after LL-025. mp_grid_add_rectangle and mp_grid_add_instances floor BOTH edges and iterate INCLUSIVELY, so the tower's x+-cell_w/2 rectangle - whose far edge lands exactly on the next cell boundary - marked a 2x2 block instead of the one 32x32 cell it occupies (and any instance whose bbox far edge hit a boundary over-blocked the same way, which is how the walled pen's one-cell exit could seal). Fixed: obj_tower Create/Destroy block and clear exactly one cell by index (grid_col/grid_row); obj_tower_edit blocks one cell for the candidate and one per existing blocker; a new scr_grid_block_instances() replaces mp_grid_add_instances over the live grid in scr_resetDrawPath and obj_mon/Alarm_0. Written up as LL-027."
+    },
+    {
+      "date": "2026-10-06",
+      "who": "cline",
+      "task": "run-script-dispatch",
+      "what": "Replaced every script_execute() in the project (14 call sites across 12 files) with a new run_script(script_name, target=noone, arguments_list=[]). It returns undefined unless the name passes !is_undefined() && is_callable(); when target != noone and instance_exists(target) it re-binds with method(target, script_name) so the call runs in that instance's scope, otherwise it runs in the caller's scope as script_execute() did. GML has no argument spread, so arguments_list is forwarded through a switch on array_length (0..4 - the widest site, for_grid, passes 4) and a longer list logs via scr_meta_log instead of failing silently. Sites: Input/Step_0 (the LL-026 dispatch), scr_runState, scr_stpButton, scr_updateReciever, the for_* iterators, and _oTextInput Create/Step/Draw. run_script is not a GameMaker built-in (LL-005 checked); LL-026's guard rails now point at it."
+    },
+    {
+      "date": "2026-10-06",
+      "who": "cline",
+      "task": "fix-saved-keytype",
+      "what": "Chased the Input crash that appeared after the run_script migration: 'Variable obj_spawn.time_keeper not set before reading it' from scr_drawSwitchTimer, called by Input/Step_0 -> run_script. Decoding the save file showed [KeyInputData] 1 still holds the listeners as type-marker-15 values (100417/100415), i.e. ds_list_write/read DOES round-trip a function reference - it comes back as a value that is STILL CALLABLE, so scr_load_keys' is_callable() guard passed and key_type was replaced by the stale array; the dispatch then ran whatever script the old handle now indexes (scr_drawTimerExt for LL-026, scr_drawSwitchTimer once run_script added a script). run_script()'s guard cannot see it: the value is not undefined, not a number and not non-callable. Fix: scr_load_keys/scr_load_gamepad no longer read slot 1, and scr_save_keys/scr_save_gamepad blank it so an older build cannot read it either; the live save file was purged too. Written up as LL-028, which corrects LL-026's premise that the value comes back as a plain number."
     }
   ]
 }

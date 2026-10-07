@@ -72,6 +72,42 @@ function tower_rung_cost(_rung) {
 	return _c[_rung - 1];
 }
 
+/// The price of the NEXT rung - taking a tower from `_level` to `_level + 1` -
+/// as a multiple of the tower's BASE price (economy.md 4.3).
+///
+/// The rungs are counted from the garden's FLOOR, not from an absolute level,
+/// so a tower on a master-node garden pays the same 0.50 / 0.75 / 1.00 / 1.50
+/// shape for the four rungs money buys (goal.md 4).  That is the whole reason
+/// the floor and the cap move together: the relative value of money never
+/// changes, at any point in the campaign.
+///
+/// Returns -1 at (or past) the cap: the sentinel the price check in
+/// `_levelControl/Step_0.gml` and `scr_setMaxPrice()` already understand.
+function tower_upgrade_price(_base_price, _level) {
+	/// every read is guarded - a fatal unset-variable read here would take
+	/// the whole Step event with it (LL-002)
+	if(!is_real(_base_price) || !is_real(_level)) return -1;
+
+	/// nothing left to buy at the garden's ceiling
+	if(_level >= tower_cap()) return -1;
+
+	var _rung = round(_level) - tower_floor() + 1,
+	    _cost = tower_rung_cost(_rung);
+	if(_cost < 0) return -1;
+
+	/// whole dollars, so the number on the card is the number charged
+	/// (the old upgrade price was round(price * 0.50); economy.md 4.3)
+	return round(_base_price * _cost);
+}
+
+/// Selling refunds 60% of EVERYTHING invested - the placement and every rung
+/// bought (economy.md 4.3), so experimentation is not punished.  Guarded so a
+/// half-built tower refunds 0 rather than throwing (LL-002).
+function tower_sell_refund(_invested) {
+	if(!is_real(_invested)) return 0;
+	return round(_invested * 0.60);
+}
+
 /// A tower's data at a given level: the roster's BASE stats, the garden's
 /// permanent clover bonuses, then the level ladder.
 ///
