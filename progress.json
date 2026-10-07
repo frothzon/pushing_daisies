@@ -2,7 +2,7 @@
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-06",
+    "updated": "2026-10-07",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set <id> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -20,13 +20,14 @@
   },
   "focus": {
     "now": [
-      "fix-saved-keytype"
+      "curve-playtest",
+      "econ-rung-price"
     ],
     "next": [
       "gm-reload-verify",
       "econ-rung-price"
     ],
-    "note": "The Input crash was the LL-026 poison still in the save file - a saved function reference comes back CALLABLE but on a shifted handle. key_type is no longer read; slot 1 is purged. Handed back for a reload + play."
+    "note": "Playtested build committed. Nothing in flight from cline: waiting on rayu for the stage-1-1 curve read-out, the rung price / rung worth decision, and whether to push to origin."
   },
   "tasks": [
     {
@@ -191,9 +192,9 @@
     {
       "id": "fix-keytype-dispatch",
       "title": "Saved key bindings dispatch a random script (the scr_drawTimerExt crash)",
-      "status": "review",
+      "status": "done",
       "owner": "cline",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "S",
@@ -210,15 +211,15 @@
         "lessons_learned.md"
       ],
       "created": "2026-10-06",
-      "updated": "2026-10-06",
-      "done": null
+      "updated": "2026-10-07",
+      "done": "2026-10-07"
     },
     {
       "id": "fix-saved-keytype",
       "title": "A saved key_type restores callable-but-stale - never read it",
-      "status": "review",
+      "status": "done",
       "owner": "cline",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "M",
@@ -235,15 +236,15 @@
         "lessons_learned.md"
       ],
       "created": "2026-10-06",
-      "updated": "2026-10-06",
-      "done": null
+      "updated": "2026-10-07",
+      "done": "2026-10-07"
     },
     {
       "id": "fix-tower-cell-footprint",
       "title": "Plants block one 32x32 grid cell, not a 2x2",
-      "status": "review",
+      "status": "done",
       "owner": "cline",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "S",
@@ -260,8 +261,8 @@
         "lessons_learned.md"
       ],
       "created": "2026-10-06",
-      "updated": "2026-10-06",
-      "done": null
+      "updated": "2026-10-07",
+      "done": "2026-10-07"
     },
     {
       "id": "fix-tower-upgrade-crash",
@@ -286,9 +287,9 @@
     {
       "id": "fix-zombie-north-drift",
       "title": "Zombies walk north through the walls when their path is destroyed",
-      "status": "review",
+      "status": "done",
       "owner": "cline",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "M",
@@ -308,8 +309,8 @@
         "objects/obj_tower_edit/Step_0.gml"
       ],
       "created": "2026-10-06",
-      "updated": "2026-10-06",
-      "done": null
+      "updated": "2026-10-07",
+      "done": "2026-10-07"
     },
     {
       "id": "git-commit-curve",
@@ -335,9 +336,9 @@
     {
       "id": "gm-reload-verify",
       "title": "Reload GameMaker and confirm the three new scripts",
-      "status": "next",
+      "status": "done",
       "owner": "rayu",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "S",
@@ -349,8 +350,8 @@
         "AGENTS.md"
       ],
       "created": "2026-10-05",
-      "updated": "2026-10-05",
-      "done": null
+      "updated": "2026-10-07",
+      "done": "2026-10-07"
     },
     {
       "id": "hud-wave-offbyone",
@@ -555,9 +556,9 @@
     {
       "id": "run-script-dispatch",
       "title": "All script_execute dispatch goes through run_script()",
-      "status": "review",
+      "status": "done",
       "owner": "cline",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "M",
@@ -579,8 +580,8 @@
         "lessons_learned.md"
       ],
       "created": "2026-10-06",
-      "updated": "2026-10-06",
-      "done": null
+      "updated": "2026-10-07",
+      "done": "2026-10-07"
     },
     {
       "id": "tower-ladder-44",
@@ -733,6 +734,12 @@
       "who": "cline",
       "task": "fix-saved-keytype",
       "what": "Chased the Input crash that appeared after the run_script migration: 'Variable obj_spawn.time_keeper not set before reading it' from scr_drawSwitchTimer, called by Input/Step_0 -> run_script. Decoding the save file showed [KeyInputData] 1 still holds the listeners as type-marker-15 values (100417/100415), i.e. ds_list_write/read DOES round-trip a function reference - it comes back as a value that is STILL CALLABLE, so scr_load_keys' is_callable() guard passed and key_type was replaced by the stale array; the dispatch then ran whatever script the old handle now indexes (scr_drawTimerExt for LL-026, scr_drawSwitchTimer once run_script added a script). run_script()'s guard cannot see it: the value is not undefined, not a number and not non-callable. Fix: scr_load_keys/scr_load_gamepad no longer read slot 1, and scr_save_keys/scr_save_gamepad blank it so an older build cannot read it either; the live save file was purged too. Written up as LL-028, which corrects LL-026's premise that the value comes back as a plain number."
+    },
+    {
+      "date": "2026-10-06",
+      "who": "rayu",
+      "task": "fix-tower-cell-footprint",
+      "what": "Playtest validation: 'Plants block one 32x32 grid cell, not a 2x2' - the pathing works as of the last test. The reloaded build also ran without the Input dispatch crash, so the saved-key_type fixes hold. That closes fix-tower-cell-footprint, fix-zombie-north-drift, fix-keytype-dispatch, fix-saved-keytype, run-script-dispatch and gm-reload-verify; the validated build is committed (e924703)."
     }
   ]
 }
