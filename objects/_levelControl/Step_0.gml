@@ -23,6 +23,20 @@ if(mouse_check_button_pressed(mb_left)){
     }
 }
 
+// clear tower selection, only get selection if we are not placing towers
+with(obj_tower){
+    tower_hilight = 0;
+}
+if(tower_index < 0) {
+    /// hover over the tower.
+    ds_list_clear(tower_list);
+    var _find = collision_point_list(mouse_x, mouse_y, obj_tower, false, true, tower_list, true);
+    if(_find > 0){
+        var _tower = tower_list[| 0];
+        _tower.tower_hilight = 1;
+    }
+}
+
 if(tower_hover < 0 && tower_index >= 0){
     if(mouse_check_button(mb_left)){
         scr_placeTower(tower_index);
@@ -73,15 +87,32 @@ if(_valid){
 if(mouse_check_button_pressed(mb_left) && tower_timer > 10){
     if(!_valid){
         
-        var _num = instance_number(obj_tower);
+        /// Pick the tower the player MEANT.  tower_hilight now comes from
+        /// the tower's collision mask, which is 32x64 - one cell wide and
+        /// TWO cells tall (its own cell plus the one above) - so with
+        /// towers standing directly above one another the pointer can be
+        /// inside two masks at once, and this loop would keep whichever one
+        /// instance_find happened to return last.  The tie-break is "the
+        /// tower whose OWN cell holds the pointer wins", which is the one
+        /// being pointed at; with a single candidate it changes nothing.
+        var _num = instance_number(obj_tower),
+            _best = noone,
+            _best_cell = false;
         for (var i=0; i<_num; i+=1)
         {
             var _test = instance_find(obj_tower,i);
             if(_test.tower_hilight){
-                tower_selection = _test;
-                print("Selected Tower: ",_test);
+                var _in_cell = (abs(mouse_x - _test.x) <= 16 && abs(mouse_y - _test.y) <= 16);
+                if(_best == noone || (_in_cell && !_best_cell)){
+                    _best = _test;
+                    _best_cell = _in_cell;
+                }
             }
         };
+        if(_best != noone){
+            tower_selection = _best;
+            print("Selected Tower: ",_best);
+        }
         
         /// tower_selection = instance_position(mouse_x,mouse_y,obj_tower);
         
@@ -134,8 +165,19 @@ if(mouse_check_button_pressed(mb_left) && tower_timer > 10){
                     /// current cap - a tower placed at floor 6 must not look
                     /// like one placed at floor 3 (goal.md 4, rule 3)
                     var _frac = tower_selection.data[TOWER.level]/10;
-                    tower_selection.image_xscale = lerp(0.25,0.70,_frac);
-                    tower_selection.image_yscale = tower_selection.image_xscale;
+                    /// The tower's SIZE is draw_scale and its FACING is
+                    /// the sign of image_xscale, so this writes the size
+                    /// and leaves the facing alone.
+                    ///
+                    /// The old version wrote a bare positive
+                    /// image_xscale (which silently un-mirrored a tower
+                    /// that had turned to face a monster) and then put the
+                    /// sign back by hand, and had to keep image_yscale
+                    /// positive or a mirrored tower drew upside-down
+                    /// (LL-012).  Both traps are gone now that the size
+                    /// lives outside image_xscale - which is what stopped
+                    /// the click mask scaling with the art (LL-033).
+                    tower_selection.draw_scale = lerp(0.25,0.70,_frac);
                     tower_selection.image_blend = merge_colour(c_gray,c_white,_frac);
 
                     float_text_gui(tower_display[0],tower_display[1],concat("Damage + ",round(_dmg)),c_yellow);

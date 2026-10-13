@@ -99,7 +99,7 @@ switch(menu_state){
             scr_saveOptions();
         }
         if(menu_state_time > room_speed*0.5){
-            scr_playMusic(snd_music_title,true);
+            scr_playMusic(music_menu().sound,true);
             scr_menu_changeState(MENU_STATE.START);
         }
         break;
@@ -120,6 +120,11 @@ switch(menu_state){
         if(menu_state_time == 0){
             print("MENU  world map  ->  region ", global.region,
                   " stage ", global.stage, " seeds ", seeds_get());
+            /// the world map IS the menu, so it keeps the menu theme.
+            /// A stage clear stops the region theme and fades straight
+            /// here, so without this the map would be the one silent
+            /// screen in the game (roadmap 5.8).
+            scr_playMusic(music_menu().sound, true);
         }
         {
             var _wgeom = meta_worldmap_geom(),

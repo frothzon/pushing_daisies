@@ -11,6 +11,14 @@ function scr_zomb_death() {
 	    var _points = floor(sqrt(data[MON.maxLife]))+1;
 	    add_item_value(STATINV.points,_points);
 	    float_text(x,y-32,concat("+",_points," Pts"),c_ltgray);
+
+	    /// One line per kill, so every monster's fate is labelled exactly
+	    /// once - kill / leak / valve - and "why did it disappear?" is
+	    /// answerable from the log instead of from an argument (LL-011).
+	    scr_meta_log("LEVEL", "kill ", data[MON.name], " +money=",
+	                 round(data[MON.kill_money]*difficulty_money_mult()),
+	                 " +pts=", _points, " (life ",
+	                 get_item_value(STATINV.life), " left)");
     
 	    ///----------------- add debree to screen
 	    var _x = x + irandom_range(-8,8),

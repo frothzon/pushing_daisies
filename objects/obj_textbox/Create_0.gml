@@ -12,8 +12,11 @@ action_hold = 0;
 /// get the number of characters in the first message
 message_length = string_length(message[message_current]);
 
-/// image to be drawn on textbox
+/// image to be drawn on textbox.  `message_image` is a FRAME of the one
+/// shared `message_sprite`; a per-message PORTRAIT (a whole sprite)
+/// lives in `message_portrait` instead - see show_portrait_box().
 message_image[0] = -1;
+message_portrait[0] = -1;
 message_color[0] = c_white;
 message_sprite = spr_zombie;
 

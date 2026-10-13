@@ -2,10 +2,46 @@
 x = ((mouse_x>>5)<<5)+16;
 y = ((mouse_y>>5)<<5)+16;
 
-blocked = position_meeting(x,y,obj_tower) || position_meeting(x,y,_spawn);
+/// Which cell is this ghost standing in?  Worked out exactly the way
+/// obj_tower/Create_0 and scr_grid_block_instances work it out - the grid
+/// origin is (-cell_w,-cell_h), so a point's cell index is
+/// (x + cell_w) div cell_w.  ONE source for "which cell is this", which
+/// is the point of LL-027.
+var _col = (x + LEVEL.cell_w) div LEVEL.cell_w,
+    _row = (y + LEVEL.cell_h) div LEVEL.cell_h;
+
+/// Ask the GRID, never the towers' collision masks.  A tower carries the
+/// 32x64 spr_tower_click_region mask - its own cell PLUS the one above it
+/// (LL-033) - so position_meeting(x,y,obj_tower) reported the cell ABOVE a
+/// tower as taken, while obj_tower/Create_0 blocks exactly ONE cell in
+/// this same grid and two towers are perfectly allowed to stand one above
+/// the other.  Reading the grid the writer writes means the two cannot
+/// disagree (LL-021), and it is the grid the monsters walk on - so "you
+/// cannot build where they cannot walk" is now true by construction
+/// rather than by the two tests happening to agree.
+///
+/// mp_grid_get_cell() answers -1 for a cell that is occupied AND for one
+/// outside the grid, so a ghost pushed off the edge reads as blocked too.
+///
+/// The spawn stays a mask test: it is not in the grid at all.  _spawn is
+/// also the parent of obj_wall, whose 32x32 art covers exactly one cell,
+/// which makes this a free backstop for the part of the deploy countdown
+/// that runs before scr_resetDrawPath has put the walls into the grid.
+blocked_reason = "";
+if(mp_grid_get_cell(LEVEL.path_grid, _col, _row) != 0){
+    blocked_reason = "that cell already holds something";
+} else if(position_meeting(x, y, _spawn)){
+    blocked_reason = "that is the spawn (or a wall)";
+}
+blocked = (blocked_reason != "");
 
 if(mouse_check_button_released(mb_left)){
     if(blocked){
+        /// Say WHY.  This used to refuse in silence - a click, a thud and
+        /// a vanished ghost - which leaves nothing in the log to read,
+        /// and the two reasons are different bugs if either is ever wrong
+        /// (LL-011).  The route checks further down log in this same voice.
+        scr_meta_log("PATH", "placement refused: ", blocked_reason);
         path_delete(path_test);
         instance_destroy();
         scr_playSound(snd_unable,false);

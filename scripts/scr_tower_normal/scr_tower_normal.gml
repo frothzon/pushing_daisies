@@ -4,10 +4,16 @@ function scr_tower_normal() {
 	    normal tower operation
 	*/
 
+	var _fps = game_get_speed(gamespeed_fps);
+
 	if(state_time == 0){
-	    image_speed = 0.25;
+	    sprite_index = sprite_list[TOWER_ANIM.idle];
 	    image_index = 0;
-	    sprite_index = sprite_list[0];
+	    /// The idle LOOP is 1 second of animation whatever its frame count:
+	    /// the speed is DERIVED from the sprite's frames (LL-030), so a tower
+	    /// re-drawn with fewer frames cannot play fast.
+	    anim_steps  = anim_seconds[TOWER_ANIM.idle] * _fps;
+	    image_speed = scr_tower_animSpeed(TOWER_ANIM.idle, anim_steps);
 	}
 	if(state_time > room_speed/data[TOWER.fire_rate] + time_offset){
 	    /// change state to attack when in range

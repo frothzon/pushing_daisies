@@ -12,7 +12,7 @@ ground_h = room_height>>5;
 ground_map = _mainControl.ground_map;
 
 
-
+tower_list = ds_list_create();
 
 
 /// setup spawns
@@ -191,6 +191,13 @@ level_state_time = 0;
 level_cleared    = false;
 wait_stuck       = 0;
 is_boss_wave     = false;
+
+/// the creature the NEXT wave will send.  Chosen when the level enters
+/// START or WAIT (scr_level_pick_spawn), previewed by scr_wave_preview
+/// and consumed by scr_level_spawn - so the popup and the wave agree.
+next_is_boss       = false;
+next_spawn_index   = 0;
+wave_preview_shown = false;   /// the Up Next popup shows once per WAIT
 
 show_start = false;
 show_position = array(

@@ -10,7 +10,7 @@
   "compression":3,
   "compressionQuality":6,
   "conversionMode":0,
-  "duration":0.0,
+  "duration":142.66196,
   "exportDir":"",
   "name":"snd_eerie",
   "parent":{
@@ -22,5 +22,5 @@
   "resourceVersion":"2.0",
   "sampleRate":44100,
   "soundFile":"snd_eerie",
-  "volume":1.0,
+  "volume":0.01,
 }

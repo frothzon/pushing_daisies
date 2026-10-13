@@ -31,8 +31,8 @@
   "resourceVersion":"2.0",
   "solid":false,
   "spriteId":{
-    "name":"spr_hair_idle",
-    "path":"sprites/spr_hair_idle/spr_hair_idle.yy",
+    "name":"spr_grumble_idle",
+    "path":"sprites/spr_grumble_idle/spr_grumble_idle.yy",
   },
   "spriteMaskId":null,
   "visible":true,

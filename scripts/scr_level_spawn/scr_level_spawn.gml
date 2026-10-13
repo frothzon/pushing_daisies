@@ -18,40 +18,29 @@ function scr_level_spawn() {
 	    add_item_value(waves,1);
 	    scr_playSound(snd_zomb_emerge,false);
 
-	    /// a stage names its own spawners.  Its boss, if it has one, is the
-	    /// FINAL wave - a stage ends on its climax.
-	    ///
-	    /// The cadence of mid-stage bosses comes from the LEVEL data
-	    /// (`boss_every`, region_data.gml) rather than a magic `% 10`.  At the
-	    /// 5-10 waves a stage used to have that constant never once fired; at
-	    /// 15-60 it would fire five times a stage and the last wave would not
-	    /// be a boss at all - the shape of the stage, inverted.
-	    var _pool   = _row.spawns,
-	        _bosses = _row.bosses,
-	        _every  = _row.boss_every;
-	    if(array_length(_pool) == 0) _pool = [0];
-	    if(!is_real(_every) || _every < 0) _every = 0;
+	    /// The creature was already chosen - when the level entered START
+	    /// or WAIT - so the "Up Next..." popup and the wave it names agree.
+	    /// `irandom` cannot be replayed, so this CONSUMES the stored pick
+	    /// rather than re-rolling (see scr_level_pick_spawn).
+	    is_boss_wave = next_is_boss;
+	    spawn_index  = next_spawn_index;
 
-	    is_boss_wave = (_every > 0 && wave_count % _every == 0 && wave_count > 1);
-	    if(array_length(_bosses) > 0 && wave_count >= _row.waves){
-	        is_boss_wave = true;   /// the named boss always closes the stage
+	    /// guard: if nothing was chosen (a state that reached SPAWN without
+	    /// a pick), fall back rather than read an unset variable (LL-002)
+	    if(!is_real(is_boss_wave) || !is_real(spawn_index)){
+	        var _pick = scr_level_pick_spawn(wave_count);
+	        is_boss_wave = _pick.is_boss;
+	        spawn_index  = _pick.index;
 	    }
-
-	    if(is_boss_wave && array_length(_bosses) > 0){
-	        spawn_index = _bosses[irandom(array_length(_bosses) - 1)];
-	    } else if(is_boss_wave){
-	        spawn_index = irandom(array_length(spawn_boss) - 1);
-	    } else {
-	        spawn_index = _pool[irandom(array_length(_pool) - 1)];
-	    }
-
-	    /// clamp, so bad stage data cannot index past a pool and throw
-	    var _bank = is_boss_wave ? spawn_boss : spawn_mon;
-	    spawn_index = clamp(spawn_index, 0, array_length(_bank) - 1);
 
 	    scr_meta_log("LEVEL", "wave ", wave_count, "/", _row.waves,
 	                 " boss=", is_boss_wave, " spawner=", spawn_index,
-	                 " pool=", array_length(_bank));
+	                 " pool=", array_length(is_boss_wave ? spawn_boss : spawn_mon));
+
+	    /// close the "Up Next..." popup - the wave is starting now
+	    if(instance_exists(obj_textbox)){
+	        instance_destroy(obj_textbox);
+	    }
 	}
 
 	//--------------------------- Spawn Creature
@@ -77,12 +66,13 @@ function scr_level_spawn() {
 	        spawn_current++;
 	        _inst.sprite_array = _mon[MON.sprite_data];
 	        _inst.data = array_duplicate(_mon);
-	        _inst.image_xscale = 0.25;
-	        _inst.image_yscale = 0.25;
-	        if(is_boss_wave){
-	            _inst.image_xscale = 0.5;
-	            _inst.image_yscale = 0.5;
-	        }
+	        /// the FULL size this monster grows to.  The emerge starts at
+	        /// nothing and scales 0.00 -> 1.00 of this, because the crawl
+	        /// sprite that used to play on spawn is gone.  0.25 keeps a
+	        /// monster to about one 32px grid cell; bosses are twice that.
+	        _inst.base_scale = is_boss_wave ? 0.5 : 0.25;
+	        _inst.image_xscale = 0;
+	        _inst.image_yscale = 0;
 	        /// modify life for the wave and the difficulty
 	        scr_level_difficulty(_inst);
 	    }
@@ -90,6 +80,7 @@ function scr_level_spawn() {
 	    spawn_current = 0;
 	    spawn_timer = spawn_wait_time;
 	    wait_stuck = 0;
+	    wait_valve_fired = false;   /// every wave gets its own backstop
 	    scr_level_request(LEVEL_STATE.WAIT);
 	}
 }

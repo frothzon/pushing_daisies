@@ -22,23 +22,23 @@ function scr_main_startup() {
 	    load_amount = load_counter/load_max;
 	    if(load_counter < load_max){
 	        /// default
-	        load_bg = bck_tile_thick_framed;
+	        load_bg = spr_thick_128x;
 	        /// layer 0
 	        if(load_counter < 3){
 	            _c2 = make_colour_rgb(199, 193, 135);
-	            load_bg = bck_tile_dirt_framed;
+	            load_bg = spr_dirt_128x;
 	        } else if(load_counter < 5){
 	            _c1 = make_colour_rgb(128, 115, 45);
 	            _c2 = c_orange;
-	            load_bg = bck_tile_sand_framed;
+	            load_bg = spr_sand_128x;
 	        } else if(load_counter < 9){
 	            _c2 = c_lime;
-	            load_bg = bck_tile_grass_framed;
+	            load_bg = spr_grass_128x;
 	        }
 	        var _depth = -load_counter*2+2;
 	        load_color = merge_colour(_c1,_c2,load_amount);
 	        /// place tiles
-	        scr_iniTileBuilder(ground_map,load_counter,load_counter+5,load_bg,load_color,32,32,_depth);
+	        scr_iniTileBuilder(ground_map,load_counter,load_counter+5,load_bg,load_color,32,32,_depth, spr_dirt_128x);
 	        load_counter++;
 	    } else {
 	        /// setup view and day night cycle

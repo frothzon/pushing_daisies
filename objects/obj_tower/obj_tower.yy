@@ -42,8 +42,8 @@
     "path":"sprites/spr_tower/spr_tower.yy",
   },
   "spriteMaskId":{
-    "name":"spr_tower",
-    "path":"sprites/spr_tower/spr_tower.yy",
+    "name":"spr_tower_click_region",
+    "path":"sprites/spr_tower_click_region/spr_tower_click_region.yy",
   },
   "visible":true,
 }

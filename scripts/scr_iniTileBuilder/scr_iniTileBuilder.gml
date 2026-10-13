@@ -7,7 +7,7 @@
 /// @param  tile_w
 /// @param  tile_h
 /// @param  depth
-function scr_iniTileBuilder(argument0, argument1, argument2, argument3, argument4, argument5, argument6, argument7) {
+function scr_iniTileBuilder(argument0, argument1, argument2, argument3, argument4, argument5, argument6, argument7, argument8) {
 
 	var _oldGrid    = argument0,
 	    height_     = ds_grid_height(_oldGrid),
@@ -18,7 +18,8 @@ function scr_iniTileBuilder(argument0, argument1, argument2, argument3, argument
 	    _c1         = argument4,
 	    _ww         = argument5,
 	    _hh         = argument6,
-	    _dp         = argument7;
+	    _dp         = argument7,
+        _gnd        = argument8;
     
 	///--------------------- create and edit new grid
 	var grid_ = ds_grid_create(width_,height_);
@@ -28,7 +29,7 @@ function scr_iniTileBuilder(argument0, argument1, argument2, argument3, argument
 	var _wc = background_get_width(_bg) div _ww;
 
 	//---------------------- turn data into an array
-	var _data = [height_,width_,_min,_max,_bg,_c1,_ww,_hh,_dp,_wc];
+	var _data = [height_,width_,_min,_max,_bg,_c1,_ww,_hh,_dp,_wc,_gnd];
 
 	/// remap values
 	for_grid(grid_,scr_remapValues,_data);

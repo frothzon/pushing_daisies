@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Pushing Daisies — progress</title>
-<meta name="progress-sha" content="b9de673bdf93d867">
+<meta name="progress-sha" content="8e9eaa8839e1ea61">
 <meta name="generator" content="python -m gm progress build">
 <style>
 :root{
@@ -88,11 +88,11 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
 <h2>Log</h2>
 <ul class="log" id="log"></ul>
 <footer id="footer"></footer>
-<script type="application/json" id="progress-data" data-sig="2026-10-07|29|art-biome-tiles:backlog:2026-10-05,art-garden-book:backlog:2026-10-05,art-new-zombies:backlog:2026-10-05,art-tower-trios:backlog:2026-10-05,curve-diagnostic:next:2026-10-05,curve-playtest:next:2026-10-05,difficulty-wiring:done:2026-10-05,econ-rung-price:next:2026-10-05,fix-keytype-dispatch:done:2026-10-07,fix-saved-keytype:done:2026-10-07,fix-tower-cell-footprint:done:2026-10-07,fix-tower-upgrade-crash:done:2026-10-06,fix-zombie-north-drift:done:2026-10-07,git-commit-curve:done:2026-10-06,gm-reload-verify:done:2026-10-07,hud-wave-offbyone:backlog:2026-10-05,infra-progress-tracker:review:2026-10-05,ll-020-lighting:done:2026-10-04,ll-021-level-data:done:2026-10-04,mastery-xp:backlog:2026-10-05,par-reauthor:backlog:2026-10-05,phase3-garden-book:backlog:2026-10-05,phase4-candy:backlog:2026-10-05,phase5-regions:backlog:2026-10-05,push-to-github:next:2026-10-05,run-script-dispatch:done:2026-10-07,tower-ladder-44:done:2026-10-05,towers-other-three:backlog:2026-10-05,wave-curve:done:2026-10-05">{
+<script type="application/json" id="progress-data" data-sig="2026-10-12|40|art-biome-tiles:backlog:2026-10-05,art-garden-book:backlog:2026-10-05,art-new-zombies:done:2026-10-11,art-restyled-zombies:review:2026-10-11,art-tower-trios:backlog:2026-10-05,audio-briefs:done:2026-10-11,audio-chorus-loop:next:2026-10-11,audio-region-music:review:2026-10-12,curve-diagnostic:next:2026-10-05,curve-playtest:next:2026-10-05,difficulty-wiring:done:2026-10-05,econ-rung-price:next:2026-10-05,feat-up-next-portrait:review:2026-10-11,fix-keytype-dispatch:done:2026-10-07,fix-saved-keytype:done:2026-10-07,fix-tower-anim-speed:review:2026-10-11,fix-tower-attack-stuck:review:2026-10-10,fix-tower-cell-footprint:done:2026-10-07,fix-tower-click-mask:review:2026-10-12,fix-tower-facing:review:2026-10-11,fix-tower-upgrade-crash:done:2026-10-06,fix-tower-upgrade-scale:next:2026-10-11,fix-wave-valve:review:2026-10-11,fix-zombie-north-drift:done:2026-10-07,git-commit-curve:done:2026-10-06,gm-reload-verify:done:2026-10-07,hud-wave-offbyone:backlog:2026-10-05,infra-progress-tracker:review:2026-10-05,ll-020-lighting:done:2026-10-04,ll-021-level-data:done:2026-10-04,mastery-xp:backlog:2026-10-05,par-reauthor:backlog:2026-10-05,phase3-garden-book:backlog:2026-10-05,phase4-candy:backlog:2026-10-05,phase5-regions:backlog:2026-10-05,push-to-github:next:2026-10-05,run-script-dispatch:done:2026-10-07,tower-ladder-44:done:2026-10-05,towers-other-three:backlog:2026-10-05,wave-curve:done:2026-10-05">{
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-07",
+    "updated": "2026-10-12",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set \u003cid> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -110,14 +110,19 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
   },
   "focus": {
     "now": [
+      "fix-tower-click-mask",
+      "audio-region-music"
+    ],
+    "next": [
+      "fix-tower-facing",
+      "fix-tower-anim-speed",
+      "fix-tower-attack-stuck",
+      "fix-tower-upgrade-scale",
+      "audio-chorus-loop",
       "curve-playtest",
       "econ-rung-price"
     ],
-    "next": [
-      "gm-reload-verify",
-      "econ-rung-price"
-    ],
-    "note": "Playtested build committed. Nothing in flight from cline: waiting on rayu for the stage-1-1 curve read-out, the rung price / rung worth decision, and whether to push to origin."
+    "note": "This session fixed the tower click mask. obj_tower already carried spr_tower_click_region, but it arrived at half size: a collision mask scales with image_xscale and mask_index does not exempt it, so the art size moved into draw_scale and image_xscale became facing only (LL-033, with the consumers - shadow, hover glow, in-water draw and the upgrade tween - moved with it). All seven music tracks are also mapped now, mus_title plus mus_world1..mus_world6, with the region mapping checked against each file's tempo instead of assumed; mus_world3 and mus_world4 turned out to be Desert and Jungle, not the retired leftovers the brief used to call them. Still in review from earlier sessions: the region music playtest, the restyled zombie art and the portrait popup, the four LL-029/030/031-era fixes, the stage-1-1 curve read-out and the rung price decision."
   },
   "tasks": [
     {
@@ -162,7 +167,7 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
     {
       "id": "art-new-zombies",
       "title": "Draw one or two new zombies",
-      "status": "backlog",
+      "status": "done",
       "owner": "rayu",
       "awaiting": "none",
       "area": "art",
@@ -170,13 +175,37 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "size": "M",
       "prio": 3,
       "needs": "",
-      "notes": "There are three rigs (spawn_mon 0-2) and every authored stage draws from those. A fourth would let region 2's mix differ from region 1's.",
+      "notes": "Superseded: the restyled zombie art (five characters with idle/walk/attack/die plus portraits) was drawn and imported, so this card is satisfied by art-restyled-zombies.",
       "refs": [
         "roadmap.md",
         "goal.md"
       ],
       "created": "2026-10-05",
-      "updated": "2026-10-05",
+      "updated": "2026-10-11",
+      "done": "2026-10-11"
+    },
+    {
+      "id": "art-restyled-zombies",
+      "title": "Swap in the restyled zombie art (gameplay + title screen)",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "art",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "Reload GameMaker (LL-008) and run with global.devMode on. Every zombie must GROW from nothing to full size over about a second with NO crawl frames; the LEVEL wave log must name Grumble-Mulch / Dome-Alone / Professor-Cerebrisk (and Tusk-A-Lot / Sub-Zero on a boss wave); and the menu zombie in rm_menu must shamble the new Grumble-Mulch art, mirroring correctly as it turns. Tell me whether the zombies come out the right SIZE - I read 'scale 0.00 to 1.00' as a factor of the monster's normal size (0.25, 0.5 for a boss).",
+      "notes": "The restyled art was already imported: five characters under sprites/.../Zombie Sprites/restyled/ (idle/walk/attack/die, 16 frames each) plus five portraits, and the old art was re-parented to .../Legacy/. Code now uses one WALK sprite per creature (sprite_array[0]); the crawl sprite is gone and scr_zombie_emerge grows image_xscale/yscale from 0.00 to base_scale over the 60-step emerge. scr_level_spawn stores base_scale (0.25, or 0.5 for a boss) and starts the monster at zero. scr_zombie_path derives image_speed from the frame count via scr_animSpeedForSteps (LL-030) and re-asserts the scale while keeping the facing sign (LL-012). obj_titleZomb moved to spr_grumble_idle/walk/attack, and two documented faults were fixed while there: the sign() flip (LL-012) and room_speed (LL-007).",
+      "refs": [
+        "scripts/scr_setupSpawning/scr_setupSpawning.gml",
+        "scripts/scr_zombie_emerge/scr_zombie_emerge.gml",
+        "scripts/scr_zombie_path/scr_zombie_path.gml",
+        "scripts/scr_level_spawn/scr_level_spawn.gml",
+        "objects/obj_mon/Create_0.gml",
+        "objects/obj_titleZomb/Step_0.gml"
+      ],
+      "created": "2026-10-11",
+      "updated": "2026-10-11",
       "done": null
     },
     {
@@ -197,6 +226,70 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       ],
       "created": "2026-10-05",
       "updated": "2026-10-05",
+      "done": null
+    },
+    {
+      "id": "audio-briefs",
+      "title": "Generate the five remaining tracks (title + Desert/Jungle/Graveyard/Blood Fields)",
+      "status": "done",
+      "owner": "rayu",
+      "awaiting": "none",
+      "area": "sound",
+      "phase": "2",
+      "size": "L",
+      "prio": 2,
+      "needs": "Generate the five tracks from the prompts in notes/Music-Generation/Music-Generation.md - the title screen, Desert, Jungle, Graveyard and Blood Fields - and import them as mus_title, mus_desert, mus_jungle, mus_graveyard and mus_blood (or tell me the names you used). I will then wire each one into music_data() and set its chorus loop_in. Also say what to do with the retired mus_world3 / mus_world4: delete them in the IDE, or leave them unused.",
+      "notes": "notes/Music-Generation/Music-Generation.md is now the brief rather than a draft: one entry per region plus the title screen, each with a Track Title, BPM, Genre, Visual & Gameplay Context, Instrumentation, a Loop line and the generator prompt. Grass (Wilted Sprouts, mus_world1) and Swamp (Mires of the Undead, mus_world2) are already made and stay. The old Industrial Ruins and Boss Fortress entries were retired with mus_world3/mus_world4 - they were not biomes of this game - and Graveyard and Blood Fields have fresh briefs so all seven tracks share one voice. Each track wants the intro to play once and the CHORUS to loop section-to-end, so it should be written so the chorus can follow itself: end it on the harmony it began on, at the same energy. Give a chorus start in seconds, or a bar number and I convert it with time_bpm_to_seconds().",
+      "refs": [
+        "notes/Music-Generation/Music-Generation.md",
+        "scripts/music_data/music_data.gml",
+        "notes/systems_overview/systems_overview.md"
+      ],
+      "created": "2026-10-11",
+      "updated": "2026-10-11",
+      "done": "2026-10-11"
+    },
+    {
+      "id": "audio-chorus-loop",
+      "title": "Set the chorus loop point for each track",
+      "status": "next",
+      "owner": "both",
+      "awaiting": "rayu",
+      "area": "sound",
+      "phase": "2",
+      "size": "S",
+      "prio": 3,
+      "needs": "Give me the chorus start for each of the seven tracks - in seconds, or as a bar number plus the BPM and I will convert it with time_bpm_to_seconds(). I will put it in loop_in on the right row of scripts/music_data, so a stage plays the intro once and then loops the chorus to the end of the file instead of the whole track. Say also whether the loop point clicks; if it does, those files get converted to OGG, which has no MP3 encoder padding to skip over.",
+      "notes": "loop_in ships as 0 - whole-track looping - for all seven tracks, which is correct and audible but not what the brief asks for: the Looping section of notes/Music-Generation/Music-Generation.md wants the intro played once and the chorus repeated. The mechanism is already in place (scr_music_start_level sets GameMaker's Audio Loop Points on the sound ASSET, on the audio thread), so this card is only the numbers.",
+      "refs": [
+        "scripts/music_data/music_data.gml",
+        "scripts/scr_music_start_level/scr_music_start_level.gml",
+        "notes/Music-Generation/Music-Generation.md"
+      ],
+      "created": "2026-10-11",
+      "updated": "2026-10-11",
+      "done": null
+    },
+    {
+      "id": "audio-region-music",
+      "title": "Region music starts and loops with the stage",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "Reload GameMaker (LL-008), then with global.devMode on deploy into a stage and read the log. Every stage must print ONE line of this shape and the theme must come up under the deploy countdown and keep playing through every wave without restarting: META  [MUSIC] region 1 \"Wilted Sprouts\" mus_world1 (ref) loop 0 -> 163.53s (whole track). Tell me whether that is the right track by ear and whether it loops cleanly into the chorus. If you instead see `has no sound (undefined)` or `has no track yet (-1)`, send me the line: the first means the asset never reached the build (an IDE-side fix - I will walk it with you) and the second means a music_data row. Region 1 is the only region with stages today, so hearing the other five needs the debug level force. Also tell me whether the title and world-map themes still play after this change.",
+      "notes": "Roadmap 5.8. All seven tracks are now imported and mapped: mus_title for the title and menu, and mus_world1..mus_world6 for regions 1..6 in region order, in scripts/music_data. The mapping was established by estimating each file's tempo and matching it to the BPM in the brief, because the file names alone do not say which biome a track is for. Playback itself was built in the previous session: scr_music_start_level sets GameMaker's Audio Loop Points on the sound asset and plays looped, scr_level_start starts it as the level enters START, scr_level_clear stops it, and the world map keeps the menu theme, so no screen is silent. loop_in is still 0 (whole track) everywhere - the chorus times are a separate card. FIXED 2026-10-11, and it was not the audio: rayu's runtime log (`GameMakerStudio2/debug.log`) held `META  [MUSIC] region 1 \"Wilted Sprouts\" has no track yet - playing nothing` - the row was found, but the guard above it (`if(!is_real(_sound) || _sound \u003c 0)`) rejected the SOUND. is_real() asks 'is this a plain number' and an asset reference is not one, so the guard refused every region theme while the menu theme - the same kind of value through the same audio_play_sound_on(), but on a path that never runs the guard - played on. The guard now tests the values music_data documents (-1 for 'not generated yet', undefined for 'no row'), says WHICH one fired, and the play line prints typeof(_sound). The loop-point pair 0.0/0.0 is no longer set for a whole-track loop (loop = true already repeats the track). Written up as LL-034, with the asset itself proven good on the way: mus_world1.yy is byte-identical to mus_world2.yy apart from the duration, and the IDE cache held a valid converted mus_world1.wav with \u003cDuration>163.53\u003c/Duration> beside it.",
+      "refs": [
+        "scripts/music_data/music_data.gml",
+        "sounds/mus_title/mus_title.yy",
+        "sounds/mus_world6/mus_world6.yy",
+        "notes/Music-Generation/Music-Generation.md"
+      ],
+      "created": "2026-10-11",
+      "updated": "2026-10-12",
       "done": null
     },
     {
@@ -280,6 +373,30 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "done": null
     },
     {
+      "id": "feat-up-next-portrait",
+      "title": "Zombie portraits in the textbox, and the Up Next wave popup",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "Reload GameMaker (LL-008), then play a stage with global.devMode on and let one wave clear. During the between-wave countdown a message box must show 'Up Next...' with the NEXT creature's portrait and name, switching to 'Up Next...  BOSS!' before the stage's final wave, and closing the instant the wave starts. The log must print one LEVEL up next line per wave. Tell me if the popup is too brief, or in the way of the board.",
+      "notes": "obj_textbox could only ever show ONE sprite for every message (message_sprite = spr_zombie, indexed by frame), so five portraits needed a per-message portrait: message_portrait[] (-1 = none), drawn by Draw_64 only when sprite_exists (LL-012), with show_portrait_box(portrait,color,message) as the wrapper - the old 3-argument show_message_box still works for the cutscene. The Up Next pick also had to move: the creature was chosen inside scr_level_spawn at SPAWN entry, so nothing knew the next wave during WAIT. scr_level_pick_spawn() now holds that selection block, START and WAIT compute-and-store the pick for wave_count + 1, and SPAWN consumes it - an irandom cannot be replayed, so a re-rolled preview would name a creature the wave never sends. MON gained a portrait slot, set after scr_makeMonster() because its positional arguments cannot take a tenth value safely.",
+      "refs": [
+        "objects/obj_textbox/Draw_64.gml",
+        "scripts/show_portrait_box/show_portrait_box.gml",
+        "scripts/scr_level_pick_spawn/scr_level_pick_spawn.gml",
+        "scripts/scr_wave_preview/scr_wave_preview.gml",
+        "scripts/scr_level_wait/scr_level_wait.gml",
+        "scripts/mon_enums/mon_enums.gml"
+      ],
+      "created": "2026-10-11",
+      "updated": "2026-10-11",
+      "done": null
+    },
+    {
       "id": "fix-keytype-dispatch",
       "title": "Saved key bindings dispatch a random script (the scr_drawTimerExt crash)",
       "status": "done",
@@ -330,6 +447,53 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "done": "2026-10-07"
     },
     {
+      "id": "fix-tower-anim-speed",
+      "title": "Tower animation speed must not depend on the frame count",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "Reload GameMaker (LL-008) then place a Daisy Pusher beside a Burning Ivy with global.devMode on: both idles must loop in step (1 s), and the log must print the same steps=60 for the 5-frame daisy and the 15-frame ivy. Confirm the attack swing still fits the fire rate, and say whether the placement ghost should animate (it now holds frame 0).",
+      "notes": "Two tower states set image_speed - a SPEED - where a duration was meant: the idle loop was 0.25 and the return was 1, so the period scaled with the frame count. The art swap from the 15-frame spr_t1 trio to the 5-frame daisy trio therefore made the idle loop 20 steps instead of 60 and the return 5 steps instead of 15 - three times too fast, with no code change anywhere. Fixed by asking for a PERIOD: new scr_animSpeedForSteps(sprite, steps) returns the image_speed that plays a sprite once in N steps whatever its frame count, scr_tower_animSpeed is the ONE place a tower speed is set, the durations live as anim_seconds on obj_tower, and the return state now exits on state_time >= anim_steps instead of on image_index. The attack was already frame-count independent. Written up as LL-030.",
+      "refs": [
+        "scripts/scr_animSpeedForSteps/scr_animSpeedForSteps.gml",
+        "scripts/scr_tower_animSpeed/scr_tower_animSpeed.gml",
+        "scripts/scr_tower_normal/scr_tower_normal.gml",
+        "scripts/scr_tower_return/scr_tower_return.gml",
+        "scripts/scr_tower_shoot/scr_tower_shoot.gml",
+        "objects/obj_tower/Create_0.gml",
+        "objects/obj_tower_edit/Create_0.gml",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-11",
+      "updated": "2026-10-11",
+      "done": null
+    },
+    {
+      "id": "fix-tower-attack-stuck",
+      "title": "Towers freeze in the attack animation once fire_rate is scaled",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "Reload GameMaker (LL-008), then play: upgrade a tower and confirm it no longer freezes in the attack animation. With devMode on, a shot whose target dies before impact should log 'TOWER  no targets in range, return to idle'.",
+      "notes": "scr_tower_shoot left the attack state only on state_time == frame_number, but frame_number = room_speed/data[TOWER.fire_rate] is a FLOAT once the level ladder or a clover bonus scales fire_rate (tower_levels.gml: L2 is 1.04x, so a base 3/s tower is 19.23 frames). state_time is an integer, so that equality never held and the tower looped the attack sprite forever. Fixed: >= with one-shot flags, and the target list is re-validated every frame so a target that dies mid-swing returns the tower to idle. Written up as LL-029.",
+      "refs": [
+        "scripts/scr_tower_shoot/scr_tower_shoot.gml",
+        "scripts/tower_levels/tower_levels.gml",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-10",
+      "updated": "2026-10-10",
+      "done": null
+    },
+    {
       "id": "fix-tower-cell-footprint",
       "title": "Plants block one 32x32 grid cell, not a 2x2",
       "status": "done",
@@ -355,6 +519,60 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "done": "2026-10-07"
     },
     {
+      "id": "fix-tower-click-mask",
+      "title": "The tower click mask must not scale with the art",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "Reload GameMaker (LL-008), then two checks. (1) In water: get a monster onto a water tile so the inWater branch of obj_mon/Draw_0 draws. There must be NO `undefined value` error, and the monster must show the top 75% of its sprite at its normal size and facing. (2) The earlier mask checks still hold: hover a tower and the highlight must be a 1-cell-wide, 2-cell-tall region while the art keeps its size; place a second tower directly above the first (both accepted); a tower upgrade must stay upright and keep facing; a tower in water must draw its top 80% at its own size; and hovering must keep drawing the halo at the tower's size, not full size. Falsified by: the draw_self_part error line 33 again, a monster or tower drawn at the wrong size in water, or the halo jumping to full size. Tell me the on-screen sizes look right and I will close this card.",
+      "notes": "obj_tower already carried spr_tower_click_region in its .yy - the mask was never wrong. It arrived at 16x32 because obj_tower/Create_0 drew the art with image_xscale = image_yscale = 0.5, and a collision mask SCALES with image_xscale: mask_index does not exempt an instance from that. The art's size therefore moved into draw_scale (0.5 placed, 0.25 for the ghost), image_xscale / image_yscale are now +/-1 FACING ONLY, and drawing goes through the new scr_draw_self_scaled(). Every consumer of the size followed: scr_drawLight (the shadow silhouette), scr_drawGlowOutline (the hover halo), draw_self_part (the in-water part draw, which gained optional _sx/_sy so its existing callers behave identically) and the upgrade tween in _levelControl/Step_0, which now writes draw_scale and so can no longer un-mirror a tower (LL-012). The step-1 click box is gone: Step_1 asks the mask itself with position_meeting(mouse_x, mouse_y, id), and _levelControl picks the tower whose OWN cell holds the pointer when two stacked towers are both under it. THE SAME MASK was then making the placement ghost lie: obj_tower_edit/Step_0 asked position_meeting(x,y,obj_tower) for occupancy, which reads the 32x64 mask, so the cell above a tower went red even though obj_tower/Create_0 blocks one cell and two towers may stack. That test is now mp_grid_get_cell on LEVEL.path_grid - the grid the tower will be written into - plus a _spawn test, and a refusal logs META [PATH] placement refused: \u003cwhy> instead of refusing silently. No .yy edits were needed. Written up as LL-033. REGRESSION FOUND AND FIXED 2026-10-12: rayu hit `ERROR ... of Draw Event for object obj_mon: undefined value at gml_Script_draw_self_part (line 33) - _x = x - sprite_get_xoffset(sprite_index)*_sx`, every frame a monster was in water. Not the mask this time - the OPTIONAL _sx/_sy arguments this card added. draw_self_part DECLARES seven parameters (argument0..argument6) but obj_mon/Draw_0 passes five, and the argument list is sized to the DECLARED arity (unpassed parameters padded with undefined), so the old test `(argument_count > 5) ? argument5 : image_xscale` took the argument5 branch and multiplied by undefined. Proof it was the count and not image_xscale: the error says 'undefined value', not 'not set before reading it', so the slot exists and holds undefined; obj_mon never assigns image_xscale anything but a real; and scr_meta_log declares ONE parameter while printing TEN, so argument_count = max(declared, passed) fits both. Every other argument_count user in the project declares ZERO parameters, which is why only this call broke. The test is now is_undefined(argument5)/is_undefined(argument6) - the project's usual 'not there' question, independent of how argument_count is computed - and scr_drawGlowOutline (same brittle shape, argument_count > 0) was fixed with it. Written up as LL-035.",
+      "refs": [
+        "objects/obj_tower/Create_0.gml",
+        "objects/obj_tower/Draw_0.gml",
+        "objects/obj_tower/Step_1.gml",
+        "objects/obj_tower/Alarm_0.gml",
+        "objects/obj_tower_edit/Create_0.gml",
+        "objects/obj_tower_edit/Draw_0.gml",
+        "objects/obj_tower_edit/Step_0.gml",
+        "objects/_levelControl/Step_0.gml",
+        "scripts/scr_draw_self_scaled/scr_draw_self_scaled.gml",
+        "scripts/scr_drawLight/scr_drawLight.gml",
+        "scripts/scr_drawGlowOutline/scr_drawGlowOutline.gml",
+        "scripts/draw_self_part/draw_self_part.gml",
+        "sprites/spr_tower_click_region/spr_tower_click_region.yy"
+      ],
+      "created": "2026-10-11",
+      "updated": "2026-10-12",
+      "done": null
+    },
+    {
+      "id": "fix-tower-facing",
+      "title": "Towers mirror to face their target",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "Reload GameMaker (LL-008), then place a tower with global.devMode on and let a wave walk past it: the tower must mirror when a monster is on its left and un-mirror when one is on its right, logging ONE line per turn and not one per step. Then upgrade a mirrored tower - it must stay mirrored AND upright. Finally say whether the zombie shadows now mirroring looks right.",
+      "notes": "Towers were drawn facing right whatever they were shooting at. obj_tower/Step_0 now calls the new scr_tower_faceTarget(target) after the state has run, mirroring with the project idiom image_xscale = -abs(image_xscale) / abs(image_xscale) (LL-012, exactly as scr_zomb_updatePosition does for monsters). The helper accepts every shape target takes - an instance from instance_nearest, an array from find_all_range, noone, or the -1 find_all_range returns when nothing is found - faces the NEAREST valid target, holds the last facing when there is nothing to face, and ignores a target inside a 2px dead zone so a monster in the cell directly above or below cannot strobe the sprite. It writes and logs only on a turn. Two traps came with the flip: the upgrade tween wrote a bare positive image_xscale (which would have un-mirrored the tower on upgrade) and image_yscale = image_xscale (which, once the scale can be negative, draws the tower UPSIDE-DOWN) - both fixed, magnitudes unchanged. The shadow silhouette in scr_drawLight is built from sprite_width/sprite_xoffset, which ignore the flip, so it now mirrors as well, which also corrects left-walking zombie shadows. Written up as an extension of LL-012.",
+      "refs": [
+        "scripts/scr_tower_faceTarget/scr_tower_faceTarget.gml",
+        "objects/obj_tower/Step_0.gml",
+        "objects/_levelControl/Step_0.gml",
+        "scripts/scr_drawLight/scr_drawLight.gml",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-11",
+      "updated": "2026-10-11",
+      "done": null
+    },
+    {
       "id": "fix-tower-upgrade-crash",
       "title": "Fix the tower-card crash: tower_upgrade_price / tower_sell_refund were never defined",
       "status": "done",
@@ -373,6 +591,52 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "created": "2026-10-06",
       "updated": "2026-10-06",
       "done": "2026-10-06"
+    },
+    {
+      "id": "fix-tower-upgrade-scale",
+      "title": "A tower shrinks on its first upgrade (0.5 placed, 0.34 after)",
+      "status": "next",
+      "owner": "both",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 3,
+      "needs": "One decision. A tower is PLACED at draw_scale 0.5, but the upgrade tween is lerp(0.25, 0.70, level / 10) and the cap is 5 - so the first upgrade takes the tower to 0.34 and even the cap only reaches 0.475. Upgrading a tower therefore makes it SMALLER, and it never gets back to the size it was placed at. Should the tween be normalised to the cap of 5 (so the ladder runs 0.25 to 0.70 across levels 1-5), or should the PLACED size come down to match the ladder?",
+      "notes": "Found while moving the size out of image_xscale for the click mask. The divisor of 10 is deliberate - _levelControl/Step_0 says a tower placed at floor 6 must not look like one placed at floor 3 - but it was written for a 10-level ladder, and tower_cap() is now 5 (tower_levels.gml: cap = 5 + mastery). Nothing about this changed in this session: the old code wrote image_xscale = 0.5 at placement and lerp(0.25, 0.70, level / 10) on upgrade, so it shrank then too. It is recorded here rather than fixed because it is a numbers decision, not a code one.",
+      "refs": [
+        "objects/obj_tower/Create_0.gml",
+        "objects/_levelControl/Step_0.gml",
+        "scripts/tower_levels/tower_levels.gml"
+      ],
+      "created": "2026-10-11",
+      "updated": "2026-10-11",
+      "done": null
+    },
+    {
+      "id": "fix-wave-valve",
+      "title": "A wave ends only when every zombie is killed or reaches the exit",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "Reload GameMaker (LL-008), then with global.devMode on play a stage with NO towers: every zombie must walk its whole route, each logging META [LEVEL] leak - life N as it arrives, the wave must not advance until the last one arrives, and the lives counter must fall (20 to 15 in wave 1). Let it run to 0 lives and confirm the game over then high score path fires. Then place towers and confirm a wave lasting longer than 6 seconds finishes normally, with no stuck warnings from zombies that are visibly walking. Tell me what the path lines report for walk time.",
+      "notes": "With no towers the zombies vanished a few seconds into every wave: the anti-softlock valve in scr_level_wait fired on elapsed time (6 s after the wave finished spawning) and deleted EVERY live monster. A stopwatch cannot tell slow from stuck, and a zombie needs 20-45 s to walk a stage at about 0.75 px/step, so the valve was really the end of every wave: the zombies never reached the despawn, lose_life() never ran, no life was ever paid, level_leaked stayed 0, Untouched was still earned and the stage still cleared. The leak then life then game over mechanic was being discarded silently, and the leak path printed nothing at all. The valve now fires on evidence about the monster: scr_zomb_updatePosition counts steps in which path_position does not change (the path follower own report, which - unlike x/y - cannot be fooled by an instance that has lost its path and is drifting, LL-025), and scr_level_wait clears only the monster that has not advanced for 5 s, logging path_free and path_retry, with level_forced set. Five seconds sits above the ~2 s obj_mon/Alarm_0 needs to escalate to the tower-ignoring escape grid, and a ten-minute per-wave latch (>= plus a flag, never ==, LL-029) keeps roadmap 4.4.1 promise that a stage can never hang. Every fate is now labelled once in the log - kill / leak / valve - plus one line per monster with path length, px/step and the projected walk time, so any future threshold is derived from the log rather than guessed. Written up as LL-031 and in systems_overview 4.3.1.",
+      "refs": [
+        "scripts/scr_level_wait/scr_level_wait.gml",
+        "scripts/scr_zomb_updatePosition/scr_zomb_updatePosition.gml",
+        "objects/obj_mon/Create_0.gml",
+        "scripts/lose_life/lose_life.gml",
+        "scripts/scr_zomb_death/scr_zomb_death.gml",
+        "scripts/scr_zombie_path/scr_zombie_path.gml",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-11",
+      "updated": "2026-10-11",
+      "done": null
     },
     {
       "id": "fix-zombie-north-drift",
@@ -830,6 +1094,54 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "who": "rayu",
       "task": "fix-tower-cell-footprint",
       "what": "Playtest validation: 'Plants block one 32x32 grid cell, not a 2x2' - the pathing works as of the last test. The reloaded build also ran without the Input dispatch crash, so the saved-key_type fixes hold. That closes fix-tower-cell-footprint, fix-zombie-north-drift, fix-keytype-dispatch, fix-saved-keytype, run-script-dispatch and gm-reload-verify; the validated build is committed (e924703)."
+    },
+    {
+      "date": "2026-10-10",
+      "who": "cline",
+      "task": "fix-tower-attack-stuck",
+      "what": "Chased the playtest report that some towers stick in the attack animation. scr_tower_shoot left the attack state only on `state_time == frame_number`, but frame_number = room_speed/data[TOWER.fire_rate] is a FLOAT once fire_rate is scaled - the level ladder multiplies it by 1.04/1.08/... (tower_levels.gml) and placement folds in the garden floor and clover bonuses - so a base 3/s tower is 19.23 frames at L2. state_time is an integer, so that equality could never hold and the tower looped the attack sprite forever (and stopped dealing damage). Fixed: the state exits on >= frame_number, damage and particles fire once via did_damage/did_particles flags with clamped frames, and the target list is re-validated every frame so a target that dies or leaves range mid-swing returns the tower to idle. Written up as LL-029."
+    },
+    {
+      "date": "2026-10-11",
+      "who": "cline",
+      "task": "fix-tower-anim-speed",
+      "what": "Chased the report that the Daisy Pusher plays its idle and return animations about three times too fast after its sprite was swapped for the 5-frame spr_daisy_*_192x trio. Two of the three tower states set image_speed - a SPEED - where a duration was meant: the idle loop was 0.25 and the return was 1, so the period scaled with the frame count (15 frames at 0.25 is 60 steps; 5 frames at 0.25 is 20). The attack was already frame-count independent because it divided by frame_number, which is exactly why the bug looked like bad art. Fixed by asking for a PERIOD everywhere: new scr_animSpeedForSteps(sprite, steps) returns the image_speed that plays a sprite through once in N steps whatever its frame count, and normalises the sprite's declared speed type (image_speed is a multiplier, not frames-per-step); new scr_tower_animSpeed(slot, steps) is the ONE place a tower's speed is set, and logs the period once per animation per tower; the durations live as anim_seconds on obj_tower (1.00s idle / 0.25s return = the periods the old 15-frame trio played at); sprite_list is now indexed by a new TOWER_ANIM enum instead of 0/1/2 literals; and the return state exits on state_time >= anim_steps rather than on image_index, which fired up to a frame early at a fractional speed. obj_tower_edit's placement ghost no longer relies on image_single (a GM8 variable that does not exist in GMS2) and holds frame 0. Written up as LL-030."
+    },
+    {
+      "date": "2026-10-11",
+      "who": "cline",
+      "task": "fix-tower-facing",
+      "what": "Chased the request that towers mirror to face their target. obj_tower/Step_0 now calls the new scr_tower_faceTarget(target) once per step, after scr_runState has refreshed target, and mirrors with the idiom image_xscale = -abs(image_xscale) / abs(image_xscale) that scr_zomb_updatePosition already uses for monsters (LL-012). The helper handles every shape target takes - instance_nearest gives an instance or noone, find_all_range gives an array or the integer -1 - faces the NEAREST valid one, holds the last facing when there is nothing to face, and ignores a target within 2px of the tower so a monster in the cell directly above or below cannot strobe the sprite; it writes and logs only on a turn. Two latent traps surfaced with the flip: the upgrade tween wrote a bare positive image_xscale (which un-mirrored the tower on upgrade) and image_yscale = image_xscale (which becomes NEGATIVE once the scale can be negative, drawing the tower upside-down) - both fixed, magnitudes unchanged. scr_drawLight builds the shadow silhouette from sprite_width/sprite_xoffset and ignored image_xscale, so it mirrors now too, which also corrects left-walking zombie shadows. LL-012 extended with the three ways a flip dies."
+    },
+    {
+      "date": "2026-10-11",
+      "who": "cline",
+      "task": "fix-wave-valve",
+      "what": "Chased the report that with no towers the zombies vanish a few seconds into every wave, the lives counter never moves and the wave still rewards the player. One mechanism could do it: the anti-softlock valve in scr_level_wait fired on ELAPSED TIME (6 s after the wave finished spawning) and destroyed EVERY live monster. A stopwatch cannot tell a monster that is walking from one that is stuck, and scr_zomb_pathSpeed puts a zombie at about 0.75 px/step (path_start passes an absolute speed) so it needs 20-45 s to cross a stage - the valve was not a net under the wave, it was the end of the wave. Because the monsters were deleted mid-route, the two arrival tests in scr_zomb_updatePosition never ran, lose_life() never fired, level_leaked stayed 0, Untouched was still earned and scr_level_clear paid seeds and clovers: the leak -> life -> game over mechanic was being discarded silently, and the leak path printed nothing at all, which is why it read as a missing mechanic rather than a bug. The valve now fires on evidence about the monster and only for that monster: scr_zomb_updatePosition counts steps in which path_position does not change (the path follower own progress report, which - unlike x/y - cannot be fooled by an instance that has lost its path and is drifting, LL-025), and scr_level_wait clears a monster that has not advanced for 5 s, logging path_free and path_retry and setting level_forced. Five seconds sits above the ~2 s obj_mon/Alarm_0 needs to escalate to the tower-ignoring escape grid, and a ten-minute per-wave latch (>= plus a one-shot flag, never ==, LL-029) keeps roadmap 4.4.1 promise that a stage can never hang. Every fate is now labelled exactly once in the log - kill / leak / valve - plus one line per monster giving path length, px/step and the projected walk time, so future thresholds are derived from the log rather than guessed. Written up as LL-031 and documented in systems_overview 4.3.1."
+    },
+    {
+      "date": "2026-10-11",
+      "who": "cline",
+      "task": "fix-tower-click-mask",
+      "what": "Split the tower art's size away from image_xscale, because a collision mask scales with image_xscale and the tower's click mask therefore arrived at half size. obj_tower already carried spr_tower_click_region (32x64: one cell wide, two cells tall) and it was correct; obj_tower/Create_0 drew the art with image_xscale = image_yscale = 0.5, so the mask was handed to the game as 16x32. The size moved into a new draw_scale (0.5 placed, 0.25 for the placement ghost), image_xscale/image_yscale are now +/-1 FACING ONLY, and a new scr_draw_self_scaled() is the one place that draws at the art's size and re-applies the facing sign. Every consumer of the size followed: scr_drawLight's shadow silhouette (guarded on the instance having a draw_scale, so monsters are unchanged), scr_drawGlowOutline (the halo now takes the size), draw_self_part (optional _sx/_sy, so its existing callers behave identically) and the upgrade tween, which now writes draw_scale and can no longer un-mirror a tower. The step-1 click box was deleted: Step_1 asks the mask itself with position_meeting, and _levelControl tie-breaks two stacked towers by the one whose own cell holds the pointer. In the same session all seven music tracks were mapped to their regions in music_data - mus_title plus mus_world1..mus_world6 - with the mapping read off each file's estimated tempo rather than assumed, and the brief's wiring table corrected: mus_world3 and mus_world4 are Desert and Jungle, not retired. Written up as LL-033. (fix-tower-click-mask)"
+    },
+    {
+      "date": "2026-10-11",
+      "who": "cline",
+      "task": "fix-tower-click-mask",
+      "what": "Made the placement ghost ask the GRID instead of a collision mask. obj_tower_edit/Step_0 decided whether the cell under the ghost was taken with position_meeting(x, y, obj_tower), which reads the tower's 32x64 click mask - so the cell ABOVE a tower went red, while obj_tower/Create_0 blocks exactly one cell of LEVEL.path_grid and two towers are allowed to stack. It now asks the grid it is about to write into - mp_grid_get_cell(LEVEL.path_grid, (x + cell_w) div cell_w, (y + cell_h) div cell_h) != 0 - which is the same arithmetic obj_tower/Create_0 and scr_grid_block_instances use, plus the _spawn test that was already there (the spawn is not in the grid at all, and _spawn is also the parent of obj_wall, whose 32x32 art covers one cell, which backstops the part of the deploy countdown before scr_resetDrawPath puts the walls into the grid). The refusal now names its reason - META [PATH] placement refused: \u003cwhy> - where it used to click, thud and vanish in silence, so a wrong-looking cell is one log line rather than a hunt. Folded into LL-033, whose mask caused both the tiny click area and the lying ghost. (fix-tower-click-mask)"
+    },
+    {
+      "date": "2026-10-11",
+      "who": "cline",
+      "task": "audio-region-music",
+      "what": "Fixed the silence on every stage, and it was not the music. rayu's runtime log (`GameMakerStudio2/debug.log`) had one line: `META  [MUSIC] region 1 \"Wilted Sprouts\" has no track yet - playing nothing` - the right region and the right title, so the table and music_for_region() were fine and only `_music.sound` was rejected. The guard at the top of scr_music_start_level tested it with `!is_real(_sound) || _sound \u003c 0`, and is_real() asks 'is this a plain number' while an asset reference is not one - so is_real(mus_world1) is false for a perfectly good sound and the guard refused EVERY region theme. The menu theme survived because obj_title and the Menu reach audio_play_sound_on() without passing through the guard. The guard now tests the two values music_data actually documents (-1 for 'not generated yet', undefined for 'no row') and the refusal says WHICH fired, the play line prints typeof(_sound) so the representation is on the record rather than assumed, and the loop-point pair 0.0/0.0 is no longer set for a whole-track loop (loop = true already repeats the track, and 0.0/0.0 depends on the runtime reading 'loop end 0' as 'end of file'). The asset was cleared on the way: mus_world1.yy is byte-identical to mus_world2.yy apart from the duration, and the IDE's asset cache held a valid converted mus_world1.wav with \u003cDuration>163.53\u003c/Duration> beside it. Written up as LL-034, with the guard rail 'never ask a TYPE question about an asset'. (audio-region-music)"
+    },
+    {
+      "date": "2026-10-12",
+      "who": "cline",
+      "task": "fix-tower-click-mask",
+      "what": "Fixed the in-water crash my own optional arguments caused. obj_mon/Draw_0 calls draw_self_part(0,0,1,0.75,0) - five arguments - while draw_self_part declares seven (argument0..argument6), and the optional _sx/_sy were being detected with `(argument_count > 5) ? argument5 : image_xscale`. The argument list is sized to the DECLARED arity and the unpassed parameters are padded with undefined, so argument_count was not 5, the ternary took the argument5 branch, and the next line multiplied by undefined: `undefined value at gml_Script_draw_self_part (line 33) - _x = x - sprite_get_xoffset(sprite_index)*_sx`, every frame a monster was in water. The error text itself proves the mechanism - 'undefined value' (arithmetic on undefined, so the slot EXISTS) rather than 'not set before reading it' - and image_xscale cannot be the culprit because obj_mon only ever assigns it real numbers (0, +/-abs, base_scale * _t, +/-base_scale, with base_scale 1 from Create or 0.25/0.5 from scr_level_spawn). scr_meta_log(_tag) declares one parameter and its loop prints all ten arguments, so argument_count = max(declared, passed) fits both cases; every other argument_count user in the project declares ZERO parameters, which is exactly why nothing else ever broke. The test is now is_undefined(argument5)/is_undefined(argument6) - the project's own 'not there' question, and independent of how argument_count is computed - with the defaults unchanged (image_xscale carries the monster's size AND sign, as the original sprite_xoffset code assumed). scr_drawGlowOutline carried the same brittle shape (argument_count > 0) and was fixed with it. obj_mon/Draw_0 keeps its short call on purpose: it is the test of the default path. Written up as LL-035. (fix-tower-click-mask)"
     }
   ]
 }

@@ -1,6 +1,9 @@
 action_inherited();
 /// setup state
 sprite_array = array(spr_mon,spr_mon);
+/// the full size the emerge grows to (scr_zombie_emerge);
+/// scr_level_spawn overwrites this for each monster
+base_scale = 1;
 scr_setupState();
 
 /// generate path
@@ -33,6 +36,8 @@ pos_save = array(x,y);
 path_free = true;
 path_retry = 0;      /// failed re-path attempts since the last success
 path_escape = false; /// true once we stop politely waiting for a route
+path_pos_last = 0;   /// path_position one step ago - the valve's evidence
+stuck_frames  = 0;   /// steps the path follower has NOT advanced (LL-031)
 data = scr_makeMonster(0,0,0,0,0,0);
 
 /// show damage taken

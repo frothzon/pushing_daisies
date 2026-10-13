@@ -1,5 +1,5 @@
 /// @description  scr_meta_log(tag, message...);
-/// @param tag      short prefix: SEED / CLOVER / SHARD / CANDY / SAVE / LEVEL / PATH
+/// @param tag      short prefix: SEED / CLOVER / SHARD / CANDY / SAVE / LEVEL / PATH / MUSIC
 /// @param message...  anything to append, coerced to a string
 function scr_meta_log(_tag) {
 	/*

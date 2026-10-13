@@ -118,6 +118,12 @@ function scr_level_clear() {
 		/// title screen (roadmap 1.5).  The Menu reads this as it is
 		/// created, which is the only moment the request can be honoured.
 		global.menu_entry = MENU_STATE.WORLD_MAP;
+
+		/// stop the region theme with it.  This fade is the ONE exit from a
+		/// stage that does not already call audio_stop_all() (game over,
+		/// quit and deploy all do), so without this the theme would follow
+		/// the player onto the world map and loop there (roadmap 5.8).
+		scr_music_stop();
 	}
 
 	if(level_state_time > 5 && !level_cleared){

@@ -32,7 +32,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-009](#ll-009) | A one-value change produces a 1000-line diff | `.yy`/`.yyp` are **not JSON** — trailing commas, key order, inline containers | **FIXED** |
 | [LL-010](#ll-010) | A state's "just entered" code runs twice, or never | **Changing state from inside a state** instead of requesting it for the next Step | **FIXED** |
 | [LL-011](#ll-011) | — | **How to instrument the game** so the next bug takes one run, not ten | **METHOD** |
-| [LL-012](#ll-012) | `sprite_get_height ... requested -1` once per step; a sprite flip that "does nothing" | A **text object has no sprite** (`sprite_index == -1`, fatal in GMS2) and the shared scale helper **overwrote `image_xscale`** | **FIXED** |
+| [LL-012](#ll-012) | `sprite_get_height ... requested -1` once per step; a sprite flip that "does nothing"; a tower that un-mirrors - or draws upside-down - when it is upgraded | A **text object has no sprite** (`sprite_index == -1`, fatal in GMS2) and the shared scale helper **overwrote `image_xscale`**; `image_xscale` carries size **and** facing in one number | **FIXED** |
 | [LL-013](#ll-013) | A zombie **freezes** on the map; the wave never ends; only a restart helps | A **placement that pockets a monster**, and a **discarded `mp_grid_path` return value** that made the failure silent | **FIXED** |
 | [LL-014](#ll-014) | The pause / exit screen is **black** | **One variable doing two jobs** - `blackScreen` is the game-over crossfade, and pause read it; plus a surface **size mismatch** and a **mid-frame grab** | **FIXED** |
 | [LL-015](#ll-015) | A UI is **missing information** that was never once displayed | **`array_last_index()` used as a count** hides the last element, and a label list that was never extended | **FIXED** |
@@ -49,10 +49,19 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-026](#ll-026) | The same `Variable Input.<name> not set before reading it` every step, naming a function that event never calls | A **saved function reference**: an array of listeners (`key_type`) was persisted through `ds_list_write` and came back callable-but-stale - it ran whatever script the handle then indexed (see [LL-028](#ll-028)) | **FIXED** |
 | [LL-027](#ll-027) | Pathfinding is still off: monsters take odd routes or cannot leave their pen, as if a tower or wall covered more than its cell; **no error** | **`mp_grid_add_rectangle`/`mp_grid_add_instances` floor BOTH edges and iterate INCLUSIVELY**, so a rectangle the size of one cell blocks two (a 2x2) — block a **cell by index** instead | **FIXED** |
 | [LL-028](#ll-028) | The LL-026 error again, but naming a **different** script and an unrelated object, changing each rebuild | A saved function reference comes back **still callable**, on a handle that shifts when the project gains a script; `is_callable()` cannot spot it, so `key_type` must never be loaded | **FIXED** |
+| [LL-029](#ll-029) | A tower loops its **attack animation** forever and stops dealing damage; only after it has been **upgraded**; no error | A state exit gated on `state_time == frame_number`, where `frame_number = room_speed/fire_rate` is a **float** once the level ladder / clover bonus scales `fire_rate` — an integer can never equal it | **FIXED** |
+| [LL-030](#ll-030) | A tower's **idle / return animation plays far too fast** after its sprite is re-drawn with fewer frames; no error, and no code was changed | Two states set **`image_speed` (a SPEED) where a duration was meant**, so the period scaled with the frame count: 5 frames at `0.25` is 20 steps, not the 60 the 15-frame art took | **FIXED** |
+| [LL-031](#ll-031) | Zombies **vanish a few seconds into every wave** and the wave moves on; nothing reaches the exit, nothing is killed, and the **lives counter never moves** | A **safety valve firing on a stopwatch** (6 s after the wave's last spawn) deleted the whole wave - a stopwatch cannot tell *slow* from *stuck*, and a zombie needs 20-45 s to walk a stage | **FIXED** |
+| [LL-032](#ll-032) | `gm progress` says "nothing written", and then **every** later `gm progress add` fails the same way | The gate is transactional for `set`/`add` only - a **hand edit** that points `focus` at a card that does not exist yet stays on disk and blocks every later write | **FIXED** |
+| [LL-033](#ll-033) | A hand-drawn click mask "does nothing": the clickable area still hugs the artwork and is half the size it should be; and the placement ghost refuses the cell **above** an existing tower | A collision mask **scales with `image_xscale`** and `mask_index` does not exempt it - so "draw the art small" and "keep the mask fixed" were the same number; and a mask cannot answer "is this CELL taken" | **FIXED** |
+| [LL-034](#ll-034) | Every stage is **silent** - no region theme, ever - while the title and world-map themes play; the log blames the track: `META  [MUSIC] region 1 "Wilted Sprouts" has no track yet - playing nothing` | **A guard asked a TYPE question about an asset**: `is_real(sound)` is **false for an asset reference** (it is not a real number, whatever the runtime calls the type) - so the guard refused a track that was there, and its message blamed the track. The menu path skips that guard, which is why only levels were silent | **FIXED** |
+| [LL-035](#ll-035) | A monster **in water throws every frame**: `undefined value at gml_Script_draw_self_part (line 33) - _x = x - sprite_get_xoffset(sprite_index)*_sx`, from `obj_mon/Draw_0`'s five-argument call | The **optional argument** was detected with `argument_count`, but the function **declares seven** parameters and the call passes five, so the list is padded with `undefined` and the wrong branch was taken | **FIXED** |
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `enum` `crlf` `room_speed` `built-in` `shadowing` `null` `log` `debug`
 `flip` `image_xscale` `sprite_index` `sprite_get_width` `-1` `_text_rise`
+`facing` `mirror` `image_yscale` `draw_sprite_pos` `shadow` `orientation` `sign`
+`wave` `valve` `safety valve` `stuck` `soft-lock` `path_position` `life` `leak` `timer`
 `soft-lock` `path` `mp_grid_path` `return value` `pocket` `black` `pause`
 `snapshot` `surface` `application_surface` `array_last_index` `scope`
 `sibling` `parameter` `RNG` `perlin` `globalvar` `instance_exists`
@@ -74,6 +83,15 @@ Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `key_type` `script_execute` `is_callable` `asset_get_index` `ds_list_write` `function reference` `saved binding` `_objSwitch`
 `mp_grid_add_rectangle` `mp_grid_add_instances` `mp_grid_add_cell` `inclusive` `2x2` `footprint` `cell`
 `callable but stale` `handle` `key_type` `ds_list_read` `never load a function` `obj_spawn` `scr_drawSwitchTimer` `purge slot`
+`tower` `attack animation` `stuck` `freeze` `frame_number` `fire_rate` `scaled cadence` `state exit` `equality` `float`
+`animation` `image_speed` `image_number` `sprite_get_number` `frames per second` `sprite swap` `duration not speed` `idle loop` `image_single`
+`music` `audio` `region music` `loop points` `chorus` `loop_in` `music_data`
+`focus` `progress.json` `pointer field` `gate is not a transaction` `write order` `two tracks at once`
+`collision mask` `mask_index` `image_xscale` `bbox` `bbox_left` `draw_sprite_ext` `draw_scale` `sprite_width` `sprite_offset`
+`is_real` `asset` `handle` `ref` `typeof` `audio` `music` `silent` `mus_world1`
+`has no track yet` `guard` `false negative` `region music`
+`argument_count` `optional argument` `argument5` `undefined value` `declared parameters`
+`draw_self_part` `in water` `pad with undefined` `is_undefined` `variadic`
 
 ---
 
@@ -657,6 +675,37 @@ Never flip with `image_xscale = sign(...)`: `sign(0)` is `0`, so a mouse exactly
 on the instance makes it invisible for a frame and clamps the scale to ±1.
 `objects/obj_titleZomb/Step_0.gml` line 44 still does this.
 
+**Three more ways a flip dies — all three appeared at once when the towers
+learned to face their target (2026-10-11).**
+
+1. **A scale tween that re-derives `image_xscale` un-mirrors the instance.**
+   The tower's upgrade tween wrote `image_xscale = lerp(0.25,0.70,_frac)` — a
+   bare positive value — so a tower that had turned to face a monster on its
+   left span back to the right the moment it was upgraded. Keep the sign:
+
+   ```gml
+   var _tower_scale = lerp(0.25,0.70,_frac);
+   image_xscale = _tower_scale * (image_xscale < 0 ? -1 : 1);
+   ```
+2. **`image_yscale = image_xscale` propagates the SIGN, not the size.** The
+   same tween read `image_yscale = tower_selection.image_xscale`. That was
+   harmless only while `image_xscale` was always positive. Once a tower can
+   face left it writes a **negative `image_yscale`**, which draws the tower
+   **upside-down** — a bug that looks nothing like a flip. Write the
+   magnitude into both axes, then the sign into x only.
+3. **Anything else that reads the sprite has to respect the sign.** The shadow
+   silhouette (`scr_drawLight`) is built from `sprite_width` /
+   `sprite_xoffset`, which ignore `image_xscale`, so a mirrored tower (and a
+   mirrored monster) cast a silhouette facing the wrong way.
+   `draw_sprite_pos` takes its corners clockwise from the **top left**, so
+   mirroring it is swapping the two left/right x's — and the *sun's* shear
+   offset must not be swapped with them.
+
+The rule under all three: **`image_xscale` is two pieces of information in one
+number — magnitude (size) and sign (facing).** Every writer must preserve the
+half it is not setting, and every reader that cares about orientation must
+look at the sign.
+
 **Guard rails.**
 
 * **A helper that reads `sprite_index` must survive `sprite_index == -1`** —
@@ -667,12 +716,22 @@ on the instance makes it invisible for a frame and clamps the scale to ±1.
   `image_xscale` on every call.
 * An object with no sprite has no mask, so `place_meeting()`,
   `position_meeting()` and `bbox_*` are dead code in it.
+* **When you add a flip, grep both sides of it**: every *writer* of
+  `image_xscale` on that object (a `lerp` tween, `scr_scale_sprite`, a
+  "reset the scale" line — each will eat the flip or invert it), and every
+  *reader* (`draw_self_part`, `scr_drawLight`, `scr_drawReflections`,
+  `sprite_width`-based click boxes).
 
-**Status.** FIXED, 2026-10-03.
+**Status.** FIXED, 2026-10-03; extended 2026-10-11 (towers mirror to face
+their target).
 
 **Files.** `scripts/scr_scale_sprite/scr_scale_sprite.gml`;
 `objects/_text_rise/Step_0.gml` line 20 (now a harmless no-op);
 `objects/_text_rise/_text_rise.yy` (`spriteId` is `null`).
+
+Added by the 2026-10-11 extension: `scripts/scr_tower_faceTarget/`
+`scr_tower_faceTarget.gml` (new), `objects/obj_tower/Step_0.gml`,
+`objects/_levelControl/Step_0.gml`, `scripts/scr_drawLight/scr_drawLight.gml`.
 
 ---
 
@@ -1803,6 +1862,605 @@ the hole — a genuinely non-function value — but it cannot close this one.
 `scripts/scr_load_gamepad/scr_load_gamepad.gml`,
 `scripts/scr_save_gamepad/scr_save_gamepad.gml`,
 `scripts/run_script/run_script.gml`, `objects/Input/Step_0.gml`.
+
+---
+
+<a name="ll-029"></a>
+## LL-029 — Never exit a state on equality with a value another system can scale
+
+**Symptom.** Some towers freeze mid-fight, stuck looping their **attack
+animation**, and they stop dealing damage. It is not every tower and not every
+session; the ones that freeze are the ones that have been **upgraded** (or placed
+on a garden with a fire-rate / mastery bonus). There is **no error in the log** —
+the tower simply never changes back to idle.
+
+**Root cause.** `scr_tower_shoot` left the attack state on an exact test:
+
+```gml
+frame_number = room_speed/data[TOWER.fire_rate];   /// a FLOAT
+...
+if(state_time == frame_number){ scr_changeState(scr_tower_return); }
+```
+
+`state_time` is an integer (0, 1, 2, …). `fire_rate` is scaled fractionally by the
+level ladder — `tower_data_at_level()` multiplies it by `tower_level_firerate()`,
+which is `1.04, 1.08, 1.12, …` above L1 — and by the clover bonus, and placement
+folds in the garden floor. So at L2 a base 3/s tower is `3.12/s`, and
+`60 / 3.12 = 19.2308…`. An integer can never equal `19.2308`, so the return line
+never ran: the tower re-entered the attack state every frame, looped the sprite
+and stopped firing. The L1 row is `1.00`, which is why a fresh tower is fine and
+an upgraded one is not — the bug arrives one upgrade later.
+
+**Fix.** Exit on `>=`, and fire each one-shot beat once:
+
+```gml
+var _rate = data[TOWER.fire_rate];
+frame_number  = (_rate > 0) ? room_speed/_rate : room_speed;
+fire_frame    = max(1, floor(frame_number - time_offset));
+...
+if(!did_damage && state_time >= fire_frame){ for_array(target,scr_do_damage); did_damage = true; }
+if(state_time >= frame_number){ scr_changeState(scr_tower_return); }
+```
+
+The same change re-checks the target list every frame, so a target that dies (or
+leaves range) mid-swing returns the tower to idle instead of leaving it swinging
+at a corpse.
+
+**Guard rails.**
+* **Never gate a state exit on `==` against a value another system scales.** Use
+  `>=` (or an animation counter). The fractional multiplier lives in a *different*
+  file (`tower_levels.gml`), so this looks like a tower bug when it is really a
+  coupling bug.
+* **A `time == N` beat that fires once needs a one-shot flag** if you relax the
+  test to `>=`, or it fires on every frame from `N` onward.
+* **`floor()`d comparisons are safe; raw floats are not.** The damage beat had
+  used `floor(frame_number - time_offset)` and was fine — the exit did not, and
+  that asymmetry is the tell.
+* **When a state machine "hangs", suspect a test that can never be true** before
+  suspecting the log: there was no error, because nothing threw.
+
+**Status.** FIXED, 2026-10-10.
+
+**Files.** `scripts/scr_tower_shoot/scr_tower_shoot.gml`,
+`scripts/tower_levels/tower_levels.gml`.
+
+---
+
+<a name="ll-030"></a>
+## LL-030 — An animation timed with a SPEED instead of a DURATION
+
+**Symptom.** The Daisy Pusher's **idle loop and its return-to-idle swing play
+about three times too fast** once its art is replaced with a shorter sprite.
+Nothing is in the log, there is no error, and no code changed — only the sprite
+in the roster entry did. The other three towers are fine, because their art is
+still the old 15-frame trio.
+
+**Root cause.** Two of the three tower states set `image_speed`, which is a
+**rate**, where what they meant was a **length of time**:
+
+```gml
+image_speed = 0.25;   /// scr_tower_normal, the idle loop
+image_speed = 1;      /// scr_tower_return, the return
+```
+
+`image_speed` is frames per step (a multiplier of the sprite's own declared
+speed), so the period it produces depends entirely on how many frames the sprite
+happens to have. The old trio was **15 frames**; the new daisy trio is **5**:
+
+| state | before (15 frames) | after the 5-frame swap |
+| --- | --- | --- |
+| idle, `image_speed = 0.25` | 15 ÷ 0.25 = **60 steps** (1 s @ 60 fps) | 5 ÷ 0.25 = **20 steps** |
+| return, `image_speed = 1` | 15 ÷ 1.0 = **15 steps** (0.25 s) | 5 ÷ 1.0 = **5 steps** |
+| attack, `image_number/frame_number` | 15 over `frame_number` steps | 5 over `frame_number` steps — **already correct**, because it divides by a duration |
+
+The attack state was accidentally right and the two hard-coded ones were wrong,
+which is exactly why this reads as "the new sprite is broken" rather than "two
+lines were written in the wrong unit". It is the same *shape* of bug as
+[LL-029](#ll-029).
+
+**Fix.** Ask for a **period in steps** and derive the speed from the frame count:
+
+```gml
+image_speed = scr_animSpeedForSteps(sprite, 60);   /// 5 frames -> 0.0833  15 frames -> 0.25
+```
+
+* `scr_animSpeedForSteps(sprite, steps)` returns `(frames / steps) / declared_speed`
+  — the multiplier that makes one pass of the animation span `steps` steps whatever
+  the frame count. It normalises the sprite's declared speed first, because a
+  sprite may declare **frames per second** or **frames per game frame**
+  (`sprite_get_speed_type`), and `image_speed` multiplies whichever it is.
+* `scr_tower_animSpeed(slot, steps)` is the ONE place a tower's playback speed is
+  set: it looks the sprite up in `sprite_list` (now indexed by the `TOWER_ANIM`
+  enum) and logs the period once per animation per tower.
+* The durations live with the sprites, as `anim_seconds` in
+  `objects/obj_tower/Create_0.gml` (`1.00` s idle, `0.25` s return; the attack's
+  length is the fire rate, so `scr_tower_shoot` supplies it).
+* The return state's exit became a **time** test (`state_time >= anim_steps`)
+  because its length is now a number of steps — the old
+  `image_index >= image_number-1` fires up to a frame early once the speed is
+  fractional, and it exits on a value the frame count scales (LL-029).
+
+**Guard rails.**
+
+* **If a timing must not change when the art changes, store a DURATION, not a
+  speed.** Never hard-code `image_speed`; derive it from `sprite_get_number()`.
+  `image_number` *is* the frame count, so "the same period whatever the frames" is
+  one division.
+* **`image_speed` is a multiplier, not frames-per-step.** It only looked like
+  frames-per-step here because every sprite declares 1 frame per game frame. Check
+  `sprite_get_speed_type()`, or a sprite that declares FPS will silently change
+  period with the game's frame rate.
+* **A sprite swap is a behaviour change.** When art is replaced, grep for
+  `image_number` / `image_index` / `image_speed`, and for every state exit gated
+  on the animation having finished.
+* **Prefer `state_time >= duration`** over "has the animation finished" tests.
+* **`image_single` is GM8 and does not exist in GMS2** — `obj_tower_edit`'s
+  placement ghost had been animating at the sprite's default speed since the
+  conversion. The GMS2 equivalent of "hold a frame" is
+  `image_index = 0; image_speed = 0;`.
+
+**Status.** FIXED, 2026-10-11.
+
+**Files.** `scripts/scr_animSpeedForSteps/scr_animSpeedForSteps.gml` (new),
+`scripts/scr_tower_animSpeed/scr_tower_animSpeed.gml` (new),
+`scripts/scr_tower_normal/scr_tower_normal.gml`,
+`scripts/scr_tower_return/scr_tower_return.gml`,
+`scripts/scr_tower_shoot/scr_tower_shoot.gml`,
+`objects/obj_tower/Create_0.gml`, `objects/obj_tower_edit/Create_0.gml`,
+`scripts/tower_enums/tower_enums.gml`.
+
+---
+
+<a name="ll-031"></a>
+## LL-031 — A safety valve that fires on a stopwatch cannot tell **slow** from **stuck**, so the net becomes the normal path
+
+**Symptom.** Run a wave with no towers (or with the towers simply out of range)
+and the zombies **vanish a few seconds in**, every wave, and the next wave
+starts. Nothing was killed, nothing reached the exit, and the **lives counter
+never moves** — so the whole *leak -> -1 life -> game over* mechanic silently
+disappears. A stage can be "cleared" having killed nothing, and `Untouched` is
+still awarded. The only clue is one line:
+
+```text
+META  [PATH] WARNING: 5 monster(s) still alive 6s past the wave - forcing the wave to end so the stage cannot hang
+```
+
+**Root cause.** `scripts/scr_level_wait` carried the anti-soft-lock valve that
+`roadmap.md` 4.4.1 asked for, and it fired on **elapsed time since the wave's
+last spawn**:
+
+```gml
+if(wait_stuck == _fps * 6){
+    level_forced = true;
+    with(obj_mon){ instance_destroy(); }   /// every live monster
+}
+```
+
+Time since spawn cannot tell a monster that is **walking** from one that is
+**stuck**, and the walk is slow: `scr_zomb_pathSpeed` puts
+`path_speed = ((12-z_climb)/12)*1.5 + 0.5` times the monster's speed at roughly
+**0.75 pixels per step** (`path_start(myPath,1,0,true)` passes an *absolute*
+speed), so a zombie needs about **20-45 s** to cross a stage. Six seconds was
+never a net under the wave — it was the *end* of the wave.
+
+Because they were deleted mid-route, `scr_zomb_updatePosition`'s two arrival
+tests (`point_in_circle(path_loc...)`, `path_position >= 1`) never ran, so
+`lose_life()` never fired; `level_leaked` stayed `0`; the stage reached
+`wave_count >= _row.waves`; `scr_level_clear()` paid seeds and clovers. The one
+mechanic the fix was meant to leave alone was the one it removed.
+
+Three things hid it: the valve logged under `PATH` (which reads like pathing
+noise), the **leak path printed nothing at all**, and the mechanic it discarded
+is written down nowhere.
+
+**Fix.** The valve fires on **evidence about the monster**, and only for the
+monster that is the evidence — a path follower that has not advanced:
+
+```gml
+/// scr_zomb_updatePosition - the path FOLLOWER's own progress, not a guess
+if(path_position == path_pos_last){
+    stuck_frames++;
+} else {
+    stuck_frames = 0;
+}
+path_pos_last = path_position;
+```
+
+```gml
+/// scr_level_wait - five seconds of provable stillness clears ONE monster,
+/// and the wave itself is untouched: it still ends only when the field is empty
+var _limit  = _fps * 5,
+    _before = instance_number(obj_mon),
+    _stuck  = 0;
+/// BACKWARDS: instance_find indexes shift as instances are destroyed,
+/// and instance_number() itself only updates at the end of the step
+for(var _i = _before - 1; _i >= 0; _i--){
+    var _m = instance_find(obj_mon, _i);
+    if(!instance_exists(_m)) continue;
+    if(!variable_instance_exists(_m, "stuck_frames")) continue;
+    if(_m.stuck_frames < _limit) continue;
+    scr_meta_log("PATH", "WARNING: monster ", _m.id, " stuck at ", ...);
+    instance_destroy(_m);
+    _stuck++;
+}
+```
+
+* **`path_position`, not `x/y`.** An instance whose path has been thrown away
+  can still *drift* in `x/y` — in [LL-025](#ll-025) an unbalanced draw offset
+  marched a zombie north through every wall, every frame — so a movement test
+  would have called that monster "walking". A frozen `path_position` means no
+  follower is driving it at all. It also needs no epsilon: the smallest real
+  advance is `0.125 px/step / path length` (~2e-5), and a stalled follower is
+  bit-identical.
+* **`==` is correct *here***: both sides are reads of the **same stored float**,
+  so equality means the follower did not write it this step. [LL-029](#ll-029) is
+  the opposite case — `==` against a value *derived* from a moving quantity.
+* **Five seconds, not two**: `obj_mon/Alarm_0` legitimately needs up to ~2 s to
+  escalate before it takes the tower-ignoring escape grid, and a monster being
+  rescued must not be deleted for being rescued.
+* **A ten-minute per-wave latch** (`wait_valve_fired`, `>=`) keeps roadmap
+  4.4.1's promise for a monster that never stops moving *and* never arrives.
+  `>=` plus a one-shot flag, never `==`: the frame budget is read from the FPS
+  setting, which can change mid-wave, and the old `== _fps * 6` is a valve that
+  silently never opens the moment that value moves.
+* **Every fate is now labelled exactly once** — `kill` (`scr_zomb_death`),
+  `leak` (`lose_life`), `valve` (`scr_level_wait`) — plus one line per monster,
+  `path 1408px @ 0.75px/step = ~1877 steps (~31s to the despawn)`, which is where
+  a future threshold must be *derived* from rather than guessed.
+
+**Guard rails.**
+
+* **A safety valve must fire on evidence about the thing it protects, never on a
+  stopwatch.** "It has been long enough" is a guess about *slow*; only a failed
+  progress test is evidence of *stuck*.
+* **Ask the subsystem that does the work.** The path follower owns the progress
+  and `path_position` is its own report; `x/y` is a *consequence* and can be
+  moved by code that has nothing to do with the route.
+* **A net that can catch the normal case is not a net.** Before shipping a
+  last-resort timeout, compute the ordinary duration it must sit above (here:
+  walk time = path length / pixels per step) and log it.
+* **Label every fate** (kill / leak / valve / timeout). A mechanic whose exit
+  path prints nothing cannot be debugged, and it gets re-reported as "the game
+  cheats".
+* **Never delete the rule's punishment.** When you add an escape hatch around a
+  rule, check what the rule *was for*: this valve ended the wave without the
+  leak, so lives never moved and the fail state could never be reached.
+* **`==` latches, `>=` repeats.** If you relax one into the other, add the
+  one-shot flag in the same edit — or a warning fires every frame from there on.
+* **Count what your own loop removed, never the difference in
+  `instance_number()`.** GMS2 removes a destroyed instance — and updates
+  `instance_number()` / `instance_find()` indexes — only at the **end of the
+  step**, so a delta read in the same step is always `0` (the summary line
+  could never print), and a forwards loop walks off the end of a list that is
+  shortening under it. Walk the list **backwards** and count in a local.
+
+**Status.** FIXED, 2026-10-11.
+
+**Files.** `scripts/scr_level_wait/scr_level_wait.gml`,
+`objects/obj_mon/Create_0.gml`,
+`scripts/scr_zomb_updatePosition/scr_zomb_updatePosition.gml`,
+`scripts/scr_setupSpawning/scr_setupSpawning.gml`,
+`scripts/scr_level_spawn/scr_level_spawn.gml`,
+`scripts/lose_life/lose_life.gml`,
+`scripts/scr_zomb_death/scr_zomb_death.gml`,
+`scripts/scr_zombie_path/scr_zombie_path.gml`.
+
+<a name="ll-032"></a>
+## LL-032 — The progress gate is transactional for `set`/`add` only, so a hand edit that breaks it blocks every later write
+
+**Symptom.** The tracker refuses a change and says so:
+
+```
+ERROR   focus.now points at unknown task 'audio-briefs'
+nothing written - fix the values above and try again
+```
+
+Then **every subsequent command fails the same way** - including the
+`gm progress add` that would have created the missing card - so the board
+cannot be repaired with the tool that reported the failure.
+
+**Root cause.** `validate()` runs on **every** write, and it checks `focus.now`
+and `focus.next` against the card list. Pointing `focus` at a card that does
+not exist yet is correctly rejected, but the rejection only rolls back the
+change *that command* was making. A `focus` edit made **by hand** is already
+on disk, so the file is left in a state that fails validation and no later
+`add`/`set` will save until it is put back.
+
+The rule is not the bug - the **order** is. `focus` is a pointer into the
+card list, so it is the last thing to change, never the first.
+
+**Fix.** Cards first, focus second:
+
+1. `gm progress add <id> ...` for every new card;
+2. *then* point `focus.now` / `focus.next` at them;
+3. `gm progress build` in the same change.
+
+If the file is already stuck, restore the `focus` block (`git diff
+progress.json` has the previous value) and re-run the adds before re-applying
+the focus. Do **not** delete the check.
+
+**Guard rails.**
+* **A gate that runs on write is not a transaction.** `nothing written`
+  describes *that command*; run `git diff` before assuming the file is
+  unchanged.
+* **A pointer field is written last.** Anything that references another record
+  (`focus.now`, `refs`, `needs`) has an order, and it comes after the record
+  exists.
+* **Hand-editing the JSON is still the sanctioned path** (AGENTS.md §6) - it
+  just means the gate validates *your* edit too, so obey its ordering rule.
+
+**Status.** FIXED (workflow), 2026-10-11.
+
+**Files.** `python_tools/gm/progress.py` (`validate`, `_edit`), `progress.json`,
+`AGENTS.md` §6.
+
+<a name="ll-033"></a>
+## LL-033 — A collision mask scales with `image_xscale`, so `mask_index` alone cannot give an object a fixed footprint
+
+**Symptom.** A hand-drawn click mask was set on the tower object in the IDE
+- `spr_tower_click_region`, 32x64: one cell wide, two cells tall - and it did
+nothing observable. The tower's clickable area still hugged the artwork, and
+because the artwork is drawn at 0.5 the region the mask described arrived at
+**16x32**, half a cell wide. No error, no warning, and the mask sprite was
+correct in every way that can be checked - size, origin, bbox, collision kind.
+
+**Root cause.** `image_xscale`/`image_yscale` scale the COLLISION MASK too, and
+`mask_index` does not exempt an instance from that. The manual defines the
+bounding box as "the maximum width and height of the mask for the instance (as
+set by the `sprite_index` or by the `mask_index`)", and a mask is scaled like
+the sprite it comes from. `obj_tower/Create_0` set
+
+```gml
+image_xscale = 0.5;
+image_yscale = 0.5;
+```
+
+to make 192x192 art occupy about 96px, so EVERY mask on that instance - the
+artwork's own or a hand-drawn one - arrived at half size. The GameMaker
+community answers the same question the same way: *"The mask_index should
+still scale."*
+
+The deeper problem is the usual one: **one variable doing several jobs.**
+`image_xscale` was the sprite's size, its facing (the sign), its mask's size,
+and - through `sprite_width` - the size of the step-1 click rectangle. Four
+jobs in one number, and only three of them wanted to move together.
+
+**Fix.** Keep `image_xscale`/`image_yscale` at +/-1 for FACING ONLY, and put
+the art's size in a variable of its own, drawn with `draw_sprite_ext`, whose
+scale arguments are independent of `image_xscale`:
+
+```gml
+draw_scale = 0.5;
+image_xscale = 1;
+image_yscale = 1;
+```
+
+```gml
+/// scr_draw_self_scaled(_scale) - the one place that knows the idiom
+var _scale = abs(argument0),
+    _flip  = (image_xscale < 0) ? -1 : 1;
+draw_sprite_ext(sprite_index, image_index, x, y,
+                _scale * _flip, _scale,
+                image_angle, image_blend, image_alpha);
+```
+
+Everything that read the size went with it: the shadow silhouette in
+`scr_drawLight` (multiply by the instance's `draw_scale` when it has one), the
+hover glow in `scr_drawGlowOutline` (passed in), the in-water part-draw in
+`draw_self_part` (optional `_sx`/`_sy`, defaulting to `image_xscale` so every
+existing caller is untouched) and the upgrade tween in `_levelControl/Step_0`
+(writes `draw_scale`, so it can no longer un-mirror a tower). The step-1 click
+box was deleted outright: `Step_1` asks the mask itself, with
+`position_meeting(mouse_x, mouse_y, id)`.
+
+**The same mask also made the placement ghost lie.** `obj_tower_edit/Step_0`
+asked `position_meeting(x, y, obj_tower)` to decide whether the cell under the
+ghost was taken, which reads the tower's 32x64 MASK - so the cell ABOVE a tower
+went red, while `obj_tower/Create_0` blocks exactly ONE cell of the grid and two
+towers may stand one above the other. The ghost now asks the grid it is about to
+be written into - `mp_grid_get_cell(LEVEL.path_grid, (x + cell_w) div cell_w,
+(y + cell_h) div cell_h) != 0` - plus a `_spawn` test, since the spawn is not in
+the grid at all. A test of the shape "is this cell taken" belongs in the GRID;
+a mask can only answer "is this point inside the ART", and after this change
+those two are different shapes of answer.
+
+**Guard rails.**
+* **A mask of a fixed size needs the instance's scale to be 1.** There is no
+  `mask_index` trick around it. Draw at the size you want with
+  `draw_sprite_ext` / `draw_sprite_pos` and leave `image_xscale` alone.
+* **Count the jobs before writing `image_xscale`.** Size, facing and mask are
+  three questions, and anything derived from `sprite_width` or `sprite_xoffset`
+  is a fourth. This is [LL-012](#ll-012) one level deeper: LL-012 lists the
+  three ways a flip dies, and this is the fourth thing the same variable was
+  carrying.
+* **`sprite_width`, `sprite_height`, `sprite_xoffset` and `sprite_yoffset` all
+  include the image scales**, so anything built on them follows the ART and not
+  the mask once the two are decoupled. `sprite_get_width` /
+  `sprite_get_xoffset` are the unscaled ones.
+* **Grep for the consumers, not just the writer.** The size had five readers,
+  and three of them were in files nowhere near the tower.
+* **A mask answers "is this POINT inside the ART"; it cannot answer "is this
+  CELL taken".** For occupancy ask the grid - and ask the SAME grid you write
+  to, or the ghost and the placement will disagree about the same cell.
+
+**Status.** FIXED, 2026-10-11.
+
+**Files.** `objects/obj_tower/{Create_0,Draw_0,Step_1,Alarm_0}.gml`,
+`objects/obj_tower_edit/{Create_0,Draw_0}.gml`,
+`objects/_levelControl/Step_0.gml`, `scripts/scr_draw_self_scaled` (new),
+`scripts/scr_drawLight`, `scripts/scr_drawGlowOutline`,
+`scripts/draw_self_part`, `sprites/spr_tower_click_region`,
+`objects/obj_tower/obj_tower.yy` (`spriteMaskId`).
+
+<a name="ll-034"></a>
+## LL-034 — A guard that asks a TYPE question about an asset refuses the asset
+
+**Symptom.** Every stage is silent: no region theme, on any stage, ever — while the
+title screen and the world map play theirs and every sound effect is normal. No
+error, no popup, nothing wrong in the game itself. The only clue is a line in the
+runtime's own output (rayu's run, `GameMakerStudio2/debug.log`):
+
+    META  [MUSIC] region 1 "Wilted Sprouts" has no track yet - playing nothing
+
+It names the RIGHT region and the RIGHT title, so `music_for_region()` found the
+row and the table is fine. Only `_music.sound` was rejected — and the message
+blamed the TRACK rather than the test, which is what made it look like a missing
+asset for far too long.
+
+**Root cause.** The guard meant to catch *"this track has not been generated yet"*
+asked the wrong question:
+
+    if(!is_real(_sound) || _sound < 0){ ...refuse... }
+
+`is_real()` asks *"is this a plain number"*, and an **asset reference is not a plain
+number**: it is a reference. `is_real()` is itself documented as false for int64s such
+as enums, and `typeof()` documents `"ref"` for handle references — both are the same
+shape of value, one that a numeric type test rejects. So `is_real(mus_world1)` is
+**false for a perfectly good sound**, `||`
+short-circuited before the (also wrong) `< 0`, and the guard refused a track that had
+been imported, converted and built correctly: its `.yy` is byte-identical to
+`mus_world2.yy` apart from the duration, and the IDE's asset cache held a valid
+converted `mus_world1.wav` with a valid `<Duration>163.53</Duration>` beside it.
+
+Why the menu theme kept working — the most misleading part: `obj_title` and `Menu`
+call `scr_playMusic(music_menu().sound, true)`, the SAME KIND of value through the
+SAME `audio_play_sound_on(global.MUSemitter, …)` — but **that path never runs the
+guard**. One code path had the type test, the other did not, so the same asset type
+played on one screen and was refused on another.
+
+**Fix.** Test the value the table actually documents, and let the audio API be the
+judge of an asset:
+
+    if(is_undefined(_sound) || _sound == -1){
+        ...logs which of the two fired...
+        return -1;
+    }
+
+`music_data()` already documents `sound = -1` as *"not generated yet"* (LL-021: one
+source of truth) and `undefined` as *"no row / no sound"*. Both are tested by value,
+and the refusal now says WHICH one fired instead of one sentence covering two
+different bugs. The play line also prints `typeof(_sound)`, so the representation of
+an asset reference is on the record instead of assumed - expect a line of this shape,
+where the parenthesised word is `typeof()`'s own name for an asset reference:
+
+    META  [MUSIC] region 1 "Wilted Sprouts" mus_world1 (ref) loop 0 -> 163.53s (whole track)
+
+
+**Guard rails.**
+
+* **Never ask a TYPE question about an asset.** Ask the sentinel your own table
+  documents, or use the asset's own API — and note that `audio_exists()` **throws**
+  on an index the runtime has never seen (*"this function will cause an error as it
+  is searching for non-existent asset indices"*), so it cannot be a guard either
+  (LL-002). There is no `is_asset()` in the runtime: `asset_get_index()` /
+  `asset_get_type()` are the asset-scoped lookups.
+* **A guard that refuses a good value is worse than no guard** — it converts a
+  working feature into silence, and its message blames the data. Test a guard
+  against a REAL row first, not only against the broken case it was written for.
+* **Grep for the shape, not the function**: a numeric type test (`is_real`,
+  `is_int64`) applied to something that is not a number. The project's convention
+  for an asset is `is_undefined(x) || !sprite_exists(x)` — see `scr_scale_sprite`.
+* The same silence taught a second lesson: the loop-point pair `0.0/0.0` is now
+  never set, because `loop = true` already repeats the whole track and that pair
+  depends on the runtime reading *"loop end 0"* as *"end of file"* rather than as
+  *"zero seconds"*. Do not ship a setting you cannot verify for a case that does not
+  need it.
+
+**Status.** FIXED — 2026-10-11.
+
+**Files.** `scripts/scr_music_start_level/scr_music_start_level.gml`,
+`scripts/music_data/music_data.gml`, `scripts/scr_playMusic/scr_playMusic.gml`,
+`objects/obj_title/Step_0.gml`, `objects/Menu/Step_0.gml`.
+
+---
+
+<a name="ll-035"></a>
+## LL-035 — An unpassed declared parameter is `undefined`, and `argument_count` is not the call count
+
+**Symptom.** Every frame a monster was in water:
+
+    ERROR in action number 1
+    of Draw Event for object obj_mon:
+    undefined value
+     at gml_Script_draw_self_part (line 33) - 	    _x = x - sprite_get_xoffset(sprite_index)*_sx,
+    gml_Script_draw_self_part (line 33)
+    gml_Object_obj_mon_Draw_0 (line 4) -     draw_self_part(0,0,1,0.75,0);
+
+The call is legal, the sprite exists, and the same function drew fine for a tower
+in water. Only the *five-argument* call failed, and only after the function gained
+two OPTIONAL parameters.
+
+**Root cause.** The optional parameters were detected with `argument_count`:
+
+    var _sx = (argument_count > 5) ? argument5 : image_xscale,   // 7 declared
+
+`draw_self_part` declares SEVEN parameters (`argument0`..`argument6`) and
+`obj_mon/Draw_0` passes FIVE. The argument list is sized to the **declared** arity —
+the unpassed parameters are padded with `undefined` — so `argument_count` was not
+5. The ternary took the `argument5` branch, `argument5` is a declared-but-unpassed
+parameter holding `undefined`, and the multiply on the next line threw.
+
+Three things prove the mechanism, none of which needs a debugger:
+
+* **The error text is the proof.** It says *undefined value* — arithmetic on
+  `undefined` — and not *not set before reading it*. So the parameter slot EXISTS
+  and holds `undefined`; it is not an absent variable. That is also why
+  `is_undefined()` is a safe test for it.
+* **`image_xscale` cannot be the `undefined`.** `obj_mon/Create_0` never touches it,
+  and every assignment in the project gives a monster a real number — `0`,
+  `±abs(image_xscale)`, `base_scale * _t`, `±base_scale` — with `base_scale` always
+  a real (`1` in `obj_mon/Create_0`, `0.25`/`0.5` from `scr_level_spawn`). The
+  default branch would have been a number.
+* **The same project shows `argument_count` counting the CALL.** `scr_meta_log(_tag)`
+  declares ONE parameter and is called with about ten; its
+  `for(var _i = 1; _i < argument_count; _i++)` prints ALL of them (`META  [MUSIC]
+  region 1 "Wilted Sprouts" …`). Declared 1, called 10 → count 10. Declared 7,
+  called 5 → count 7. Both fit **`argument_count = max(declared, passed)`**.
+
+
+**Why nothing else in the game ever hit it.** Every other `argument_count` user in
+the project declares ZERO parameters — `array()`, `array_slice()`,
+`scr_makeMonster()`, `show_menu()`, `print()`, `set_bitmask()`,
+`stream_particles()`, `scr_randomBoolAddition()`, `setup_blowup()`,
+`create_display_grid()` — the manual's variadic shape
+(`function print() { … argument_count … }`). A function with no declared
+parameters cannot be padded, so it is immune. `draw_self_part` was the only
+function in the project whose parameter list is longer than its smallest call.
+
+**Fix.** Ask the VALUE whether the argument was passed:
+
+    var _sx = is_undefined(argument5) ? image_xscale : argument5,
+        _sy = is_undefined(argument6) ? image_yscale : argument6,
+
+This does not depend on how `argument_count` is computed, and it is the project's
+established "not there" test (`GameLevelData`, `region_data`, `scr_meta_seeds`).
+`scr_drawGlowOutline(argument0)` carried the same brittle shape
+(`argument_count > 0 && argument0 > 0`) and was changed with it — it worked only
+because its one caller always passes an argument.
+
+**Guard rails.**
+
+* **Two safe shapes for an optional argument:** declare it and test
+  `is_undefined(value)`; or declare NOTHING and read `argument[i]` with
+  `i < argument_count`. The unsafe third shape is *declare parameters AND test
+  `argument_count` for the short call*.
+* **Never size a variadic list from `argument_count` in a function that declares
+  parameters.** If the declared list can ever be longer than the call,
+  `argument_count` reports the declared arity. Pad-proof code declares nothing.
+* **A declared-but-unpassed parameter is a variable holding `undefined`.** It can
+  be read, and `is_undefined()` is the right question — but if it feeds a plain
+  assignment, the `undefined` travels silently until something does arithmetic
+  with it, which may be far away (here: the next line; in general: another event,
+  another frame).
+* **When a caller-count bug is suspected, print the count and the type**
+  (`argument_count`, `typeof(...)`) rather than guessing. The diagnosis here took
+  the error text plus two greps, not a debugger.
+
+**Status.** FIXED — 2026-10-12.
+
+**Files.** `scripts/draw_self_part/draw_self_part.gml`,
+`scripts/scr_drawGlowOutline/scr_drawGlowOutline.gml`,
+`objects/obj_mon/Draw_0.gml`, `objects/obj_tower/Draw_0.gml`.
 
 ---
 

@@ -9,7 +9,7 @@ switch(state){
     case 0: 
         /// initialize idle state
         if(state_timer == 0){
-            sprite_index = spr_hair_idle;
+            sprite_index = spr_grumble_idle;
             image_index = 0;
             image_speed = 0.5;
         }
@@ -20,7 +20,7 @@ switch(state){
         }
         /// if player touches buttons, change to grab state
         if(position_meeting(mouse_x,mouse_y,_button)){
-            if(state_timer > room_speed*wait_grab){
+            if(state_timer > game_get_speed(gamespeed_fps)*wait_grab){
                 state = 2;
                 state_timer = -1;
                 wait_grab = random_range(0.1,0.5);
@@ -31,7 +31,7 @@ switch(state){
     case 1:
         /// initialize walk state
         if(state_timer == 0){
-            sprite_index = spr_hair_walk;
+            sprite_index = spr_grumble_walk;
             image_index = 0;
             image_speed = 0.5;
         }
@@ -40,17 +40,19 @@ switch(state){
             state = 0;
             state_timer = -1;
         } else {
-            /// point in direction of movement
-            image_xscale = sign(mouse_x-x);
+            /// point in direction of movement.  Never sign(): sign(0) is
+            /// 0, which hides the instance for a frame (LL-012)
+            var _dir = (mouse_x < x) ? -1 : 1;
+            image_xscale = _dir * abs(image_xscale);
             /// move zombie
-            x += image_xscale*1.5;
+            x += _dir*1.5;
         }
         break;
     //---------------------------- Grab State
     case 2:
         /// initialize grab state
         if(state_timer == 0){
-            sprite_index = spr_hair_grab;
+            sprite_index = spr_grumble_attack;
             image_index = 0;
             image_speed = 0.5;
         /// at animation end, change state

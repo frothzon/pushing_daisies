@@ -16,12 +16,14 @@ function show_message_box(argument0, argument1, argument2) {
 	    _box.message[0]          = _text;
 	    _box.message_image[0]    = _image;
 	    _box.message_color[0]    = _color;
+	    _box.message_portrait[0] = -1;   /// no portrait unless asked
 	}else{
 	//--------------------------- Modify Old Box
 	    var s = array_length(_box.message);
-	    _box.message[s]        = _text;
-	    _box.message_image[s]  = _image;
-	    _box.message_color[s]  = _color;
+	    _box.message[s]           = _text;
+	    _box.message_image[s]     = _image;
+	    _box.message_color[s]     = _color;
+	    _box.message_portrait[s]  = -1;  /// no portrait unless asked
 	}
 
 	/// set the end count for the textbox

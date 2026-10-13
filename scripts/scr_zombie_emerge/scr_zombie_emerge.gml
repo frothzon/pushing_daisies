@@ -1,12 +1,28 @@
 /// @description  scr_zombie_emerge()
 function scr_zombie_emerge() {
 
+	/// The crawl sprite is gone.  Instead of playing a crawl animation,
+	/// the monster GROWS from nothing to its full size, so the emerge
+	/// reads as the creature rising out of the ground.
 	if(state_time == 0){
 	    sprite_index = sprite_array[0];
-	    image_speed = 0.25;
 	    image_index = 0;
+	    image_speed = scr_animSpeedForSteps(sprite_index, 60);
+	    /// start at zero size.  scr_level_spawn stored the full size in
+	    /// base_scale, so the 0.00 -> 1.00 growth here means 0 -> base_scale
+	    image_xscale = 0;
+	    image_yscale = 0;
 	    path_end();
 	}
+
+	/// grow over the 60-step emerge.  The scale is clamped so the last
+	/// step lands on exactly 1.00 and never overshoots (LL-029: never
+	/// trust `==` against a derived quantity).
+	var _t = min(state_time / 60, 1),
+	    _s = base_scale * _t;
+	/// keep the facing sign: image_xscale carries size AND facing (LL-012)
+	image_xscale = _s * (image_xscale < 0 ? -1 : 1);
+	image_yscale = _s;
 
 	if(state_time >= 60){
 	    data[MON.life] = data[MON.maxLife];

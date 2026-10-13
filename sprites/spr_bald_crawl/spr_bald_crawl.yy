@@ -39,8 +39,8 @@
   "nineSlice":null,
   "origin":9,
   "parent":{
-    "name":"Zombie Sprites",
-    "path":"folders/Sprites/Tower Defense/Zombie Sprites.yy",
+    "name":"Legacy",
+    "path":"folders/Sprites/Tower Defense/Zombie Sprites/Legacy.yy",
   },
   "preMultiplyAlpha":false,
   "resourceType":"GMSprite",

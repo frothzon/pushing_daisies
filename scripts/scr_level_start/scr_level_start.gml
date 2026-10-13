@@ -15,6 +15,17 @@ function scr_level_start() {
 	    spawn_timer = _fps * 5.9;
 	    scr_meta_log("LEVEL", "deploy countdown ", round(spawn_timer / max(_fps,1)), "s",
 	                 " (fps=", _fps, ")");
+
+	    /// choose the FIRST wave's creature now, so scr_level_spawn() can
+	    /// simply consume it.  The choice has to exist before SPAWN, or
+	    /// the pick and the wave it names would be two different rolls.
+	    var _pick = scr_level_pick_spawn(1);
+	    next_is_boss     = _pick.is_boss;
+	    next_spawn_index = _pick.index;
+
+	    /// the region's theme, up under the countdown rather than arriving
+	    /// with wave 1 (roadmap 5.8)
+	    scr_music_start_level();
 	}
 
 	/// when the timer runs out, begin the waves

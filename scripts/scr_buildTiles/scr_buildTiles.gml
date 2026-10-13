@@ -21,6 +21,7 @@ function scr_buildTiles(argument0, argument1, argument2, argument3) {
 	    _hh     = _d[7],
 	    _dp     = _d[8],
 	    _wc     = _d[9];
+        _gnd    = _d[10];
     
     
 	if(_g[# _x, _y] > _min && _g[# _x, _y] < _max){
@@ -29,12 +30,13 @@ function scr_buildTiles(argument0, argument1, argument2, argument3) {
 	    var _tile_index = test_tile(_g,_x,_y,_min,_max,load_max);
         var _xx = _x*_ww-0.016;
         var _yy = _y*_hh-0.016;
-        var _scx = 1.01;
-        var _scy = 1.01;
+        var _scx = 0.2525;
+        var _scy = 0.2525;
         
 	    /// set tiles
 	    if(_g[# _x,_y] == load_max){
-            var _tile = global.tileSystem.add_tile(_xx, _yy, bck_tile_dirt_framed, 16, -45, _scx, _scy, make_colour_rgb(64, 37, 11));
+            _c1 = make_colour_rgb(64, 37, 11);
+            var _tile = global.tileSystem.add_tile(_xx, _yy, _gnd, 16, -45, _scx, _scy, _c1);
             
 	    }
         else {
