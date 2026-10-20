@@ -23,6 +23,7 @@
       "combat-crit"
     ],
     "next": [
+      "dev-seed-sandbox",
       "combat-gate-two-loadouts",
       "combat-status-burn",
       "tower-card-status-line"
@@ -1021,6 +1022,27 @@
       "created": "2026-10-18",
       "updated": "2026-10-19",
       "done": "2026-10-19"
+    },
+    {
+      "id": "dev-seed-sandbox",
+      "title": "devMode cannot put a locked tower on the board for a test",
+      "status": "next",
+      "owner": "both",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "Decide one of: (a) global.devMode grants seeds + the status towers in initialize_game, (b) a dev-only key on the Deploy screen, or (c) leave it - every status tower is tested on a save that has cleared region 1.",
+      "notes": "FOUND 2026-10-20, writing the test instructions for the first slow: Chillip is roster slot 7, which costs 30 seeds AND a region-1 clear, and loadout_unlocked() only accepts starters or save-owned towers - so a fresh dev run cannot place a control tower at all, and 'watch a zombie slow down' is not a test rayu can run tonight. The toolkit can inspect garden_meta.dat but not edit it (gm save inspect), so hand-editing the save is the only route today. This gets worse as the roster grows: by Phase 5 most towers are locked, and every art/status/badge test starts with 'unlock it first'.",
+      "refs": [
+        "scripts/initialize_game/initialize_game.gml",
+        "scripts/scr_meta_seeds/scr_meta_seeds.gml",
+        "scripts/scr_loadout/scr_loadout.gml"
+      ],
+      "created": "2026-10-20",
+      "updated": "2026-10-20",
+      "done": null
     },
     {
       "id": "difficulty-columns-vs-curve",
