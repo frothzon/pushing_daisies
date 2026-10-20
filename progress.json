@@ -50,7 +50,7 @@
     },
     {
       "id": "art-biome-tiles",
-      "title": "Art direction and tilesets for regions 2-6",
+      "title": "Art: the Graveyard atlas, props, and a refresh call on the other four",
       "status": "backlog",
       "owner": "rayu",
       "awaiting": "none",
@@ -59,14 +59,34 @@
       "size": "L",
       "prio": 3,
       "needs": "",
-      "notes": "Six biomes exist in the data (Grass, Swamp, Desert, Jungle, Graveyard, Blood Fields). Only Grass has art, so region 2 cannot be authored until at least its tileset exists.",
+      "notes": "PREMISE CORRECTED 2026-10-19. Four of the five region atlases already exist - spr_swamp_128x, spr_desert_128x, spr_jungle_128x and spr_blood_128x - each 128x128 with 17 frames in the exact greyscale-plus-tint format scr_buildTiles uses, and verified by opening frame 16 rather than by listing names (they are distinct, real tile art: mud, cracked plates, roots, veined ground). What is missing is the Graveyard atlas and the per-biome props, plus a taste call on whether the old-style atlases should be refreshed in the house style. The wiring is a separate card, biome-tileset-wiring, because scr_main_startup hard-codes thick/dirt/sand/grass and nothing reads GameLevelData.biome. art_descriptions.md 4.3 is the brief.",
       "refs": [
         "roadmap.md",
         "goal.md"
       ],
       "created": "2026-10-05",
-      "updated": "2026-10-05",
+      "updated": "2026-10-19",
       "done": null
+    },
+    {
+      "id": "art-descriptions",
+      "title": "Write the art briefs for every open art card",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "docs",
+      "phase": "5",
+      "size": "S",
+      "prio": 2,
+      "needs": "",
+      "notes": "art_descriptions.md: one brief per open art job - what the game does today, what is actually missing, what to draw, and the technical contract (canvas, origin, frames, greyscale atlases, tint). Measured from the sprite .yy files and the GML on 2026-10-19 rather than remembered. It found two things worth more than the prose: four of the five region atlases already exist (art-biome-tiles corrected), and nothing reads GameLevelData.biome to choose one (biome-tileset-wiring added). It also sets the rule that stops art-state-origins recurring: one canvas per character, feet on one row, one origin for all states.",
+      "refs": [
+        "art_descriptions.md",
+        "progress.json"
+      ],
+      "created": "2026-10-19",
+      "updated": "2026-10-19",
+      "done": "2026-10-19"
     },
     {
       "id": "art-garden-book",
@@ -201,7 +221,7 @@
       "phase": "infra",
       "size": "S",
       "prio": 2,
-      "needs": "Say which of these seven asset cards are yours: art-level-complete, portrait-draw-fit, art-garden-book, art-biome-tiles, region-bosses, region-zombies, legacy-boss-art-cleanup. Three of the original nine are settled - art-belladonna-trio is cline (the sheet is in hand) and provide-chorus-loops is now a listening test that already awaits rayu.",
+      "needs": "Say which of these eight asset cards are yours: art-level-complete, portrait-draw-fit, art-garden-book, art-biome-tiles, region-bosses, region-zombies, legacy-boss-art-cleanup, tower-slice-trios. art_descriptions.md now gives each one a brief, a measured spec and an honest size - and two of them (legacy cleanup, portrait fit) are not drawing jobs at all - so the answer can be as short as all the drawing ones. Three of the original nine are settled: art-belladonna-trio is cline (the sheet is in hand) and provide-chorus-loops is now a listening test that already awaits rayu.",
       "notes": "They sat in backlog with awaiting=none, which reads as Cline can do these - the board lying in the opposite direction from usual. If they are rayu, each gets status=next, awaiting=rayu and a needs line (the gate refuses a backlog card that awaits a person, which is exactly the point), and the code waves reorder around them. If some are mine, name which and they get a real brief instead. Found 2026-10-19 while planning; updated the same day once belladonna (sheet exists) and the chorus loops (measured) stopped being questions.",
       "refs": [
         "progress.json"
@@ -511,6 +531,28 @@
       "created": "2026-10-13",
       "updated": "2026-10-14",
       "done": "2026-10-14"
+    },
+    {
+      "id": "biome-tileset-wiring",
+      "title": "Terrain: pick the atlas from the biome, not from the load row",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "5",
+      "size": "S",
+      "prio": 2,
+      "needs": "",
+      "notes": "scr_main_startup chooses the terrain atlas by LOAD ROW (thick, then dirt, then sand, then grass) and never asks which region the stage is in, so the four finished region-2..6 atlases cannot appear on screen. GameLevelData already carries biome and region_data already names it, so this is one lookup plus a table of tint pairs - the colours in art_descriptions.md 4.3. Do it before stages-region-2 is authored, otherwise the first swamp stage is authored against grass art and someone will report the atlas as missing.",
+      "refs": [
+        "scripts/scr_main_startup/scr_main_startup.gml",
+        "scripts/GameLevelData/GameLevelData.gml",
+        "scripts/region_data/region_data.gml",
+        "art_descriptions.md"
+      ],
+      "created": "2026-10-19",
+      "updated": "2026-10-19",
+      "done": null
     },
     {
       "id": "blood-fields-modifier",
@@ -2843,6 +2885,27 @@
       "done": null
     },
     {
+      "id": "tower-slice-trios",
+      "title": "Art: the two Phase 1 unlockable tower trios (placeholders today)",
+      "status": "backlog",
+      "owner": "rayu",
+      "awaiting": "none",
+      "area": "art",
+      "phase": "1",
+      "size": "M",
+      "prio": 2,
+      "needs": "",
+      "notes": "Roadmap 1.11 is marked NOT done and says so out loud: Cannon Tulip and Meat Bulb borrow spr_t3_* and spr_t4_* as clearly-marked placeholders, so two of the six towers in the vertical slice are drawn with another tower's art. They need real trios as spr_t5_* and spr_t6_* (roadmap 1.11), 3 states each on the 192x192 canvas. The roster comment already names this as the debt; art_descriptions.md 4.9 has the brief for both.",
+      "refs": [
+        "scripts/scr_tower_roster/scr_tower_roster.gml",
+        "roadmap.md",
+        "art_descriptions.md"
+      ],
+      "created": "2026-10-19",
+      "updated": "2026-10-19",
+      "done": null
+    },
+    {
       "id": "tower-thornamental",
       "title": "Thornamental: the crit tower (roster slot 8)",
       "status": "backlog",
@@ -3549,6 +3612,12 @@
       "who": "cline",
       "task": "art-belladonna-trio",
       "what": "Closed as already done: the card said Belladonna has no sprite at all, but spr_bella_idle/attack/return_192x have been in the repo since 2026-10-12 and are real belladonna art. The card was written from the roster rather than from the sprites folder. tower-belladonna is therefore a CODE card with its art already in place. Also added art-state-origins: the state sheets disagree on origin by 14-23 px for monsters, so the body drops as the state changes (about 16 px on the title-screen zombie)."
+    },
+    {
+      "date": "2026-10-19",
+      "who": "cline",
+      "task": "art-descriptions",
+      "what": "Wrote art_descriptions.md: one brief per open art job, measured from the repo rather than remembered. It corrects art-biome-tiles - four of the five region atlases (spr_swamp/desert/jungle/blood_128x, 128x128 x17 greyscale) already exist and are real art, so only the Graveyard atlas and the props are missing - and it found that nothing reads GameLevelData.biome to choose an atlas, now the card biome-tileset-wiring. Also records the origin rule that stops art-state-origins recurring: one canvas per character, feet on one row, one origin across states. While writing it, two more real gaps surfaced: roadmap 1.11's two vertical-slice towers (Cannon Tulip, Meat Bulb) still wear spr_t3_*/spr_t4_* as placeholders, now the card tower-slice-trios, and Kaboom Kalanchoe / Money Marigold have neither art nor a final design, so they stay design-blocked."
     }
   ]
 }

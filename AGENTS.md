@@ -166,6 +166,7 @@ the exact log lines to look for, and name what would falsify your fix.
 | Globals | `scripts/initialize_game/initialize_game.gml` — `global.devMode`, `global.saveName`, `global.startRoom` |
 | Logging | `scripts/print/print.gml` (already gated on `global.devMode`) |
 | **Progress tracker** | `progress.json` (source) → `PROGRESS.md`, `progress.html` (generated) — §6 |
+| **Art briefs** (what to draw, canvas/origin/frames, what already exists) | `art_descriptions.md` — §3 the technical contract, §4 card by card |
 | **Balance tester** | `python_tools/gm/balance/` — `gm balance {tables,route,towers,afford,sim,project,check,fit}`; reads the tables (and the shot cycle) out of GML, so it cannot drift ([LL-038](./lessons_learned.md#ll-038), [LL-040](./lessons_learned.md#ll-040)). `project` is the closed form (a ratio); `sim` time-steps the stage at 60fps and is the arbiter on outcomes ([LL-042](./lessons_learned.md#ll-042)) |
 | Python toolkit | `python_tools/` — read `python_tools/README.md` first |
 
