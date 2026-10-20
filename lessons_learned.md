@@ -1422,6 +1422,15 @@ if status == "backlog" and t.get("awaiting") not in (None, "none", "external"):
   board that quietly lies. Verify the gate *bites*: edit the JSON, watch it go red.
 * **Put the rule where it is cheap to obey.** A validation error is a fix; a
   paragraph in `AGENTS.md` is a reminder.
+* **A card that says "nothing exists" is a claim about the repo, and the repo can
+  answer it in one command.** `art-belladonna-trio` said *"Belladonna has NOTHING —
+  a tower with `sprite_index -1` is a fatal error"* for four days while
+  `spr_bella_idle_192x`, `_attack_` and `_return_` sat in `sprites/` (added
+  2026-10-12, card written 2026-10-15). The card had been written from the roster
+  table rather than from the folder. Before acting on a "missing" card — or on its
+  opposite, "this exists, so that is blocked" — run the one search: `ls sprites |
+  grep bella`, `grep -rn 'spr_bella' --include=*.gml`. Two seconds, and it either
+  promotes the card to done or turns it into a code card.
 
 **Status.** FIXED, 2026-10-05.
 

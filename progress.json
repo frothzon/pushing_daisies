@@ -23,30 +23,30 @@
       "provide-chorus-loops"
     ],
     "next": [
-      "art-belladonna-trio",
-      "art-state-origins"
+      "art-state-origins",
+      "tower-belladonna"
     ],
-    "note": "Wave 0 of the gap plan: the board is true before anything new is built. Then Wave 1 finishes Phase 1 four stragglers, Wave 2 is the status spine (slow -> crit -> burn -> stun -> resistances), Wave 3 adds Chillip and Thornamental and MEASURES the Phase 2 gate, Wave 4 is specs + the last statuses + the mastery ring palette, Wave 5 is the Garden Book. 2026-10-19: mastery-xp is CLOSED as superseded (goal.md 4/13 - mastery is the five clover nodes), and the music loop bug is fixed in code (LL-064), leaving only rayu ear test on provide-chorus-loops. Two things gate real work now: art-track-ownership (seven asset cards with no owner) and the belladonna import, which tower-belladonna needs before a Belladonna can be placed at all."
+    "note": "Wave 0 of the gap plan: the board is true before anything new is built. Then Wave 1 finishes Phase 1 four stragglers, Wave 2 is the status spine (slow -> crit -> burn -> stun -> resistances), Wave 3 adds Chillip and Thornamental and MEASURES the Phase 2 gate, Wave 4 is specs + the last statuses + the mastery ring palette, Wave 5 is the Garden Book. 2026-10-19: mastery-xp is CLOSED as superseded (goal.md 4/13 - mastery is the five clover nodes), and the music loop bug is fixed in code (LL-064), leaving only rayu ear test on provide-chorus-loops. Two things gate real work now: art-track-ownership (seven asset cards with no owner) and tower-belladonna, which now only needs code - the belladonna trio has been in the repo since 2026-10-12."
   },
   "tasks": [
     {
       "id": "art-belladonna-trio",
-      "title": "Belladonna Blitz: the one roster tower with no sprite at all",
-      "status": "next",
+      "title": "Belladonna Blitz art: already in the repo (the card premise was wrong)",
+      "status": "done",
       "owner": "cline",
-      "awaiting": "cline",
+      "awaiting": "none",
       "area": "art",
       "phase": "2",
       "size": "S",
       "prio": 2,
-      "needs": "Import the trio from ~/Downloads/spritesheets/plants/expansion/belladonna_blitz_1024.png (7x7 grid of 146 px cells; idle 0-14, attack 15-29, return 30-44) as spr_belladonna_idle_192x, _attack_192x and _return_192x on a 192 canvas, origin about 89,133, and check it draws at the same scale as Chillip.",
-      "notes": "Chillip, Bindweed and Thornamental already have 192x trios; Belladonna has NOTHING. A tower with sprite_index -1 is a FATAL error the moment it reaches the roster (LL-012), so this is the one piece of art that gates a Phase 2 task (towers-other-three) rather than decorating one.",
+      "needs": null,
+      "notes": "ALREADY DONE, and this card was wrong. spr_bella_idle_192x (5 frames), spr_bella_attack_192x (8) and spr_bella_return_192x (7) are real belladonna art in the game style - purple bell flowers, a crouch attack and a return - and they have been in the repo since 9f02314 (2026-10-12), a week before this card said Belladonna has NOTHING. Verified 2026-10-19 by OPENING the frames, not by listing names. What is still missing is the code that puts the tower on the roster (tower-belladonna, slot 12): an asset no GML references is not a tower. The Oct 6 drop has a 45-frame source - ~/Downloads/spritesheets/plants/expansion/belladonna_blitz_1024.png, a 7x7 grid of 146 px cells, idle 0-14, attack 15-29, return 30-44 - if the 5/8/7-frame subset ever wants refreshing, but LL-030 means frame COUNT is not a timing issue, so that is polish and not a fix.",
       "refs": [
         "scripts/scr_tower_roster/scr_tower_roster.gml"
       ],
       "created": "2026-10-15",
       "updated": "2026-10-19",
-      "done": null
+      "done": "2026-10-19"
     },
     {
       "id": "art-biome-tiles",
@@ -3537,6 +3537,18 @@
       "who": "cline",
       "task": null,
       "what": "Wave 0, after rayu validated depth sorting and the damage pipeline. A planning pass found three things the board did not say: (1) the repo has 106 uncommitted files, 12 of them untracked, and the untracked set includes the whole balance tester and four test files - new card repo-checkpoint; (2) mastery-xp contradicts goal.md 4/13, which says a tower has no persistent level of its own - put to rayu, and it is NOT a Phase 3 blocker as previously assumed; (3) nine art/sound cards sat in backlog with no owner - new card art-track-ownership. Also split towers-other-three into tower-chillip, tower-thornamental, tower-bindweed and tower-belladonna (one L card covering four sessions, and the gate needs exactly two of them), moved the HUD layout half into garden-currency-hud, and corrected AGENTS 1.2, which still claimed the repo had one commit and no history."
+    },
+    {
+      "date": "2026-10-19",
+      "who": "cline",
+      "task": "provide-chorus-loops",
+      "what": "The music loop was looping the ENDING. All seven rows of music_data had loop_in = 0 and there was no loop_out, so scr_music_start_level set the loop end to audio_sound_length() - end of file - and every cycle played the 5-8 s outro fade; the menu set no loop points at all, so it replayed the 24.7 s intro and the fade every 177 s. music_row() now takes loop_in AND loop_out, scr_music_apply_loop() is the one place that sets the points, scr_music_start_menu() is the menu path, and the measured sections are in the table (title 24.71-169.41, w1 14.63-152.20, w2 13.33-153.33, w3 32.73-169.09, w4 73.85-169.23, w5 0.00-157.71, w6 20.00-173.33). The log now says (section) with both ends. LL-064. Awaiting rayu ear on the seam; three-times-body previews are in /tmp/loop_preview/ if playing a stage is inconvenient."
+    },
+    {
+      "date": "2026-10-19",
+      "who": "cline",
+      "task": "art-belladonna-trio",
+      "what": "Closed as already done: the card said Belladonna has no sprite at all, but spr_bella_idle/attack/return_192x have been in the repo since 2026-10-12 and are real belladonna art. The card was written from the roster rather than from the sprites folder. tower-belladonna is therefore a CODE card with its art already in place. Also added art-state-origins: the state sheets disagree on origin by 14-23 px for monsters, so the body drops as the state changes (about 16 px on the title-screen zombie)."
     }
   ]
 }
