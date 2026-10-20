@@ -57,30 +57,21 @@ function scr_music_start_level() {
 		return -1;
 	}
 
-	/// the length is read for the loop END.  A stream that cannot report its
-	/// length yet (the manual: -1 on HTML5 and GX.games) leaves the points at
-	/// their whole-track default rather than setting a loop end of -1.
-	var _len    = audio_sound_length(_sound),
-	    _in     = (_len > 0) ? clamp(_music.loop_in, 0, _len) : 0,
-	    _chorus = (_in > 0 && _in < _len);
-
-	/// The loop POINTS are set only when there is a real chorus to loop.
-	/// With loop_in == 0 the whole track is what should repeat, and
-	/// audio_play_sound_on() is already being told to loop - so a 0.0/0.0 pair
-	/// buys nothing and leaves the playback depending on the runtime reading
-	/// "loop end 0" as "the end of the file" rather than as "zero seconds".
-	/// Not doing what we do not need is one less way to be silent (LL-021).
-	if(_chorus){
-		audio_sound_loop_start(_sound, _in);
-		audio_sound_loop_end(_sound, _len);
-	}
+	/// the loop SECTION, measured (see music_data): the intro plays once, the
+	/// body repeats loop_in -> loop_out, and the outro fade is never heard
+	/// again.  The helper returns what was ACTUALLY applied, so the log below
+	/// cannot claim a section that was not set.
+	var _loop    = scr_music_apply_loop(_music),
+	    _in      = _loop[0],
+	    _out     = _loop[1],
+	    _chorus  = _loop[2];
 
 	var _play = scr_playMusic(_sound, true);
 
 	scr_meta_log("MUSIC", "region ", _row.region, " \"", _music.title, "\" ",
 	             sound_get_name(_sound), " (", typeof(_sound), ") loop ",
-	             _chorus ? _in : 0, " -> ", _len, "s (",
-	             _chorus ? "chorus" : "whole track", ")");
+	             _chorus ? _in : 0, " -> ", _out, "s (",
+	             _chorus ? "section" : "whole track", ")");
 
 	return _play;
 }

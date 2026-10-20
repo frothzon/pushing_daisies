@@ -120,7 +120,7 @@ switch(menu_state){
             scr_saveOptions();
         }
         if(menu_state_time > room_speed*0.5){
-            scr_playMusic(music_menu().sound,true);
+            scr_music_start_menu();
             scr_menu_changeState(MENU_STATE.START);
         }
         break;
@@ -145,7 +145,7 @@ switch(menu_state){
             /// A stage clear stops the region theme and fades straight
             /// here, so without this the map would be the one silent
             /// screen in the game (roadmap 5.8).
-            scr_playMusic(music_menu().sound, true);
+            scr_music_start_menu();
         }
         {
             var _wgeom = meta_worldmap_geom(),
@@ -356,7 +356,7 @@ switch(menu_state){
                       " seeds +", _lr.seeds, " clovers +", _lr.clovers);
                 /// the results screen is part of the menu, so it keeps the
                 /// menu theme; a stage exit stopped the region theme (5.8)
-                scr_playMusic(music_menu().sound, true);
+                scr_music_start_menu();
             }
         }
         /// once an action is taken the screen is done.  Without this, a

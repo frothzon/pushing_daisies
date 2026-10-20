@@ -469,7 +469,7 @@ Return button, which is what that state's `hide` calls always meant.
 | 2.1 | **Crit** — 5% / ×1.5 baseline, additive chance, direct hits only | `scr_do_damage`, `scr_towerData`, `tower_enums` | `goal.md` §6 |
 | 2.2 | **Statuses: burn, slow, stun** (the three the game needs first) | new `scr_status_*`, `objects/obj_mon` | one instance per status per zombie; durations in `game_get_speed` frames |
 | 2.3 | **Resistances** — zombie / elite / boss columns | `mon_enums`, `scr_makeMonster` | `goal.md` §7; elites introduced here |
-| 2.4 | **Persistent tower levels 1–5** — mastery XP per kill, levels stored per tower in the save | save schema, `objects/obj_tower` | money still buys L2–L5 in-run; the *level* persists |
+| 2.4 | **Persistent tower level** — the level a tower ends a stage at is stored per tower in the save, so upgrade money is never lost between stages | save schema, `objects/obj_tower` | money buys the rungs in-run; **no XP per kill** — mastery is the five clover nodes, 3.3 and `goal.md` §4 |
 | 2.5 | **Specializations at L3** — two per tower, stored per tower, respec costs seeds | new `scr_spec_*` | 12 specs for the 6 shipped towers |
 | 2.6 | **`scr_level_difficulty` rewrite** — the new curve from `economy.md` §4.4 | `scripts/scr_level_difficulty` | **atomic with 2.4**: the old function exists to match a ×16 L5 |
 | 2.7 | **Tower stat vocabulary** — extend `enum TOWER` and `scr_towerData` with crit/status fields | `tower_enums`, `scr_towerData` | append fields at the **end** of the enum: every existing index must keep its meaning |
@@ -503,8 +503,13 @@ ramp and the level ladder are **one change**.
 ladder and the prices keep their values and the `scr_curve`/`gm balance`
 read-out stays the way to see it. Reopening it is a new decision.
 
-**Still open, in order:** (1) persistent mastery XP per kill (the rest of
-2.4); (2) `par_spend` / `par_time` re-authored for 15–60 wave stages
+**Decided, not open:** per-kill **mastery XP** was retired on 2026-10-19
+(`mastery-xp`). `goal.md` §4 and §13 make mastery the five **clover** master
+nodes - one floor, one cap, no per-tower levelling - and 3.3 is the card that
+builds it. A second, XP-driven ladder beside it would be a second answer to the
+same question, so what is left of 2.4 is only "the level persists in the save".
+
+**Still open:** `par_spend` / `par_time` re-authored for 15–60 wave stages
 (`par-reauthor` - Frugal and Speed Grower are unearnable until it lands).
 
 **Falsifier for this block.** If biome 2's wave 1 is harder than biome 1's, the

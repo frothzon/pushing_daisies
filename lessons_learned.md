@@ -84,6 +84,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-061](#ll-061) | "A leak pays half instead of nothing" changed the purse by **1 money over 20 leaks** | `floor(kill_money * 0.5)` is `0` when `kill_money` is `1`: the percentage was applied AFTER the rounding, so it erased the only value that mattered | **FIXED** |
 | [LL-062](#ll-062) | **Crit could not be added** - the damage function had no amount to multiply | `scr_do_damage(arr, i)` subtracted `damage_calc`, an instance variable the CALLER set, so its result depended on whose scope called it (AGENTS rule 6). Now the amount is a parameter and the tower passes the `shot_damage` it locked at the swing | **FIXED** |
 | [LL-063](#ll-063) | **A test changed colour with no edit** - it asserted a LINE, and the IDE re-saved an equivalent one | `assertIn("id mod 97", src)` vs the code's `irandom(97) * 0.00001`, after GameMaker wrote `.gml` + `.yy` in the same millisecond. Test the PROPERTY (rolled once, too small to reorder); on an unexplained red, check mtimes before theories | **FIXED** |
+| [LL-064](#ll-064) | The **music fades out in the middle of a stage**, and the menu goes quiet every ~3 minutes - no error, and the track is still "playing" | The loop had **one end**: `loop_in` was the chorus start and the loop ran to END OF FILE, so every cycle played the outro fade. The menu did not set loop points at all, so it was worse there. A loop **section** has two ends | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
@@ -117,7 +118,7 @@ Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `callable but stale` `handle` `key_type` `ds_list_read` `never load a function` `obj_spawn` `scr_drawSwitchTimer` `purge slot`
 `tower` `attack animation` `stuck` `freeze` `frame_number` `fire_rate` `scaled cadence` `state exit` `equality` `float`
 `animation` `image_speed` `image_number` `sprite_get_number` `frames per second` `sprite swap` `duration not speed` `idle loop` `image_single`
-`music` `audio` `region music` `loop points` `chorus` `loop_in` `music_data`
+`music` `audio` `region music` `loop points` `chorus` `loop_in` `loop_out` `outro` `intro` `fade` `music fades out` `menu theme` `music_data`
 `focus` `progress.json` `pointer field` `gate is not a transaction` `write order` `two tracks at once`
 `collision mask` `mask_index` `image_xscale` `bbox` `bbox_left` `draw_sprite_ext` `draw_scale` `sprite_width` `sprite_offset`
 `is_real` `asset` `handle` `ref` `typeof` `audio` `music` `silent` `mus_world1`
@@ -4440,6 +4441,81 @@ depth unit, rolled once per instance.
 
 **Status.** Comment and test now describe `irandom(97)`; the behaviour never
 changed and the depth card stays validated.
+
+---
+
+<a name="ll-064"></a>
+## LL-064 - A loop that ends at the end of the file replays the ENDING
+
+**Symptom.** The music fades out in the middle of a stage, sits quiet for a
+couple of seconds and comes back in - and `audio_is_playing()` says it never
+stopped, because it never did. On the menu the same thing happens every ~177 s,
+which is where it is most obvious: a player can sit on that screen for minutes.
+The log says the loop was set up correctly:
+
+```
+META  [MUSIC] region 1 "Wilted Sprouts" mus_world1 (ref) loop 0 -> 163.53s (whole track)
+```
+
+**Root cause.** `music_data` had **one** loop field. `loop_in` was the chorus
+start, and `scr_music_start_level` set `audio_sound_loop_end()` to
+`audio_sound_length()` - the end of the file. That is the manual's "Intro &
+Outro" shape, but it assumes the outro is *inside* the loop or absent. These
+seven tracks are intro / body / breakdown / body / **outro fade**, so every
+cycle went through the fade: the music was working exactly as instructed and the
+instruction was wrong.
+
+The menu was the other half. `obj_title` and `Menu` called
+`scr_playMusic(music_menu().sound, true)` and **never set loop points at all**,
+so they repeated the whole file - 24.7 s intro and 7.7 s outro fade included.
+Two paths to the same audio call, one of them with the rule and one without, is
+how the menu kept the bug after the stage path was written
+([LL-034](#ll-034) is the same shape: one path guarded, one not).
+
+**Fix.** A section has **two** ends.
+
+* `music_row()` takes `loop_in` **and** `loop_out`; `music_data` carries the
+  measured pair for all seven tracks.
+* `scr_music_apply_loop(row)` is the ONE place that calls
+  `audio_sound_loop_start()` / `audio_sound_loop_end()`, and it returns what it
+  actually applied so the caller logs the truth.
+* `scr_music_start_menu()` is the menu's counterpart to
+  `scr_music_start_level()`, and all four menu call sites now use it.
+* The log ends in `(section)` rather than `(whole track)`, with both ends.
+
+The points were measured, not guessed: a 20 ms RMS envelope against each track's
+median level (0.9x it) finds where the intro reaches full level and where the
+final outro falls away, then both are snapped to the bar grid at the track's
+BPM. *Wilted Sprouts* comes out `14.63 -> 152.20` - 137.6 s of body, which is
+what a 3-5 minute stage should be hearing.
+
+**Guard rails.**
+
+* **"Loop to the end of the file" is a bug by construction for any track with an
+  outro.** If a file has an ending, the loop has to stop before it.
+* **A sentinel must not collide with a legal value.** `loop_in = 0` is a real
+  start (region 5 has no intro), so "unset" is `-1` here. Same class of mistake
+  as [LL-004](#ll-004) and [LL-044](#ll-044).
+* **One path per rule.** Two callers reaching `audio_play_sound_on()` directly
+  is how the menu silently kept the old behaviour. The stage and the menu now
+  share one helper.
+* **Log what was applied, not what was asked for.** The old line printed `_len`,
+  the loop end it had computed, which read as confirmation.
+* **If a loop seam clicks, that is a different bug**, and it is answered by
+  baking the tail into the head (or by OGG, which has no MP3 encoder padding),
+  not by moving the points.
+
+**Status.** FIXED 2026-10-19. The code is in; the ear test is rayu's
+(`provide-chorus-loops`): a stage and the menu for ~3 minutes each, and the seam
+on *Wilted Sprouts* and *Mires of the Undead*, whose bodies end quiet and
+restart at full level.
+
+**Files.** `scripts/music_data/music_data.gml`,
+`scripts/scr_music_apply_loop/scr_music_apply_loop.gml`,
+`scripts/scr_music_start_level/scr_music_start_level.gml`,
+`scripts/scr_music_start_menu/scr_music_start_menu.gml`,
+`objects/obj_title/Step_0.gml`, `objects/Menu/Step_0.gml`,
+`notes/systems_overview/systems_overview.md`.
 
 ---
 

@@ -20,32 +20,33 @@
   },
   "focus": {
     "now": [
-      "combat-status-slow"
+      "provide-chorus-loops"
     ],
     "next": [
-      "tower-panel-effective-rate",
-      "par-reauthor"
+      "art-belladonna-trio",
+      "art-state-origins"
     ],
-    "note": "Wave 0 of the gap plan: the board is true before anything new is built. Then Wave 1 finishes Phase 1's four stragglers, Wave 2 is the status spine (slow -> crit -> burn -> stun -> resistances), Wave 3 adds Chillip and Thornamental and MEASURES the Phase 2 gate, Wave 4 is specs + the last statuses + the mastery ring palette, Wave 5 is the Garden Book (nav -> HUD -> master nodes -> trees -> mastery panel -> respec -> art). Two questions are waiting on rayu and both gate real work: mastery-xp (goal.md 4 says no per-tower level) and art-track-ownership (nine asset cards with no owner)."
+    "note": "Wave 0 of the gap plan: the board is true before anything new is built. Then Wave 1 finishes Phase 1 four stragglers, Wave 2 is the status spine (slow -> crit -> burn -> stun -> resistances), Wave 3 adds Chillip and Thornamental and MEASURES the Phase 2 gate, Wave 4 is specs + the last statuses + the mastery ring palette, Wave 5 is the Garden Book. 2026-10-19: mastery-xp is CLOSED as superseded (goal.md 4/13 - mastery is the five clover nodes), and the music loop bug is fixed in code (LL-064), leaving only rayu ear test on provide-chorus-loops. Two things gate real work now: art-track-ownership (seven asset cards with no owner) and the belladonna import, which tower-belladonna needs before a Belladonna can be placed at all."
   },
   "tasks": [
     {
       "id": "art-belladonna-trio",
       "title": "Belladonna Blitz: the one roster tower with no sprite at all",
-      "status": "backlog",
+      "status": "next",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "cline",
       "area": "art",
       "phase": "2",
-      "size": "M",
+      "size": "S",
       "prio": 2,
-      "needs": "",
+      "needs": "Import the trio from ~/Downloads/spritesheets/plants/expansion/belladonna_blitz_1024.png (7x7 grid of 146 px cells; idle 0-14, attack 15-29, return 30-44) as spr_belladonna_idle_192x, _attack_192x and _return_192x on a 192 canvas, origin about 89,133, and check it draws at the same scale as Chillip.",
       "notes": "Chillip, Bindweed and Thornamental already have 192x trios; Belladonna has NOTHING. A tower with sprite_index -1 is a FATAL error the moment it reaches the roster (LL-012), so this is the one piece of art that gates a Phase 2 task (towers-other-three) rather than decorating one.",
       "refs": [
         "scripts/scr_tower_roster/scr_tower_roster.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-19",
+      "done": null
     },
     {
       "id": "art-biome-tiles",
@@ -150,6 +151,27 @@
       "done": "2026-10-13"
     },
     {
+      "id": "art-state-origins",
+      "title": "Sprite state origins: the art jumps when a monster changes state",
+      "status": "next",
+      "owner": "cline",
+      "awaiting": "cline",
+      "area": "art",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "Set the y-origin of each state sheet to the ground contact point of its own frames (keep the x-origin), then watch a full idle -> walk -> attack -> idle cycle at devMode.",
+      "notes": "Measured 2026-10-19 across the state sheets: a tower drifts 1-3 px between idle/walk/attack, a monster 14-23 px (grumble walk 150 -> attack 170, tusk 151 -> 173, zero 145 -> 167, professor 159 -> 182). Nothing is wrong in isolation, which is why it has survived: it only shows at the switch, as a body that drops about 16 px when the title-screen zombie starts to walk. Fix by setting each sprite y-origin to the ground contact of its own frames with gm set-path (never by hand - LL-009), keeping the x-origin. Check: one body pixel keeps the same screen y through the whole cycle.",
+      "refs": [
+        "sprites/spr_grumble_walk/spr_grumble_walk.yy",
+        "sprites/spr_grumble_attack/spr_grumble_attack.yy",
+        "objects/obj_titleZomb/Step_0.gml"
+      ],
+      "created": "2026-10-19",
+      "updated": "2026-10-19",
+      "done": null
+    },
+    {
       "id": "art-tower-trios",
       "title": "Draw the four tower trios (12 sprites)",
       "status": "done",
@@ -179,8 +201,8 @@
       "phase": "infra",
       "size": "S",
       "prio": 2,
-      "needs": "Say which of the nine asset cards are yours: art-level-complete, portrait-draw-fit, art-belladonna-trio, art-garden-book, art-biome-tiles, region-bosses, region-zombies, legacy-boss-art-cleanup, provide-chorus-loops.",
-      "notes": "They all sit in backlog with awaiting=none, which reads as \"Cline can do these\" - and that is the board lying in the opposite direction from usual. If they are rayu's, each gets status=next, awaiting=rayu and a needs line (the gate refuses a backlog card that awaits a person, which is exactly the point), and the code waves reorder around them: art-belladonna-trio already gates tower-belladonna. If some are mine, name which and they get a real brief instead. Found 2026-10-19 while planning.",
+      "needs": "Say which of these seven asset cards are yours: art-level-complete, portrait-draw-fit, art-garden-book, art-biome-tiles, region-bosses, region-zombies, legacy-boss-art-cleanup. Three of the original nine are settled - art-belladonna-trio is cline (the sheet is in hand) and provide-chorus-loops is now a listening test that already awaits rayu.",
+      "notes": "They sat in backlog with awaiting=none, which reads as Cline can do these - the board lying in the opposite direction from usual. If they are rayu, each gets status=next, awaiting=rayu and a needs line (the gate refuses a backlog card that awaits a person, which is exactly the point), and the code waves reorder around them. If some are mine, name which and they get a real brief instead. Found 2026-10-19 while planning; updated the same day once belladonna (sheet exists) and the chorus loops (measured) stopped being questions.",
       "refs": [
         "progress.json"
       ],
@@ -1943,23 +1965,23 @@
     },
     {
       "id": "mastery-xp",
-      "title": "Persistent tower mastery XP per kill (the rest of 2.4)",
-      "status": "next",
+      "title": "Mastery XP per kill: closed as superseded by goal.md 4 and 13",
+      "status": "done",
       "owner": "rayu",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "L",
       "prio": 2,
       "needs": "Say whether goal.md 4/13 wins: close this card as superseded (no per-tower level), or keep per-tower mastery XP as a deliberate change to the design.",
-      "notes": "Money buys L1-L5 inside a run today; the tower LEVEL is supposed to persist in the save, which is what makes mastery progress between runs. The save schema already has the mastery key, so this is the earning and the spend.  QUESTION 2026-10-19: this card contradicts the design document. goal.md 4 says \"Levels are bought in-run, with in-run money. What clovers buy is the range of levels a tower can occupy ... So a tower has NO PERSISTENT LEVEL OF ITS OWN. It has a floor and a ceiling granted by the garden\", and goal.md 13 says \"Mastery is account-wide. One garden, one floor, one ceiling\" and calls the per-tower variant a FUTURE option (\"a master node would name a tower instead of the garden - not a rewrite. Build the account-wide version first\"). roadmap 2.4 (\"mastery XP per kill, levels stored per tower\") and 3.3 disagree with goal.md, and this card was written from the roadmap. RECOMMENDATION: close as superseded, correct roadmap 2.4/3.3, and treat per-tower floors as a later design change if it is ever wanted. That also removes the Phase 3 blocker I had assumed: garden-master-nodes does NOT need it, because tower_cap()/tower_floor() already read global.meta.mastery and placement already resolves the floor (objects/_levelControl/Create_0.gml:100).",
+      "notes": "CLOSED 2026-10-19 as SUPERSEDED, not built. goal.md 4 says a tower has NO PERSISTENT LEVEL OF ITS OWN - it has a floor and a ceiling granted by the garden - and goal.md 13 says mastery is account-wide, with the per-tower version named as a FUTURE option. roadmap 2.4 (mastery XP per kill) disagreed, and this card was written from the roadmap. roadmap 2.4 now reads the level a tower ends a stage at is stored in the save, its still-open list records the retirement, and 3.3 (the five clover master nodes) is the only mastery work left - it was never blocked, because tower_cap() and tower_floor() already read global.meta.mastery.",
       "refs": [
         "scripts/scr_meta_schema/scr_meta_schema.gml",
         "roadmap.md"
       ],
       "created": "2026-10-05",
       "updated": "2026-10-19",
-      "done": null
+      "done": "2026-10-19"
     },
     {
       "id": "meta-merge-drops-maps",
@@ -2151,7 +2173,7 @@
     },
     {
       "id": "provide-chorus-loops",
-      "title": "Give the chorus start for each track",
+      "title": "Listen to the seven loops: the points are measured and in",
       "status": "next",
       "owner": "rayu",
       "awaiting": "rayu",
@@ -2159,8 +2181,8 @@
       "phase": "2",
       "size": "S",
       "prio": 2,
-      "needs": "Supply the chorus start point for each track (or name who has them), so the region loops can be cut.",
-      "notes": "Give the chorus start for each of the seven tracks - in seconds, or as a bar number plus the BPM and I will convert it with time_bpm_to_seconds(). It goes in loop_in on the right row of scripts/music_data, so a stage plays the intro once and then loops the chorus to the end of the file instead of the whole track. Say also whether the loop point clicks; if it does, those files get converted to OGG, which has no MP3 encoder padding to skip over. (was audio-chorus-loop)",
+      "needs": "Play one stage, then sit on the menu for about three minutes: the music must not fade out on either, and the loop seam must not click. Name the track if it does.",
+      "notes": "THE POINTS ARE IN 2026-10-19 - what is left is your ear. loop_in was 0 on all seven rows and loop_out did not exist, so every loop ran to END OF FILE and replayed the 5-8 s outro fade; the menu set no loop points at all. The section is now measured (20 ms RMS envelope against the track median, snapped to the bar grid) and lives in music_data: title 24.71-169.41, w1 14.63-152.20, w2 13.33-153.33, w3 32.73-169.09, w4 73.85-169.23, w5 0.00-157.71, w6 20.00-173.33. The stage and the menu now share scr_music_apply_loop, and the log says loop 14.63 -> 152.2s (section). The riskiest seams are w1 and w2, whose bodies end quiet (0.026 and 0.177 RMS) and restart at full level (0.153 and 0.292): if either clicks, the fix is a baked tail blend or OGG, not different numbers. See LL-064.",
       "refs": [
         "scripts/music_data/music_data.gml"
       ],

@@ -374,15 +374,15 @@ version as it affects gameplay-facing systems.
 Every stage plays its **region's** theme, looped, for as long as the stage runs
 (roadmap 5.8). The track is a property of the region, so it is a table:
 
-| Region | Biome | Track | BPM | Asset | `loop_in` |
-| --- | --- | --- | --- | --- | --- |
-| — | Title / menu | *Pushing Daisies* | 68 | `mus_title` | 0 |
-| 1 | Grass | *Wilted Sprouts* | 82 | `mus_world1` | 0 |
-| 2 | Swamp | *Mires of the Undead* | 72 | `mus_world2` | 0 |
-| 3 | Desert | *Rust in the Sun* | 88 | `mus_world3` | 0 |
-| 4 | Jungle | *Vines Take the Ruins* | 78 | `mus_world4` | 0 |
-| 5 | Graveyard | *Toll for the Nameless* | 70 | `mus_world5` | 0 |
-| 6 | Blood Fields | *Where the Garden Ends* | 108 | `mus_world6` | 0 |
+| Region | Biome | Track | BPM | Asset | `loop_in` | `loop_out` |
+| --- | --- | --- | --- | --- | --- | --- |
+| — | Title / menu | *Pushing Daisies* | 68 | `mus_title` | 24.71 | 169.41 |
+| 1 | Grass | *Wilted Sprouts* | 82 | `mus_world1` | 14.63 | 152.20 |
+| 2 | Swamp | *Mires of the Undead* | 72 | `mus_world2` | 13.33 | 153.33 |
+| 3 | Desert | *Rust in the Sun* | 88 | `mus_world3` | 32.73 | 169.09 |
+| 4 | Jungle | *Vines Take the Ruins* | 78 | `mus_world4` | 73.85 | 169.23 |
+| 5 | Graveyard | *Toll for the Nameless* | 70 | `mus_world5` | 0.00 | 157.71 |
+| 6 | Blood Fields | *Where the Garden Ends* | 108 | `mus_world6` | 20.00 | 173.33 |
 
 `scripts/music_data` is the single place a track is named. `music_for_region()`
 hands a row to `scr_music_start_level()`, which `scr_level_start` calls when the
@@ -393,14 +393,30 @@ clear fade is the ONE exit from a stage that does not already call
 theme would follow the player onto the world map. The map then plays the menu
 theme, so no screen in the game is silent.
 
-`loop_in` is the **chorus start in seconds**: the intro plays once, then the
-track loops section-to-end for as long as the stage runs. `0` means "loop the
-whole track". The loop uses GameMaker's **Audio Loop Points**
-(`audio_sound_loop_start` / `audio_sound_loop_end`), which are applied on the
-audio thread — the manual is explicit that doing it by hand with
-`set_track_position` can never be accurate, because audio runs at 44100 samples
-a second and the game only looks 60 times. The points are set on the sound
-ASSET, so every later play of that track inherits them.
+`loop_in` / `loop_out` **are the loop section, in seconds**: the intro plays
+once, then `loop_in → loop_out` repeats for as long as the stage runs. The loop
+uses GameMaker's **Audio Loop Points** (`audio_sound_loop_start` /
+`audio_sound_loop_end`), which are applied on the audio thread — the manual is
+explicit that doing it by hand with `set_track_position` can never be accurate,
+because audio runs at 44100 samples a second and the game only looks 60 times.
+The points are set on the sound ASSET, so every later play of that track
+inherits them. `scr_music_apply_loop()` is the one place that turns the pair
+into those two calls, and both the stage theme and the menu theme go through it.
+
+**Why there are two ends.** The tracks are intro / body / breakdown / body /
+outro fade. Looping "chorus → end of file" therefore replayed the fade — every
+cycle ended in silence and restarted the body — and the menu set no loop points
+at all, so it played the same fade every 177 s. The section ends where the fade
+begins. `-1` means "no point at that end"; `0` is a legitimate start (region 5
+has no intro), which is why the two cannot share a sentinel.
+
+The points were measured rather than guessed: a 20 ms RMS envelope against the
+track's median level (0.9× it) gives where the intro ends and where the final
+outro begins, snapped to the bar grid at the track's BPM. `audio_play_sound_on()`
+is still told to loop, so a row with no section (`-1`/`-1`) repeats the whole
+file rather than being silent, and the `0.0/0.0` pair is never set — it would
+depend on the runtime reading "loop end 0" as "the end of the file" rather than
+as "zero seconds".
 
 A region whose track does not exist yet carries `sound = -1`: it plays nothing
 and logs `META  [MUSIC] region 3 "Rust in the Sun" has no track yet (-1) -
@@ -417,11 +433,6 @@ was false for a perfectly good
 track. The play line prints `typeof(_sound)` for the same reason - the
 representation is on the record rather than assumed. `audio_exists()` is not a
 substitute: it throws on an index the runtime has never seen (LL-034).
-
-The loop POINTS are only set when a row has a real chorus (`loop_in > 0`). A
-whole track needs none: `audio_play_sound_on()` is already told to loop, and a
-`0.0/0.0` pair would depend on the runtime reading "loop end 0" as "the end
-of the file" rather than as "zero seconds".
 
 The prompts for every track live in
 `notes/Music-Generation/Music-Generation.md`, and that table and this one must

@@ -9,7 +9,7 @@ if(wait_timer > room_speed*1.5){
 if(ready && (wait_timer > 10) && (keyboard_check_pressed(vk_anykey) || mouse_check_button_pressed(mb_any))){
     fadeout(rm_menu,c_black,0.25,0,0);
     scr_resetSoundVolume();
-    scr_playMusic(music_menu().sound,true);
+    scr_music_start_menu();
     scr_playSound(snd_zomb_emerge,false);
     ready = false;
 }

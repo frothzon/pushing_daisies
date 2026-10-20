@@ -11,7 +11,9 @@ switch(state){
         if(state_timer == 0){
             sprite_index = spr_grumble_idle;
             image_index = 0;
-            image_speed = 0.5;
+            /// a DURATION, not a speed: 60 steps is 1 s at 60 fps, and
+            /// re-drawing the zombie cannot change it (LL-030)
+            image_speed = scr_animSpeedForSteps(sprite_index, 60);
         }
         /// if range too great, change to walk state
         if(abs(mouse_x-x) > 16){
@@ -33,7 +35,7 @@ switch(state){
         if(state_timer == 0){
             sprite_index = spr_grumble_walk;
             image_index = 0;
-            image_speed = 0.5;
+            image_speed = scr_animSpeedForSteps(sprite_index, 60);
         }
         /// if zombie is within range of mouse, go back to idle
         if(abs(mouse_x-x) < 16){
@@ -54,7 +56,7 @@ switch(state){
         if(state_timer == 0){
             sprite_index = spr_grumble_attack;
             image_index = 0;
-            image_speed = 0.5;
+            image_speed = scr_animSpeedForSteps(sprite_index, 60);
         /// at animation end, change state
         } else if(image_index > image_number-1){
             state = 0;
