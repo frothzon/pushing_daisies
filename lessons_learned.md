@@ -84,6 +84,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-061](#ll-061) | "A leak pays half instead of nothing" changed the purse by **1 money over 20 leaks** | `floor(kill_money * 0.5)` is `0` when `kill_money` is `1`: the percentage was applied AFTER the rounding, so it erased the only value that mattered | **FIXED** |
 | [LL-062](#ll-062) | **Crit could not be added** - the damage function had no amount to multiply | `scr_do_damage(arr, i)` subtracted `damage_calc`, an instance variable the CALLER set, so its result depended on whose scope called it (AGENTS rule 6). Now the amount is a parameter and the tower passes the `shot_damage` it locked at the swing | **FIXED** |
 | [LL-063](#ll-063) | **A test changed colour with no edit** - it asserted a LINE, and the IDE re-saved an equivalent one | `assertIn("id mod 97", src)` vs the code's `irandom(97) * 0.00001`, after GameMaker wrote `.gml` + `.yy` in the same millisecond. Test the PROPERTY (rolled once, too small to reorder); on an unexplained red, check mtimes before theories | **FIXED** |
+| [LL-065](#ll-065) | Monsters **vanish ~5 s after being stunned**, and the stage loses Exterminator | The LL-031 safety valve fires on "`path_position` has not moved", which a stun produces ON PURPOSE. A held monster is not a stuck one: the counter now only runs while `status_speed_mult() > 0` | **FIXED** |
 | [LL-064](#ll-064) | The **music fades out in the middle of a stage**, and the menu goes quiet every ~3 minutes - no error, and the track is still "playing" | The loop had **one end**: `loop_in` was the chorus start and the loop ran to END OF FILE, so every cycle played the outro fade. The menu did not set loop points at all, so it was worse there. A loop **section** has two ends | **FIXED** |
 
 
@@ -4525,6 +4526,80 @@ restart at full level.
 `scripts/scr_music_start_menu/scr_music_start_menu.gml`,
 `objects/obj_title/Step_0.gml`, `objects/Menu/Step_0.gml`,
 `notes/systems_overview/systems_overview.md`.
+
+---
+
+
+<a name="ll-065"></a>
+## LL-065 - A status that legitimately STOPS a monster looks exactly like a stuck one
+
+**Symptom.** (Caught by reasoning, before it shipped.) Add a stun or a root -
+any status whose speed multiplier is 0 - and monsters with nothing wrong with
+them disappear about five seconds later, with this in the log:
+
+```
+PATH  WARNING: monster 100003 stuck at 412,288 - path_position 0.37 unmoved for 5s (path_free=1 retry=0)
+PATH  WARNING: 1 stuck monster(s) cleared so the wave can end (2 still walking)
+```
+
+The stage then finishes with `level_forced = true`, so it silently does not
+earn Exterminator - and the monster that was deleted never paid a life, so the
+wave "cleared" without the leak it should have been.
+
+**Root cause.** The safety valve from [LL-031](#ll-031) fires on a signal that
+was only ever meant as evidence of a BROKEN PATH: `path_position` has not
+changed for five seconds. A stun writes `path_speed = 0` on purpose (the
+status multiplies the speed, and 0 x anything is 0), so the follower is
+working perfectly and the valve cannot tell the difference. Two mechanisms
+read the same number for different questions - the same shape as
+[LL-034](#ll-034) and [LL-021](#ll-021): one fact, two meanings.
+
+The blast radius is bigger than the deleted monster. `level_forced` is what
+denies the badge, so a CONTROL tower would quietly cost the player a medal -
+and it would look like the badge system being flaky.
+
+**Fix.** The counter only runs while the monster is TRYING to move. The status
+is already the single answer to "how fast is this monster", so the guard asks
+it:
+
+```gml
+/// scr_zomb_updatePosition: a HELD monster is not a STUCK one (LL-031)
+if(status_speed_mult() <= 0){
+    stuck_frames = 0;
+} else if(path_position == path_pos_last){
+    stuck_frames++;
+} else {
+    stuck_frames = 0;
+}
+```
+
+A SLOW is a fraction (0.55), not a hold, so a slowed monster still advances
+and still counts - the valve's five-second budget is far longer than any slow
+needs.
+
+**Guard rails.**
+
+* **When you add a mechanic that stops something, grep for who reads its
+  motion as evidence.** `stuck_frames`, `wait_stuck`, `path_retry` and
+  `path_escape` are all "is this thing broken?" counters, and every one of
+  them starts lying the moment stopping is legal.
+* **A safety valve must fire on EVIDENCE of a fault, not on absence of the
+  good thing.** LL-031 fixed the opposite mistake (a timer that ended every
+  wave after six seconds); both bugs are the same valve asking a question it
+  cannot answer.
+* **A status is a MULTIPLIER, never a special case.** `path_speed` has one
+  owner and the status multiplies it last, which is why a stun needed no code
+  in the follower - and why the one place that had to change was the valve.
+* **One instance per kind, strongest wins** (`status_apply`): an effect that
+  stacks is an effect whose strength is "however many towers got in range".
+
+**Status.** FIXED 2026-10-20, with `combat-status-slow`; the guard landed in
+the same change as the status spine so `combat-status-stun` cannot inherit it.
+
+**Files.** `scripts/scr_status/scr_status.gml`,
+`scripts/scr_zomb_updatePosition/scr_zomb_updatePosition.gml`,
+`scripts/scr_zomb_pathSpeed/scr_zomb_pathSpeed.gml`,
+`objects/obj_mon/{Create_0,Step_0,Draw_0}.gml`
 
 ---
 

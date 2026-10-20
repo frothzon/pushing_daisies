@@ -116,15 +116,17 @@ Full EOL census commands: [LL-006](./lessons_learned.md#ll-006).
 cd /home/rayu/GameMakerProjects/pushing_daisies_recovered
 
 # 1. every .yy/.yyp/.resource_order round-trips byte-for-byte
-#    expect: 674 file(s) round-trip byte-for-byte, 0 differ
+#    expect: `0 differ`
 #    (the COUNT grows as resources are added - a *drop* is the signal, not a
 #     change in the number)
 PYTHONPATH=python_tools python3 -m gm roundtrip
 
 # 2. toolkit test suite
-#    expect: Ran 101 tests ... OK
-#    and after adding *n* tests the count must rise by *n*: a suite that cannot
-#    notice a missing test has a hole in it (LL-041)
+#    expect: `Ran N tests ... OK`, and N must NOT DROP
+#    (168 on 2026-10-20; it was 101 when this file was written, and a number
+#     here goes stale every session - the signal is a drop, and after adding
+#     *n* tests the count must rise by *n*: a suite that cannot notice a
+#     missing test has a hole in it, LL-041)
 PYTHONPATH=python_tools python3 -m unittest discover -s python_tools/tests
 
 # 3. the GML you changed still parses, and has the functions you expect
@@ -165,6 +167,8 @@ the exact log lines to look for, and name what would falsify your fix.
 | Fade | `scripts/{fadeout,ini_fadeout,draw_fadeout,draw_reset}`, `objects/_fadeout/` |
 | Globals | `scripts/initialize_game/initialize_game.gml` — `global.devMode`, `global.saveName`, `global.startRoom` |
 | Logging | `scripts/print/print.gml` (already gated on `global.devMode`) |
+| **Statuses** (slow now; stun/burn/poison/root/bleed/vuln are declared) | `scripts/scr_status/scr_status.gml` — `STATUS`, `status_apply`, `status_tick`, `status_speed_mult`, `status_tint`, `status_summary`. One instance per kind per monster; the monster owns `statuses` + `status_count` (obj_mon/Create_0) and ticks it LAST in obj_mon/Step_0; the speed multiply is in `scr_zomb_pathSpeed` |
+| **Tower traits** (a status on hit, a crit chance) | `scripts/scr_tower_roster/scr_tower_roster.gml` — `tower_trait_table()`, `tower_trait_find`, `tower_trait_get`. Keyed by tower NAME, kept out of `scr_towerData` so the balance tester's 5-argument contract cannot drift (LL-038). Applied in `scr_tower_shoot` at the strike |
 | **Progress tracker** | `progress.json` (source) → `PROGRESS.md`, `progress.html` (generated) — §6 |
 | **Art briefs** (what to draw, canvas/origin/frames, what already exists) | `art_descriptions.md` — §3 the technical contract, §4 card by card |
 | **Balance tester** | `python_tools/gm/balance/` — `gm balance {tables,route,towers,afford,sim,project,check,fit}`; reads the tables (and the shot cycle) out of GML, so it cannot drift ([LL-038](./lessons_learned.md#ll-038), [LL-040](./lessons_learned.md#ll-040)). `project` is the closed form (a ratio); `sim` time-steps the stage at 60fps and is the arbiter on outcomes ([LL-042](./lessons_learned.md#ll-042)) |
@@ -204,8 +208,9 @@ The Menu is the **reference implementation** for migrating them — copy its sha
   `sprite_index == -1`, which is a *fatal error* in GMS2
   ([LL-012](./lessons_learned.md#ll-012)).
 * **Prefer `enum` + `switch`** over numeric state sentinels in anything you touch.
-* **Log prefixes**: `MENU  `, `BTN   `, `FADE  ` — keep them aligned so
-  `grep -E 'MENU|BTN|FADE'` gives the whole trail. See
+* **Log prefixes**: `MENU  `, `BTN   `, `FADE  `, `STAT  ` — keep them aligned so
+  `grep -E 'MENU|BTN|FADE|STAT'` gives the whole trail. (`TOWER `, `PATH  `,
+  `LOADOUT`, `SEED  ` are the same shape and already in use.) See
   [LL-011](./lessons_learned.md#ll-011).
 
 ---

@@ -11,11 +11,16 @@
 /// exactly that.  A tower the player has not unlocked cannot be in a loadout,
 /// so it cannot reach the shop at all.
 ///
-/// WHY ONLY SIX: Phase 1 ships the four starters plus two unlocks that need
-/// no new mechanic.  Chillip (slow), Bindweed (root), Belladonna Blitz
-/// (poison) and Thornamental (crit) each need a status system that does not
-/// exist until Phase 2, so building them now would mean building them twice
-/// (roadmap 5.2).
+/// WHY SIX UNTIL NOW: Phase 1 shipped the four starters plus two unlocks
+/// that need no new mechanic.  Chillip (slow), Bindweed (root), Belladonna
+/// Blitz (poison) and Thornamental (crit) each need the status system, so
+/// building them first would have meant building them twice (roadmap 5.2).
+/// That system is scr_status, and the four arrive one at a time on top of
+/// it - Chillip first, because a slow is the one status a player can SEE
+/// without being told what it is: the monster is still walking, and it is
+/// visibly late.  Their art already existed (spr_chillip_*, spr_bella_*,
+/// spr_bindweed_*, spr_thornamental_*), so no status tower is a
+/// placeholder the way Cannon Tulip and Meat Bulb still are.
 
 /// One tower.  `unlock` is the seed cost (0 = a free starter) and `gate` is
 /// the region that must be fully cleared before it can be bought (0 = none).
@@ -74,7 +79,18 @@ function tower_roster() {
 		             60, scr_towerData(200,  60,  0.5, _eff_xplod,  5), 25, 1),
 		tower_entry("Meat Bulb",
 		            [spr_t4_idle, spr_t4_attack, spr_t4_return],
-		             80, scr_towerData( 90, 250, 0.75, _eff_spikes, 1), 40, 1)
+		             80, scr_towerData( 90, 250, 0.75, _eff_spikes, 1), 40, 1),
+
+		/// ---- the Phase 2 tower: a slow, and the first one -----------------
+		///      Cheap on purpose ($15, one target, 12 nominal DPS) because a
+		///      control tower is bought for what it does to the OTHER towers'
+		///      shots: everything on the route gets 1.8x longer to fire at it.
+		///      Its numbers are deliberately not a damage ladder - see
+		///      tower_trait_table() for the half of the tower that is not in
+		///      scr_towerData.
+		tower_entry("Chillip",
+		            [spr_chillip_idle_192x, spr_chillip_attack_192x, spr_chillip_return_192x],
+		             15, scr_towerData( 90,   8,   1.5, _eff_puff,   1), 30, 1)
 	];
 }
 
@@ -98,6 +114,57 @@ function tower_data_copy(_name) {
 	var _e = tower_entry_find(_name);
 	if(is_undefined(_e)) return undefined;
 	return array_duplicate(_e.data);
+}
+
+/// ---- TRAITS: the half of a tower that is NOT a number ------------------
+/// scr_towerData holds what every tower has (range, damage, rate, targets),
+/// so a rung of the ladder can be computed from it.  A trait is what only
+/// some towers have - a status on hit, a crit chance - and it is kept in its
+/// own table for two reasons:
+///
+///   1. the balance tester parses scr_towerData calls out of this file and
+///      knows they take exactly five arguments (LL-038: the tables are the
+///      thing that must not drift), and
+///   2. a trait belongs to a NAMED tower, not to a data array, so an
+///      upgrade rung cannot accidentally multiply it (a crit chance that
+///      scales with the damage ladder is how every tower becomes the same
+///      tower).
+///
+/// A tower with no row here simply has no trait; every reader asks through
+/// tower_trait_get() and gets the default, so silence is the normal case.
+function tower_trait_table() {
+	return [
+		/// name          crit   status         mult   seconds
+		{ name : "Chillip",
+		  crit : 0.00,
+		  status : STATUS.SLOW,     /// scr_status: one instance per monster
+		  mult : 0.55,              /// 55% of the monster's own speed
+		  seconds : 1.5 }           /// longer than its 0.67s period, so a
+		                            /// Chillip that keeps its target keeps it
+		                            /// slowed; a lapse is 0.15s of full speed
+	];
+}
+
+/// One tower's trait row, or undefined - the same contract as
+/// tower_entry_find(), so a caller can guard instead of crashing (LL-002).
+function tower_trait_find(_name) {
+	if(!is_string(_name)) return undefined;
+	var _all = tower_trait_table();
+	for(var _i = 0; _i < array_length(_all); _i++){
+		if(_all[_i].name == _name) return _all[_i];
+	}
+	return undefined;
+}
+
+/// One field of a tower's traits, or a default.  This is the ONLY reader:
+/// a struct field that was never written is an error, not an undefined, so
+/// no caller touches a raw key (the face of LL-002 that bites hardest).
+function tower_trait_get(_name, _key, _default) {
+	var _t = tower_trait_find(_name);
+	if(!is_struct(_t)) return _default;
+	if(!is_string(_key)) return _default;
+	if(!variable_struct_exists(_t, _key)) return _default;
+	return _t[$ _key];
 }
 
 /// The roster indices that make up the current loadout, in loadout order.

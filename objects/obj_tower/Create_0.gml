@@ -53,6 +53,15 @@ anim_reported = array(false, false, false);
 /// nothing reads another scope (AGENTS rule 6, LL-062).  It was called
 /// damage_calc, and scr_do_damage read it from here.
 shot_damage = 0;
+
+/// ---- the status THIS swing will land (scr_tower_shoot) --------------
+/// Defaults, for the same reason base_data is undefined: the creator
+/// assigns `name` AFTER instance_create, so a swing that began during
+/// placement would find no trait row - and reading a never-written
+/// variable is a fatal error, not a zero (LL-002).  -1 = "no status".
+shot_status        = -1;
+shot_status_mult   = 1;
+shot_status_frames = 0;
 frame_number = 0;
 
 /// ---- the ATTACK TIMER (LL-054) -------------------------------------

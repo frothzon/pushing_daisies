@@ -58,3 +58,13 @@ inWater = false;
 /// water_line_report (draw_water_shader.gml).  A diagnostic, not mechanics.
 water_reported = false;
 
+/// ---- Phase 2: the statuses ON this monster (scr_status) -------------
+/// ONE struct, one entry per kind, created HERE so a read can never be the
+/// first writer (LL-002) - obj_mon/Step_0's clock and every reader in
+/// scr_status guard for it, but a guard that fires every step for every
+/// monster is a guard that is doing the work the Create event should have
+/// done.  `status_count` is the fast exit: a monster carrying nothing pays
+/// one comparison a step instead of walking the struct.
+statuses     = {};
+status_count = 0;
+

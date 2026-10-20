@@ -8,3 +8,11 @@ scr_runState(scr_zombie_emerge);
 /// that runs in every state, not in scr_zombie_path: a monster that is still
 /// emerging or dying is on screen too.
 depth = scr_depth_y(y);
+
+/// ---- and one step of every STATUS clock (scr_status) ---------------
+/// LAST, after scr_runState has moved the monster and derived its depth, and
+/// after the emerge and dying states have run: "1.5 seconds" has to be 1.5
+/// seconds of play whatever the monster was doing.  It ticks here rather
+/// than inside scr_zombie_path because a monster that is still emerging is
+/// on screen too, and a slow applied to it must expire on time.
+status_tick();

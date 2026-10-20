@@ -16,6 +16,7 @@ Two rules these tests follow, both learned the hard way:
 """
 
 import math
+import re
 import sys
 import unittest
 from dataclasses import replace
@@ -101,7 +102,7 @@ class TableTests(unittest.TestCase):
         self.assertEqual([55, 110], [m.life for m in self.t.bosses])
 
     def test_towers_carry_price_and_stats(self):
-        self.assertEqual(6, len(self.t.towers))
+        self.assertEqual(7, len(self.t.towers))
         daisy = self.t.tower("Daisy Pusher")
         self.assertEqual((5, 100, 4, 3, 1),
                          (daisy.price, daisy.range, daisy.damage,
@@ -114,6 +115,16 @@ class TableTests(unittest.TestCase):
         # its case is now the 10-target SPLASH, and the sim says even that is
         # coverage-limited (test_a_ten_target_cap_never_fills_on_this_route)
         self.assertEqual(250, pina.dps)
+
+        # ---- the first status tower (Phase 2) -------------------------------
+        # Chillip is deliberately cheap and weak ON PURPOSE: a control tower is
+        # bought for what it does to the OTHER towers' shots, so its own DPS
+        # must not also be a reason to buy it.
+        chillip = self.t.tower("Chillip")
+        self.assertEqual((15, 90, 8, 1.5, 1),
+                         (chillip.price, chillip.range, chillip.damage,
+                          chillip.fire_rate, chillip.targets))
+        self.assertEqual(12, chillip.dps)            # 8 x 1.5 x 1
 
     def test_ladder_and_rung_costs(self):
         self.assertEqual(10, len(self.t.ladder))
@@ -863,6 +874,79 @@ class SlowTowerTests(unittest.TestCase):
                 break
         self.assertIsNotNone(first, "the slow tower never fired inside a second")
         self.assertLessEqual(first, s.fps)
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class TowerTraitTests(unittest.TestCase):
+    """A trait is content keyed by NAME, so a typo is silent - unless a test reads it.
+
+    tower_trait_table() in scr_tower_roster.gml is matched against the roster by
+    name at RUNTIME.  A row naming a tower that does not exist is not an error
+    there: it is a status that never lands, which is the exact shape of failure
+    this project keeps meeting (LL-002).  So the pairing is checked here, from
+    the source, the way the balance tables are checked against the GML.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = (PROJECT_ROOT / "scripts/scr_tower_roster/scr_tower_roster.gml").read_text()
+
+    def _rows(self):
+        """(name, body) for every trait row, read out of the table function."""
+        body = self.src[self.src.index("function tower_trait_table()"):]
+        body = body[:body.index("\n}")]
+        return re.findall(r'\{\s*name\s*:\s*"([^"]+)"(.*?)\}', body, re.S)
+
+    def test_every_trait_names_a_real_roster_tower(self):
+        rows = self._rows()
+        self.assertEqual(["Chillip"], [n for n, _ in rows])
+        for name, _ in rows:
+            self.assertIn(f'tower_entry("{name}"', self.src,
+                          f"trait row '{name}' names no tower in tower_roster()")
+
+    def test_a_speed_multiplier_actually_slows(self):
+        rows = self._rows()
+        self.assertTrue(rows, "no trait rows were found at all")
+        for name, row in rows:
+            mult = re.search(r"mult\s*:\s*([\d.]+)", row)
+            if mult is None:
+                continue
+            value = float(mult.group(1))
+            self.assertGreater(value, 0.0, name)
+            self.assertLessEqual(value, 1.0,
+                                 f"{name}: a speed multiplier above 1 makes "
+                                 f"monsters FASTER, not slower")
+            secs = re.search(r"seconds\s*:\s*([\d.]+)", row)
+            self.assertIsNotNone(secs, f"{name}: a trait with no duration")
+            self.assertGreater(float(secs.group(1)), 0.0, name)
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class StatusWiringTests(unittest.TestCase):
+    """The status clock and its storage are wired, read from the source.
+
+    A lost `status_tick()` is invisible: nothing errors, nothing logs, and every
+    slow becomes permanent - which is the "silent" shape LL-002 keeps warning
+    about.  A lost `statuses = {}` in Create_0 is worse, because the first
+    status_apply would then be the first writer and every guard would hide it.
+    """
+
+    def test_the_monster_owns_and_ticks_its_statuses(self):
+        mon = PROJECT_ROOT / "objects/obj_mon"
+        create = (mon / "Create_0.gml").read_text()
+        step = (mon / "Step_0.gml").read_text()
+        self.assertRegex(create, r"statuses\s*=\s*\{\}")
+        self.assertRegex(create, r"status_count\s*=\s*0")
+        self.assertIn("status_tick();", step)
+
+    def test_speed_is_multiplied_in_exactly_one_place(self):
+        # LL-007 and LL-021: the multiply lives in the one script that already
+        # owns path_speed, and it is a fraction of that speed - never a second
+        # speed formula.
+        path = (PROJECT_ROOT
+                / "scripts/scr_zomb_pathSpeed/scr_zomb_pathSpeed.gml").read_text()
+        self.assertIn("status_speed_mult()", path)
+        self.assertNotIn("room_speed", path)
 
 
 class DifficultyColumnTests(unittest.TestCase):

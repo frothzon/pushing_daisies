@@ -43,7 +43,12 @@ function scr_zomb_pathSpeed() {
 	///------------------ Move forward, if collision move backwards
 	/// the difficulty column scales speed too (goal.md 2): a "harder" stage
 	/// that only adds HP is a longer stage, not a harder one
-	var _spd_mult = difficulty_speed_mult();
+	/// The status MULTIPLIES, and it multiplies last: the terrain ramp, the
+/// wave ramp and the difficulty column all answer "how fast is this
+/// monster", and a status answers "and now".  One question, one place
+/// (LL-021) - and a stun or a root is a 0 here, which is what makes
+/// path_speed 0 rather than a special case inside the path follower.
+var _spd_mult = difficulty_speed_mult() * status_speed_mult();
 	if(path_free){
 	    path_speed = _spd*data[MON.speed]*_spd_mult;
 	} else {

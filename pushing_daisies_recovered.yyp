@@ -868,6 +868,7 @@
     {"id":{"name":"bck_tile_dirt_tileset","path":"tilesets/bck_tile_dirt_tileset/bck_tile_dirt_tileset.yy",},},
     {"id":{"name":"scr_music_apply_loop","path":"scripts/scr_music_apply_loop/scr_music_apply_loop.yy",},},
     {"id":{"name":"scr_music_start_menu","path":"scripts/scr_music_start_menu/scr_music_start_menu.yy",},},
+    {"id":{"name":"scr_status","path":"scripts/scr_status/scr_status.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",

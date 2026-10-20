@@ -38,6 +38,17 @@ function scr_tower_shoot() {
 	    /// started is committed (LL-054), so an upgrade bought mid-swing
 	    /// lands on the NEXT shot.  This is also where crit will roll.
 	    shot_damage  = data[TOWER.damage];
+
+	    /// ---- and the STATUS this swing will land (scr_status) ------------
+	    /// Read from the trait table ONCE, at the shot, and COPIED onto the
+	    /// tower: the strike lands several frames later, in a different call
+	    /// of this script, so a local would be gone by then - and a trait
+	    /// re-read at the strike could describe a tower the player sold in
+	    /// between.  Locked at the shot for exactly the reason shot_damage is
+	    /// (LL-054): a swing that has started is committed.
+	    shot_status        = tower_trait_get(name, "status",  -1);
+	    shot_status_mult   = tower_trait_get(name, "mult",     1);
+	    shot_status_frames = status_frames(tower_trait_get(name, "seconds", 0));
 	    target       = noone;   /// acquire fresh - never inherit normal's single pick
 	    did_damage   = false;
 	    did_particles = false;
@@ -103,6 +114,20 @@ function scr_tower_shoot() {
 	        scr_do_damage(target, _i, shot_damage);
 	    }
 	    did_damage = true;
+
+	    /// ---- the on-hit status ------------------------------------------
+	    /// At the STRIKE, not at the shot: a slow applied on the swing's first
+	    /// frame would be on a monster the strike may never reach (it can die
+	    /// to another tower first), and the effect a player sees must be the
+	    /// effect of a hit.  `target` can hold instances that have died since
+	    /// the swing started - status_apply guards, so the loop does not have
+	    /// to (LL-012).
+	    if(shot_status >= 0 && shot_status_frames > 0){
+	        for(var _s = 0; _s < array_length(target); _s++){
+	            status_apply(target[_s], shot_status, shot_status_mult,
+	                         shot_status_frames);
+	        }
+	    }
 	}
 
 	if(!did_particles && state_time >= part_frame){

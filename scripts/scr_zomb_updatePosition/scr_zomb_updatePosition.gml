@@ -16,7 +16,18 @@ function scr_zomb_updatePosition() {
 	/// other case - `==` against a value DERIVED from a moving quantity, which
 	/// can never land on it.  No epsilon is needed: the slowest real advance is
 	/// ~2e-5 of the path per step (a boss in water on a long route).
-	if(path_position == path_pos_last){
+	/// ---- a HELD monster is not a STUCK one (LL-031) --------------------
+	/// The safety valve reads stuck_frames as "nothing is advancing this
+	/// monster" and DELETES it after five seconds.  A stun or a root stops
+	/// the follower on purpose, so counting those steps as evidence would
+	/// let a control tower get its own target force-deleted - and
+	/// level_forced is exactly what denies the stage its Exterminator
+	/// badge.  The counter therefore only runs while the monster is TRYING
+	/// to move: status_speed_mult() is 0 only for a stun or a root, while a
+	/// slow is a fraction of normal speed (still moving, so still counted).
+	if(status_speed_mult() <= 0){
+	    stuck_frames = 0;
+	} else if(path_position == path_pos_last){
 	    stuck_frames++;
 	} else {
 	    stuck_frames = 0;

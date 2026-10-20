@@ -2,7 +2,7 @@
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-19",
+    "updated": "2026-10-20",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set <id> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -20,13 +20,14 @@
   },
   "focus": {
     "now": [
-      "provide-chorus-loops"
+      "combat-crit"
     ],
     "next": [
-      "art-state-origins",
-      "tower-belladonna"
+      "combat-gate-two-loadouts",
+      "combat-status-burn",
+      "tower-card-status-line"
     ],
-    "note": "Wave 0 of the gap plan: the board is true before anything new is built. Then Wave 1 finishes Phase 1 four stragglers, Wave 2 is the status spine (slow -> crit -> burn -> stun -> resistances), Wave 3 adds Chillip and Thornamental and MEASURES the Phase 2 gate, Wave 4 is specs + the last statuses + the mastery ring palette, Wave 5 is the Garden Book. 2026-10-19: mastery-xp is CLOSED as superseded (goal.md 4/13 - mastery is the five clover nodes), and the music loop bug is fixed in code (LL-064), leaving only rayu ear test on provide-chorus-loops. Two things gate real work now: art-track-ownership (seven asset cards with no owner) and tower-belladonna, which now only needs code - the belladonna trio has been in the repo since 2026-10-12."
+    "note": "2026-10-20: the status spine is IN (scr_status + Chillip, LL-065), so the rest of Wave 2 is now unblocked and is all code: crit next, then burn, stun, resistances. tower-belladonna also stopped being art-blocked (its trio has been in the repo since 2026-10-12). The art cards still have no owner (art-track-ownership), and cannon/meat placeholders still need spr_t3_*/spr_t4_*."
   },
   "tasks": [
     {
@@ -855,22 +856,26 @@
     {
       "id": "combat-status-slow",
       "title": "Status 1: slow - the pattern-proving status",
-      "status": "next",
+      "status": "done",
       "owner": "cline",
-      "awaiting": "cline",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "M",
       "prio": 1,
       "needs": "One status end to end: apply, tick, expire, clear; frames from game_get_speed; a log line naming the monster, the multiplier and the frames left.",
-      "notes": "First status end to end, chosen because speed is already computed in exactly ONE place (scr_zomb_pathSpeed), so the whole lifecycle - apply, tick, expire, clear - is provable with a one-line effect. Durations in game_get_speed frames, never room_speed (LL-007). One instance per status per monster. The log line must name the monster, the multiplier and the frames left, because goal.md 15 says a buff the player cannot perceive is a broken buff. roadmap 2.2.",
+      "notes": "First status end to end, chosen because speed is already computed in exactly ONE place (scr_zomb_pathSpeed), so the whole lifecycle - apply, tick, expire, clear - is provable with a one-line effect. Durations in game_get_speed frames, never room_speed (LL-007). One instance per status per monster. The log line must name the monster, the multiplier and the frames left, because goal.md 15 says a buff the player cannot perceive is a broken buff. roadmap 2.2. SHIPPED 2026-10-20 as scr_status: one struct of instances per monster (keyed by the STATUS enum, one per kind, strongest multiplier and longest duration win), frames from game_get_speed, ticked LAST in obj_mon/Step_0, multiplied in scr_zomb_pathSpeed, and visible as an image_blend wash (obj_mon/Draw_0 writes it every frame, so expiry clears it). Log: 'STAT  slow x0.55 for 90f on <id> (new) now slow x0.55 90f', and 'STAT  expired slow on <id> speed now x1'. Stun/root are declared and already read as speed 0; the LL-031 valve guard that makes that safe landed here (LL-065).",
       "refs": [
+        "scripts/scr_status/scr_status.gml",
         "scripts/scr_zomb_pathSpeed/scr_zomb_pathSpeed.gml",
+        "scripts/scr_zomb_updatePosition/scr_zomb_updatePosition.gml",
         "objects/obj_mon/Step_0.gml",
-        "objects/obj_mon/Create_0.gml"
+        "objects/obj_mon/Create_0.gml",
+        "objects/obj_mon/Draw_0.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-18"
+      "updated": "2026-10-20",
+      "done": "2026-10-20"
     },
     {
       "id": "combat-status-stun",
@@ -2673,9 +2678,49 @@
       "done": null
     },
     {
+      "id": "tower-card-status-line",
+      "title": "The tower card says nothing about a status tower's status",
+      "status": "next",
+      "owner": "cline",
+      "awaiting": "cline",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "The card must name what the tower DOES - 'Slow x0.55 for 1.5s' - next to its numbers, read from tower_trait_table(), because a Chillip that only reads '12 DPS' looks like a worse Daisy.",
+      "notes": "FOUND 2026-10-20, the moment Chillip shipped: scr_drawTowerSelected draws range/damage/fire-rate/targets out of the data array, and the trait table is not read there at all, so the entire reason to buy a control tower is invisible at the moment of purchase (goal.md 15: a buff the player cannot perceive is a broken buff - and that applies to the BUYING, too). Small on its own, but it is the same card as tower-card-upgrade-preview, so do them together if the second one is still open.",
+      "refs": [
+        "scripts/scr_drawTowerSelected/scr_drawTowerSelected.gml",
+        "scripts/scr_tower_roster/scr_tower_roster.gml"
+      ],
+      "created": "2026-10-20",
+      "updated": "2026-10-20",
+      "done": null
+    },
+    {
+      "id": "tower-card-upgrade-preview",
+      "title": "Tower card: preview the REAL next level, not a doubling",
+      "status": "next",
+      "owner": "cline",
+      "awaiting": "cline",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "scr_drawTowerSelected's preview must call tower_data_at_level(base, level+1) and show the rung's price, so the number under 'next' is the number the upgrade actually delivers.",
+      "notes": "FOUND 2026-10-20 while reading the card for the status work: scripts/scr_drawTowerSelected/scr_drawTowerSelected.gml computes the preview as damage*2.0 and range*1.05, which is a stale model from before the level ladder existed. The ladder is +8% damage and +3% range a rung (tower_levels.gml 1.08 / 1.03, ten rungs), so the card promises roughly twenty-five times the real gain - the player reads 'double damage', pays, and gets 1.08x. Same shape as LL-054 (the number the UI believed was not the number the game used). Fix by resolving the next level through the SAME resolver a placement uses, never by a literal multiplier.",
+      "refs": [
+        "scripts/scr_drawTowerSelected/scr_drawTowerSelected.gml",
+        "scripts/tower_levels/tower_levels.gml"
+      ],
+      "created": "2026-10-20",
+      "updated": "2026-10-20",
+      "done": null
+    },
+    {
       "id": "tower-chillip",
       "title": "Chillip: the slow tower (roster slot 7)",
-      "status": "backlog",
+      "status": "done",
       "owner": "both",
       "awaiting": "none",
       "area": "code",
@@ -2683,15 +2728,16 @@
       "size": "S",
       "prio": 1,
       "needs": "",
-      "notes": "SPLIT 2026-10-19 from towers-other-three (which said \"the four status towers\" and was one L card covering four independent sessions). The payload is slow. Blocked on combat-status-slow. The GATE NEEDS THIS ONE: combat-gate-two-loadouts cannot contrast a control loadout against a DPS one until a shipped tower applies a status. ART 2026-10-14: this tower already has a 192x trio (three states), so this card is a roster row, a price and a seed unlock - no art.",
+      "notes": "SPLIT 2026-10-19 from towers-other-three (which said \"the four status towers\" and was one L card covering four independent sessions). The payload is slow. Blocked on combat-status-slow. The GATE NEEDS THIS ONE: combat-gate-two-loadouts cannot contrast a control loadout against a DPS one until a shipped tower applies a status. ART 2026-10-14: this tower already has a 192x trio (three states), so this card is a roster row, a price and a seed unlock - no art. SHIPPED 2026-10-20: roster slot 7, $15, 30 seeds behind the region-1 gate, spr_chillip_* trio, 90 range / 8 damage / 1.5 per second / 1 target. The status half lives in tower_trait_table() (slow x0.55 for 1.5s), NOT in scr_towerData, so the balance tester's five-argument contract is untouched; scr_tower_shoot locks the trait with shot_damage at the swing and applies it at the strike. NOTE the balance sim does not model slow yet - that is combat-gate-two-loadouts.",
       "refs": [
         "scripts/scr_tower_roster/scr_tower_roster.gml",
-        "scripts/tower_enums/tower_enums.gml",
-        "roadmap.md"
+        "scripts/scr_status/scr_status.gml",
+        "scripts/scr_tower_shoot/scr_tower_shoot.gml",
+        "objects/obj_tower/Create_0.gml"
       ],
       "created": "2026-10-19",
-      "updated": "2026-10-19",
-      "done": null
+      "updated": "2026-10-20",
+      "done": "2026-10-20"
     },
     {
       "id": "tower-fire-cycle-doubled",
@@ -3618,6 +3664,12 @@
       "who": "cline",
       "task": "art-descriptions",
       "what": "Wrote art_descriptions.md: one brief per open art job, measured from the repo rather than remembered. It corrects art-biome-tiles - four of the five region atlases (spr_swamp/desert/jungle/blood_128x, 128x128 x17 greyscale) already exist and are real art, so only the Graveyard atlas and the props are missing - and it found that nothing reads GameLevelData.biome to choose an atlas, now the card biome-tileset-wiring. Also records the origin rule that stops art-state-origins recurring: one canvas per character, feet on one row, one origin across states. While writing it, two more real gaps surfaced: roadmap 1.11's two vertical-slice towers (Cannon Tulip, Meat Bulb) still wear spr_t3_*/spr_t4_* as placeholders, now the card tower-slice-trios, and Kaboom Kalanchoe / Money Marigold have neither art nor a final design, so they stay design-blocked."
+    },
+    {
+      "date": "2026-10-20",
+      "who": "cline",
+      "task": "combat-status-slow",
+      "what": "The status spine: scr_status (one instance per kind per monster, frames from game_get_speed, apply/refresh/expire under 'STAT  '), wired into obj_mon Create/Step/Draw and scr_zomb_pathSpeed; Chillip ships as roster slot 7 with its slow as a NAMED trait row; and the LL-031 stuck valve no longer fires on a monster a stun is holding on purpose (LL-065)."
     }
   ]
 }
