@@ -68,19 +68,21 @@ edit, ask the user to close the project; before they test, ask them to reload it
 
 ### 1.2 Version control
 The repo has real history: `git init -b main` on **2026-10-03**, then a
-catch-up commit at most working sessions (HEAD `9f02314`, *Monsters draw in
-water again, plus a catch-up snapshot*). So "undo" goes back one checkpoint,
-not to the start of the session.
+catch-up commit at most working sessions (`git log --oneline` is short enough
+to read in full). So "undo" goes back one checkpoint, not to the start of
+the session. Do not quote a hash here - it goes stale the next time anyone
+commits; quote `git log` instead.
 
-**A checkpoint is only as good as the last commit.** On 2026-10-19 the working
-tree held **106 uncommitted files**, twelve of them **untracked** — and the
+**A checkpoint is only as good as the last commit.** On 2026-10-19, before
+commit `8a379e2`, the working tree held **106 uncommitted files**, twelve of
+them **untracked** — and the
 untracked set was the whole balance tester (`python_tools/gm/balance/`), four
 test files, `scr_curve`, `scr_level_boot`, `scr_menu_slider` and
 `spr_level_complete`. An untracked file is in **no** commit: no `git checkout`,
 no `git stash`, no revert can bring it back. So:
 
 * **Run `git status` before any structural change**, and commit a checkpoint if
-the tree is dirty. Local only — `origin` is
+  the tree is dirty. Local only — `origin` is
   `github.com/frothzon/pushing_daisies` and pushes are the owner's call
   (`decide-github-push`).
 * **Building a new feature starts by noticing whether it is tracked.** A new
