@@ -20,10 +20,9 @@
   },
   "focus": {
     "now": [
-      "repo-checkpoint"
+      "combat-status-slow"
     ],
     "next": [
-      "combat-status-slow",
       "tower-panel-effective-rate",
       "par-reauthor"
     ],
@@ -2266,22 +2265,22 @@
     {
       "id": "repo-checkpoint",
       "title": "Commit a checkpoint: 106 files, 12 of them untracked",
-      "status": "doing",
+      "status": "done",
       "owner": "cline",
-      "awaiting": "cline",
+      "awaiting": "none",
       "area": "tools",
       "phase": "infra",
       "size": "S",
       "prio": 1,
-      "needs": "Commit the working tree locally (no push) so the balance tester and the four test files exist in git at all.",
-      "notes": "Found 2026-10-19 while planning. `git status` shows 92 modified, 2 deleted and 12 UNTRACKED paths, and the untracked ones are not incidental: python_tools/gm/balance/, python_tools/gm/save/, tests/test_{balance,content,fit,save}.py, scripts/scr_curve/, scripts/scr_level_boot/, scripts/scr_menu_slider/ and sprites/spr_level_complete/. That is the whole balance tester, the level boot and the test suite - four sessions of work that exists in exactly one place on this disk. The 2 deletions are GameMaker re-saving spr_title_image (96x96 -> 255x144, new frame + layer GUIDs, the .yy names the new one twice and the old one not at all), so they belong in the same commit. Local only: pushing stays decide-github-push, which is rayu's call.",
+      "needs": "",
+      "notes": "Found 2026-10-19 while planning. `git status` shows 92 modified, 2 deleted and 12 UNTRACKED paths, and the untracked ones are not incidental: python_tools/gm/balance/, python_tools/gm/save/, tests/test_{balance,content,fit,save}.py, scripts/scr_curve/, scripts/scr_level_boot/, scripts/scr_menu_slider/ and sprites/spr_level_complete/. That is the whole balance tester, the level boot and the test suite - four sessions of work that exists in exactly one place on this disk. The 2 deletions are GameMaker re-saving spr_title_image (96x96 -> 255x144, new frame + layer GUIDs, the .yy names the new one twice and the old one not at all), so they belong in the same commit. Local only: pushing stays decide-github-push, which is rayu's call.  DONE 2026-10-19: commit 8a379e2 (119 files, +17806/-1527), working tree clean afterwards. Untracked -> tracked: the balance tester, gm save, the four test files, scr_curve, scr_level_boot, scr_menu_slider, spr_level_complete, plus GameMaker's re-save of spr_title_image (96x96 -> 255x144, new frame/layer GUIDs; the two deletions are its old PNGs). Pushing is still decide-github-push and still rayu's call.",
       "refs": [
         "AGENTS.md",
         ".gitignore"
       ],
       "created": "2026-10-19",
       "updated": "2026-10-19",
-      "done": null
+      "done": "2026-10-19"
     },
     {
       "id": "reprice-decisions",
