@@ -498,9 +498,14 @@ ramp and the level ladder are **one change**.
 | 2.4 part | The §4.4 ladder — a level is `base × ladder` and never compounds; cap and floor come from the garden | `tower_levels` (new) |
 | — | `difficulty_data`'s hp / speed / count / money columns are now **read**. Before this, Brutal only paid better; it never fought harder. | `difficulty_data` + 4 call sites |
 
-**Still open, in order:** (1) the rung-price vs rung-worth mismatch —
-`economy.md` §4.6, a one-table fix; (2) persistent mastery XP per kill (the rest
-of 2.4); (3) `par_spend` / `par_time` re-authored for 15–60 wave stages.
+**Decided, not open:** the rung-price vs rung-worth mismatch — `economy.md`
+§4.6 — was closed as STATUS QUO on 2026-10-14 (`choose-rung-price`): the
+ladder and the prices keep their values and the `scr_curve`/`gm balance`
+read-out stays the way to see it. Reopening it is a new decision.
+
+**Still open, in order:** (1) persistent mastery XP per kill (the rest of
+2.4); (2) `par_spend` / `par_time` re-authored for 15–60 wave stages
+(`par-reauthor` - Frugal and Speed Grower are unearnable until it lands).
 
 **Falsifier for this block.** If biome 2's wave 1 is harder than biome 1's, the
 shared base is broken. If a stage's money runs out before wave 10, the curve is

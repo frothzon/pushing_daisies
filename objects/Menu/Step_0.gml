@@ -22,6 +22,7 @@ if(menu_state_next != -1){
         case MENU_STATE.WORLD_MAP:
         case MENU_STATE.DEPLOY:
         case MENU_STATE.GARDEN:
+        case MENU_STATE.RESULTS:
             for_array(menu_button,  scr_button_index_hide);
             for_array(menu_options, scr_button_index_hide);
             break;
@@ -49,11 +50,13 @@ switch(menu_state){
             for_array(menu_options,scr_button_index_disable);
             scr_menu_debug(id, "after enable");
 
-            /// disable continue - only if that button actually exists.
-            /// menu_button[1] is a hole while the Continue button is
-            /// commented out in scr_setup_menuStates.
+            /// disable continue when there is nothing to continue FROM.  The
+            /// button exists now, but the guard stays: a hole in the array
+            /// reads as 0, which is OBJECT INDEX 0 (_button).
+            /// The question is the META save, not test.data - nothing has
+            /// written the legacy arcade file since the meta layer landed.
             var _continue = menu_button[1];
-            if(!file_exists(global.saveName) && _continue != undefined && _continue != noone && _continue != 0 && instance_exists(_continue)){
+            if(!scr_run_started() && _continue != undefined && _continue != noone && _continue != 0 && instance_exists(_continue)){
                 with(_continue){
                     active = false;
                     scr_button_greyout();
@@ -77,8 +80,22 @@ switch(menu_state){
     case MENU_STATE.CONTINUE:
         if(menu_state_time == 0){
             for_array(menu_button,scr_button_index_disable);
+            /// THE RUN CURSOR is the whole point of Continue: it is where
+            /// the player actually was, not stage 1-1 (schema v2).  A save
+            /// written before v2 has no cursor and run_get() answers with
+            /// the opening stage, which is the right thing to do with it.
+            var _run = run_get();
+            global.region     = _run.region;
+            global.stage      = _run.stage;
+            global.difficulty = _run.difficulty;
+            global.loadout    = loadout_stored();
+            print("MENU  continue  ->  region ", global.region,
+                  " stage ", global.stage, " ",
+                  difficulty_name(global.difficulty),
+                  " loadout ", string(global.loadout));
         }
         if(menu_state_time > room_speed*0.5){
+            audio_stop_all();
             fadeout(game_room,c_black,1,0,0);
         }
         break;
@@ -89,6 +106,10 @@ switch(menu_state){
             for_array(menu_button,scr_button_index_hide);
             for_array(menu_options,scr_button_index_enable);
         }
+        /// The sliders read the pointer HERE, not in the Draw event: a drag
+        /// is modal and has to survive the pointer leaving the track, or
+        /// reaching 0% / 100% takes a second pass (LL-051).
+        scr_sliders_step();
         break;
 
     //----------------------------------- leaving the options screen
@@ -238,6 +259,9 @@ switch(menu_state){
                     if(loadout_ready()
                        && meta_button_clicked(_dgeom.deploy, true)){
                         loadout_set(loadout_stored());
+                        /// remember WHERE, so a relaunch can resume here
+                        /// and Retry comes back to this stage (schema v2)
+                        run_set(global.region, global.stage, global.difficulty);
                         scr_save_meta();
                         print("MENU  deploy!  region ", global.region,
                               " stage ", global.stage,
@@ -310,6 +334,65 @@ switch(menu_state){
                         scr_menu_changeState(MENU_STATE.WORLD_MAP);
                     }
                 }
+            }
+        }
+        break;
+
+    //----------------------------------- the results screen (goal.md 27.2)
+    case MENU_STATE.RESULTS:
+        if(menu_state_time == 0){
+            results_leaving = false;
+            /// A result is ALWAYS here: both stage exits write it before
+            /// they ask for this screen.  If it is missing, the entry
+            /// request is stale (a relaunch carrying an old menu_entry),
+            /// and the map is the only honest place to send the player.
+            if(!variable_global_exists("level_result") || !is_struct(global.level_result)){
+                print("MENU  RESULTS with no level_result - going to the map");
+                scr_menu_changeState(MENU_STATE.WORLD_MAP);
+            } else {
+                var _lr = global.level_result;
+                print("MENU  results ", _lr.outcome, " ", _lr.region, "-", _lr.stage,
+                      " lives ", _lr.lives, " leaked ", _lr.leaked,
+                      " seeds +", _lr.seeds, " clovers +", _lr.clovers);
+                /// the results screen is part of the menu, so it keeps the
+                /// menu theme; a stage exit stopped the region theme (5.8)
+                scr_playMusic(music_menu().sound, true);
+            }
+        }
+        /// once an action is taken the screen is done.  Without this, a
+        /// second click during the fade would start a SECOND fade and the
+        /// player would land wherever the last one pointed.
+        if(results_leaving) break;
+        if(menu_state_time > 5 && is_struct(global.level_result)){
+            var _rgeom = meta_results_geom(),
+                _res   = global.level_result,
+                _next  = (_res.outcome == "CLEAR")
+                         ? meta_results_next(_res.region, _res.stage) : undefined;
+
+            if(meta_button_clicked(_rgeom.retry, true)){
+                /// Retry: the SAME stage, difficulty and loadout.  The menu
+                /// room is not the stage room, so this is an ordinary fade
+                /// to a DIFFERENT room - the restart argument is for a retry
+                /// that stays put, and is not needed here.
+                results_leaving   = true;
+                global.region     = _res.region;
+                global.stage      = _res.stage;
+                global.difficulty = _res.difficulty;
+                loadout_set(loadout_stored());
+                run_set(_res.region, _res.stage, _res.difficulty);
+                scr_save_meta();
+                print("MENU  retry ", _res.region, "-", _res.stage);
+                audio_stop_all();
+                fadeout(global.startRoom, c_black, 1, 0, 0);
+            } else if(meta_button_clicked(_rgeom.next, !is_undefined(_next))){
+                results_leaving = true;
+                global.region = _next.region;
+                global.stage  = _next.stage;
+                print("MENU  next stage ", global.region, "-", global.stage);
+                scr_menu_changeState(MENU_STATE.DEPLOY);
+            } else if(meta_button_clicked(_rgeom.map, true)){
+                results_leaving = true;
+                scr_menu_changeState(MENU_STATE.WORLD_MAP);
             }
         }
         break;

@@ -13,6 +13,18 @@ sliders = [
 /// variable_global_set(name, val);
 buttons_loaded = false;
 
+/// The slider being dragged, or -1.  The Options screen's STEP owns it; the
+/// Draw event only reads it to draw the knob bigger (scr_menu_slider, LL-051).
+slider_grab = -1;
+/// the frame the Sound FX slider last played a preview tick on, so a fast
+/// stroke cannot stack twenty clicks
+slider_tick_at = 0;
+
+/// One-shot for the results screen: set the moment an action is taken, so a
+/// second click during the fade cannot start a second transition.  Reset on
+/// every ENTRY to the screen, never on exit - the flag outlives the state.
+results_leaving = false;
+
 /// state machine (plain switch - see the Step event)
 menu_state      = -1;                    /// set on the first step
 /// Open on whichever screen sent us here - the title screen normally,

@@ -25,6 +25,13 @@ enum MENU_STATE {
 	WORLD_MAP,
 	DEPLOY,
 	GARDEN,
+
+	/// ---- the results screen (goal.md 27.2) -------------------------
+	/// The one screen BOTH stage exits open with, so a win and a loss end
+	/// in the same place and offer the same three choices.  A Menu state
+	/// rather than a room, for the same reason as the others: the toolkit
+	/// cannot create a room and LL-009 forbids hand-authoring one.
+	RESULTS,
 }
 
 /// Human readable state name, used by the debug logging.
@@ -39,6 +46,7 @@ function scr_menu_state_name(_state) {
 		case MENU_STATE.WORLD_MAP: return "WORLD_MAP";
 		case MENU_STATE.DEPLOY:    return "DEPLOY";
 		case MENU_STATE.GARDEN:    return "GARDEN";
+		case MENU_STATE.RESULTS:   return "RESULTS";
 	}
 	return "UNKNOWN(" + string(_state) + ")";
 }

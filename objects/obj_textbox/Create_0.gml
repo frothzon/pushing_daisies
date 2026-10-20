@@ -13,10 +13,17 @@ action_hold = 0;
 message_length = string_length(message[message_current]);
 
 /// image to be drawn on textbox.  `message_image` is a FRAME of the one
-/// shared `message_sprite`; a per-message PORTRAIT (a whole sprite)
-/// lives in `message_portrait` instead - see show_portrait_box().
+/// shared `message_sprite`;
+/// and `portrait` is ONE WHOLE SPRITE for the whole box (-1 = none), set
+/// by show_portrait_box() and drawn by Draw_64.
+///
+/// A PORTRAIT IS PER BOX, NOT PER MESSAGE (LL-058).  It used to be a
+/// `message_portrait[]` array, written at the index of the message being
+/// ADDED and read at `message_current` - two different numbers the moment
+/// the box held more than one message, so the popup could draw an OLDER
+/// preview's creature.  One field has no index to disagree with.
 message_image[0] = -1;
-message_portrait[0] = -1;
+portrait = -1;
 message_color[0] = c_white;
 message_sprite = spr_zombie;
 

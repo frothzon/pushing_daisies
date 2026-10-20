@@ -87,3 +87,49 @@ function progress_record_clear(_region, _stage, _difficulty) {
 	}
 	return _before;
 }
+
+/// ---- the run cursor (schema v2) -----------------------------------------
+///
+/// Where the player WAS: which stage was last deployed, at what difficulty.
+/// Written on Deploy and when a stage ends, so "continue" and Retry can reopen
+/// the right stage instead of asking the player to find it again.
+///
+/// It lives in the save, under `last_stage`, which scr_meta_default() declares
+/// as a FIXED RECORD - a populated struct, so scr_meta_merge() merges it key by
+/// key and a save written before v2 simply keeps the defaults.
+function run_set(_region, _stage, _difficulty) {
+if(!variable_global_exists("meta") || !is_struct(global.meta)) return false;
+if(!is_struct(global.meta[$ "last_stage"])) global.meta[$ "last_stage"] = {};
+var _r = global.meta[$ "last_stage"];
+_r[$ "region"]     = _region;
+_r[$ "stage"]      = _stage;
+_r[$ "difficulty"] = _difficulty;
+scr_meta_log("SAVE", "run cursor ", _region, "-", _stage,
+             " (", difficulty_name(_difficulty), ")");
+return true;
+}
+
+/// The saved cursor, or the opening stage when there is no save yet.
+///
+/// Every field is type-checked before it is used: a hand-edited save must not
+/// be able to put a string where a stage number belongs (LL-002).
+function run_get() {
+var _out = { region : 1, stage : 1, difficulty : DIFFICULTY.NORMAL };
+if(!variable_global_exists("meta") || !is_struct(global.meta)) return _out;
+var _r = global.meta[$ "last_stage"];
+if(!is_struct(_r)) return _out;
+if(is_real(_r[$ "region"]))     _out.region     = _r[$ "region"];
+if(is_real(_r[$ "stage"]))      _out.stage      = _r[$ "stage"];
+if(is_real(_r[$ "difficulty"])) _out.difficulty = _r[$ "difficulty"];
+return _out;
+}
+
+/// Is there a run to continue FROM?
+///
+/// The meta file is only ever written by something the player DID - a deploy,
+/// a stage exit, a purchase - and never at boot, so its existence is the honest
+/// signal.  The legacy test.data is not: nothing writes it any more, and the old
+/// gate greyed Continue on a file only the arcade high-score table ever touched.
+function scr_run_started() {
+	return file_exists(scr_meta_file());
+}

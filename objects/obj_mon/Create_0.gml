@@ -28,6 +28,10 @@ start_pos = array(spawn_object.x,spawn_object.y);
 path_loc = array(obj_despawn.x,obj_despawn.y);
 x = spawn_object.x;
 y = spawn_object.y;
+/// the depth from BIRTH: the monster enters at the spawn point feet, so
+/// the first frame is already sorted instead of sitting at the spawner's
+/// default depth.  obj_mon/Step_0 keeps it current as it walks (LL-059).
+depth = scr_depth_y(y);
 pos_save = array(x,y);
 
 /// path_free starts true, but scr_zombie_path now OVERWRITES it from the
@@ -50,4 +54,7 @@ rot_angle = 0;
 
 /// in water
 inWater = false;
+/// one line, once, naming the waterline this monster got - see
+/// water_line_report (draw_water_shader.gml).  A diagnostic, not mechanics.
+water_reported = false;
 

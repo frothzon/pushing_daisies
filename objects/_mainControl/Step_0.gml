@@ -1,6 +1,19 @@
 /// @description  run state machine
 scr_runState(scr_main_startup);
 
+/// ---- the STAGE UI opacity (LL-055) ----------------------------------
+/// The speed and pause buttons are part of the STAGE UI, and the clear
+/// sequence takes that whole UI off the board.  Read through with():
+/// another instance's variables are read there, never by bare name (LL-003).
+ui_alpha = 1;
+if(instance_exists(_levelControl)){
+    with(_levelControl){
+        if(variable_instance_exists(id, "level_ui_alpha")){
+            other.ui_alpha = clamp(level_ui_alpha, 0, 1);
+        }
+    }
+}
+
 /// pick button states
 
 

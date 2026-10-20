@@ -26,7 +26,7 @@ enum STAGE {
 	stage,        /// 1..10 inside the region
 	seeds,        /// base seeds on a first Normal clear (economy.md 2.1)
 	spawns,       /// indices into the spawn_mon pool
-	bosses,       /// indices into the spawn_boss pool (empty = no named boss)
+	bosses,       /// indices into spawn_boss, ORDERED: [mid, end]
 	par_spend,    /// the "Frugal" badge threshold, in money
 	par_time      /// the "Speed Grower" badge threshold, in seconds
 };
@@ -42,21 +42,30 @@ function stage_row(_region, _stage, _seeds, _spawns, _bosses, _par, _time){
 /// The table.  Region 1 (Grass) is real: its ten stages are the tutorial
 /// curve, and stage 10 is the region boss.
 ///
+/// EVERY STAGE NAMES TWO BOSSES (LL-060): `bosses` is [mid, end].  The mid
+/// one arrives on `boss_wave` (derived: waves div 2), the end one on the
+/// stage's last wave.  Both are AUTHORED - nothing is rolled - because a
+/// boss the player is meant to learn cannot be a different creature on the
+/// next attempt, and a mid boss cannot arrive on a different wave.  Region 1
+/// has two boss creatures, so the pairs alternate; 1-10 keeps Tusk-A-Lot
+/// (index 0) as its FINALE, which is the region boss it always was.
+///
 /// `par_spend` / `par_time` are still the OLD values, authored for 5-10 wave
 /// stages.  They must be re-authored for 15-60 waves before the Frugal and
 /// Speed Grower badges mean anything - see roadmap 5.6.
 function stage_data() {
+	///          region stg seeds spawns    [mid,end] par  time
 	return [
-		stage_row(1,  1,  3, [0],     [], 40,  90),
-		stage_row(1,  2,  3, [0],     [], 45,  90),
-		stage_row(1,  3,  3, [0,1],   [], 50, 110),
-		stage_row(1,  4,  4, [0,1],   [], 55, 110),
-		stage_row(1,  5,  4, [0,1,2], [], 60, 130),
-		stage_row(1,  6,  4, [0,1,2], [], 65, 130),
-		stage_row(1,  7,  5, [0,1,2], [], 70, 150),
-		stage_row(1,  8,  5, [0,1,2], [], 75, 150),
-		stage_row(1,  9,  5, [0,1,2], [], 80, 170),
-		stage_row(1, 10,  8, [0,1,2], [0], 90, 200)
+		stage_row(1,  1,  3, [0],     [0,1], 40,  90),
+		stage_row(1,  2,  3, [0],     [0,1], 45,  90),
+		stage_row(1,  3,  3, [0,1],   [1,0], 50, 110),
+		stage_row(1,  4,  4, [0,1],   [0,1], 55, 110),
+		stage_row(1,  5,  4, [0,1,2], [1,0], 60, 130),
+		stage_row(1,  6,  4, [0,1,2], [0,1], 65, 130),
+		stage_row(1,  7,  5, [0,1,2], [1,0], 70, 150),
+		stage_row(1,  8,  5, [0,1,2], [0,1], 75, 150),
+		stage_row(1,  9,  5, [0,1,2], [1,0], 80, 170),
+		stage_row(1, 10,  8, [0,1,2], [1,0], 90, 200)
 	];
 }
 

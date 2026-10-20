@@ -333,10 +333,19 @@ class ProgressTests(unittest.TestCase):
         self.assertTrue(any("duplicate id" in e for e in errs), errs)
 
     def test_rejects_a_done_card_that_is_still_awaiting(self):
+        """The card is built BY THE TEST, not found in the repo.
+
+        This used to search for whichever card happened to be awaiting a
+        person, so it raised StopIteration - not a real failure - the moment
+        the board's awaiting strip was emptied.  A gate that goes red when the
+        thing it guards is finally clean is worse than no gate (LL-037).
+        """
         def mutate(d):
-            task = next(x for x in d["tasks"] if x.get("awaiting") not in (None, "none"))
+            task = d["tasks"][0]
             task["status"] = "done"
             task["done"] = "2026-01-01"
+            task["awaiting"] = "rayu"
+            task["needs"] = "a line, so only the rule under test fails"
         errs = self._errors(mutate)
         self.assertTrue(any("awaiting" in e for e in errs), errs)
 
@@ -348,8 +357,13 @@ class ProgressTests(unittest.TestCase):
         self.assertTrue(any("needs" in e for e in errs), errs)
 
     def test_rejects_a_backlog_card_that_is_awaiting_a_person(self):
+        """Built by the test, for the same reason as the test above: selecting a
+        card out of the live board makes the gate depend on the board's shape
+        rather than on the rule (LL-037)."""
         def mutate(d):
-            task = next(x for x in d["tasks"] if x.get("status") == "backlog")
+            task = d["tasks"][0]
+            task["status"] = "backlog"
+            task["done"] = None
             task["awaiting"] = "rayu"
             task["needs"] = "a line, so only the rule under test fails"
         errs = self._errors(mutate)

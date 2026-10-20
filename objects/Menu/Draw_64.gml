@@ -12,7 +12,9 @@ if(menu_state == MENU_STATE.START){
         _xmid = title_text_pos[0]-_w*0.5,
         _ypos = title_text_pos[2]-_h*0.5;
         
-    draw9slice(spr_title_image,_xmid-24,_ypos-16,_w+48,_h+32,c_white,1);
+    var _padx = 40;
+    var _pady = 30;
+    draw_sprite_stretched(spr_title_image,0,_xmid-_padx,_ypos-_pady,_w+_padx*2,_h+_pady*2);
     ///draw_background_stretched(bck_title_hilight,_xmid-24,_ypos-16,_w+48,_h+32);
     draw_text_outline(_xmid,_ypos,_txt,c_white,c_black,2);
     
@@ -22,21 +24,23 @@ if(menu_state == MENU_STATE.START){
 
 /// show sliders
 
-var _xmid = title_text_pos[0],
-    _ypos = title_text_pos[1];
+/// the slider geometry lives in scr_menu_slider (scr_slider_rect), so this
+/// loop and the Step's hit-test cannot disagree about where a track is
 
 draw_set_font(fnt_size16);    
 if(menu_state == MENU_STATE.OPTIONS && menu_state_time > 5){
-    var _size = array_last_index(sliders);
+    var _size = scr_slider_count();
     
     for (var i=0; i<_size; i+=1)
     {
         draw_set_colour(c_white);
+        /// DRAW ONLY: scr_sliders_step() owns the value, this just shows it
+        /// (LL-051).  `slider_grab` only decides whether the knob is bigger.
         var _btn = sliders[i],
-            _pos = array(_xmid-128,_ypos+i*64-8,_xmid+128,_ypos+i*64+8),
-            _QTY = variable_global_get(_btn[0]),
-            _val = show_slider(_pos[0],_pos[1],_pos[2],_pos[3],_QTY,true,_btn[1]);
-        variable_global_set(_btn[0],_val);
+            _pos = scr_slider_rect(i),
+            _QTY = variable_global_get(_btn[0]);
+        show_slider(_pos[0],_pos[1],_pos[2],_pos[3],_QTY,true,_btn[1],
+                    (slider_grab == i));
     };
     
 }
@@ -49,6 +53,7 @@ draw_set_font(fnt_debug);
 if(menu_state == MENU_STATE.WORLD_MAP) meta_draw_worldmap();
 if(menu_state == MENU_STATE.DEPLOY)    meta_draw_deploy();
 if(menu_state == MENU_STATE.GARDEN)    meta_draw_garden();
+if(menu_state == MENU_STATE.RESULTS)   meta_draw_results();
 
 draw_text(bbox_right + 25, y + 8, $"State: {menu_state}");
 

@@ -4,7 +4,7 @@ function initialize_game() {
 	gml_pragma("global", "initialize_game()");   /// call at startup
 
 	//------------------- Initialize global values
-	global.devMode = true;  /// set developer mode
+	global.devMode = false;  /// set developer mode
 
 	/// initialize sound control variables
 	scr_initSoundEmitters();

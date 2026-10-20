@@ -99,7 +99,7 @@ if(mouse_check_button_released(mb_left)){
         //--------------------------- place object
         add_item_value(STATINV.money,-price);
         ///
-        var _dd = -60 - (y>>5);
+        var _dd = scr_depth_y(y);   /// the one depth rule (LL-059)
         var _tObj = instance_create_depth(x,y,_dd,obj_tower);
         _tObj.name = name;
         _tObj.sprite_index = sprite_index;

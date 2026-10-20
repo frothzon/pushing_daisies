@@ -21,6 +21,14 @@ function draw_fadeout(argument0) {
 	        }
 	        if(room != target){
 	            room_goto(target);
+	        } else if(restart){
+	            /// room_goto to the room you are ALREADY in does nothing,
+	            /// so a retry or a replay used to be a silent no-op: the
+	            /// fade ran, the screen went black and came back, and the
+	            /// stage simply carried on.  room_restart re-runs the
+	            /// room's creation code, so scr_level_boot() runs again
+	            /// (LL-049).
+	            room_restart();
 	        }
 	        change_complete = true;
 	    }

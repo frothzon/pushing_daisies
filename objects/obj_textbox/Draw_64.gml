@@ -9,13 +9,12 @@ draw9slice(spr_towerUpgrade,m_pos[0],m_pos[1],m_pos[4],m_pos[5],c_white,1);
 /// text
 draw_text_ext(m_pos[0] + t_xf,m_pos[1] + t_yf, string_hash_to_newline(message_draw), 28, t_width);
 
-/// portrait - a whole sprite per message (the restyled zombies).
-/// Guarded: draw_sprite_stretched on a missing sprite is a FATAL error
-/// (LL-012), and a message need not have a portrait at all.
-var _portrait = -1;
-if(message_current < array_length(message_portrait)){
-    _portrait = message_portrait[message_current];
-}
+/// portrait - ONE whole sprite for the box, not a frame of `message_sprite`
+/// and NOT indexed by `message_current` (LL-058): a portrait looked up in
+/// an array whose message list can grow is a portrait that can end up
+/// beside another creature's name.  Guarded: draw_sprite_stretched on a
+/// missing sprite is a FATAL error (LL-012).
+var _portrait = portrait;
 
 var xx = m_pos[0] + p_pos[0],
     yy = m_pos[1] + p_pos[1];

@@ -11,6 +11,9 @@ function ini_fadeout() {
 	xx = 0;
 	yy = 0;
 	change_complete = false;
+	/// true when the caller asked for the room it is ALREADY in to be
+	/// restarted (retry / replay) - see fadeout() and draw_fadeout()
+	restart = false;
 
 	/// the rectangle coordinates
 	rect = array(

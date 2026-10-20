@@ -1,5 +1,19 @@
 /// @description  tower editor
 
+/// ---- a FINISHED stage takes no input (LL-055) ------------------------
+/// The clear sequence owns the screen: the build ghost, the selection card
+/// and every click on the board go away with the rest of the UI, so the
+/// banner is the only thing left to look at.  scr_level_step() still runs -
+/// it is what drives the fade, the fly-out and the banner clock.
+if(level_state == LEVEL_STATE.CLEAR || level_state == LEVEL_STATE.FAILED){
+    tower_index     = -1;
+    tower_selection = noone;
+    tower_hovered   = noone;
+    if(instance_exists(obj_tower_edit)) instance_destroy(obj_tower_edit);
+    scr_level_step();
+    return;
+}
+
 // get tower position data
 var _mpos = points_to_gui(mouse_x,mouse_y,0);
 tower_hover = dgrid_get_index(tower_draw,_mpos[0],_mpos[1]);
@@ -27,6 +41,13 @@ if(mouse_check_button_pressed(mb_left)){
 with(obj_tower){
     tower_hilight = 0;
 }
+/// ONE place answers "which tower is the pointer over" (LL-021).  The flag
+/// just above is what the tower's own Draw and the range circle read; this
+/// is what the level's grid layer reads.  Same answer, so the cell
+/// highlight and the level above the plant cannot name a different tower
+/// than the glow does - and it is cleared here rather than in the Draw,
+/// because this is where the hover is DECIDED.
+tower_hovered = noone;
 if(tower_index < 0) {
     /// hover over the tower.
     ds_list_clear(tower_list);
@@ -34,6 +55,7 @@ if(tower_index < 0) {
     if(_find > 0){
         var _tower = tower_list[| 0];
         _tower.tower_hilight = 1;
+        tower_hovered = _tower;
     }
 }
 
@@ -161,24 +183,40 @@ if(mouse_check_button_pressed(mb_left) && tower_timer > 10){
 
                     tower_selection.data = _data;
 
-                    /// visuals are normalised by a FIXED 10, never by the
-                    /// current cap - a tower placed at floor 6 must not look
-                    /// like one placed at floor 3 (goal.md 4, rule 3)
-                    var _frac = tower_selection.data[TOWER.level]/10;
-                    /// The tower's SIZE is draw_scale and its FACING is
-                    /// the sign of image_xscale, so this writes the size
-                    /// and leaves the facing alone.
+                    /// ---- the level cue is the RING, not the size --------
+                    /// The size used to be written here, as
+                    /// lerp(0.25, 0.70, level/10) - which made an upgrade the
+                    /// one purchase in the game that made the thing you
+                    /// bought look SMALLER.  A tower is PLACED at draw_scale
+                    /// 0.5 (obj_tower/Create_0), so L2 came out at 0.34 and
+                    /// the tower did not get back to 0.5 until L10; even the
+                    /// cap only reached 0.475.  draw_scale is set once, at
+                    /// creation, and NOTHING writes it again - the level
+                    /// rides on the outline colour instead, which is legible
+                    /// at any level and cannot be broken by a ladder change
+                    /// (choose-upgrade-scale, tower_level_outline).
                     ///
-                    /// The old version wrote a bare positive
-                    /// image_xscale (which silently un-mirrored a tower
-                    /// that had turned to face a monster) and then put the
-                    /// sign back by hand, and had to keep image_yscale
-                    /// positive or a mirrored tower drew upside-down
-                    /// (LL-012).  Both traps are gone now that the size
-                    /// lives outside image_xscale - which is what stopped
-                    /// the click mask scaling with the art (LL-033).
-                    tower_selection.draw_scale = lerp(0.25,0.70,_frac);
+                    /// What is left here is the TINT, still normalised by a
+                    /// FIXED 10 and never by the current cap, so a tower
+                    /// placed at floor 6 does not look like one placed at
+                    /// floor 3 (goal.md 4, rule 3).  Whether the tint STAYS
+                    /// now that the ring carries the level is
+                    /// tower-level-palette - it is a second level signal and
+                    /// a second signal is a second thing to keep true.
+                    var _frac = tower_selection.data[TOWER.level]/10;
                     tower_selection.image_blend = merge_colour(c_gray,c_white,_frac);
+
+                    /// one line per purchase, so a reload reports the ring the
+                    /// tower just earned (LL-011).  -1 is level 1, which has
+                    /// no ring by design.
+                    var _lv    = tower_selection.data[TOWER.level],
+                        _ring  = tower_level_outline(_lv),
+                        _rtext = ((_ring == -1)
+                                  ? "none"
+                                  : concat("rgb(", color_get_red(_ring),   ",",
+                                           color_get_green(_ring), ",",
+                                           color_get_blue(_ring),  ")"));
+                    print("TOWER  level ", _lv, " ring ", _rtext);
 
                     float_text_gui(tower_display[0],tower_display[1],concat("Damage + ",round(_dmg)),c_yellow);
                     float_text_gui(tower_display[0],tower_display[1]+32,concat("Range + ",round(_rng)),c_yellow);

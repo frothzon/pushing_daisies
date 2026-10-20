@@ -56,6 +56,35 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-033](#ll-033) | A hand-drawn click mask "does nothing": the clickable area still hugs the artwork and is half the size it should be; and the placement ghost refuses the cell **above** an existing tower | A collision mask **scales with `image_xscale`** and `mask_index` does not exempt it - so "draw the art small" and "keep the mask fixed" were the same number; and a mask cannot answer "is this CELL taken" | **FIXED** |
 | [LL-034](#ll-034) | Every stage is **silent** - no region theme, ever - while the title and world-map themes play; the log blames the track: `META  [MUSIC] region 1 "Wilted Sprouts" has no track yet - playing nothing` | **A guard asked a TYPE question about an asset**: `is_real(sound)` is **false for an asset reference** (it is not a real number, whatever the runtime calls the type) - so the guard refused a track that was there, and its message blamed the track. The menu path skips that guard, which is why only levels were silent | **FIXED** |
 | [LL-035](#ll-035) | A monster **in water throws every frame**: `undefined value at gml_Script_draw_self_part (line 33) - _x = x - sprite_get_xoffset(sprite_index)*_sx`, from `obj_mon/Draw_0`'s five-argument call | The **optional argument** was detected with `argument_count`, but the function **declares seven** parameters and the call passes five, so the list is padded with `undefined` and the wrong branch was taken | **FIXED** |
+| [LL-036](#ll-036) | A difficulty projection disagrees with the play - "the numbers look fine but I keep leaking" | The wave was a **BOSS wave** (`boss_every` is a cadence, not the last wave), and its creature comes from **`spawn_boss`** - ~10x the HP of the pool the projection read, with no error and no log line | **FIXED** |
+| [LL-037](#ll-037) | The toolkit suite goes **red on an edit that changed no code** - `FAILED (errors=1)`, and the traceback is a `StopIteration` inside a *test* | The test built its fixture by **searching the repo's own `progress.json`** for a card that already had the property under test, so it could only pass while the board happened to have such a card | **FIXED** |
+| [LL-038](#ll-038) | A projection says **`ok` while the play leaks** - and a second tool built to check it agrees, because it was written from the same formula | The supply model treated three *assumptions* as facts: that the purse can afford the best-value tower, that `targets` is always full, and that a tower projects its dps down the whole route | **FIXED** |
+| [LL-039](#ll-039) | A tower's **`targets` stat does nothing** - it hits one monster however high the number, and no error ever appears | The collection loop read `array_last_index(_targets)` and then wrote at **that same index**, so the last index could never change. A list you only ever write to at its own last index does not grow | **FIXED** |
+| [LL-040](#ll-040) | Every tower deals about **a third** of the dps on its card, and the shortfall is **uneven** across the roster - so the paper ranking does not match the play ranking. No error, no crash, and the balance panel still says `ok` | The **fire period was charged twice per shot**: a full `room_speed/fire_rate` wait in `scr_tower_normal` *and* a full `room_speed/fire_rate` attack in `scr_tower_shoot`, so the cycle was `2P + off + 15` and not `P` | **FIXED** |
+| [LL-041](#ll-041) | A test suite stays **green while tests quietly stop existing** - the only symptom is a count that moves by less than it should | Two `GeometryTests` methods were indented four spaces inside the **`if __name__ == "__main__":` block**, so they were only defined when the file was *run* - and the discoverer **imports** it | **FIXED** |
+| [LL-042](#ll-042) | **Brutal is easier than Hard.** Brutal holds with 0 leaks where Hard leaks 19, and the panel says the opposite on every wave | The difficulty money column is applied to a kill that pays **1** and *then* rounded: `round(1 x 1.25)` is still 1, so Hard's column does nothing, while `round(1 x 1.5)` is 2 and doubles Brutal's | **FIXED** |
+| [LL-043](#ll-043) | Plants in water wear a **halo of themselves**, meet the surface at a different height per tower, and a left-facing one is **upside down and ~220px low** | The submerged copy was drawn at `image_xscale` (so 1.43x too big) and the waterline was a **fraction of the sprite CANVAS** - a different world depth for every sprite - while the reflection script had been ported disabled and wrong | **FIXED** |
+| [LL-044](#ll-044) | The HUD's **Wave number reads one high** (wave 1 shows as 2), the level log agrees with it, and the speed ramp computes for the *next* wave - yet the pre-wave banner is right, so nothing looks broken | `STATINV.waves` was seeded at **1** while `wave_count` started at **0**, so one item carried **two meanings**: the wave being fought (HUD, log, ramp) and the wave about to spawn (banner). The banner was correct **by accident**, which is why it survived | **FIXED** |
+| [LL-045](#ll-045) | Nothing at all - the feature simply does nothing, and the code for it looks complete. An outline shader that had never drawn a pixel in its life | **Ported dead code**: `shd_outline`, `scr_getOutlineShd()` and `scr_drawSelfOutlined()` all existed and nothing ever called the two scripts - and three faults were waiting inside, the worst being that `draw_self()` draws at `image_xscale` (±1 facing on a tower, [LL-033](#ll-033)) and the shader took its colour from `image_blend`, which is the sprite's TINT here | **FIXED** |
+| [LL-046](#ll-046) | A ringed tower goes **see-through and blown out** the moment the ring is blended additively; or the ring's opacity changes nothing at all | **One shader pass draws whatever it is told to draw**, and a blend mode is a property of the PASS - so an additive ring pass cannot also carry the body; and `draw_set_alpha()` cannot reach a shader that writes `gl_FragColor` (the alpha it did write was a COUNT, which additive blending uses as a multiplier) | **FIXED** |
+| [LL-047](#ll-047) | A label placed "above the sprite's head" lands in the middle of it (or below its feet), with the value looking plausible | **`sprite_get_bbox_top()` is measured from the sprite CANVAS, not from the origin** - while the `bbox_top` instance variable is room-relative. The offset from the origin is the DIFFERENCE, and it is negative for this project's feet-origin sprites | **FIXED** |
+| [LL-048](#ll-048) | A balance model that says a stage **holds** while every tower stands on the same fifth of the map and the **last quarter of the route is never shot**; and a run of 11 towers that **never bought a single upgrade** | The greedy ranked on `dps x coverage`, and coverage was **additive** - two towers over one stretch both score it, so the objective was the SUM of per-tower coverage instead of the **UNION** of route actually covered. And it was told which CELLS were taken, never which TOWERS were standing, so a rung was invisible to it every wave | **FIXED** |
+| [LL-049](#ll-049) | The **second level never loads**: the stage room comes up, walls and spawns are there, but the **ground never appears and no waves start** - and nothing errors | The whole level bootstrap hung off `Control/Create_0` (a **persistent** instance, first in the room order) creating `_mainControl`. A persistent instance keeps Room Start/Room End but **not Create**, so the second entry built nothing - while `_mainControl`, `_levelControl` and `_viewControl` are non-persistent and had already died on Room End | **FIXED** |
+| [LL-050](#ll-050) | The game **resets every time**: stage progress, bought towers and clover nodes are gone after a relaunch - but seeds, clovers and the loadout are still there | **The merge looped over the DEFAULT's keys**, so every nested map (`{}` in the default) came back EMPTY with a `version` stamp inside it; only the non-structs survived - and the load log printed exactly those non-structs | **FIXED** |
+| [LL-051](#ll-051) | A volume slider **does not apply until you leave Options**, and **0% / 100% take a second pass** because the mouse leaves the track | The slider read the mouse in a DRAW event, only while the pointer was inside a 32px band, `lerp`ed 25% per frame towards it, and the gain was only re-applied on RETURN | **FIXED** |
+| [LL-052](#ll-052) | A tower's **shadow flips but does not follow** the tower when it turns round - it lands most of a tower-width to the side; after the origin was fixed it was still ~96px to the **right** | `scr_drawLight` built the silhouette box from **signed** values: `sprite_xoffset` AND `sprite_width` both carry the image_xscale sign, so the flip branch laid the box out on the wrong side | **FIXED** |
+| [LL-053](#ll-053) | Losing every life **never reaches the new level flow** - the old arcade high-score screen takes over and nothing is saved or withheld | `LEVEL_STATE.FAILED` existed and was **never requested**; the legacy `scr_main_normal` still ran `scr_main_gameOver -> rm_score` underneath | **FIXED** |
+| [LL-054](#ll-054) | A **slow-firing tower never fires at all** - the Pina Collider stands through a whole stage; the attack timer looks frozen until something is in range | The fire period was **also the animation length** (`frame_number = room_speed/fire_rate`) and the swing was **cancelled the moment the target left range** - so a 0.10/s tower needed a monster in range for 600 frames, longer than it takes to cross its range | **FIXED** |
+| [LL-055](#ll-055) | A 3-second **Level Complete** hold lasts one second in fast-forward; a banner sized as "60% of the viewport" comes out at 37% or spills off the edges | A hold counted in **frames** against a `room_speed` that fast-forward sets to 180, and a banner sized from the sprite **canvas** instead of the art inside it | **FIXED** |
+| [LL-056](#ll-056) | A monster HP bar draws with a **negative width** - an orange fill to the LEFT of the black bar, usually on a boss that has just died | `obj_mon/Draw_73` fed an **unclamped** `life/maxLife` to `lerp`, and `life` really does go negative: an overkill is normal, `scr_zomb_death` only runs in the path state, and the emerge reset heals it 60 steps later | **FIXED** |
+| [LL-057](#ll-057) | The **Up Next popup shows the previous creature portrait** under the new creature name - read as "Tusk-A-Lot and Sub-Zero are swapped" | The portrait is stored per MESSAGE but drawn at `message_current`, and `show_message_box` **appends** to a live box, so a second preview painted message 0 - with message 0 portrait | **FIXED** |
+| [LL-058](#ll-058) | The **"Up Next" popup names a creature the wave does not send**, and the mismatch looks *random* - it started on the third level | Three defects on the popup path: the portrait was per MESSAGE and drawn per `message_current`; `show_message_box` **appends**; and the preview box was destroyed and re-created in the same step. Plus a silent re-roll fallback in `scr_level_spawn`. Stage 1-3 is the first stage with **two** creatures in its pool, which is why a bug from wave 1 became visible there | **FIXED** |
+| [LL-059](#ll-059) | Zombies draw **over plants they stand behind**, and two crossing monsters swap order | There was no sorting: monsters were a flat `-60` (in three places), plants `-60 - (y>>5)` (always in front) and the six gravestones one flat value from a fraction of the room. Three formulas cannot make one draw order | **FIXED** |
+| [LL-060](#ll-060) | The **boss rule disagreed with itself** - play rolled one on a `boss_every` cadence, the curve projected wave 10, the tester encoded it again | The rule lived in four readers as a copied *condition*, so changing it left every copy silently authoritative. Now one authored `[mid, end]` pair and one derived `boss_wave` (`waves div 2`) that play, the curve and the tester all read | **FIXED** |
+| [LL-061](#ll-061) | "A leak pays half instead of nothing" changed the purse by **1 money over 20 leaks** | `floor(kill_money * 0.5)` is `0` when `kill_money` is `1`: the percentage was applied AFTER the rounding, so it erased the only value that mattered | **FIXED** |
+| [LL-062](#ll-062) | **Crit could not be added** - the damage function had no amount to multiply | `scr_do_damage(arr, i)` subtracted `damage_calc`, an instance variable the CALLER set, so its result depended on whose scope called it (AGENTS rule 6). Now the amount is a parameter and the tower passes the `shot_damage` it locked at the swing | **FIXED** |
+| [LL-063](#ll-063) | **A test changed colour with no edit** - it asserted a LINE, and the IDE re-saved an equivalent one | `assertIn("id mod 97", src)` vs the code's `irandom(97) * 0.00001`, after GameMaker wrote `.gml` + `.yy` in the same millisecond. Test the PROPERTY (rolled once, too small to reorder); on an unexplained red, check mtimes before theories | **FIXED** |
+
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `enum` `crlf` `room_speed` `built-in` `shadowing` `null` `log` `debug`
@@ -63,6 +92,9 @@ Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `facing` `mirror` `image_yscale` `draw_sprite_pos` `shadow` `orientation` `sign`
 `wave` `valve` `safety valve` `stuck` `soft-lock` `path_position` `life` `leak` `timer`
 `soft-lock` `path` `mp_grid_path` `return value` `pocket` `black` `pause`
+`off-by-one` `wave_count` `STATINV.waves` `counter` `seed` `wave number`
+`shader` `outline` `shader_set` `shader_reset` `uniform` `draw_self` `draw_scale`
+`dead code` `image_blend` `make_colour_rgb` `$BBGGRR` `shader_is_compiled`
 `snapshot` `surface` `application_surface` `array_last_index` `scope`
 `sibling` `parameter` `RNG` `perlin` `globalvar` `instance_exists`
 `variable_global_exists` `guard` `git` `HEAD` `eol` `gitattributes`
@@ -92,6 +124,20 @@ Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `has no track yet` `guard` `false negative` `region music`
 `argument_count` `optional argument` `argument5` `undefined value` `declared parameters`
 `draw_self_part` `in water` `pad with undefined` `is_undefined` `variadic`
+`boss_every` `boss wave` `spawn_boss` `spawn_mon` `two banks` `cadence not the last wave` `MAX = 1`
+`curve` `ceiling` `curve_end` `bite` `projection disagrees with the play` `reachable ground` `slots` `coverage ceiling`
+`test` `fixture` `StopIteration` `next()` `live data` `gate depends on data` `unittest` `fragile gate` `empty generator`
+`projection` `bite` `nominal dps` `targets` `coverage` `the panel says ok while the play leaks` `affordability` `bankers rounding`
+`array_last_index` `index never advanced` `dead stat` `find_all_range` `single-target` `list never grows` `silent no-op` `targets`
+`fire_rate` `fire cycle` `cycle length` `2P + off + 15` `time_offset` `idle wait` `double-counted period` `stopwatch` `nominal vs delivered dps` `roster order`
+`test count` `if __name__` `indentation is semantic` `dead test` `silent no-op` `suite is green` `has this ever run`
+`difficulty_money_mult` `round after scale` `step function` `kill_money 1` `hp per dollar` `brutal easier than hard` `a ratio cannot see it`
+`additive blending` `bm_add` `gpu_set_blendmode` `blend mode is per pass` `draw_set_alpha`
+`gl_FragColor.a` `count not an opacity` `min(x,1.0)` `ring only` `two draws` `25% 75%`
+`outlineColor.a` `shader_set_uniform_color` `vec4 uniform` `leaked blend mode`
+`bbox_top` `sprite_get_bbox_top` `canvas vs origin` `yoffset` `anchor a label` `above the head`
+`newline ends a statement` `unclosed bracket` `draw_text_outline` `draw_rectangle` `bm_add`
+`hover` `grid cell` `cell highlight` `tower_hovered` `which cell is this`
 
 ---
 
@@ -2463,6 +2509,1940 @@ because its one caller always passes an argument.
 `objects/obj_mon/Draw_0.gml`, `objects/obj_tower/Draw_0.gml`.
 
 ---
+
+<a name="ll-036"></a>
+## LL-036 — A wave's creature comes from one of TWO banks, and the boss rule is a cadence, not the last wave
+
+**Symptom.** A difficulty projection and the actual play disagreed, and the play
+was right: rayu **leaked units from wave 10 of stage 1-1 with a full tower wrap**,
+then starved. The curve diagnostic - reading the stage's ordinary spawn pool -
+modelled wave 10 as `5 + 10 div 5 = 7` creatures of 7 HP, **nothing special**, and
+printed a comfortable `bite` for it. No error, no warning, nothing in any log to
+suggest the number was wrong.
+
+**Root cause.** Wave 10 is a **BOSS wave**, and the projection was reading the
+wrong array. `region_data()` gives region 1 `boss_every = 10`, and
+`scr_level_pick_spawn` promotes **every** `wave % boss_every == 0` (with
+`wave > 1`) to a boss wave:
+
+    var _is_boss = (_every > 0 && _wave % _every == 0 && _wave > 1);
+
+Two things make this easy to miss:
+
+* **The stage's own `bosses` list is not the rule.** `stage_row(1, 1, 3, [0], [],
+  40, 90)` leaves `bosses` empty, so the *named* final boss does not exist in
+  stage 1-1 - but the **cadence** still fires at wave 10. "The last wave is the
+  boss" is only half the rule, and stage 1-1 satisfies neither half until you know
+  `boss_every` exists.
+* **A boss wave comes from a different pool.** `scr_level_spawn` sends exactly ONE
+  creature (`if(is_boss_wave) MAX = 1`) drawn from **`spawn_boss`**, where the two
+  entries are `Tusk-A-Lot` life **55** and `Sub-Zero` life **110** - against
+  Grumble-Mulch's **7**. At the ceiling then in force (`m(10) = 12.98`), that is
+  **714-1428 HP on one body**, roughly an order of magnitude above what the
+  projection was modelling.
+
+So the diagnostic agreed with the design, and the design was not what was
+running. The number was plausible because it came from a real array - just not the
+one the wave used.
+
+**Fix.** State the rule from the data, in one place, and take the creature from
+the bank the rule implies:
+
+    function scr_curve_is_boss_wave(_w, _waves, _boss_every, _has_named_boss) {
+        if(_w > 1 && _boss_every > 0 && _w % _boss_every == 0) return true;
+        if(_has_named_boss && _w >= _waves) return true;
+        return false;
+    }
+
+`scr_curve_wave_demand()` then reads `MON.life` / `MON.speed` from
+`spawn_boss` (and its own count of 1) when that returns true, and the read-out
+prints a `BOSS` row for the **first mid-stage** boss wave as well as the last
+wave. It is drawn on screen (`scr_curve_draw()`), because the Output window is
+not visible while playing and a diagnostic nobody can read is not a diagnostic.
+
+**Guard rails.**
+
+* **A wave's creature is `spawn_boss` OR `spawn_mon` - never just the one you
+  have in hand.** Code that reasons about "a wave" while reading only `spawn_mon`
+  is wrong on **every boss wave**, which is 1 in 10 of a region-1 stage.
+* **`boss_every` is a CADENCE and the named boss is the FINALE.** Both are true at
+  once, either can be absent, and `wave > 1` matters (wave 1 is never a boss). Do
+  not re-implement the rule - `scr_level_pick_spawn` owns it.
+* **A projection that agrees with the design is not evidence.** Ask what a number
+  would look like if it were reading the *wrong input*: here, too small by ~10x
+  and completely silent. Two banks, one of them chosen by arithmetic, is exactly
+  the shape a "looks fine" bug takes.
+* **Money is not the only constraint on defence.** The same function originally
+  assumed every dollar ever earned becomes a tower that reaches the path, so it
+  could report `ok` while a full wrap leaked. A fixed route can only be covered by
+  the cells within range of it - `scr_curve_slots()` counts them - and the supply
+  term has to be `min(money / price, slots)`.
+* **The ceiling and the ladder are ONE change** ([LL-022](#ll-022)). Lowering
+  `curve_end` from 30 to 13 without settling the rung price is half a change, so
+  `curve-cap-lower` and `choose-rung-price` are deliberately coupled.
+* **Only the ceiling moves a wall.** With `curve_pow = 3` the old curve still
+  crosses 12.98 at wave 11, so a steeper bend re-sites the wall rather than
+  removing it - if the complaint is "it gets too hard", the ceiling is the lever.
+
+**Status.** FIXED — 2026-10-13.
+
+**Files.** `scripts/scr_curve/scr_curve.gml` (`scr_curve_is_boss_wave`,
+`scr_curve_wave_demand`, `scr_curve_slots`, `scr_curve_draw`),
+`objects/_levelControl/Draw_64.gml`, `scripts/region_data/region_data.gml`,
+`scripts/scr_level_pick_spawn/scr_level_pick_spawn.gml`,
+`scripts/scr_level_spawn/scr_level_spawn.gml`.
+
+---
+
+<a name="ll-037"></a>
+## LL-037 — A test that selects its fixture from the live data fails when the data is finally clean
+
+**Symptom.** `python3 -m unittest discover -s python_tools/tests` went from
+`Ran 32 tests ... OK` to `FAILED (errors=1)` on an edit that changed **no
+production code**, and the traceback was inside a *test*, not in the game:
+
+    ERROR: test_rejects_a_done_card_that_is_still_awaiting
+      File "python_tools/tests/test_gm.py", line 337, in mutate
+        task = next(x for x in d["tasks"] if x.get("awaiting") not in (None, "none"))
+    StopIteration
+
+Nothing in `scripts/`, `objects/` or `progress.py` had been touched. What *had*
+changed was `progress.json`: the last card awaiting a person had just been
+closed, so the board read **`awaiting: nobody`**.
+
+**Root cause.** Two tests built their fixture by SEARCHING the repo's own
+`progress.json` for a card that already had the property under test:
+
+    task = next(x for x in d["tasks"] if x.get("awaiting") not in (None, "none"))
+    task = next(x for x in d["tasks"] if x.get("status") == "backlog")
+
+`next()` on an exhausted generator raises `StopIteration`. So the gate asserted a
+fact about the **board's current shape** instead of about the **rule**: the
+"done card must not be awaiting" test could only pass while some *other* card was
+awaiting someone. Emptying the awaiting strip - the thing the session set out to
+do - is exactly what turned it red.
+
+That is the trap: the test's pass was coupled to the data it was supposed to
+guard. A gate that fails when its subject is finally clean teaches you to ignore
+the next red.
+
+**Fix.** Build the fixture instead of finding it, the way the neighbouring test
+always did:
+
+    def mutate(d):
+        task = d["tasks"][0]
+        task["status"] = "done"
+        task["done"] = "2026-01-01"
+        task["awaiting"] = "rayu"
+        task["needs"] = "a line, so only the rule under test fails"
+
+`d["tasks"][0]` is deterministic in canonical order (tasks are sorted by id), so
+the test now depends on `validate()` and nothing else. The **BACKLOG** test
+(`test_rejects_a_backlog_card_that_is_awaiting_a_person`) had the identical
+latent hole and was fixed with it - it was only passing because the repo happened
+to still have backlog cards, and a finished project has none.
+
+**Guard rails.**
+
+* **A test may READ the live data; it must not require the live data to have a
+  particular shape.** Mutate a known key (`d["tasks"][0]`) or append a synthetic
+  card - never `next(... for x in <live> if <property>)`.
+* **`next()` with no default is a hidden assertion.** `next(it)` on an empty
+  iterator is a `StopIteration` that unittest reports as an **ERROR in the test**,
+  not a failure of the rule. If a search is genuinely needed, pass a default and
+  assert on it, so the message names the missing precondition.
+* **A red gate after a "nothing changed" edit is data, not noise.** Read the
+  traceback before assuming your change caused it - here the data *was* the point.
+* **Some tests are supposed to read the repo** (`test_repo_tracker_is_valid`,
+  `test_generated_views_are_in_sync`). That is correct for a rule about the repo,
+  and a trap for a rule about the schema - keep the two apart.
+
+**Status.** FIXED — 2026-10-13.
+
+**Files.** `python_tools/tests/test_gm.py`.
+
+---
+
+<a name="ll-038"></a>
+## LL-038 — The projection said `ok` and the play leaked, because three assumptions were doing the work of facts
+
+**Symptom.** Two of them, and the second is the dangerous one.
+
+1. The in-game `CURVE` panel read `?` for the first **eleven waves** of stage 1-1
+   and `ok` for every wave after that — while the play log said Rayu leaked from
+   wave 10 with a full tower wrap.
+2. A brand-new headless tester, written expressly to check that panel, **agreed
+   with it**, because it had been written from the same formula. A checker that
+   restates the thing it checks cannot find anything.
+
+**Root cause.** `scr_curve_report`'s supply was
+
+    available = min(money / price, slots) * best_placement_dps
+
+and all three of its terms were *assumptions* wearing the costume of arithmetic:
+
+* **Affordability.** `best_placement_dps` comes from the tower with the highest
+  dps per dollar — Pina Collider, $100. On wave 1 the purse is $30, so the
+  formula fields **zero** towers and cannot compute a bite at all (`?`). The shop
+  sells $5 towers. A model may not spend money the player does not have, and it
+  must be checked against the CHEAPEST thing in the shop, not the best value.
+* **Congestion.** `dps` was `damage x fire_rate x targets`, and `targets` is 10
+  for the Pina Collider — "2000 dps" only if ten monsters are inside a 75px
+  range at once. They spawn 0.5 s apart and walk ~1.26 px a step, so on the
+  board's 1840px route they are ~37px apart: two or three in range, not ten.
+  `targets` is a *claim about congestion*, not a multiplier.
+* **Coverage.** A tower fires only while a monster is inside its range. The
+  formula credited it with its full dps along the **whole route**, and `slots`
+  only ever counted *how many* towers could reach the path, never *how much of
+  the path* each one holds. On stage 1-1 that is 9–15% of the route — so the
+  model was optimistic by roughly an order of magnitude.
+
+Put together: a wall the game felt at wave 10 read as comfortable, and the tool
+built to catch it reproduced the mistake because it was the same mistake.
+
+**Fix.** Supply is now built from the same greedy the sim spends with — score
+every `(cell, tower)` by `nominal dps x coverage / price` and buy while the
+purse lasts (`gm.balance.policy`), where `coverage = covered route px / route
+px` (`gm.balance.geometry.covered_length`) and `nominal dps` is the
+**single-target** figure. The panel's own formula is still computed and printed
+beside it, so the gap between belief and arithmetic is visible instead of
+argued. With that model the old ceiling of 30 reads a worst bite of **1.32**,
+`HIGH` from wave 13 — the leak, predicted — and the retuned 13 reads **0.57**.
+
+**Guard rails.**
+
+* **A projection must be able to disagree with the play.** Build it from the
+  mechanics, not from the last explanation of them, or it will certify whatever
+  is already believed.
+* **When you write a checker for a model, re-derive it - never port it.** The
+  first version of the tester was a faithful port, which made it useless.
+* **Every multiplier in a "dps" has a precondition. Write it down.** `x targets`
+  means "and enough monsters in range"; "coverage" means "and for the whole
+  traversal". A number with an unstated precondition will be read as a fact.
+* **Validate a balance model against a KNOWN bad outcome.** The regression test
+  is "the old ceiling must break the stage" — a model that cannot reproduce a
+  leak the player actually had is not evidence about anything.
+* **A verified non-trap, so nobody "fixes" it later:** GML's `round()` is
+  **banker's rounding** (half to even), exactly like Python's built-in. The
+  manual says so, and `python_tools/tests/test_balance.py` asserts it. A
+  hand-written "round half up" would put every rung price and kill payout out by
+  one.
+
+**Status.** FIXED — 2026-10-13.
+
+**Files.** `python_tools/gm/balance/` (`policy.py`, `model.py`, `geometry.py`,
+`terrain.py`), `scripts/scr_curve/scr_curve.gml`.
+
+---
+
+<a name="ll-039"></a>
+## LL-039 — A list you only ever write to at its own last index can never grow
+
+**Symptom.** None, for months. That is the point.
+
+A tower's `targets` stat did nothing. A Slender Mandrake with `targets = 3` hit
+one monster. A Pina Collider with `targets = 10` hit one monster. No error, no
+warning, no log line - just a number in a table that quietly meant nothing, and
+a shop card that printed `damage x rate x targets` as if it did.
+
+It surfaced sideways: a balance tool reported the game was comfortable while a
+play log said it leaked, and the discrepancy could not be closed until this fell
+out of the code (LL-038).
+
+**Root cause.** `find_all_range`:
+
+```gml
+var _targets = -1;                       // a NUMBER, not an array
+for (var i=0; i<_count; i+=1) {
+    var _them = instance_find(_type,i);
+    if(point_in_circle(_x,_y,_them.x,_them.y,_r)){
+        var _ind = array_last_index(_targets);   // the index it JUST READ
+        if(_ind < _max){
+            _targets[_ind] = _them;              // writes at THAT SAME index
+        }
+    }
+}
+```
+
+The **missing advance**. Let `L(t)` be the array's last index after iteration
+*t*. Iteration *t* writes at `L(t)`, so `L(t+1) = max(L(t), L(t)) = L(t)` - the
+last index is a fixed point. The array can therefore never hold more than one
+entry, whatever `qty` is, and whatever GML makes of `array_last_index(-1)` or a
+negative-index write. The `+ 1` (`_ind = array_last_index(_targets) + 1`) was
+simply not there.
+
+So **every tower in the game was single-target**, and the roster's own stated
+roles were fiction: `scr_tower_roster` says the four starters "between them cover
+cheap DPS, damage over time, multi-target and area damage" — two of those four
+did not exist.
+
+| tower | `targets` | shop dps | actual dps |
+| --- | --- | --- | --- |
+| Slender Mandrake | 3 | 375 | **125** |
+| Pina Collider | 10 | 2000 | **200** |
+| Cannon Tulip | 5 | 150 | **30** |
+
+**Fix.** Append instead of overwrite, take the nearest `_max`, and **keep the
+non-array sentinel**:
+
+```gml
+_near[array_length(_near)] = [_dist, _them];    // the advance
+...
+if(_found == 0) return -1;                      // the sentinel
+```
+
+The sentinel is not decoration. `scr_tower_shoot` does
+`if(!is_array(target)) ... scr_changeState(scr_tower_return); exit;` — it decides
+"nothing to shoot, go idle" by testing that the return is *not* an array.
+Returning `[]` for "nothing in range" would be a **valid** list: the tower would
+never go idle, and would swing at the air forever with `did_damage` already set.
+A failure that looks like a success (LL-025's shape).
+
+**Guard rails.**
+
+* **Read and write indices are different jobs.** `array_last_index()` answers
+  "where does it end"; an append needs "where does the next one go" —
+  `array_length()`. If a loop reads an index and writes to it, suspect it.
+* **A signature check cannot catch this.** `gm gml-functions` reported
+  `find_all_range(argument0, ...)` quite happily; the bug is inside. A
+  brace/paren **balance** check caught the orphan `}` my own fix left behind —
+  run both, and check balance after any structural edit.
+* **A stat that nothing reads is invisible; a stat that is read but ignored is
+  worse.** `targets` was plumbed all the way into the shop's arithmetic, which
+  is what made it look real.
+* **When a number in the UI has a multiplier, verify the multiplier can be
+  non-1.** Pina's "2000 dps" was checked against a doc table, not against ten
+  monsters on screen.
+* **Prove a load-bearing claim, then *see* it.** A bounded dev-mode probe
+  (`cap_probe_left`) printing the cap beside the count turns this from an
+  argument into one line in the Output window.
+
+**Status.** FIXED — 2026-10-13.
+
+**Files.** `scripts/find_all_range/find_all_range.gml`,
+`scripts/scr_tower_shoot/scr_tower_shoot.gml`,
+`objects/obj_tower/Create_0.gml`.
+
+---
+
+<a name="ll-040"></a>
+## LL-040 — The fire period was charged twice per shot: the idle wait *and* the attack
+
+**Symptom.** Nothing errors, nothing crashes, and no individual number looks
+wrong — but the board will not balance. Every tower in the roster delivers
+roughly **a third** of the dps its shop card advertises, and the shortfall is
+**uneven**, so the ranking of the roster on paper does not match the ranking in
+play. It is [LL-038](#ll-038) one level down: a projection that says `ok` on a
+wave the play leaks.
+
+**Root cause.** One shot walked through three states and **two of them each
+spent a whole fire period**:
+
+```gml
+scr_tower_normal:  if(state_time > room_speed/data[TOWER.fire_rate] + time_offset)  // wait P + off
+scr_tower_shoot:   frame_number = room_speed/data[TOWER.fire_rate]; exit at P      // spend P
+scr_tower_return:  anim_steps  = anim_seconds[TOWER_ANIM.return] * fps             // spend 15
+```
+
+so the cycle was `2P + off + 15`, not `P`. A Daisy Pusher (`fire_rate` 3, so
+`P` = 20) swung every **~59** frames instead of ~20.
+
+The intent is written down in `scr_tower_shoot` itself — *"the attack's length
+IS the fire rate"* — and that is exactly what makes the wait in
+`scr_tower_normal` a duplicate: the fire rate had **already** been spent, in the
+state that was meant to spend it.
+
+It survived because **it is arithmetic spread across three files, and every file
+is correct on its own.** `scr_tower_normal` reads as a sensible "do not shoot
+too often" throttle; `scr_tower_shoot` reads as a sensible "the animation is the
+cadence". Only the *sum* is wrong, and nothing in any one file looks like a bug —
+so a reader confirms each line and moves on.
+
+**Fix.** The idle wait is the STAGGER only, which is what `time_offset`
+(`irandom_range(1,8)`, `obj_tower/Create_0`) is for:
+
+```gml
+/// scr_tower_normal
+if(state_time > time_offset){
+```
+
+The cycle becomes `P + off + 15`. `>` and not `==`, for [LL-029](#ll-029)'s
+reason (never test equality against a quantity derived from the FPS setting).
+It also takes the last obsolete `room_speed` read out of the firing loop
+([LL-007](#ll-007)).
+
+**What it is worth.** `off` averages 4.5 (it is a per-tower `irandom_range(1,8)`,
+so towers do not fire in lockstep):
+
+| tower | P | cycle before | cycle after | real dps before → after | gain |
+| --- | --- | --- | --- | --- | --- |
+| Daisy Pusher | 20 | 59.5 | 39.5 | 4.0 → 6.1 | 1.51x |
+| Burning Ivy | 30 | 79.5 | 49.5 | 30 → 49 | 1.61x |
+| Slender Mandrake | 60 | 139.5 | 79.5 | 54 → 94 | 1.75x |
+| Pina Collider | 60 | 139.5 | 79.5 | 86 → 151 | 1.75x |
+| Cannon Tulip | 120 | 259.5 | 139.5 | 14 → 26 | 1.86x |
+| Meat Bulb | 80 | 179.5 | 99.5 | 84 → 151 | 1.80x |
+
+A **1.5x–1.9x** buff — and the part that matters for a rebalance is that it is
+**not flat**: the slow-firing towers gain most (Cannon Tulip +86%, Daisy Pusher
++51%). Fixing it **changes the order of the roster**, so it has to land *before*
+the prices are fitted, never after. A "buff of 1.7x on average" is not a
+description of this change; the *ratios* move.
+
+**Guard rails.**
+
+* **A period is spent in ONE place.** If two states each wait for the fire rate,
+  one of them is wrong. Count the states between two identical events.
+* **A `+ time_offset` on a period is a smell worth reading twice.** Offsets are
+  for de-synchronising; if the base term is the *whole* period, ask which other
+  state is also spending it.
+* **Verify a cadence with a stopwatch, not a formula.** The probe in
+  `scr_tower_shoot` prints the **measured** step gap between swings
+  (`TOWER  shot interval …`), so the fix is *seen* and not assumed — the same
+  move as `cap_probe_left` in [LL-039](#ll-039).
+* **A fix that is uneven is a roster change.** Check the *ratio* between the
+  entries, not just the total, before pricing anything.
+* **When the intent is written in a comment, the comment is the spec.**
+  *"The attack's length IS the fire rate"* is what makes the second wait a bug
+  rather than a design choice — and it also names the residual below.
+* **A residual is still a lie.** After this fix the card overstates by 1.3–2x,
+  because `fire_rate` is nominally "shots per second" while the 0.25 s return
+  animation is charged on top. The card is a *nominal* number; only a simulation
+  converts nominal into delivered (see [LL-038](#ll-038), coverage).
+
+**Status.** FIXED — 2026-10-13 (the fire-cycle probe is awaiting one play log).
+
+**Files.** `scripts/scr_tower_normal/scr_tower_normal.gml`,
+`scripts/scr_tower_shoot/scr_tower_shoot.gml`,
+`objects/obj_tower/Create_0.gml`, `objects/obj_tower/Step_0.gml`.
+
+---
+
+<a name="ll-041"></a>
+## LL-041 — Two tests indented inside the `__main__` block had never run
+
+**Symptom.** None. The suite was green (`Ran 75 tests ... OK`) and it stayed
+green. The only trace of the problem was a *number*: adding ten tests moved the
+count by ten, not twelve.
+
+**Root cause.** `test_balance.py` ended like this:
+
+```python
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+    def test_a_bigger_range_covers_more_of_the_route(self):
+        ...
+```
+
+Four spaces of indentation after a blank line is **not** a new top-level
+statement - it is still the body of the `if`. Python parses that happily, so the
+two methods are defined only when the module is *run* as `__main__`. The test
+discoverer **imports** the file, `__name__` is not `"__main__"`, the methods are
+never created, and two `GeometryTests` cases silently stop existing. No error,
+no warning, no visible symptom - and `test_covered_length_never_exceeds_the_route`
+had been dead since the day it was written.
+
+**Fix.** Both methods moved back into `GeometryTests`, before `class ModelTests`:
+
+```python
+    def test_covered_length_never_exceeds_the_route(self):
+        ...
+```
+
+The suite went 75 → 87 on the same change (10 new fire-cycle/report tests, plus
+these 2 that had been missing).
+
+**Guard rails.**
+
+* **Check the COUNT moved, not just that the run is green.** After adding *n*
+  tests the total must rise by *n*. A suite that cannot notice a missing test has
+  a hole in it - this is [LL-025](#ll-025)'s shape, a failure that looks like a
+  pass.
+* **A `def` after a blank line is not automatically top level.** Indentation is
+  semantic; when appending to an existing Python file, look at what block you are
+  already inside before you write.
+* **A dead test is worse than a missing one**, because the coverage *looks*
+  present. The same is true of a probe that never prints and a log line that
+  never fires - so ask **"has this ever actually run?"** before you rely on it.
+  That question is the reason `cap_probe_left` and the fire-cycle probe exist.
+* **Fix it where it belongs, not where it is.** De-indenting the orphans in place
+  would have left them after `unittest.main()`; moving them into the class they
+  were written for is the fix, and the class then asserts the shared fixture.
+
+**Status.** FIXED — 2026-10-13.
+
+**Files.** `python_tools/tests/test_balance.py`.
+
+---
+
+<a name="ll-042"></a>
+## LL-042 — Hard pays exactly what Normal pays, and Brutal pays double
+
+**Symptom.** None on its own, which is why it survived two years of tuning. The
+consequence showed up in the SIM, not the game: stepping stage 1-1 at 60fps with
+the money arriving as it lands, **Brutal holds better than Hard** - 0 leaks and
+$22 left over, against 19 leaks and one heart left. `gm balance project` says
+the opposite, and so does every number the game prints.
+
+**Root cause.** `scr_zomb_death` pays
+
+```gml
+add_item_value(STATINV.money,
+               round(data[MON.kill_money]*difficulty_money_mult()));
+```
+
+A Grumble-Mulch pays **1**, so the money column is applied to a 1 and *then*
+rounded to an integer:
+
+| difficulty | money mult | `round(1 x mult)` | per kill | income over 1-1 | hp mult |
+| --- | --- | --- | --- | --- | --- |
+| Normal | 1.00 | 1 | $1 | $122 | 1.0 |
+| Hard | 1.25 | **1** | $1 | $128 | 1.5 |
+| Brutal | 1.50 | **2** | $2 | $247 | 2.5 |
+
+Hard's column is a NO-OP and Brutal's is a DOUBLING. HP per dollar therefore
+comes out at 1.00 / 1.17 / 1.01: **Hard is the hardest difficulty in the game
+and Brutal is the easiest.** `difficulty_money_mult()` on a base of 1 is a step
+function, not a scale - 1.25 and 1.00 are the same number, and so is everything
+below 1.49.
+
+**Fix.** A **fractional carry** at the payout site - chosen over "raise the base
+payout" (which rescales every number in economy.md by 4) and over "move the
+rounding" (which makes the purse a float, so the HUD prints $12.5 and the shop's
+affordability test changes meaning).
+
+```gml
+/// scr_kill_money, in difficulty_data.gml - the ramp, the column and the carry
+/// are ONE rule.  Called from inside with(_levelControl), because money_carry is
+/// the RUN's (AGENTS.md 1 rule 6).
+function scr_kill_money(_base, _wave, _ramp) {
+    if(!is_real(_base)) return 0;
+    if(!variable_instance_exists(id, "money_carry")) return round(_base);
+    var _mult = (is_undefined(_ramp) || _ramp) ? kill_money_ramp(_wave) : 1,
+        _want = _base * _mult * difficulty_money_mult() + money_carry,
+        _pay  = floor(_want);
+    money_carry = _want - _pay;   /// the fraction lives on to the next kill
+    return _pay;
+}
+```
+
+Money stays an integer - the carry is the only fractional thing, and it lives on
+`_levelControl` - so four kills at x1.25 pay **1, 1, 1, 2**: exactly +25% over
+the four, where rounding paid 1, 1, 1, 1.
+
+Landed with it (the same change, 2026-10-13): the kill-money **ramp**
+(`1 + 0.06 * (wave - 1)`, so income grows with the wave instead of only with the
+count) and the CLOSED FORM and the SIM taught to model both, because a tester
+that keeps its own opinion about the payout is LL-038 again. Measured after:
+income $160 / $196 / $264 and hp-per-dollar **0.0063 / 0.0076 / 0.0095** -
+ordered, hardening as the difficulty rises, where it was 1.00 / 1.17 / 1.01.
+
+**Guard rails.**
+
+* **A multiplier applied AFTER a round to an integer is a step, and the step
+  here is 100%.** Scale before you round, or accumulate fractionally; never tune
+  a percentage that a `round` can swallow. (`+0.01 * wave` in the speed ramp is
+  the other side of the same coin - it works because the speed it feeds is a
+  float.)
+* **Test a difficulty column against INCOME, not just hp.** The panel's promise
+  is about hp; what the player experiences is hp per dollar.
+* **A ratio cannot see this.** The closed form was right about every wave and
+  wrong about the stage, because it never let the money arrive late. It took a
+  time-step to find - which is the entire argument for `gm balance sim`.
+* **When the rule changes, the tools change with it.** Two Python models
+  (`money_through`, `Sim._payout`) computed the payout too, and the slope is read
+  out of the GML by `gm balance check` so it cannot drift.
+
+**Status.** FIXED, 2026-10-13 (`difficulty-columns-vs-curve`; the reprice that
+shipped alongside it left the wave curve stale - worst bite 0.32 on 1-1 - which
+is `balance-fit-from-sim`).
+
+**Files.** `scripts/difficulty_data/difficulty_data.gml` (`kill_money_slope`,
+`kill_money_ramp`, `scr_kill_money`), `scripts/scr_zomb_death/scr_zomb_death.gml`,
+`objects/_levelControl/Create_0.gml` (`money_carry`),
+`python_tools/gm/balance/{model,sim,tables}.py`, `python_tools/gm/cli.py`.
+
+---
+
+<a name="ll-043"></a>
+## LL-043 — A waterline expressed as a fraction of the sprite CANVAS means a different depth for every sprite
+
+**Symptom.** After the tower art was swapped to the 192x192 daisy trio, the
+plants stopped sitting in the water properly, and nothing errored:
+
+* a plant in water wore a **halo of itself** — a second, larger copy around and
+  behind the one you place;
+* the **seam** where the plant meets the surface sat at a different height for
+  each tower, so two towers side by side were wading to different depths, and a
+  monster waded to a third;
+* a **left-facing** tower in water was drawn **upside down and about 220px too
+  low** - and only when it faced left, so it read as "sometimes the water
+  glitches";
+* the reflection the water was supposed to show had never once been drawn.
+
+No error, no log line, no clue in the runtime output. It is a *look*, so there
+is nothing to grep for.
+
+**Root cause.** Four defects, all of them the same art change arriving at a
+different reader. This is [LL-033](#ll-033)'s own guard rail ("grep for the
+consumers, not just the writer") being violated by four more consumers.
+
+1. **The submerged copy was drawn at the wrong size.**
+   `obj_water/Draw_0` re-drew every in-water tower with `draw_self()`, which
+   draws at `image_xscale`/`image_yscale`. On a tower those are `±1` **facing
+   only** and the art's size is `draw_scale` (LL-033), so the copy was drawn at
+   `1/draw_scale` — **1.43x** the tower at the `0.70` a placed tower settles on.
+
+2. **The waterline was a fraction of the CANVAS.**
+   `obj_tower/Draw_0` cropped `0.8` and `obj_mon/Draw_0` cropped `0.75` of the
+   sprite's height. A fraction of the canvas is a *different world depth for
+   every sprite*, because every canvas has a different origin and a different
+   amount of padding:
+
+   | sprite | canvas | origin | origin / canvas | what 0.8 hides |
+   | --- | --- | --- | --- | --- |
+   | `spr_daisy_idle_192x` | 192x192 | (97, 158) | 0.823 | 27px |
+   | `spr_t3_idle` (Cannon Tulip) | 66x88 | (32, 75) | 0.852 | 12px |
+   | `spr_grumble_walk` (0.75) | 140x160 | (49, 150) | 0.937 | 10px |
+
+   Measured seams: **daisy 3.1px** above its base, **`spr_t3` 3.2px**,
+   **monster 7.5px** - three different waterlines from three numbers that were
+   each "obviously the same idea".
+
+3. **A signed value went into both axes of a part draw.**
+   `obj_tower/Draw_0` built `_art = draw_scale * sign(...)` and passed it as
+   **both** `_sx` and `_sy` to `draw_self_part`. `draw_sprite_part_ext` reads a
+   negative yscale as "draw it upside down **and** anchor it from there", so on
+   a left-facing tower `_y` moved from `y - 110.6` to `y + 110.6` (the origin is
+   158px from the top; at 0.70 that is 110.6px) **and** the part was flipped.
+   That is another way for a flip to die in [LL-012](#ll-012)'s collection, and
+   the fix is the same as ever: the sign belongs to the axis that carries
+   facing, and only that one.
+
+4. **The reflection script was ported dead and left dead.**
+   `scr_drawReflections` had exactly one reference - a commented-out line in
+   `draw_water_shader`:
+
+   ```gml
+   ///scr_drawReflections(_statObj);
+   ```
+
+   `_statObj` is a GameMaker 8 engine global that does not exist in GMS2, so the
+   call could not simply be uncommented, and nobody ever revisited it. By the
+   time it was looked at, all three of its inputs were wrong: it drew at
+   `image_xscale` (a full-size reflection of a half-size tower), it sized its
+   offset from `sprite_height` (fault 2 again), and it read `bbox_bottom`, which
+   is the **MASK** - on a tower that is `spr_tower_click_region`, 32x64, with
+   nothing to do with the art it was reflecting.
+
+**Why it looked like something else.** Every one of these is *derived from the
+sprite*, and every one was correct while all the art shared a shape. Swapping the
+art did not change one line of water code - which is exactly why nothing pointed
+at the water. The bug presented as "the water behaviour didn't translate
+cleanly", as though the water were at fault, when the water was faithfully
+obeying numbers that had stopped describing the art.
+
+**Fix.** Stop expressing the waterline as a fraction. Derive it from the ORIGIN -
+the one property every sprite in this project shares, and the thing the anchor
+actually stands on - and express the depth in **screen pixels**, because how deep
+water looks is a property of the water, not of the creature standing in it (a
+boss is drawn twice as big and must not sink twice as deep).
+
+```gml
+/// How deep a thing standing in water is sunk, in SCREEN pixels - the ONE
+/// number to tune if the water ever looks wrong.
+function water_sink() {
+    return 8;
+}
+
+/// The fraction of _sprite, measured from its TOP, that is ABOVE the waterline.
+function water_line_keep(_sprite, _scale, _sink) {
+    if(!sprite_exists(_sprite)) return 1;
+    var _h = sprite_get_height(_sprite);
+    if(_h <= 0) return 1;
+
+    var _s    = (is_undefined(_scale) || _scale == 0) ? 1 : abs(_scale),
+        _sink = is_undefined(_sink) ? water_sink() : _sink;
+
+    /// the origin is the base; sink() screen px of it is under the surface
+    var _keep = sprite_get_yoffset(_sprite) - (_sink / _s);
+    return clamp(_keep / _h, 0, 1);
+}
+```
+
+All four sites call it, so they agree **by construction** rather than by four
+people reading the same comment: `obj_tower/Draw_0` and `obj_mon/Draw_0` crop with
+it, `obj_water/Draw_0` draws the submerged tower through
+`scr_draw_self_scaled(draw_scale)` instead of `draw_self()`, and
+`scr_drawReflections` mirrors about the same seam. `water_line_report()` prints
+one line per instance - canvas, origin as a fraction of it, scale, height left
+visible - so the next person can read the numbers instead of arguing about them.
+
+`sprite_get_yoffset()` / `sprite_get_height()` are the **unscaled** reads, which
+is what is wanted here ([LL-033](#ll-033) again: `sprite_yoffset` carries
+`image_yscale`).
+
+The measured deltas against the old behaviour: a monster's seam moves 7.5px →
+8px (unchanged to the eye), a plant's 3.1px → 8px. The plants are the ones that
+read wrong next to each other, and `water_sink()` is the one knob.
+
+**Guard rails.**
+
+* **A crop expressed as a fraction of a sprite is valid for exactly one sprite.**
+  Waterlines, ground contacts and baselines belong in the ORIGIN, or in
+  world/screen pixels. *"0.8 of the height"* is not a design decision, it is a
+  measurement of one drawing.
+* **When a sprite's size or origin changes, grep the READERS.** The size alone
+  (`draw_scale`) has readers in `scr_draw_self_scaled`, `scr_drawLight`,
+  `scr_drawGlowOutline`, `draw_self_part`, `obj_water/Draw_0` and
+  `scr_drawReflections` - and the water ones live in a folder nobody thinks of as
+  "towers". LL-033 wrote this rule down and then this file found four more
+  consumers it had missed.
+* **One sign, one axis.** A helper taking two scale arguments needs both checked
+  separately. A negative `draw_sprite_part_ext`/`draw_sprite_ext` scale flips the
+  image *and* moves the anchor.
+* **`bbox_*` is the mask; `sprite_*` is the art.** After LL-033 those are
+  different shapes, and `bbox_bottom` on a tower is its click region.
+* **Commented-out code is not dead, it is armed.** A call disabled through a port
+  will be wrong by the time anyone enables it, and nothing will warn them.
+  Either delete it, or fix it and turn it on.
+
+**Status.** FIXED, 2026-10-13 - needs a run in `rm_test`; the look is the only
+test there is.
+
+**Files.** `scripts/draw_water_shader/draw_water_shader.gml` (`water_sink`,
+`water_line_keep`, `water_line_report`), `objects/obj_water/Draw_0.gml`,
+`objects/obj_tower/Draw_0.gml`, `objects/obj_mon/Draw_0.gml`,
+`objects/obj_tower/Create_0.gml`, `objects/obj_mon/Create_0.gml`,
+`scripts/scr_drawReflections/scr_drawReflections.gml`.
+
+---
+
+<a name="ll-044"></a>
+## LL-044 — One stored counter served two questions, and the reader that was right hid the one that was wrong
+
+**Symptom.** The HUD's **Wave** number read **one high** — during wave 1 it showed
+`2`. The level log agreed with it, so the log looked like confirmation rather than
+a second victim:
+
+```
+LEVEL  now SPAWN | stage 1-1 wave 2/15     <- during wave 1
+```
+
+`scr_zomb_pathSpeed` fed that same number to the speed ramp, so monsters walked as
+if they were one wave further along than they were. No error, no crash, no unset
+variable, nothing in the Output window: the game simply fought a slightly
+different wave from the one it said it was on. And the **pre-wave banner was
+correct throughout** ("Wave 1", then "Wave 2"), which is exactly what made it look
+like nothing was wrong.
+
+**Root cause.** `STATINV.waves` was **seeded at 1** in `_levelControl/Create_0`
+while `wave_count` started at **0** in `scr_setupSpawning`, and `scr_level_spawn`
+raised **both** by one as each wave began (`wave_count++`,
+`add_item_value(waves,1)`). So during wave N the item read **N + 1** — the *next*
+wave — and it had two consumers asking different questions:
+
+| consumer | wants | read |
+| --- | --- | --- |
+| `scr_draw_statinv` (HUD item value), `scr_level_state` (log), `scr_zomb_pathSpeed` (ramp) | the wave being **fought** | one high |
+| `scr_level_showPath` -> `scr_showWave` (the "Wave N" banner) | the wave about to **spawn** | correct — by accident |
+
+The second row is the whole lesson: a reader that happens to be right is
+**evidence for the wrong model**, and it is why this survived a reprice, a curve
+change and two balance passes.
+
+**Fix.**
+
+1. `objects/_levelControl/Create_0.gml` — the item is the **current** wave, so it
+   starts at 0 and now equals `wave_count`:
+   ```gml
+   set_item_value(waves,0);
+   ```
+2. `scripts/scr_level_showPath/scr_level_showPath.gml` — the one consumer that
+   wants the *next* wave does its own arithmetic, at the point where the meaning
+   differs:
+   ```gml
+   var _wave = get_item_value(waves) + 1;
+   ```
+3. `python_tools/gm/balance/sim.py` — `Sim.stat_waves` was `return wave + 1`,
+   *restating the bug in Python*. It now **reads the seed out of the GML**
+   (`tables.py` reads `set_item_value(waves,N)` into `constants.wave_seed`) and
+   returns `seed + wave`, so the sim follows the game instead of holding its own
+   opinion about it.
+
+**Measured — and the honest part: the bug is real but SMALL.** `scr_zomb_pathSpeed`
+applies its wave weight only when `_spd < 1`, and `_spd = ((12-z)/12)*1.5 + 0.5`,
+so at `z=6` the weight is skipped entirely and the seed changes *nothing*; on slow
+ground (`z=11`, `_spd = 0.625`) the monsters walk **0.2–0.5 frames faster** on
+average (mean walk 89.1 -> 89.6) with money, kills and leaks identical. So this is
+**not** a balance fix and no documented number moves. The reason it had to land
+before `balance-fit-from-sim` is different: the **closed form already used the true
+wave** (`model.demand` -> `terrain.walk_seconds`), so while the seed was 1 the sim
+and the closed form were modelling the ramp **one wave apart** — and the fit solves
+against both.
+
+**Guard rails.**
+
+* **A counter that answers two questions is two counters.** If a stored number is
+  right for one reader and wrong for another, the right one is a coincidence, not
+  a check. Name the meaning in the item's own comment, and make the odd reader do
+  the arithmetic (`+ 1`) where the meaning actually differs.
+* **If a tool models a bug on purpose, read the bug's parameter out of the GML.**
+  A literal `+ 1` in Python models *the game as it was when the literal was
+  written* — the sim would have kept modelling the old game after the fix. This is
+  [LL-038](#ll-038)'s rule, applied to a single scalar: `constants.wave_seed`.
+* **Spot it early.** `gm balance check` prints the seed, and
+  `test_the_wave_counter_is_the_wave_being_fought` asserts it is 0 *with the
+  reason in the failure message*, so a revert fails loudly instead of the two
+  tools quietly diverging again.
+* **A diagnostic that agrees with you is not a second opinion.** The log line and
+  the HUD were the same wrong number; only the banner differed, and it was wrong
+  to trust.
+
+**Status.** FIXED 2026-10-14.
+
+**Files.** `objects/_levelControl/Create_0.gml`,
+`scripts/scr_level_showPath/scr_level_showPath.gml`,
+`scripts/scr_level_state/scr_level_state.gml`,
+`scripts/scr_zomb_pathSpeed/scr_zomb_pathSpeed.gml`,
+`python_tools/gm/balance/sim.py`, `python_tools/gm/balance/tables.py`,
+`python_tools/tests/test_balance.py`.
+
+<a name="ll-045"></a>
+## LL-045 — Ported dead code that had never run, and the three traps waiting inside it
+
+**Symptom.** There was none, and that is the entry. `shd_outline` was a registered
+`GMShader`; `scr_getOutlineShd()` and `scr_drawSelfOutlined()` both existed and both
+looked like finished code. **Nothing in the project called either script**, so the
+outline machinery had never drawn a single pixel in its life. It was found by
+grepping for the two names *outside their own files* - the cheapest liveness test
+there is:
+
+```
+grep -rn 'scr_drawSelfOutlined' --include=*.gml . | grep -v scripts/scr_drawSelfOutlined/
+# (nothing)
+```
+
+**Root cause.** Three separate faults, each invisible until the first call - which
+is why "it is already written, I will just wire it up" would have produced three
+bugs at once:
+
+1. **`draw_self()` draws at `image_xscale`.** On a tower that is **±1 FACING
+   only**, because the art's size had to come out of it for the click mask
+   ([LL-033](#ll-033)). So the helper would have drawn a full-size 192px tower
+   with a 1px ring around it - and the ring is the one part that would have
+   looked right.
+2. **The shader took its colour from `v_vColour` and then threw `v_vColour` away.**
+   `gl_FragColor = (v_vColour * (1.0 - originAlpha)) + texture2D(...)` uses
+   `image_blend` for the ring and adds the **raw** texture, so the sprite's own
+   pixels lose their tint. In this project `image_blend` is *also* the hover
+   glow's colour, the reflection's colour and the water copy's colour - four
+   subsystems on one variable, and the ring wanted to be the fifth.
+3. **`shader_set()` with no guaranteed `shader_reset()`.** The ported helper had
+   no reset path at all. A `return` added between the two would not crash - it
+   would leave the shader bound and outline the rest of the frame.
+
+**Fix.** An explicit uniform, and a draw path that knows the idiom:
+
+```glsl
+uniform vec4 outlineColor;                                      // passed in
+vec4 body = texture2D(gm_BaseTexture, v_vTexcoord) * v_vColour;  // tint kept
+gl_FragColor = mix(outlineColor, body, originAlpha);
+```
+
+plus the four DIAGONAL neighbours (the ported kernel was a plus shape, so corners
+notched at 1-2px), and on the GML side `scr_outline_begin()`/`scr_outline_end()`
+with every guard *before* `shader_set`:
+
+```gml
+if(!variable_instance_exists(id, "outline_ready") || !outline_ready) return;
+if(!sprite_exists(sprite_index)) return;                 /// LL-012
+...
+shader_set(shd_outline);
+shader_set_uniform_color(uniOutlineCol_, argument0, 1.0);
+```
+
+`scr_getOutlineShd()` became the setup step (`shader_is_compiled()` once, in
+Create), so a shader that fails to compile degrades to "no ring" instead of a
+half-drawn tower.
+
+**Guard rails.**
+- **Grep a function's name outside its own file before trusting it.** Ported code
+  that has never run is not code that works; it is a hypothesis.
+- **Ask a draw helper what it draws at.** `draw_self()` is `image_xscale`;
+  `scr_draw_self_scaled()` is `draw_scale` ([LL-033](#ll-033)).
+- **A shader's colour is an input.** Riding it on `image_blend` collides with
+  every other user of `image_blend`, and this shader's body term drops it.
+- **`shader_set`/`shader_reset` are a pair with no `return` between them** - and
+  `shader_reset()` with nothing bound is a no-op, so call it unconditionally.
+- **`shader_is_compiled()` at setup**, so a compile error is a missing feature
+  rather than a broken frame.
+- **GameMaker's hex colour literals are `$BBGGRR`**: `$FFD24A` would come out
+  blue. Build colours with `make_colour_rgb()`.
+
+**Status.** FIXED 2026-10-15.
+
+**Files.** `shaders/shd_outline/shd_outline.fsh`,
+`scripts/scr_getOutlineShd/scr_getOutlineShd.gml`,
+`scripts/scr_drawSelfOutlined/scr_drawSelfOutlined.gml`,
+`scripts/tower_levels/tower_levels.gml`, `objects/obj_tower/Draw_0.gml`,
+`objects/obj_tower/Create_0.gml`, `objects/_levelControl/Step_0.gml`.
+
+---
+
+<a name="ll-046"></a>
+## LL-046 — A blend mode belongs to the PASS, so an additive ring cannot carry the body with it
+
+**Symptom.** Two of them, and the second one is the trap.
+
+1. Ask for an **additively blended** tower ring and the obvious implementation
+   (`bm_add` around the draw that already worked) turns every ringed tower into a
+   **see-through, blown-out ghost**: its own pixels are added to the background
+   instead of replacing it, so it glows over the ground and the art under it shows
+   through. Nothing errors. The tower is still there, still clickable, still
+   shooting - it just looks like a hologram.
+2. Set the ring's opacity with **`draw_set_alpha(0.25)`** and *nothing happens*:
+   the ring is exactly as solid as before. No error, no warning.
+
+**Root cause.** Three mechanisms, all about who owns the fragment.
+
+1. **A blend mode applies to the whole pass, not to the thing you meant to blend.**
+   `shd_outline` drew the **body** (the tinted sprite) *and* the **ring** in one
+   pass - `gl_FragColor = mix(outlineColor, body, originAlpha)` ([LL-045](#ll-045)).
+   Wrap that pass in `bm_add` and the body is added too. A blend mode is a property
+   of the draw call, so "blend the ring additively" cannot be expressed inside a
+   pass that also draws something that must *replace*.
+2. **`draw_set_alpha()` cannot change a shader's output.** It sets `v_vColour.a`,
+   and this shader never reads `v_vColour` - it writes `gl_FragColor` itself. The
+   opacity therefore has to be a uniform, and it was already half-built:
+   `outlineColor` is a **`vec4`** and its fourth component was sitting there
+   hardcoded to `1.0`.
+3. **The alpha the shader did write was a COUNT, not an opacity.**
+   `gl_FragColor.a = alpha`, where `alpha` was the sum of nine `ceil()` samples of
+   the kernel (0-8). Under normal blending a count of 5 clamps to opaque and looks
+   fine - which is why it survived. Under **additive** blending `alpha` is the
+   **multiplier**: a count of 5 adds five times the colour, and - worse - any stray
+   non-zero alpha in the quad's empty margin **adds light over the whole rectangle**
+   instead of hiding it.
+
+**Fix.** The ring pass draws the ring and nothing else, and the body is drawn
+before it:
+
+```glsl
+// 1 only NEXT TO the art: 0 on the art itself (the tinted body is already
+// drawn), 0 where there is no covered neighbour at all.
+float ring = min(alpha, 1.0) * (1.0 - originAlpha);
+gl_FragColor = vec4(outlineColor.rgb, outlineColor.a * ring);
+```
+
+```gml
+function scr_drawSelfOutlined(argument0, argument1, argument2) {
+	scr_draw_self_scaled(draw_scale);                    /// the BODY: normal, tinted
+	scr_outline_begin(argument0, argument1, argument2);  /// the RING: additive, ring pixels only
+	scr_draw_self_scaled(draw_scale);
+	scr_outline_end();
+}
+```
+
+The opacity rides on the colour's fourth component
+(`shader_set_uniform_color(uniOutlineCol_, argument0, _alpha)`), the blend mode is
+set **last** in `scr_outline_begin` - after every early return, so no return can
+leak it - and `scr_outline_end()` puts it back beside `shader_reset()`.
+
+**Guard rails.**
+- **A blend mode belongs to the pass, not to the thing you meant to blend.** If a
+  pass draws two things and only one should be blended, **split the pass**.
+- **`draw_set_alpha()` does nothing to a shader that writes `gl_FragColor`.** Pass
+  opacity as a uniform. (And use `shader_set_uniform_color`, which is this project's
+  own wrapper for a `vec4` - it is not a GameMaker built-in.)
+- **Never put a COUNT in `gl_FragColor.a`.** In a kernel loop `alpha` is a count;
+  under additive blending it is a multiplier. Fold it with `min(x, 1.0)` first.
+- **Under additive blending "invisible" means alpha 0, not "the background colour".**
+  Anything with a non-zero alpha in a mostly-empty quad adds light - hence the
+  `(1.0 - originAlpha)` term rather than relying on the colour to cancel out.
+- **`bm_add` is `(bm_src_alpha, bm_one)`** - the source is weighted by its own
+  alpha, which is exactly what makes "25% opacity" add a quarter of the colour
+  rather than all of it. (`bm_max` is `(bm_src_alpha, bm_inv_src_colour)`, a
+  different animal; the full factor table is on the `gpu_set_blendmode` page.)
+- **Put the blend mode back in the same pair as `shader_reset()`.** A leaked
+  `bm_add` is worse than a leaked shader: everything drawn after it is additive and
+  there is no error to find it by.
+- **Declare every parameter you READ, and test an omitted one by VALUE**
+  (`is_undefined(argument2)`). `argument_count` reports the declared arity, not the
+  call, and the argument list is sized to the DECLARED arity - so a function that
+  declares two parameters and reads `argument2` is **out of range**, while one that
+  declares three and is called with two gets a padded `undefined` ([LL-035](#ll-035)).
+  `gm gml-functions <script>` prints the declared arity, which is how this one was
+  caught: the body read `argument2` while the signature still said two.
+
+**Status.** FIXED 2026-10-15.
+
+**Files.** `shaders/shd_outline/shd_outline.fsh`,
+`scripts/scr_drawSelfOutlined/scr_drawSelfOutlined.gml`,
+`scripts/tower_levels/tower_levels.gml`, `objects/obj_tower/Draw_0.gml`.
+
+---
+
+<a name="ll-047"></a>
+## LL-047 — `sprite_get_bbox_top()` is measured from the sprite CANVAS, not from the origin
+
+**Symptom.** A label that is supposed to sit "above the sprite's head" comes out
+**in the middle of it** - or, for a sprite whose origin is near its top, below its
+feet. Nothing errors and the value itself is right, so it reads as "the label is in
+a silly place" rather than as a units bug. Here: hovering a plant was to print its
+level above the plant, and the first version printed it across the plant's stem.
+
+**Root cause.** Two different things are called "the top of the bounding box", and
+they are measured from different places:
+
+| Thing | Measured from | For a sprite whose origin is at its feet |
+| --- | --- | --- |
+| `bbox_top` (the **instance variable**) | the room | positive, above `y` |
+| `sprite_get_bbox_top()` (the **function**) | the sprite's **upper-left corner** | small and positive |
+
+The manual says it exactly: *"This value is given as a relative value based on the
+upper left corner of the base sprite asset being (0, 0)."* So
+`y + sprite_get_bbox_top(sprite_index) * scale` is not the top of the art at all -
+it is the top of the art measured down from a corner the origin has nothing to do
+with. The conversion is to subtract the origin:
+
+```gml
+/// the top of the ART relative to the origin - NEGATIVE for a bottom origin
+var _dy = sprite_get_bbox_top(sprite_index) - sprite_get_yoffset(sprite_index);
+```
+
+For this project's tower art that difference is large and negative, because every
+sprite puts its origin at the plant's feet:
+
+| sprite | size | origin | bbox_top | bbox_top - yorigin |
+| --- | --- | --- | --- | --- |
+| `spr_t3_idle` | 66x88 | (32,75) | 3 | **-72** |
+| `spr_t1_idle` | 99x103 | (49,75) | 2 | **-73** |
+| `spr_t4_idle` | 100x95 | (46,71) | 1 | **-70** |
+| `spr_tower` | 32x32 | (16,16) | 0 | **-16** |
+
+**Fix.** The difference, times the scale it is drawn at:
+
+```gml
+_top = _hov.y + (sprite_get_bbox_top(_hov.sprite_index)
+                 - sprite_get_yoffset(_hov.sprite_index)) * abs(_hov.draw_scale) - 6;
+```
+
+**Guard rails.**
+- **The `sprite_get_bbox_*()` functions are canvas-relative; the `bbox_*` instance
+  variables are room-relative.** Convert with `sprite_get_xoffset()` /
+  `sprite_get_yoffset()` before using either as an offset from the origin.
+- **Check the numbers against a real sprite before trusting a position.** The four
+  rows above came from one script over the `.yy` files, and they are what proved the
+  first version wrong. A guessed offset would have looked "close enough" and been
+  wrong on every sprite that is not the one you tested.
+- **`sprite_exists()` first**: `sprite_get_bbox_top(-1)` is fatal ([LL-012](#ll-012)).
+- **A newline ends a statement as soon as the expression is COMPLETE**, so break a
+  long expression inside an unclosed bracket (or after a binary operator), never
+  after a complete `(...)` group - GML would read the next line as a new statement.
+
+**Status.** FIXED 2026-10-15.
+
+**Files.** `objects/_levelControl/Draw_73.gml`.
+
+---
+
+<a name="ll-048"></a>
+## LL-048 — Additive coverage double-counts, and a planner told only what it must not reuse can only duplicate
+
+**Symptom.** Two things, one cause.
+
+1. The balance sim said a stage **holds** (no leaks) while every tower stood on the same
+   fifth of the map and the last quarter of the route was never shot. Nothing failed - the
+   number just described a build nobody would make, and a leak there would have been
+   invisible to the model that was supposed to predict it.
+2. A full run earned $135 and bought **eleven $5 towers and no upgrade at all**, ending
+   with $17 still in the purse.
+
+**Root cause.** The budget greedy (`policy.plan`) ranked candidates by
+`dps x coverage / price`, where coverage means "the share of the route THIS tower shoots".
+Two towers over the same stretch of route **both** score that stretch, so the second one
+looks as good as the first. The sum of per-tower coverage is not the thing being
+maximised - a monster only dies once - so the objective was wrong, not the tuning.
+
+Measured on stage 1-1's 1841px route, same $300:
+
+| objective | towers bought | route actually covered | last quartile |
+| --- | --- | --- | --- |
+| additive (before) | 15 | **41%** | **0%** |
+| union (after) | 14 | **100%** | 25% |
+
+And the second half: `plan()` was passed `taken` - a set of CELLS it must not reuse - and
+never the towers standing on them. So each wave re-planned from scratch, a rung on an
+existing tower was not a candidate, and the only purchase it could ever make was another
+cheap tower in a free cell.
+
+**Fix.** Two changes, both in `policy.py`, both opt-in so published numbers stay put.
+
+```python
+# union coverage: what this cell shoots that NOTHING ELSE already shoots
+def marginal(self, cell, reach, taken):
+    ids = self.indices(cell, reach)          # route samples inside the reach
+    return len(ids - taken) / float(len(self._samples()))
+
+# and the planner is TOLD what is standing, so a rung is a competitor
+bought = policy.plan(..., allow_rungs=True, spread=True, standing=standing)
+```
+
+Union coverage is **submodular**, which is exactly the setting where a density greedy
+carries its `1 - 1/e` bound - so the greedy stayed the right tool and only its scoring
+changed. Measured A/B on the same money, same wave, same seed:
+
+| objective | towers | spent | widest target list | wasted swings |
+| --- | --- | --- | --- | --- |
+| additive | 16 | $143 | 6 | 33% |
+| union | 11 | $143 | **3** | **25%** |
+
+Fewer towers, less waste, and the route covered - so the *finding* that a 10-target cap is
+unreachable got **stronger** (6 -> 3), which is why that test's threshold moved.
+
+The sim then gained `--spend instant`, which re-runs the same greedy while a wave is
+**live** instead of only at the wave boundary: **$2 left at the end instead of $17**, and
+9 upgraded towers instead of 11 cheap ones.
+
+**Guard rails.**
+
+* **An objective that sums per-agent benefit over-counts whenever two agents can serve the
+  same event.** Ask "what does the SECOND one add?" before trusting a sum of shares.
+* **A planner that re-plans from scratch must be told what already exists**, or it can
+  only ever duplicate. "Which cells are taken" is not "what is standing".
+* **Pin two estimators of one quantity with a test.** `Coverage.of()` walks exact segment
+  lengths (it is the figure the in-game panel is matched against, so it must not move) and
+  `Coverage.indices()` samples every 4px (what union coverage subtracts). `test_the_two_
+  coverage_estimators_agree` keeps them within 6% - otherwise the ranking optimises a
+  different map from the one every published number was measured on.
+* **When a finding's number moves, record WHY next to the new number.** The cap test now
+  says 3 instead of 6 *and* says that the greedy stopped concentrating.
+
+**Status.** FIXED 2026-10-15.
+
+**Files.** `python_tools/gm/balance/policy.py`, `python_tools/gm/balance/sim.py`,
+`python_tools/gm/balance/report.py`, `python_tools/gm/cli.py`,
+`python_tools/tests/test_balance.py`.
+
+---
+
+<a name="ll-049"></a>
+## LL-049 — A persistent instance's Create was the only thing that built the level
+
+**Symptom.** The **second** level never loads. The stage room comes up - the walls and the
+spawn points are all there, the fade finishes - but the ground never appears and **no waves
+ever start**, and the screen just sits on an empty room. Nothing errors, nothing logs. The
+first level is completely fine.
+
+**Root cause.** Every non-persistent controller is created by one persistent instance.
+
+```
+rm_test creation order:  #1 Control  (persistent: true)   <- first instance in the room
+Control/Create_0         instance_create(0,0,_mainControl)   <- the ONLY creator
+_mainControl             persistent: false  -> dies on Room End
+_mainControl/Step_0      scr_runState(scr_main_startup)      -> builds the terrain
+scr_main_startup         ... -> cutscene -> instance_create(_levelControl)  <- the ONLY creator
+```
+
+A persistent instance is carried between rooms, and the GMS2 manual is explicit that it keeps
+its **Game Start, Game End, Room Start and Room End** events - **Create is not in that list**,
+because it already ran. So:
+
+| on the second visit | what that costs |
+| --- | --- |
+| `Control/Create` does not run | `_mainControl` is never created |
+| no `_mainControl` -> `scr_main_startup` never runs | no `ground_map`, no `load_max`, zero `scr_iniTileBuilder` calls - **no terrain** |
+| no cutscene -> `_levelControl` never created | no `scr_level_step`, no path/placement grids - **no waves** |
+| `Control/Other_5` (Room End) had destroyed the collider, particles, debree and bag | and Create was the only thing that rebuilt them |
+
+That is why it reads as a *partial* load rather than a crash: the room's own placed instances
+(`obj_wall`, `obj_spawn`, `obj_water`, `obj_graveCenter`, `obj_raiseGround`) are created
+normally and **none of their Create events reads anything the boot owns**. I checked all five
+before touching the code.
+
+There is a second, quieter half: `_levelControl/Create_0` does
+`ground_map = _mainControl.ground_map`, so the level depends on the boot having *finished*
+before the cutscene runs - an ordering that only worked because the two were ten frames apart.
+
+The repository already believed a second level existed: `scr_iniLighting()` says the
+shadow renderer is persistent because "a later level - which re-runs startup, and
+therefore this script - must reuse the instance that survived" (LL-020). The code for
+the second level was written. The second level never ran.
+
+**Fix.** The boot moved to the one hook that is guaranteed on every entry.
+
+```gml
+// rooms/rm_test/RoomCreationCode.gml   (runs on EVERY entry, after all Create events)
+scr_level_boot();
+```
+
+```gml
+// scripts/scr_level_boot - idempotent: clear, then build, then say so
+function scr_level_boot() {
+    with(_mainControl)  instance_destroy();
+    with(_levelControl) instance_destroy();
+    with(_viewControl)  instance_destroy();
+    with(_dayCycle)     instance_destroy();
+    level_data_ensure();
+    var _row = stage_current();
+    instance_create(0, 0, _mainControl);   // the rest of the chain hangs off this
+    scr_meta_log("LEVEL", "boot ", _row.region, "-", _row.stage,
+                 " waves=", _row.waves, "  main=", instance_number(_mainControl));
+}
+```
+
+Two supporting changes, both because the same class of bug can come back by another route:
+
+* **`Control` is non-persistent.** It is placed only in `rm_test`, so persistence bought
+  nothing and cost the systems: Room End destroyed them and Create never rebuilt them.
+  (`Input` is persistent but guarded by `instance_number(Input) == 0`, so re-creating
+  `Control` cannot duplicate it.)
+* **`scr_main_startup` builds the grid when it is MISSING**, not merely when
+  `state_time == 0`, logs `terrain grid WxH max N seed S`, and logs `startup done rows=N`
+  when the reveal ends. `rows=0` is now the one-line statement of "the terrain did not
+  build". The `load_max` division is guarded too: `load_amount = load_counter/load_max` is
+  `0/0` for the frames before the init block, which is a fatal GML error rather than a zero.
+
+And one latent defect in the same path: `draw_fadeout` did
+
+```gml
+if(room != target){ room_goto(target); }
+```
+
+`room_goto` to the room you are **already in** does nothing, so a retry or a replay was a
+silent no-op - the fade ran, the screen went black and came back, and the stage carried on.
+`fadeout()` now takes an optional sixth argument and the branch is `room_restart()`, which
+re-runs the room's creation code and therefore the boot.
+
+**Guard rails.**
+
+* **Never let a persistent instance's Create be the only thing that builds a room.** Create is
+  a one-off; Room Creation Code and Room Start are the hooks that fire every time.
+* **The room-entry order is: every instance's Create (in creation order) -> Room Creation Code
+  -> Room Start.** Anything that must see the room's whole contents belongs *after* Create -
+  which is also why `scr_gridSetObject()`'s `with(obj_raiseGround)` only works from a Step.
+* **Give every boot a log line naming a count**, so "did it run" is a grep and not a guess.
+* **`room_goto(current_room)` is a no-op.** Any retry path needs `room_restart()`.
+
+**Status.** FIXED 2026-10-17.
+
+**Files.** `rooms/rm_test/RoomCreationCode.gml`, `scripts/scr_level_boot/scr_level_boot.gml`,
+`objects/Control/Create_0.gml`, `objects/Control/Control.yy`,
+`scripts/scr_main_startup/scr_main_startup.gml`, `scripts/fadeout/fadeout.gml`,
+`scripts/draw_fadeout/draw_fadeout.gml`, `scripts/ini_fadeout/ini_fadeout.gml`.
+
+---
+
+<a name="ll-050"></a>
+## LL-050 — The save merge read the wrong struct, and the log printed only what survived
+
+**Symptom.** The game "resets every time". Quit and relaunch and the world map shows only
+1-1, bought towers are locked again and clover nodes are back to rank 0 - **but** seeds and
+clovers are still there, and the loadout is still the four towers last deployed. Not a fresh
+save: a *partial* one, which is why it read as a design problem for two playtests.
+
+**The cause was a ten-line function.** `scr_meta_merge()` looped over
+`variable_struct_get_names(_base)` - the DEFAULT's keys. For a nested map the default is
+`{}`, so the loop body never ran, and the function returned that EMPTY map with
+`_base[$ "version"] = scr_meta_version()` stamped into it:
+
+    towers : {"version":1.0}      // was {"Burning Ivy":true, ...}
+    stages : {"version":1.0}      // was {"1:1":0, ...}
+
+Everything that is a struct was replaced by the stamp. Everything that is not - `seeds`,
+`clovers`, `shards`, and the `loadout` ARRAY - took the `else` branch and survived.
+
+**The proof was on disk, not in the game.** `garden_meta.dat` is plain JSON:
+
+    {"towers":{"version":1.0}, "badges":{"version":1.0,"1:1:0":true},
+     "stages":{"version":1.0,"1:1":0}, "seeds":48.0, "clovers":205.0, ...}
+
+`towers` holding nothing but a version stamp is not a state the game can produce except by
+merging into an empty map. `stages` holding the stamp AND `1:1` is the same file after one
+more clear: `progress_record_clear()` wrote that key back *after* the wipe.
+
+**Why it survived a playtest.** `scr_load_meta()` logged
+
+    SAVE loaded version= seeds= clovers= shards=
+
+i.e. **exactly the three fields the merge cannot lose**. A diagnostic that reports only the
+parts that still work is not evidence that the rest works.
+
+**Fix.**
+* the merge iterates the LOADED struct's keys;
+* an EMPTY struct in the default is an OPEN MAP (stages, clears, towers, badges, the node
+  tables) and takes every key the file has; a POPULATED struct is a FIXED RECORD
+  (`last_stage`) and merges key by key;
+* scalars and arrays keep their default's TYPE, so a hand-edited save cannot make a later
+  read throw (LL-002 applied to data);
+* `version` is skipped during the merge and stamped once, on the top level, by the caller;
+* the load log now prints `stages= clears= towers= nodes= badges=` - the maps, not just the
+  scalars;
+* `python_tools/gm/save/` inspects a real `garden_meta.dat` and exits 1 when it finds a stray
+  `version` inside a map. It is a DETECTOR, not a second implementation of the merge.
+
+**The rule.** **A merge must iterate the file, not the default** - and **a save log must print
+the maps it could lose**, or the one bug that costs the player everything is the one the log
+cannot see.
+
+**Files.** `scripts/scr_meta_schema/scr_meta_schema.gml`,
+`scripts/scr_load_meta/scr_load_meta.gml`, `python_tools/gm/save/__init__.py`,
+`python_tools/gm/cli.py`, `python_tools/tests/test_save.py`.
+
+**Status.** FIXED 2026-10-17. Schema is v2.
+
+---
+
+
+<a name="ll-051"></a>
+## LL-051 — A slider is a modal drag, and a Draw event must not own input
+
+**Symptom.** Two complaints about one screen: the volume sliders **do not apply until you
+leave Options**, and reaching 0% or 100% **takes a second pass** because the mouse leaves
+the track before you get there.
+
+**Cause.** `show_slider()` did three jobs from inside `Menu/Draw_64`: it read the mouse,
+wrote the global, and drew. Each job was wrong in its own way.
+
+1. **Positional, not modal.** Every frame re-tested
+   `point_in_rectangle(mouse, x1-16, y3-16, x2+16, y3+16)` - a 32px band around a 16px
+   track. Drift out of it during a fast stroke and the drag silently ended mid-gesture.
+2. **`lerp(_pt,_pos,0.25)`** approached the pointer asymptotically, so even inside the
+   track the knob lagged and never quite arrived at 0 or 1.
+3. **Apply-on-exit.** `scr_resetSoundVolume()` (two `audio_emitter_gain` calls) was called
+   from `MENU_STATE.RETURN` and `scr_setup_menuStates` - never from the drag. Music already
+   plays through `global.MUSemitter`, so applying the gain live was always a two-line no-op;
+   nobody had called it.
+4. **Input in Draw** is the pattern roadmap 5.6.2 already forbids - the Menu's buttons were
+   moved out of it for exactly this reason, and the sliders were left behind.
+
+**Fix.** A new script, `scr_menu_slider`, owns the geometry (`scr_slider_rect`) and the drag
+(`scr_sliders_step`, called from the Options case of `Menu/Step_0`); `show_slider` became
+draw-only. A press inside a track GRABS it, and from then on the value follows the pointer
+**wherever it goes**, clamped to 0..1 - so the far end of the track is reachable in one
+stroke. Release writes `gameoptions.dat`. A changed value is applied immediately:
+`scr_resetSoundVolume()` for a volume, plus one throttled `snd_button` tick for Sound FX so
+the new level is audible while you drag.
+
+Splitting `scr_resetSoundVolume()` mattered too: it also called
+`audio_channel_num((clutterDensity+0.1)*50)`, which would have reallocated the audio channels
+**every frame of a drag**. The channel count moved to `scr_applyClutter()`, which runs when
+the clutter slider moves and at boot.
+
+**The rule.** **A drag is modal: grab on press, follow until release, clamp at the edges.**
+And **the draw event draws** - geometry and input belong in Step, or the thing you test and
+the thing you see drift apart.
+
+**Files.** `scripts/scr_menu_slider` (new), `scripts/show_slider`,
+`objects/Menu/{Create_0,Step_0,Draw_64}.gml`, `scripts/scr_resetSoundVolume`.
+
+**Status.** FIXED 2026-10-17 (in-game confirmation pending).
+
+---
+
+
+<a name="ll-052"></a>
+## LL-052 — A mirrored shadow that lands a whole tower to the right
+
+**Symptom.** A tower turns to face left and its cast shadow does not "match the mirroring":
+it flips, but it is displaced - on the 192px daisies, about a hundred pixels to the right.
+
+**Cause.** `scr_drawLight` built the silhouette box from `sprite_xoffset`:
+
+    _xn = x - view - sprite_xoffset*_art + _wn;
+
+`sprite_xoffset` is the sprite's origin **times image_xscale**, so on a left-facing instance
+it is NEGATIVE. The origin term therefore flipped sign the moment the tower turned, moving
+the box by `2 * xoffset * draw_scale` (97px on a 192px sprite at draw_scale 0.5). The corner
+swap that LL-012 added to mirror the TEXTURE was working perfectly - it was mirroring inside
+a box that had already jumped.
+
+This is the same family as LL-043's water bug, and `draw_self_part` documents the rule in so
+many words: *"sprite_xoffset is the sprite's origin times image_xscale"*.
+
+**Fix.** Derive the box from the UNSIGNED origin and mirror it about the origin:
+
+    _xo = abs(sprite_xoffset)*_art;                  // origin, unsigned
+    _l  = _flip ? _bx + _xo - _w : _bx - _xo;
+    _r  = _l + _w;
+
+with the corner swap kept for the texture. Monsters are fixed by the same line: their
+`image_xscale` IS the size, so `abs(sprite_xoffset)` is already scaled and `sprite_width`
+already includes it.
+
+**The rule.** **A reader that multiplies by `sprite_xoffset` / `sprite_yoffset` is multiplying
+by the facing sign.** Want the size? `abs()` it. This is the fourth way a flip dies, after
+LL-012's three.
+
+**THE SECOND HALF (2026-10-18) - it still landed to the RIGHT.** With the origin unsigned the mirrored shadow was STILL displaced, now by most of a sprite-width to the right, and only when mirrored. The remaining signed value was `_w = sprite_width*_art`: `sprite_width` is `sprite_get_width * image_xscale` - the same "dependent on the image_xscale" the manual uses for the origin - so on a left-facing tower it is NEGATIVE, and the flip branch reads
+
+    _l = _bx + _xo - _w        // bx + 48 - (-96) = bx + 144
+    _r = _l + _w               // bx + 48
+
+a 96px box sitting 48..144px to the RIGHT of the plant. The un-mirrored branch uses `_w` in the other direction, which is why only the mirrored case was wrong.
+
+    _w = abs(sprite_width)*_art,
+    _h = abs(sprite_height)*_art,
+
+plus a one-off `SHADOW  flip  w=...` line (per instance, dev-gated) so the sign is checkable in one run instead of one playtest.
+
+**The rule, completed.** `sprite_width`, `sprite_height`, `sprite_xoffset` and `sprite_yoffset` ALL carry the image scale INCLUDING ITS SIGN. A reader that lays a box out with one of them must `abs()` every one of them - fixing one signed term and leaving the next is how this took two sessions. Monsters are unaffected (their `image_xscale` IS the size, and it is positive), which is why the symptom looked tower-specific.
+
+**Files.** `scripts/scr_drawLight/scr_drawLight.gml`.
+
+**Status.** FIXED 2026-10-17; second half 2026-10-18 (in-game confirmation pending).
+
+---
+
+
+<a name="ll-053"></a>
+## LL-053 — The stage could not be lost, only quietly handed to the arcade screen
+
+**Symptom.** None, until you look for it: losing your last life never produced the new flow's
+failure. It produced the OLD one - the screen froze, everything was deactivated, and a
+high-score table appeared - and the meta layer never heard about it.
+
+**Cause.** Two controllers owned the end of a stage. `_levelControl` had
+`LEVEL_STATE.CLEAR` and **never requested `LEVEL_STATE.FAILED`**; the enum member existed and
+nothing wrote it. Meanwhile the legacy `scr_main_normal()` still ran
+`if(life <= 0) scr_changeState(scr_main_gameOver)`, which fades to `rm_score`. A lost stage
+therefore ran the arcade path *underneath* the new flow, which carried on as if nothing had
+happened: no seeds withheld, no badges skipped, no save written, no results.
+
+**Fix.** `scr_level_step()` checks `life <= 0` **before** the state switch and requests
+`LEVEL_STATE.FAILED` (returning for one frame, so a wave cannot also request CLEAR and pay
+the player for a stage they just lost). `scr_level_failed()` pays nothing and takes nothing
+(goal.md 27.3), writes the save, moves the run cursor and returns to the world map. The
+legacy branch in `scr_main_normal()` is gone - one controller owns the end of a stage.
+
+**The rule.** **A terminal condition needs a state, not a side effect.** If a state can only
+be entered by an object that might not exist, the flow does not have that state - it has a
+gap that the oldest code in the project will fill.
+
+**Files.** `scripts/scr_level_state/scr_level_state.gml`,
+`objects/_levelControl/Create_0.gml`, `scripts/scr_main_normal/scr_main_normal.gml`.
+
+**Status.** FIXED 2026-10-17 (in-game confirmation pending).
+
+<a name="ll-054"></a>
+## LL-054 - A slow-firing tower never fires, because the fire period WAS the swing
+
+**Symptom.** The Pina Collider (fire_rate 0.10) never damages anything: it stands
+through a whole stage, or winds up and gives up. The Slender Mandrake (0.35) is
+nearly as bad. Nothing errors and the fast towers are fine - so it reads as "the
+attack timer is frozen until a monster is in range", which is close to the truth.
+
+**Root cause.** Three things all said "the fire period is the length of the attack
+animation".
+
+1. `scr_tower_shoot` set `frame_number = room_speed/fire_rate`, played the
+   5-frame attack sprite over it - 600 frames, ten seconds, for the Pina - and put
+   the damage frame at the END of that swing (`frame_number - time_offset`).
+2. It returned to idle the moment its cached target left RANGE. A zombie crosses a
+   75-125px range in about a hundred frames, so a 600-frame strike frame was never
+   reached: the swing was always cancelled first.
+3. `scr_tower_normal` only started looking after `state_time > time_offset`, and
+   `state_time` resets on every state change - so the attack timer only existed
+   inside the swing. Idle time was not banked at all.
+
+The only way that tower could fire was a monster standing in range for ten seconds.
+None does.
+
+**Fix.** The rate is a COOLDOWN, the animation is art, and a started swing commits.
+
+* `attack_timer` on `obj_tower` ticks in EVERY state, in `obj_tower/Step_0`, whether
+  or not anything is in range - that is the "ready to fire" the tower was missing.
+  `attack_cycle = tower_cycle_frames(rate, return_seconds) + time_offset`: the fire
+  period PLUS the return PLUS the tower's own stagger, which is the cycle LL-040 and
+  the balance closed form already assume, so no fast tower's delivered rate moves.
+* `swing_frame = min(fire period, tower_swing_seconds()*fps)` - the attack sprite
+  plays for ~0.35s (never longer than the period) and the damage lands near the end
+  of THAT, so a slow tower strikes in a third of a second.
+* `scr_tower_shoot` abandons a swing only when every cached target is DEAD, not when
+  one walks out of range: the monster was in range when the swing began.
+* `tower_levels.gml` owns `tower_fire_period`, `tower_cycle_frames` and
+  `tower_swing_seconds`. `tables.py` reads them and `sim.py` mirrors the machine, so
+  the game and the tester cannot drift (LL-038, LL-040, LL-042).
+
+**One finding moved.** The sim no longer fires FEWER shots than the closed form:
+with the wait running during the animation the transition frames are absorbed, so
+`real` and `nominal` agree. `test_the_state_machine_fires_slower_than_the_idealised_cycle`
+now asserts the direction that still matters - the closed form is never optimistic -
+and says so in its docstring. That is information about the model, not a weakened
+assertion: every real tower still loses the frames it spends with nothing in range.
+
+**Guard rails.**
+* **A rate is a timer, not an animation length.** If two quantities are ever
+  assigned the same expression, ask which one is allowed to move independently.
+* **A timer that only runs while it has something to do is not a timer.** Tick it in
+  the state machine's Step, before the state runs.
+* **A swing that has started must commit.** Cancelling on "target out of range"
+  turns a slow attacker into no attacker.
+* **Log the first shot** (`TOWER  first shot  rate=... period=... swing=...`): a tower
+  that never prints it is not attacking, and that is one grep, not one playtest.
+
+**Files.** `scripts/scr_tower_normal`, `scripts/scr_tower_shoot`,
+`objects/obj_tower/{Create_0,Step_0}.gml`, `scripts/tower_levels`,
+`python_tools/gm/balance/{sim,tables}.py`, `python_tools/tests/test_balance.py`.
+
+**Status.** FIXED 2026-10-18 (in-game confirmation pending).
+
+---
+
+
+<a name="ll-055"></a>
+## LL-055 - A three-second hold is not 180 frames, and 60% of the viewport is not 60% of the canvas
+
+**Symptom.** A planned Level Complete card would have lasted one second instead of
+three with fast-forward on, come out at 37% of the screen height instead of 60% (or
+spilled past both edges), and been covered by the tower list and the speed buttons.
+
+**Root cause.** Three ways to be wrong about "the same thing the player sees".
+
+1. The project runs at 60 steps a second, but `scr_setFrameSkip` sets
+   `room_speed = 180` for fast-forward. A hold counted in FRAMES is three times
+   shorter in real time the moment the player uses it.
+2. `spr_level_complete` is a 200x100 canvas whose art occupies 165x62. Scaling the
+   CANVAS to 60% of the port makes the visible banner 37%; scaling the ART to 60%
+   makes the canvas 1045px wide, past the 960px GUI. Which rectangle "60%" means
+   decides both the size and whether it fits.
+3. The stage HUD is drawn in three places (`_levelControl/Draw_64`, the build list
+   inside it through `list_opacity`, and `_mainControl/Draw_75` for the speed
+   buttons), and `draw_set_alpha` does not compose with the per-draw alpha those
+   sprites already pass.
+
+**Fix.** `scr_level_clear` runs the sequence on `delta_time` (clamped per step, so a
+stall cannot skip a beat) - a real-time clock that is also pause-safe, because a
+pause stops the Step. One function per beat (`level_clear_*_seconds()`) so it can be
+retimed in one place. The banner is measured from the sprite's automatic bbox and
+positioned by the ART's centre (`(bbox centre - origin) * scale`), so the placeholder
+and a redraw land identically. One `level_ui_alpha` on `_levelControl` is read by
+every piece of the stage UI (through `with()` where the variable belongs to another
+instance), and the pieces that pass explicit alphas multiply by it.
+
+**Guard rails.**
+* **Any duration the player perceives is seconds, not frames**, because this
+  project ships a fast-forward that changes the step rate.
+* **"N% of the viewport" has to say WHICH rectangle** - port, GUI, canvas or art -
+  and the answer should be the one the player can see.
+* **A fade is only as wide as its alpha reaches**: `draw_set_alpha` is overridden by
+  `draw_sprite_*_ext`'s own alpha argument.
+
+**Files.** `scripts/scr_level_state`,
+`objects/_levelControl/{Create_0,Step_0,Draw_64}.gml`,
+`objects/_mainControl/{Create_0,Step_0}.gml`,
+`scripts/{scr_drawSpdBtns,scr_view_zoom,scr_view_idle}`, `sprites/spr_level_complete`.
+
+**Status.** FIXED 2026-10-18 (in-game confirmation pending).
+
+<a name="ll-056"></a>
+## LL-056 - A bar is a clamped ratio, and its denominator is data
+
+**Symptom.** A monster HP bar draws with a **negative width**: the orange fill
+appears to the LEFT of the black outline, sometimes a long way out. It is most
+often a boss that has just been killed, or a monster that is still emerging.
+
+**Root cause.** (`obj_mon/Draw_73`)
+
+    var _x2 = lerp(_xa+1, _xb-1, data[MON.life]/data[MON.maxLife]);
+    draw_line_width(_xa+1, _y2+1, _x2, _y2+1, 3);
+
+`lerp` with a ratio outside 0..1 **extrapolates**, and `life` really does leave
+the range:
+
+* `scr_do_damage` subtracts the WHOLE hit - a Pina Collider does 250 - and the
+  death check (`scr_zomb_death`) only runs inside `scr_zombie_path`. A monster
+  killed by a tower that steps later in the same frame therefore has `life < 0`
+  for the rest of that frame, and it still draws.
+* `scr_zombie_emerge` sets `life = maxLife` at **step 60**, so every shot fired
+  at an emerging monster is erased there (card `emerge-resets-life`) and the bar
+  is negative for up to a second of real time first.
+* `maxLife` is data. A zero row divides by zero, and `lerp` of an infinity is
+  not a bar.
+
+**Fix.**
+
+    _max   = data[MON.maxLife],
+    _ratio = (_max > 0) ? clamp(data[MON.life] / _max, 0, 1) : 0,
+    ...
+    if(_xb - _xa >= 2){
+        draw_line_width(_xa+1, _y2+1, lerp(_xa+1, _xb-1, _ratio), _y2+1, 3);
+    }
+
+plus a one-off `MON  life<0  <name>  life=x/max  bar=%` line, so an overdraw is
+named instead of inferred.
+
+**Guard rails.**
+* **A bar is `clamp(value/max, 0, 1)`.** Any other arithmetic can draw outside
+  its own track, and the symptom looks like a drawing bug when it is a data one.
+* **Guard the denominator** - `maxLife` is a table value, so it can be 0.
+* **A Draw event must not be the first place an invariant is checked.** The
+  monsters were allowed to be at `life <= 0`; the bar was the first reader to
+  care.
+* A zero-sized sprite (the emerge starts at `image_xscale = 0`) collapses the
+  bbox, so skip the fill when the track has no width rather than drawing a
+  1-pixel dot at the origin.
+
+**Files.** `objects/obj_mon/Draw_73.gml`.
+
+**Status.** FIXED 2026-10-18 (in-game confirmation pending).
+
+---
+
+
+<a name="ll-057"></a>
+## LL-057 - A message box is a QUEUE: write the portrait to the message that will be drawn
+
+**Symptom.** The "Up Next..." popup shows the previous creature's portrait
+beside the new creature's name. With two bosses that reads as "Tusk-A-Lot and
+Sub-Zero are swapped".
+
+**What it was NOT.** The art and the table both agree, and it is worth knowing
+the check: `spr_tusk_portrait` is the boar and `spr_tusk_walk` is the boar;
+`spr_zero_portrait` is the blue hood and `spr_zero_walk` is the blue hood; each
+`.yy` frame name matches the PNG in its folder, and no code writes
+`MON.portrait` except the one table row per creature. A centre-of-face colour
+sample settles which portrait file is which when the eye is not sure.
+
+**Root cause.** `show_portrait_box` stores the portrait per MESSAGE
+(`message_portrait[message_end]`) while `obj_textbox/Draw_64` draws
+`message_portrait[message_current]` - and `show_message_box` **APPENDS** to a
+box that already exists. So a second preview in the same box wrote its portrait
+one index ahead, and the box kept rendering message 0 (the PREVIOUS creature)
+with message 0's portrait. Nothing errors: every sprite involved exists.
+
+**Fix.**
+
+* a preview starts a FRESH box - `if(instance_exists(obj_textbox)) instance_destroy(obj_textbox)` -
+  because two popups at once is never what is wanted;
+* the wrapper writes its portrait to **every** message the box holds, so the
+  displayed message cannot be the one without it;
+* `scr_makeMonster` defaults every slot the enum names (`debree = 0`,
+  `portrait = -1`), so a row is complete before `scr_setupSpawning` fills it,
+  and `-1` (none) is a value both readers guard on;
+* `LEVEL boss bank: 0=Tusk-A-Lot walk=... portrait=...` is printed once at
+  setup, and `LEVEL up next: ... portrait=...` on every preview - the pairing
+  is now observable instead of argued about;
+* `python_tools/tests/test_content.py` asserts the portrait column is a
+  **bijection** (every creature has one, no two share one, every named sprite
+  exists). A duplicated or missing portrait now fails the suite.
+
+**Guard rails.**
+* **Store data against the thing that will read it.** A queue indexed by
+  `message_end` and read by `message_current` will disagree the moment anything
+  appends.
+* **"The assets are swapped" is a claim you can test in a minute** - frame
+  names, `.yy` names, colour, and the one table that pairs them. Do that before
+  editing art.
+* **A silent fallback is a bug of its own**: a row with no portrait drew
+  *nothing* and looked like a layout problem. `-1` plus a log is cheaper.
+
+**Files.** `scripts/show_portrait_box`, `scripts/scr_wave_preview`,
+`scripts/scr_makeMonster`, `scripts/mon_enums`, `scripts/scr_setupSpawning`,
+`python_tools/tests/test_content.py`.
+
+**Status.** FIXED 2026-10-18 (in-game confirmation pending; the name/portrait
+pairing itself may still be a naming decision).
+
+<a name="ll-058"></a>
+## LL-058 - A passive popup must not read a queue it does not own
+
+**Symptom.** The "Up Next..." popup named one creature and the wave sent
+another - *often*, in the player's words, and with no pattern: "almost like it
+is random". It began **on the third level**.
+
+**That last detail is the whole diagnosis.** `stage_data` gives 1-1 and 1-2
+`spawns = [0]` - ONE creature - and 1-3 is the first stage with `[0,1]`. With a
+single entry a preview cannot be wrong, so a defect that had existed since wave
+1 of stage 1 had been invisible for two stages and became a coin flip on the
+third. **A symptom that appears on a particular stage is a data precondition,
+not a new bug**: find what the stage changed (here: the pool size) and look
+*backwards* from it.
+
+**Root cause - three defects, any one of them enough.**
+
+1. **The portrait was per MESSAGE, drawn per `message_current`.**
+   `show_portrait_box` wrote `message_portrait[message_end]`,
+   `obj_textbox/Draw_64` read `message_portrait[message_current]`. Two indexes
+   that agree only while the box holds exactly one message.
+2. **`show_message_box` APPENDS to a live box.** So a second preview added
+   message 1 while the box kept drawing message 0 - the PREVIOUS creature,
+   with the previous portrait, under the new name.
+3. **The box was destroyed and re-created in the same step**, which is not
+   reliable: a destroyed instance is only dropped at the end of the step
+   ([LL-031](#ll-031)), so `instance_find` can hand back the dying one and the
+   new text lands in a box that is about to disappear.
+
+And one silent hazard that would make a *real* mismatch unreadable:
+`scr_level_spawn`'s fallback called `scr_level_pick_spawn` again - the exact
+re-roll the design forbids - and printed nothing.
+
+**Fix.**
+
+* `obj_textbox.portrait` is **one sprite for the whole box**; `Draw_64` draws it
+  with no index at all, so there is nothing left to disagree with. `-1` = none,
+  and the old frame-of-`message_sprite` path still works for the cutscene.
+* `show_portrait_box` **resets** the live box (one message at slot 0, typewriter
+  clock at 0) instead of appending or replacing it.
+* The decision is **one struct** - `next_pick { wave, is_boss, index, name,
+  portrait }` - made by `scr_level_pick_store`, which is **idempotent per wave
+  number**: asking again for a wave already decided returns the FIRST answer.
+  Popup and wave are two readers of one answer.
+* `scr_level_spawn` compares the promise with the delivery and logs
+  `LEVEL WARNING ...` if the wave, the row, the bank or the controller count
+  disagree. It also clamps a pick with no row instead of indexing a bank with -1
+  ([LL-002](#ll-002)).
+* The popup names the **wave** (`Up Next...  wave 12`), so a player reports two
+  numbers instead of two pictures - and the numbers say which half is wrong.
+
+**Guard rails.**
+
+* **One decision, one struct, and let it carry the wave it was made for.** An
+  `is_boss, index` pair cannot prove itself: the same index means a different
+  creature in the other bank, so any disagreement about `is_boss` silently
+  swaps the monster.
+* **Any decision made with `irandom` must be idempotent per key.** If a function
+  that rolls can run twice for the same key, it will - a state re-entry, a
+  double Step, a rebuilt controller - and everything that already showed the
+  first answer is now lying.
+* **A popup resets; a dialogue appends.** `show_message_box` is right for a
+  cutscene and wrong for a passive popup, and the two must not share a code
+  path that can append.
+* **Never destroy and re-create an instance in the same step to "replace" it.**
+  Overwrite the live one; the dying one is still in the list.
+* **A fallback that can change an answer must log.** `if(...) { re-roll }` with
+  no output is a bug that hides itself.
+* **Read a generated file back before believing it.** Three of the files in this
+  fix were written by a build script, and one write silently dropped leading
+  tabs - and, in a second file, `_is_boss = ` and `_in` from four lines. Braces
+  were still balanced, so `roundtrip`, the brace check and `gml-functions` all
+  passed: the function still *existed*, it just could not run. A file you did
+  not type by hand is proven by a `repr()` of its lines, not by how it renders.
+
+**Files.** `objects/obj_textbox/{Create_0,Draw_64}.gml`,
+`scripts/{show_message_box,show_portrait_box,scr_wave_preview,
+scr_level_pick_spawn,scr_level_wait,scr_level_spawn,scr_level_start}`,
+`objects/_levelControl/Create_0.gml`, `python_tools/tests/test_content.py`.
+
+**Status.** FIXED 2026-10-18 (in-game confirmation pending).
+
+<a name="ll-059"></a>
+## LL-059 - Everything at one depth is not "sorted"
+
+**Symptom.** Zombies drew over plants they were standing behind, and two
+zombies crossing each other could swap order. Nobody had made the graphics
+worse; it had always been like this.
+
+**Root cause: there was no sorting at all - only three opinions.**
+
+| Actor | Depth | Consequence |
+| --- | --- | --- |
+| monsters | a flat `-60`, written in three places | one plane: never sorted against each other, never sorted against plants |
+| plants | `-60 - (y>>5)`, at placement | always <= -62, so **in front of every monster, wherever either stood** |
+| 6 gravestones | `-(y/room_height)-50` | in an 800px room that is one flat value for all six |
+
+Nothing was wrong with any single line. The bug lived in the *relationship*:
+three different formulas cannot produce one draw order.
+
+**Fix.** One function, `scr_depth_y(y)` in `scripts/scr_setDepth` (which held a
+dead GM8 `depth = (room_height-y) >> 2` - note the direction: a larger y gave a
+LARGER depth, i.e. behind). `depth = -60 - y/32`, plus a 1e-5 tie-break from
+`id`, and a second entry point `scr_depth_band()` with no `id` for log lines.
+Monsters derive it in `obj_mon/Step_0` **every step** (a moving thing has to sort
+from the frame it crosses, not from the frame it spawned); plants and
+gravestones derive it once, at creation.
+
+**Guard rails.**
+
+* **"Sorted" needs one formula, not one value per class.** If two object types
+  pick their own depth expression, the relationship between them is decided by
+  arithmetic nobody wrote down.
+* **An actor's depth is a VIEW of its position, so it is re-derived when the
+  position changes.** Set it in the Step event that runs in every state, not in
+  the state scripts - a monster in its emerge or death animation is on screen
+  too.
+* **Sort by the origin, and make sure the origin IS the feet.**
+  `spr_grumble_walk` is 160 tall with `yorigin 150`, `spr_daisy_idle_192x` is 192
+  with `yorigin 158`, `spr_graves` is 64 with `yorigin 53` - all three stand on
+  their origin, which is why one formula works for all of them. A sprite with a
+  centre origin needs half its height added, and that is a different formula.
+* **A quantised depth ties.** The plants' `y>>5` put everything in the same
+  32px row at one depth; the float `y/32` is what lets a zombie stand BETWEEN
+  two plants instead of sharing their plane.
+* **Two instances at equal depth are drawn in creation order**, which for a
+  queue of monsters is an order that changes as they jostle - a flicker. The
+  tie-break must be smaller than the depth difference between two pixels of
+  ground (1/32), or it reorders real positions instead of breaking ties.
+* **Log the band once per level** (`DEPTH` prefix). A depth mistake looks like
+  an art mistake in a screenshot; the number makes it arithmetic.
+
+**Files.** `scripts/scr_setDepth`, `objects/obj_mon/{Create_0,Step_0}.gml`,
+`scripts/{scr_zombie_emerge,scr_zombie_path,scr_level_spawn}`,
+`objects/obj_spawn/Create_0.gml`, `objects/obj_tower/Create_0.gml`,
+`objects/obj_tower_edit/Step_0.gml`, `scripts/scr_level_boot`.
+
+**Status.** FIXED 2026-10-18 (in-game confirmation pending).
+
+<a name="ll-060"></a>
+## LL-060 - A rule with three readers has to be one number
+
+**Symptom.** The card said "stage bosses are not authored"; the real problem was
+that the boss RULE existed in four places and each said something different.
+Play rolled a boss on waves divisible by the region's `boss_every` (10), the
+stage's own named finale was a boss only for 1-10, the curve diagnostic used the
+`boss_every` cadence, and the balance tester encoded all of it again in Python.
+
+**Root cause.** A gameplay rule is data, and this one had been copied as a
+*number* and as a *condition* into every reader. Changing the game's rule then
+required finding every copy, and nothing failed when you missed one: the curve
+just confidently projected a boss wave that play had stopped sending.
+
+**Fix (decided by rayu 2026-10-18: one mid boss and one end boss per stage, both
+authored).**
+
+* `stage_data` rows author `bosses = [mid, end]` - an ORDERED pair, both
+  indices into `spawn_boss`. `irandom` is gone from the boss path entirely.
+* The mid WAVE is derived once, in `GameLevelData`: `boss_wave = waves div 2`,
+  so it cannot go stale against the stage's wave count (15 -> 7, 60 -> 30).
+* `scr_level_pick_spawn`, `scr_curve_is_boss_wave` and
+  `tables.is_boss_wave` all read that same `boss_wave` and the same finale test.
+* `region_data.boss_every` stays in the row, marked legacy, so a reader cannot
+  mistake its presence for its being used.
+
+**Guard rails.**
+
+* **A rule that gameplay and a tool both know is a number to share, not a
+  condition to copy.** Put it where both can read it (a derived field on the
+  level struct), and give the tool a test that fails when its mirror disagrees.
+* **When a rule changes, the tests that encoded the OLD rule must change too** -
+  three of them did (`test_boss_wave_rule`, the demand test, the payout test).
+  A test that still asserts the old rule is not protecting you; it is lying.
+* **A boss is authored, not rolled**, when the player is meant to learn it. The
+  fallback for a stage that names none is still random, and it is LOGGED, so
+  authored data can never be confused with an accident.
+
+**Status.** FIXED 2026-10-18.
+
+<a name="ll-061"></a>
+## LL-061 - A percentage applied after rounding is not a percentage
+
+**Symptom.** "A leak pays half instead of nothing" shipped, and the first test
+run showed the purse had barely moved: 20 leaks had paid 1 in total.
+
+**Root cause.** `floor(kill_money * 0.5)` is `0` when `kill_money` is `1`. The
+cheapest creature pays 1 money, so half of it, floored, is the nothing the
+change was meant to replace. The percentage looked fine and was a no-op on the
+only numbers that matter.
+
+**Fix.** The scale is applied to the UNROUNDED amount, inside the payout rule:
+`scr_kill_money(base, wave, ramp, scale)` multiplies into the same `money_carry`
+the difficulty column already uses (LL-042), and the sim mirrors it
+(`_payout(scale=)`). Two leaks of a 1-money creature then pay exactly 1 between
+them.
+
+**Guard rails.**
+
+* **Multiply before the floor, or the fraction disappears.** Any "pay 50%" on an
+  integer currency has to share the same carried remainder as everything else.
+* **Carry, do not round, at the payout site** - LL-042 again, and this is the
+  third bug with that shape.
+* **Test the SMALLEST value, not the average.** `0.5 x 1` is where a percentage
+  dies; `0.5 x 100` passes any test.
+
+**Status.** FIXED 2026-10-18.
+
+<a name="ll-062"></a>
+## LL-062 - A function that reads the caller's scope cannot be extended
+
+**Symptom.** None yet - the symptom was an absence. Crit could not be added.
+Every route ran into the same wall: `scr_do_damage(array, index)` had no
+amount, so a multiplier rolled at the tower had nowhere to go.
+
+**Root cause.** `scr_do_damage` subtracted `damage_calc`: an instance variable
+declared on `obj_tower` and SET BY THE CALLER (`scr_tower_shoot`). So the
+function's behaviour depended on whose scope happened to call it - AGENTS
+rule 6, in the one place where being wrong is expensive. Three consequences,
+in order of when they would have bitten:
+
+1. **Crit had no home.** A multiplier applied at the tower cannot reach a
+   function that also serves splash, because splash needs a different number.
+2. **A second caller would have dealt the wrong number, silently.** A burn
+   tick or an AoE calling it would have subtracted whatever the tower last
+   left in `damage_calc`. No error, no warning - just a number from another
+   instance.
+3. **`for_array` could not carry it.** That helper runs a NAMED script
+   through `run_script` with exactly `(array, index)`, which is why the
+   variable existed in the first place.
+
+**Fix.** `scr_do_damage(_arr, _ind, _amount)`; the tower passes `shot_damage`,
+locked when the swing starts. `damage_calc` is deleted from the project (a test
+greps every `.gml` for it). The strike loop is written out rather than
+`for_array`, because a three-argument call is clearer than a closure or a
+global.
+
+**Guard rails.**
+
+* **If a function needs a value, it takes it as a parameter** - even when only
+  one caller exists today. The second caller is where a scope read becomes a
+  wrong number instead of an error.
+* **Per-swing state is fine; per-scope input is not.** `shot_damage` lives on
+  the tower because a swing spans frames. The difference is that the function
+  is TOLD it, not reading it.
+* **A callback helper with a fixed signature is a limit, not an obstacle to
+  route around.** A short explicit loop beats a closure whose only purpose is
+  to satisfy `run_script`.
+* **Prove a refactor with an unchanged table.** `gm balance project
+  --all-waves` and `gm balance sim` were captured before and after and
+  diffed: byte-identical. That is the only honest proof that a "no behaviour
+  change" refactor changed no behaviour - and it costs one command.
+
+**Status.** DONE 2026-10-18 (balance tables identical; in-game confirmation
+pending, card `combat-damage-pipeline`).
+
+<a name="ll-063"></a>
+## LL-063 - A test that asserts a LINE fails when the editor rewrites the line
+
+**Symptom.** `test_the_tiebreak_cannot_reorder_two_different_y` passed twice in
+one session and then went red, with no edit to the test, the GML, or anything
+that imports them.
+
+**What actually happened.** `scripts/scr_setDepth/scr_setDepth.gml` and its
+`.yy` carried the SAME mtime, to the millisecond, minutes after the last green
+run: GameMaker saved the asset from its own buffer (AGENTS rule 1, LL-008), and
+the buffer's version of one line was `irandom(97) * 0.00001` where the disk had
+`id mod 97 * 0.00001`. The test asserted the *string* `id mod 97`, so it was
+measuring the buffer rather than the behaviour.
+
+**Why it matters.** A test that names a line of code is a second copy of that
+line. When the two disagree, the test reports the disagreement as a failure -
+which reads as "the game is broken" when nothing about the game changed. Both
+versions are the same behaviour: a random tie-break of at most 0.00097 of a
+depth unit, rolled once per instance.
+
+**The rule.**
+
+* **Assert the property, not the expression.** Here: the buffer must be rolled
+  ONCE (`variable_instance_exists` guards it - a per-frame random is the very
+  flicker it exists to prevent) and it must be smaller than 1/32 of a depth
+  unit, so it cannot reorder two different y. Which random it is does not
+  matter.
+* **When a test changes colour with no edit, check mtimes before theories.**
+  `ls -l --time-style=full-iso` on the asset and on the test. Two files of one
+  asset sharing an mtime to the millisecond means the IDE wrote them.
+* **A comment describing a mechanism the code no longer uses is the same class
+  of lie as a stale doc** - and it is what made the test's wrong assumption
+  look right in the first place. Fix the comment in the same edit as the test.
+
+**Status.** Comment and test now describe `irandom(97)`; the behaviour never
+changed and the depth card stays validated.
+
+---
+
 
 ## Adding an entry
 

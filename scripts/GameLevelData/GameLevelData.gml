@@ -38,7 +38,7 @@ function GameLevelData(_row, _region) constructor {
 	/// ---- what it IS -------------------------------------------------------
 	seeds     = _row.seeds;      /// base seeds on a first Normal clear
 	spawns    = _row.spawns;     /// indices into the spawn_mon pool
-	bosses    = _row.bosses;     /// indices into the spawn_boss pool (empty = no named boss)
+	bosses    = _row.bosses;     /// ORDERED [mid, end]; empty = none authored
 	par_spend = _row.par_spend;  /// the "Frugal" badge threshold, in money
 	par_time  = _row.par_time;   /// the "Speed Grower" badge threshold, in seconds
 
@@ -47,12 +47,20 @@ function GameLevelData(_row, _region) constructor {
 	wave_step  = _region.wave_step;   /// extra waves per stage
 	curve_end  = _region.curve_end;   /// life multiplier on the region's last wave
 	curve_pow  = _region.curve_pow;   /// the bend; 2 = quadratic
-	boss_every = _region.boss_every;  /// mid-stage boss cadence; 0 = none
+	boss_every = _region.boss_every;  /// LEGACY: the pick uses boss_wave now
+	                                  /// (LL-060).  Kept so the region row and
+	                                  /// the tester keep their shape.
 
 	/// How many waves the stage has.  A RULE, not a typed number: every biome
 	/// starts at wave_first and adds wave_step a stage, so stage 1 is 15 waves
 	/// everywhere and stage 10 is 60 (roadmap 5.6 - authoring is table-filling).
 	waves = _region.wave_first + _region.wave_step * (stage - 1);
+
+	/// The wave the stage's MID boss arrives on: half way, rounded down
+	/// (15 waves -> 7, 60 -> 30).  DERIVED, so it cannot go stale against
+	/// the wave count above, and it is the number scr_level_pick_spawn and
+	/// scr_curve_is_boss_wave both read - one rule, three readers (LL-060).
+	boss_wave = waves div 2;
 
 	/// ---- what the player has DONE with it (live, never cached) ------------
 	static label = function() {

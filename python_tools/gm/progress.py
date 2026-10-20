@@ -49,7 +49,10 @@ AWAITING = ["none", "external"]
 
 AREAS = ["code", "art", "sound", "design", "docs", "tools", "data"]
 SIZES = ["S", "M", "L"]
-PHASES = ["0", "1", "2", "3", "4", "5", "infra"]
+# `6` is roadmap.md Phase 6 (balance, polish, release).  It was missing here,
+# so the release gate could not be put on the board at all - every card that
+# belonged to it was silently filed under 5, or not filed.
+PHASES = ["0", "1", "2", "3", "4", "5", "6", "infra"]
 PRIOS = [1, 2, 3]
 
 META_KEYS = ["schema", "project", "updated", "viewer", "how_to"]

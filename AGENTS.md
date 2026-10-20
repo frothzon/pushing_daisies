@@ -67,13 +67,29 @@ outside the IDE for those files is silently thrown away. Before a structural
 edit, ask the user to close the project; before they test, ask them to reload it.
 
 ### 1.2 Version control
-A local repo was initialised on **2026-10-03** (`git init -b main`, one initial
-commit, 2425 files). It has **one commit and no history**, so "undo" goes back to
-the start of the session, not one step — copy anything you are about to
-restructure into `/tmp` first (`/tmp/menu_refactor_backup/`,
-`/tmp/gmfix_backup/` are from previous sessions). `origin` is
-`github.com/frothzon/pushing_daisies`; pushes are the owner's call. `.gitignore`
-excludes `*.resource_order` and `Build`, so a clean checkout has no
+The repo has real history: `git init -b main` on **2026-10-03**, then a
+catch-up commit at most working sessions (HEAD `9f02314`, *Monsters draw in
+water again, plus a catch-up snapshot*). So "undo" goes back one checkpoint,
+not to the start of the session.
+
+**A checkpoint is only as good as the last commit.** On 2026-10-19 the working
+tree held **106 uncommitted files**, twelve of them **untracked** — and the
+untracked set was the whole balance tester (`python_tools/gm/balance/`), four
+test files, `scr_curve`, `scr_level_boot`, `scr_menu_slider` and
+`spr_level_complete`. An untracked file is in **no** commit: no `git checkout`,
+no `git stash`, no revert can bring it back. So:
+
+* **Run `git status` before any structural change**, and commit a checkpoint if
+the tree is dirty. Local only — `origin` is
+  `github.com/frothzon/pushing_daisies` and pushes are the owner's call
+  (`decide-github-push`).
+* **Building a new feature starts by noticing whether it is tracked.** A new
+  script or test that only exists in the working tree is one bad delete from
+  gone.
+* Copy anything you are about to *restructure* into `/tmp` as well
+  (`/tmp/menu_refactor_backup/`, `/tmp/gmfix_backup/` are previous sessions').
+
+`.gitignore` excludes `*.resource_order` and `Build`, so a clean checkout has no
 `.resource_order` until GameMaker writes one.
 
 ### 1.3 Line endings
@@ -98,11 +114,15 @@ Full EOL census commands: [LL-006](./lessons_learned.md#ll-006).
 cd /home/rayu/GameMakerProjects/pushing_daisies_recovered
 
 # 1. every .yy/.yyp/.resource_order round-trips byte-for-byte
-#    expect: 595 file(s) round-trip byte-for-byte, 0 differ
+#    expect: 674 file(s) round-trip byte-for-byte, 0 differ
+#    (the COUNT grows as resources are added - a *drop* is the signal, not a
+#     change in the number)
 PYTHONPATH=python_tools python3 -m gm roundtrip
 
 # 2. toolkit test suite
-#    expect: Ran 32 tests ... OK
+#    expect: Ran 101 tests ... OK
+#    and after adding *n* tests the count must rise by *n*: a suite that cannot
+#    notice a missing test has a hole in it (LL-041)
 PYTHONPATH=python_tools python3 -m unittest discover -s python_tools/tests
 
 # 3. the GML you changed still parses, and has the functions you expect
@@ -114,7 +134,11 @@ PYTHONPATH=python_tools python3 -m gm list GMScript       # spot built-in collis
 # 4. no stray escapes in the files you touched (each must print 0)
 grep -cF '\r' objects/Menu/Step_0.gml
 
-# 5. the tracker still describes reality (section 6)
+# 5. the balance tester still has every number it needs (reads the GML tables)
+#    expect: "ok        the tester has every number it needs"
+PYTHONPATH=python_tools python3 -m gm balance check
+
+# 6. the tracker still describes reality (section 6)
 #    expect: "progress.json, PROGRESS.md and progress.html agree"
 PYTHONPATH=python_tools python3 -m gm progress check
 ```
@@ -130,6 +154,8 @@ the exact log lines to look for, and name what would falsify your fix.
 | Area | Where |
 | --- | --- |
 | Title menu (state machine = `enum` + `switch`) | `objects/Menu/{Create_0,Step_0,Draw_0,Draw_64}.gml` |
+| **Level boot** (the one place a stage begins) | `rooms/rm_test/RoomCreationCode.gml` → `scripts/scr_level_boot` - idempotent, runs on EVERY entry to the stage room, after every instance Create ([LL-049](./lessons_learned.md#ll-049)). Never boot a level from an instance Create |
+| Level flow (state machine = `enum` + `switch`) | `scripts/scr_level_state` → `scr_level_{start,spawn,wait,clear}`; `_mainControl` startup → cutscene → `_levelControl` |
 | Menu states, state-change, debug dump | `scripts/scr_menu_state/scr_menu_state.gml` — `MENU_STATE`, `scr_menu_state_name`, `scr_menu_changeState`, `scr_menu_debug`, `scr_menu_debug_buttons` |
 | Button object (all buttons are `_button`) | `objects/_button/{Create_0,Step_0,Draw_0,Draw_64}.gml` → `scr_iniButton()`, `scr_stpButton()` |
 | Button plumbing | `scripts/scr_setup_menuStates`, `scr_create_button`, `scr_button_index_{enable,disable,hide}`, `scr_button_greyout`, `scr_scaleButton` |
@@ -138,6 +164,7 @@ the exact log lines to look for, and name what would falsify your fix.
 | Globals | `scripts/initialize_game/initialize_game.gml` — `global.devMode`, `global.saveName`, `global.startRoom` |
 | Logging | `scripts/print/print.gml` (already gated on `global.devMode`) |
 | **Progress tracker** | `progress.json` (source) → `PROGRESS.md`, `progress.html` (generated) — §6 |
+| **Balance tester** | `python_tools/gm/balance/` — `gm balance {tables,route,towers,afford,sim,project,check,fit}`; reads the tables (and the shot cycle) out of GML, so it cannot drift ([LL-038](./lessons_learned.md#ll-038), [LL-040](./lessons_learned.md#ll-040)). `project` is the closed form (a ratio); `sim` time-steps the stage at 60fps and is the arbiter on outcomes ([LL-042](./lessons_learned.md#ll-042)) |
 | Python toolkit | `python_tools/` — read `python_tools/README.md` first |
 
 **Legacy state machines that are NOT yet migrated** (they still use

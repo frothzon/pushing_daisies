@@ -39,16 +39,28 @@ function scr_load_meta() {
 	        }
 	        if(is_struct(_parsed)){
 	            _meta = scr_meta_merge(scr_meta_default(), _parsed);
+	            /// the version is stamped HERE, once, on the top level.
+	            /// scr_meta_merge() never writes one into a nested map -
+	            /// that stamp was the visible trace of the v1 bug (LL-050).
+	            _meta[$ "version"] = scr_meta_version();
 	            _how  = "loaded";
 	        }
 	    }
 	}
 
 	global.meta = _meta;
+	/// THE MAPS, TOO.  A log that prints only the fields a bad merge cannot
+	/// lose proves nothing - that is how a save that arrived empty on every
+	/// launch went unnoticed for a whole playtest (LL-050).
 	scr_meta_log("SAVE", _how, " version=", global.meta[$ "version"],
 	             " file=", _file,
 	             " seeds=", global.meta[$ "seeds"],
 	             " clovers=", global.meta[$ "clovers"],
-	             " shards=", global.meta[$ "shards"]);
+	             " shards=", global.meta[$ "shards"],
+	             " stages=", scr_meta_count(global.meta[$ "stages"]),
+	             " clears=", scr_meta_count(global.meta[$ "clears"]),
+	             " towers=", scr_meta_count(global.meta[$ "towers"]),
+	             " nodes=",  scr_meta_count(global.meta[$ "clover_nodes"]),
+	             " badges=", scr_meta_count(global.meta[$ "badges"]));
 	return global.meta;
 }

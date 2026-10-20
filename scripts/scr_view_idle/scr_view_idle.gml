@@ -1,5 +1,10 @@
 /// @description  scr_view_idle();
 function scr_view_idle() {
+
+	/// ---- a finishing stage does not want the mouse (LL-055) ----------
+	/// The clear sequence is flying the camera out to the room; a drag
+	/// would take the finish away from the player.
+	if(scr_level_exiting()) return;
 	/*
 	    view doesn't do anything while idle except
 	    check for dragging

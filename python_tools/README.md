@@ -69,7 +69,49 @@ python -m gm progress            # check: valid, and the views match the JSON
 python -m gm progress build      # regenerate both views
 python -m gm progress list       # a compact board in the terminal
 python -m gm progress set <id> status=done
+
+# The headless balance tester - reads the game's own tables out of the GML
+python -m gm balance             # project stage 1-1 and print the findings
+python -m gm balance tables      # every number it read, and which file owns it
+python -m gm balance route       # the room's grid, route and slots
+python -m gm balance towers      # the roster: card dps vs delivered, and dominance
+python -m gm balance afford      # the income curve against the ladder prices
+python -m gm balance sim         # time-step a whole stage: leaks, hearts, the gate
+python -m gm balance sim --cycle both   # ...against the idealised fire cycle
+python -m gm balance project --all-waves --profile
+python -m gm balance check       # every table still parses (the fast gate)
+
+# fit a knob from outcomes: which curve_end puts these stages in band?
+python -m gm balance fit --stages 1 2 3 --from 10 --to 20 --step 5
+python -m gm balance fit --stages 1 2 3 --from 10 --to 20 --step 5 --sim
 ```
+
+`balance towers` prints four dps figures per tower and it matters which is
+which: **card** (`damage x rate x targets`, the shop's claim), **x1** (one
+target), **deliv** (x1 with the shot *cycle* charged - LL-040) and **eff**
+(deliv x coverage, i.e. what reaches the route). Every step to the right is a
+step down, and the size of each drop is the finding. It also reports dominance
+on two axis sets: on **every** axis (price, card, x1, eff) nothing in the
+roster is dominated; **on the board** (price + delivered) Pina Collider is, by
+Slender Mandrake.
+
+`balance sim` is the other half: where `project` is a closed form (a ratio),
+`sim` steps the real rules at 60fps - monsters spawn one per 0.5s, towers run
+the idle/attack/return state machine, damage lands on `fire_frame` against the
+capped target list, a kill pays in the frame it lands, a leak costs a life and
+pays nothing, and the stage fails at zero (``scr_main_normal``). It reports
+leaks, hearts, idle money, the split between fighting and the 354-frame
+wave gate, how many swings achieved nothing, and the widest target list any
+tower held - which is the only honest way to ask whether a `targets` cap can
+ever fill. `--cycle nominal` runs the same stage on the idealised fire period
+instead of the state machine. `--spend` picks the policy: `none` buys nothing
+(the baseline that shows what a wave costs with no towers), `ceiling` re-runs
+the greedy at each wave boundary - perfect play with perfect information, and
+optimistic because money that lands mid-wave idles until the next one - and
+`instant` re-runs it while a wave is live, which is what a person does. The
+greedy scores UNION coverage (`dps x the share of route nothing else shoots`)
+and is handed the towers already standing, so it spreads along the route and
+buys rungs as well as placements (LL-048).
 
 Add `-p /path/to/project` (or `--project`) to any command to point at a
 project other than the one above the current directory.
@@ -143,8 +185,9 @@ contains both LF and CRLF `.gml` files).
 | `gm/events.py` | `eventType`/`eventNum` ↔ `Create_0.gml` mapping |
 | `gm/project.py` | `Project`, `Resource`, key-path helpers, creation helpers |
 | `gm/progress.py` | The progress tracker: schema, validation, the two generated views |
+| `gm/balance/` | The headless balance tester: `tables.py` (a GML table reader, including the shot `Cycle`), `geometry.py` (room → grid, route, slots), `terrain.py`, `model.py` (the closed form), `policy.py` (how the money gets spent), `sim.py` (the 60fps time-step), `report.py` (the read-outs) |
 | `gm/cli.py`, `gm/__main__.py` | `python -m gm ...` command line interface |
-| `tests/test_gm.py` | Round-trip and editing tests |
+| `tests/test_gm.py`, `tests/test_balance.py` | Round-trip, editing and balance tests |
 
 ## Tests
 

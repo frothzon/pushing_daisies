@@ -36,7 +36,8 @@ function scr_zombie_path() {
 	    image_yscale = base_scale;
 	    x = spawn_object.x;
 	    y = spawn_object.y;
-	    depth = -60;
+	    /// depth is scr_depth_y(y), derived by obj_mon/Step_0 on every step
+	    /// (LL-059) - do not pin it here
 	    z_climb = 10;
 	}
 

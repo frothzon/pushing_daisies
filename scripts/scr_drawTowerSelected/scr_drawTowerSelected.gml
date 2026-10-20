@@ -32,6 +32,21 @@ function scr_drawTowerSelected() {
 	    concat(_sel.name, "   Level ", _data[TOWER.level], "/", tower_max_level),
 	    c_lime, c_black, 2);
 
+	/// The RING's colour, beside the level it names, so the tower standing
+	/// on the map explains itself without a tooltip (tower_level_outline).
+	/// Level 1 has no ring, so there is nothing to draw and the swatch is
+	/// simply absent - the same "no ring" the tower itself shows.
+	/// The swatch is drawn SOLID, at full strength, even though the ring on
+	/// the map is additive at 25% (tower_outline_alpha): it is a LEGEND, and a
+	/// quarter-strength patch on a dark card would name nothing.  The colour is
+	/// the thing it has to communicate.
+	var _ring = tower_level_outline(_data[TOWER.level]);
+	if(_ring != -1){
+	    draw_set_colour(_ring);
+	    draw_rectangle(_x+_w-26, _y+10, _x+_w-14, _y+22, false);
+	    draw_set_colour(c_white);
+	}
+
 	/// ---- lines 2 and 3: all five numbers, with the delta a purchase buys
 	draw_set_font(fnt_size16);
 

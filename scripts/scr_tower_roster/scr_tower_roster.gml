@@ -39,18 +39,29 @@ function tower_roster() {
 	return [
 		/// ---- the four starters: free, and between them they cover cheap DPS,
 		///      damage over time, multi-target and area damage
+		/// ---- REPRICED 2026-10-13 (economy-prices-rebalance) ------------------
+		/// The ladder was 5 / 15 / 45 / 100 - a 3x-then-3x-then-2.2x climb against
+		/// an income that starts at $30 a wave, so the $45 and $100 towers arrived
+		/// on waves 9 and 12 of 15.  The second half of the roster was a one-wave
+		/// decision, which is why the measurable ladder was really "Daisy, then
+		/// Ivy".  At 5 / 10 / 20 / 40 all four starters are affordable by wave 6 and
+		/// every rung is a decision the player can actually make.
+		///
+		/// This compresses the roster against the wave curve on purpose: the curve
+		/// that goes with it is FITTED by the sim, not guessed (economy.md 4.1,
+		/// balance-fit-from-sim).
 		tower_entry("Daisy Pusher",
 		            [spr_daisy_idle_192x, spr_daisy_attack_192x, spr_daisy_return_192x],
 		              5, scr_towerData(100,   4,    3, _eff_puff,   1),  0, 0),
 		tower_entry("Burning Ivy",
 		            [spr_ivy_idle_192x, spr_ivy_attack_192x, spr_ivy_return_192x],
-		             15, scr_towerData( 80,  40,    2, _eff_acid,   1),  0, 0),
+		             10, scr_towerData( 80,  40,    2, _eff_acid,   1),  0, 0),
 		tower_entry("Slender Mandrake",
 		            [spr_mandrake_idle_192x, spr_mandrake_attack_192x, spr_mandrake_return_192x],
-		             45, scr_towerData(125, 125,    1, _eff_spikes, 3),  0, 0),
+		             20, scr_towerData(125, 100,    0.35, _eff_spikes, 3),  0, 0),
 		tower_entry("Pina Collider",
 		            [spr_pina_idle_192x, spr_pina_attack_192x, spr_pina_return_192x],
-		            100, scr_towerData( 75, 200,    1, _eff_xplod, 10),  0, 0),
+		             40, scr_towerData( 75, 250,    0.10, _eff_xplod, 10),  0, 0),
 
 		/// ---- the two Phase 1 unlocks: pure stat changes, no status effect,
 		///      so they do not need Phase 2 (roadmap 5.2)

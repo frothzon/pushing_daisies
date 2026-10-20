@@ -20,11 +20,14 @@ function scr_level_wait() {
 	/// is nothing to preview.
 	if(level_state_time == 0){
 	    wave_preview_shown = false;
-	    next_spawn_index   = -1;   /// -1 = no preview this round
+	    /// The decision for the wave AFTER this one, made ONCE for that wave
+	    /// number (LL-058).  It used to be re-rolled here on every entry, so
+	    /// any path that ran this block twice replaced the creature the popup
+	    /// had already named - which is what made the mismatch look random.
 	    if(wave_count < _row.waves){
-	        var _pick = scr_level_pick_spawn(wave_count + 1);
-	        next_is_boss     = _pick.is_boss;
-	        next_spawn_index = _pick.index;
+	        scr_level_pick_store(wave_count + 1);
+	    } else {
+	        next_pick = scr_level_pick_none();   /// nothing to preview
 	    }
 	}
 
@@ -36,8 +39,8 @@ function scr_level_wait() {
 	    /// walk.  The pick itself was stored at state entry.
 	    if(!wave_preview_shown){
 	        wave_preview_shown = true;
-	        if(next_spawn_index >= 0){
-	            scr_wave_preview(next_is_boss, next_spawn_index);
+	        if(is_struct(next_pick) && next_pick.index >= 0){
+	            scr_wave_preview(next_pick);
 	        }
 	    }
 	    spawn_timer--;

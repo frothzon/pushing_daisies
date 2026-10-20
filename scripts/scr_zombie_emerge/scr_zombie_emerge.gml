@@ -25,13 +25,19 @@ function scr_zombie_emerge() {
 	image_yscale = _s;
 
 	if(state_time >= 60){
-	    data[MON.life] = data[MON.maxLife];
+	    /// NO LIFE RESET HERE (decided 2026-10-18).  This line set life back
+	    /// to maxLife on the last frame of the emerge, so a monster shot while
+	    /// it was rising was HEALED by walking - which is the "HP bar goes
+	    /// back up" symptom, and it made the emerge a free full heal instead
+	    /// of a vulnerable second.  A monster is born at full life
+	    /// (scr_makeMonster); nothing has to restore it.
 	    scr_changeState(scr_zombie_path);
 	}
 
 	x = spawn_object.x;
 	y = spawn_object.y;
-	depth = -60;
+	/// depth is scr_depth_y(y), derived by obj_mon/Step_0 - a literal here
+	/// would flatten every monster in the wave onto one plane (LL-059)
 
 	if(chance(0.04)){
 	    scr_burstPartSelf(ENGINE.pt_clodPuff,5,30);

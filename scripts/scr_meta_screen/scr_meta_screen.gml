@@ -675,3 +675,115 @@ function meta_text_fit(_x, _y, _text, _col, _align, _maxw, _linegap) {
 	draw_set_halign(fa_left);
 	return array_length(_lines);
 }
+
+//==============================================================================
+// THE RESULTS SCREEN  (goal.md 27.2)
+//==============================================================================
+//
+// The one screen both stage exits open with.  global.level_result is written by
+// scr_level_clear() and scr_level_failed() with the SAME fields, so this screen
+// never has to ask which outcome it is looking at - it reads `outcome`.
+//
+// It offers at most three actions, and they are the three things a player wants
+// at the end of a stage: play it again, play the next one, or go back to the
+// map.  "Next" is only enabled on a clear, and only when a next stage both
+// EXISTS and is UNLOCKED - a dead button is worse than no button.
+
+function meta_results_geom() {
+	var _gw = display_get_gui_width(),
+	    _gh = display_get_gui_height(),
+	    _w  = 620, _h = 340,
+	    _x  = (_gw - _w)*0.5,
+	    _y  = (_gh - _h)*0.5;
+	return {
+		panel : [_x, _y, _x + _w, _y + _h],
+		retry : [_x + 40,       _y + _h - 78, _x + 220,     _y + _h - 30],
+		next  : [_x + 240,      _y + _h - 78, _x + 400,     _y + _h - 30],
+		map   : [_x + 420,      _y + _h - 78, _x + _w - 40, _y + _h - 30]
+	};
+}
+
+/// The stage after this one: the next stage in the region, else the first
+/// stage of the next region.  It must both exist and be unlocked - after a
+/// clear, the one just finished is exactly what unlocks it.
+/// Returns undefined when there is no next stage to offer.
+function meta_results_next(_region, _stage) {
+	var _cand = [];
+	if(_stage < 10)  _cand[0] = [_region, _stage + 1];
+	if(_region < 6)  _cand[1] = [_region + 1, 1];
+	for(var _i = 0; _i < array_length(_cand); _i++){
+		var _r = _cand[_i][0],
+		    _s = _cand[_i][1];
+		if(level_exists(_r, _s) && stage_unlocked(_r, _s)){
+			return { region : _r, stage : _s };
+		}
+	}
+	return undefined;
+}
+
+function meta_draw_results() {
+	var _g   = meta_results_geom(),
+	    _has = variable_global_exists("level_result") && is_struct(global.level_result),
+	    _res = _has ? global.level_result : undefined,
+	    _win = _has && (_res[$ "outcome"] == "CLEAR");
+
+	meta_title(_win ? "Stage Clear" : "Stage Lost");
+
+	meta_panel(_g.panel[0], _g.panel[1],
+	           _g.panel[2] - _g.panel[0], _g.panel[3] - _g.panel[1],
+	           make_colour_rgb(24, 26, 30), _win ? c_lime : c_red);
+
+	/// A results screen with nothing to show.  This is the one state that can
+	/// be entered WITHOUT a stage having run (a stale global.menu_entry from a
+	/// relaunch), so it says so instead of drawing an empty panel - and the
+	/// Step is already sending the player to the map this frame.
+	if(!_has){
+		meta_text(_g.panel[0] + 40, _g.panel[1] + 60,
+		          "No result to show.", c_white, fa_left);
+		return;
+	}
+
+	var _x = _g.panel[0] + 40,
+	    _y = _g.panel[1] + 56;
+
+	draw_set_font(fnt_size32);
+	draw_set_halign(fa_left);
+	draw_set_valign(fa_top);
+	draw_set_colour(c_white);
+	draw_text(_x, _y, "Region " + string(_res.region) +
+	                  "   Stage " + string(_res.stage));
+
+	draw_set_font(fnt_size16);
+	draw_set_colour(_win ? c_lime : c_red);
+	draw_text(_x, _y + 46, _win ? "CLEARED" : "FAILED");
+
+	/// the numbers.  A loss shows what it did NOT pay, because "nothing" is
+	/// the design decision a player should be able to read (goal.md 27.3).
+	draw_set_font(fnt_debug);
+	var _lines = [
+		"Difficulty      " + difficulty_name(_res.difficulty),
+		"Lives left      " + string(_res.lives),
+		"Leaked          " + string(_res.leaked)
+	];
+	if(_win){
+		_lines[3] = "Seeds earned    +" + string(_res.seeds);
+		_lines[4] = "Clovers earned  +" + string(_res.clovers);
+		var _b = _res[$ "badges"];
+		if(is_string(_b) && _b != "") _lines[5] = "Badges          " + _b;
+	} else {
+		_lines[3] = "Seeds earned    nothing - a stage pays on a clear";
+	}
+	var _row = stage_get(_res.region, _res.stage);
+	if(!is_undefined(_row)) _lines[6] = "Waves           " + string(_row.waves);
+
+	for(var _i = 0; _i < array_length(_lines); _i++){
+		if(is_undefined(_lines[_i])) continue;
+		meta_text(_x, _y + 92 + _i*24, _lines[_i], c_ltgray, fa_left);
+	}
+
+	/// the actions
+	var _next = _win ? meta_results_next(_res.region, _res.stage) : undefined;
+	meta_button_draw(_g.retry, "Retry", true);
+	meta_button_draw(_g.next,  "Next",  !is_undefined(_next));
+	meta_button_draw(_g.map,   "World Map", true);
+}

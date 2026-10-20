@@ -1,6 +1,12 @@
 /// @description  scr_view_zoom();
 function scr_view_zoom() {
 
+	/// ---- the LEVEL COMPLETE fly-out owns the camera (LL-055) ----------
+	/// scr_level_clear() sets the view every frame it is clearing, so a
+	/// wheel notch would fight it for one frame and a drag would pull the
+	/// camera away from the room fit.  No input while a stage is ending.
+	if(scr_level_exiting()) return;
+
 	//-------------------------- setup Zoom Variables
 	var _zoomUp = mouse_wheel_up() || (keyboard_check(vk_shift) && keyboard_check(vk_up)),
 	    _zoomDwn = mouse_wheel_down() || (keyboard_check(vk_shift) && keyboard_check(vk_down))

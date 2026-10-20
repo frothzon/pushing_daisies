@@ -11,7 +11,9 @@ function scr_level_showPath() {
 	    path_frame = 0;
 	}
 	if(spawn_timer == floor(spawn_wait_time*0.75)){
-	    var _wave = get_item_value(waves);
+	    /// the banner announces the wave that is ABOUT to spawn; `waves` is the
+	    /// wave being fought, so ask for the next one (LL-044)
+	    var _wave = get_item_value(waves) + 1;
 	    scr_showWave(_wave);
 	    scr_resetDrawPath();
 	}

@@ -15,6 +15,7 @@ from . import events as events_mod
 from . import gml as gml_mod
 from . import progress as progress_mod
 from . import project as project_mod
+from . import save as save_mod
 from . import yy
 
 
@@ -271,6 +272,244 @@ def cmd_roundtrip(args: argparse.Namespace) -> int:
     return 1 if bad else 0
 
 
+def cmd_balance(args: argparse.Namespace) -> int:
+    """``gm balance ...`` - the headless balance tester.
+
+    Reads the game's own tables, rebuilds the stage's route, and projects the
+    curve without launching the game.  See ``python_tools/gm/balance``.
+    """
+    from .balance import model, policy, report, tables as btables
+
+    proj = _load_project(args)
+    root = proj.root
+
+    if args.action == "tables":
+        for line in report.tables_report(btables.load(root)):
+            print(line)
+        return 0
+
+    scene_for = lambda diff: model.resolve(  # noqa: E731
+        root, region=args.region, stage=args.stage, difficulty=diff,
+        loadout=args.loadout, spawns=args.spawns, z=args.z)
+
+    if args.action == "route":
+        from .balance import geometry
+        scene = scene_for(args.difficulty)
+        m = geometry.load_map(root, cell=scene.tables.constants.cell)
+        for line in report.route_report(scene, m):
+            print(line)
+        for i, route in enumerate(scene.routes):
+            print(f"   spawn {i}  {round(scene.route_lengths[i])}px  "
+                  f"{len(route)} waypoints")
+        return 0
+
+    if args.action == "project":
+        from .balance import terrain as bterrain
+        scene = scene_for(args.difficulty)
+        cov = policy.coverage_for(scene)
+        ter = bterrain.Terrain(args.z, "uniform")
+        lines = report.route_report(scene)
+        lines += report.project_report(scene, cov, ter)
+        if args.all_waves:
+            lines += [report.row_line(r)
+                      for r in model.all_waves(scene, ter, cov=cov)]
+        else:
+            lines += report.band_report(scene, cov)
+        lines += report.findings(scene, cov)
+        if args.profile:
+            lines += report.feel_report(
+                lambda name: model.resolve(root, region=args.region,
+                                           stage=args.stage, difficulty=name,
+                                           loadout=args.loadout,
+                                           spawns=args.spawns, z=args.z))
+        for line in lines:
+            print(line)
+        return 0
+
+    if args.action == "fit":
+        from .balance import fit as bfit
+
+        stages = list(args.stages) if args.stages else [args.stage]
+        if args.from_value is None or args.to_value is None:
+            print("fit needs a window: --from <value> --to <value> [--step 2]")
+            print("   e.g.  gm balance fit --stages 1 2 3 --from 10 --to 60 --step 2")
+            return 2
+        try:
+            cands = bfit.values(args.from_value, args.to_value, args.step)
+        except ValueError as err:
+            print(f"fit: {err}")
+            return 2
+        if not cands:
+            print("fit: that window is empty")
+            return 2
+
+        base = btables.load(root)
+
+        def measure(value):
+            """One candidate: every measured stage, in band or not."""
+            t2 = bfit.with_param(base, args.param, value, args.region)
+            out = []
+            for st in stages:
+                scene = model.resolve(root, region=args.region, stage=st,
+                                      difficulty=args.difficulty,
+                                      loadout=args.loadout, spawns=args.spawns,
+                                      z=args.z, t=t2)
+                cov = policy.coverage_for(scene)
+                rows = model.all_waves(scene, cov=cov)
+                out.append(bfit.StageFit(
+                    stage=st,
+                    worst=max(r.bite for r in rows),
+                    easiest=rows[0].bite,
+                    lows=[r.wave for r in rows if r.verdict == "LOW"],
+                    highs=[r.wave for r in rows if r.verdict == "HIGH"]))
+            return out
+
+        rows = bfit.sweep(cands, measure)
+        print(report.rule(f"fit {args.param} on region {args.region}, "
+                          f"{args.difficulty}, stages "
+                          f"{', '.join(str(s) for s in stages)}"))
+        for c in rows:
+            mark = "->" if c.inside else "  "
+            if c.inside:
+                note = "in band"
+            elif c.lows:
+                note = "LOW on stage " + ",".join(str(s) for s in c.lows)
+            elif c.highs:
+                note = "HIGH on stage " + ",".join(str(s) for s in c.highs)
+            else:
+                note = "outside"
+            print(f"   {mark} {args.param} {c.value:<6g} worst {c.worst:>5.2f}   {note}")
+
+        inside = [c for c in rows if c.inside]
+        pick = bfit.recommend(rows)
+        if inside:
+            print(report.rule("the window that fits"))
+            print(f"   {args.param} {inside[0].value:g} .. {inside[-1].value:g}"
+                  f"   ({len(inside)} of {len(rows)} candidates)")
+        else:
+            print(report.rule("nothing fits"))
+            print("   No value in this window puts every measured stage in band,")
+            print("   which is an answer too: the knob is not the constraint -")
+            print("   look at the floor/ceiling, the roster or the wave count.")
+        if pick is not None:
+            print(f"   starting point: {args.param} {pick.value:g}"
+                  f"  (worst {pick.worst:.2f}, band middle {bfit.TARGET:.2f})")
+            print(report.rule("per stage at the starting point"))
+            for line in bfit.rows_for(pick):
+                print(line)
+
+        if args.sim and inside:
+            from .balance import sim as bsim
+            from .balance import terrain as bterrain
+            print(report.rule("the sim on the candidates that fit "
+                              "(LL-042: it is the arbiter)"))
+            simmed = []
+            for c in inside:
+                t2 = bfit.with_param(base, args.param, c.value, args.region)
+                bits, holds, leaks = [], True, 0
+                for st in stages:
+                    scene = model.resolve(root, region=args.region, stage=st,
+                                          difficulty=args.difficulty,
+                                          loadout=args.loadout, spawns=args.spawns,
+                                          z=args.z, t=t2)
+                    o = bsim.Sim(scene, ter=bterrain.Terrain(args.z),
+                                 spend="ceiling").run()
+                    holds = holds and o.cleared_all
+                    leaks += o.leaks
+                    bits.append(f"{st}:{'clear' if o.cleared_all else 'LOST'}"
+                                f"/{o.leaks}leak")
+                print(f"   {args.param} {c.value:<6g} "
+                      f"{'holds ' if holds else 'LOSES '}  " + "  ".join(bits))
+                simmed.append((c.value, holds, leaks))
+
+            # the arbiter gets the last word, so say what it narrowed to.  A
+            # candidate that clears with leaks still fits the BAND - the bound
+            # is about difficulty, not about a flawless run - so this is a
+            # second, narrower window rather than a redefinition of the first.
+            clean = [v for v, h, lk in simmed if h and lk == 0]
+            print(report.rule("narrowed by the sim"))
+            if len(clean) == len(simmed):
+                print("   every candidate that fits the band also clears with no leaks")
+            elif clean:
+                print(f"   {args.param} {min(clean):g} .. {max(clean):g}"
+                      f"   ({len(clean)} of {len(simmed)} clear every stage with no leaks)")
+            else:
+                print("   none of them clears clean - the band and the sim disagree")
+        return 0
+
+    if args.action == "towers":
+        # the roster arithmetic: the shop card against what the game delivers.
+        # Four measures per tower (card, x1, cycle-corrected, coverage-weighted)
+        # and a verdict on whether the roster contains a CHOICE at all.
+        scene = scene_for(args.difficulty)
+        for line in report.towers_report(scene):
+            print(line)
+        return 0
+
+    if args.action == "afford":
+        # when the purse can buy what - the ladder's real bottleneck
+        scene = scene_for(args.difficulty)
+        for line in report.afford_report(scene):
+            print(line)
+        return 0
+
+    if args.action == "sim":
+        # the time-stepped run (gm.balance.sim): leaks, hearts and the real
+        # fire cycle, which is what the closed form in `project` cannot express.
+        from .balance import sim as bsim
+        from .balance import terrain as bterrain
+        scene = scene_for(args.difficulty)
+        ter = bterrain.Terrain(args.z, "uniform")
+        wants = ["real", "nominal"] if args.cycle == "both" else [args.cycle]
+        runs = {mode: bsim.Sim(scene, ter=ter, cycle=mode, spend=args.spend,
+                               max_waves=args.max_waves).run()
+                for mode in wants}
+        lines = report.sim_report(runs[wants[0]], scene)
+        lines += report.sim_findings(runs[wants[0]], scene)
+        if len(wants) > 1:
+            lines += report.sim_compare(runs["real"], runs["nominal"], scene)
+        for line in lines:
+            print(line)
+        return 0
+
+    if args.action == "check":
+        # the conservative gate: every number the tester needs must be readable
+        t = btables.load(root)
+        scene = scene_for("Normal")
+        cov = policy.coverage_for(scene)
+        rows = model.all_waves(scene, cov=cov)
+        problems = []
+        for r in rows:
+            if r.hp <= 0:
+                problems.append(f"wave {r.wave}: hp {r.hp}")
+            if r.req < 0 or r.avail < 0:
+                problems.append(f"wave {r.wave}: negative req or avail")
+        for name in ("Normal", "Hard", "Brutal"):
+            s = scene_for(name)
+            if not s.slot_cells:
+                problems.append(f"{name}: no slot can reach the route")
+        print(f"   tables    {len(t.regions)} regions, {len(t.towers)} towers, "
+              f"{len(t.monsters)}+{len(t.bosses)} creatures, "
+              f"{len(t.ladder)} ladder rungs")
+        print(f"   route     {round(scene.route_length)}px over "
+              f"{len(scene.routes)} spawns, {scene.slots} slots")
+        print(f"   waves     {len(rows)} projected for "
+              f"{scene.stage.region}-{scene.stage.stage}")
+        print(f"   payout    kill money ramp slope "
+              f"{t.constants.kill_money_slope:g} per wave, carried not rounded "
+              f"(LL-042); shop prices "
+              f"{', '.join(str(int(x.price)) for x in t.towers[:4])}")
+        if problems:
+            for p in problems:
+                print(f"   PROBLEM   {p}")
+            return 1
+        print("   ok        the tester has every number it needs")
+        return 0
+
+    print(f"unknown balance action {args.action!r}", file=sys.stderr)
+    return 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m gm",
@@ -367,6 +606,49 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--awaiting", help="list: only cards waiting on this person")
     p.add_argument("--done", action="store_true", help="list: include finished cards")
     p.set_defaults(func=progress_mod.cmd_progress)
+
+    p = sub.add_parser("balance", help="the headless balance tester")
+    p.add_argument("action", nargs="?", default="project",
+                   choices=["tables", "route", "project", "towers", "afford",
+                            "sim", "check", "fit"])
+    p.add_argument("--region", type=int, default=1)
+    p.add_argument("--stage", type=int, default=1)
+    p.add_argument("--difficulty", default="Normal",
+                   choices=["Normal", "Hard", "Brutal"])
+    p.add_argument("--loadout", nargs="+", metavar="TOWER",
+                   help="the four towers to price (default: the starters)")
+    p.add_argument("--spawns", default="all", choices=["all", "first"],
+                   help="'first' reproduces the in-game panel's single spawn")
+    p.add_argument("--z", type=float, default=6.0,
+                   help="mean ground height along the route, 0..12")
+    p.add_argument("--all-waves", action="store_true",
+                   help="every wave instead of wave 1 / boss / last")
+    p.add_argument("--profile", action="store_true",
+                   help="add the Normal / Hard / Brutal comparison")
+    p.add_argument("--cycle", default="real", choices=["real", "nominal", "both"],
+                   help="sim: the real state machine, the idealised period, or both")
+    p.add_argument("--spend", default="ceiling", choices=["none", "ceiling", "instant"],
+                   help="sim: buy nothing, or re-plan the greedy at every wave")
+    p.add_argument("--max-waves", type=int, default=None,
+                   help="sim: stop after N waves instead of running the stage out")
+    p.add_argument("--param", default="curve_end",
+                   help="fit: the Region field to sweep (fit.PARAMS)")
+    p.add_argument("--from", dest="from_value", type=float, default=None,
+                   help="fit: first candidate value (required)")
+    p.add_argument("--to", dest="to_value", type=float, default=None,
+                   help="fit: last candidate value (required)")
+    p.add_argument("--step", type=float, default=2.0,
+                   help="fit: gap between candidates (default 2)")
+    p.add_argument("--stages", nargs="+", type=int, default=None,
+                   help="fit: which stages to measure (default: --stage)")
+    p.add_argument("--sim", action="store_true",
+                   help="fit: also run the sim on the candidates that fit")
+    p.set_defaults(func=cmd_balance)
+
+    p = sub.add_parser("save", help="inspect the meta save (LL-052)")
+    p.add_argument("action", nargs="?", default="inspect", choices=["inspect"])
+    p.add_argument("--file", help="a specific garden_meta.dat")
+    p.set_defaults(func=save_mod.cmd_save)
 
     p = sub.add_parser("roundtrip", help="verify .yy files round-trip byte-for-byte")
     p.add_argument("paths", nargs="*")

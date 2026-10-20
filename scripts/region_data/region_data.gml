@@ -35,6 +35,32 @@
 /// These curve values are FIRST PASS and are meant to move from play logs.
 /// economy.md 10 deliberately puts difficulty multipliers LAST in the tuning
 /// order, because they touch every other number in the game.
+///
+/// RETUNED 2026-10-12 from a play log (card curve-cap-lower).  The first pass
+/// topped out at 30/45/62/80/100/125, and rayu leaked from wave 10 of stage
+/// 1-1 with a full tower wrap.  Stage 1 is 15 waves, so m(10) at the old cap
+/// 30 was 1 + 29*((10-1)/14)^2 = 12.98: the curve had already passed what he
+/// could field, two-thirds of the way along.  The ceiling is now the
+/// difficulty he *could* clear - 12.98, rounded to 13 - with the other five
+/// scaled by the same factor on (end - 1) so the relative ramp between biomes
+/// is unchanged:
+///
+///   m(10) as it was  = 1 + (end - 1) * 0.4133      (a 15-wave stage)
+///   new end          = 1 + (end - 1) * 0.4133
+///
+/// Raising curve_pow would NOT have fixed this: the curve still crosses 12.98
+/// at wave 11 with pow 3, so only the ceiling moves the wall.
+///
+/// Regions 2..6 have no stages yet, so their new values are a STATED
+/// ASSUMPTION carried from region 1's factor, not a verified retune - they
+/// are re-derived when their first stage is authored (roadmap 5.6).
+/// The whole change assumes NORMAL: on Brutal (hp x2.5) the same wall is an
+/// effective m ~ 5, so that ceiling would land near 5.
+///
+/// CONFIRMED IN PLAY 2026-10-13.  The retuned ceilings were run and kept, so
+/// 13 / 19 / 26 / 34 / 42 / 52 are the values of record: region 1 is verified
+/// (on Normal) and no longer a first pass.  The other five stay the stated
+/// assumption above until their own stages exist and are played.
 
 /// One biome.
 function region_row(_region, _name, _biome, _seeds,
@@ -57,12 +83,12 @@ function region_row(_region, _name, _biome, _seeds,
 /// because it varies within region 1 already.  One source per number (LL-021).
 function region_data() {
 	return [
-		region_row(1, "Grass",        BIOME.GRASS,         3, 15, 5,  30, 2, 10),
-		region_row(2, "Swamp",        BIOME.SWAMP,         5, 15, 5,  45, 2, 10),
-		region_row(3, "Desert",       BIOME.DESERT,        8, 15, 5,  62, 2, 10),
-		region_row(4, "Jungle",       BIOME.JUNGLE,       11, 15, 5,  80, 2, 10),
-		region_row(5, "Graveyard",    BIOME.GRAVEYARD,    15, 15, 5, 100, 2, 10),
-		region_row(6, "Blood Fields", BIOME.BLOOD_FIELDS, 20, 15, 5, 125, 2, 10)
+		region_row(1, "Grass",        BIOME.GRASS,         3, 15, 5,  13, 2, 10),
+		region_row(2, "Swamp",        BIOME.SWAMP,         5, 15, 5,  19, 2, 10),
+		region_row(3, "Desert",       BIOME.DESERT,        8, 15, 5,  26, 2, 10),
+		region_row(4, "Jungle",       BIOME.JUNGLE,       11, 15, 5,  34, 2, 10),
+		region_row(5, "Graveyard",    BIOME.GRAVEYARD,    15, 15, 5,  42, 2, 10),
+		region_row(6, "Blood Fields", BIOME.BLOOD_FIELDS, 20, 15, 5,  52, 2, 10)
 	];
 }
 

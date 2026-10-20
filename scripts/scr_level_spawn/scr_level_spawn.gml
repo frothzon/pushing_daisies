@@ -12,6 +12,12 @@ function scr_level_spawn() {
 	var _fps = game_get_speed(gamespeed_fps),
 	    _row = stage_current();
 
+	/// the decision this wave spawns from.  DECLARED for the whole call and
+	/// not only on the entry frame, because the promise check further down
+	/// runs on EVERY spawn frame and reading a `var` that this call never
+	/// set is the classic "not set before reading it" (LL-002).
+	var _pick = scr_level_pick_none();
+
 	//--------------------------- choose the creature
 	if(level_state_time == 0){
 	    wave_count++;
@@ -20,17 +26,38 @@ function scr_level_spawn() {
 
 	    /// The creature was already chosen - when the level entered START
 	    /// or WAIT - so the "Up Next..." popup and the wave it names agree.
-	    /// `irandom` cannot be replayed, so this CONSUMES the stored pick
-	    /// rather than re-rolling (see scr_level_pick_spawn).
-	    is_boss_wave = next_is_boss;
-	    spawn_index  = next_spawn_index;
+	    /// `irandom` cannot be replayed, so this CONSUMES the stored decision
+	    /// (scr_level_pick_store) rather than re-rolling it.
+	    _pick = is_struct(next_pick) ? next_pick : scr_level_pick_none(wave_count);
 
-	    /// guard: if nothing was chosen (a state that reached SPAWN without
-	    /// a pick), fall back rather than read an unset variable (LL-002)
-	    if(!is_real(is_boss_wave) || !is_real(spawn_index)){
-	        var _pick = scr_level_pick_spawn(wave_count);
-	        is_boss_wave = _pick.is_boss;
-	        spawn_index  = _pick.index;
+	    /// EVERY way the promise and the delivery could disagree is LOUD
+	    /// (LL-058).  A spawned monster cannot be taken back, so say it BEFORE
+	    /// spawning: a pick for another wave means something re-entered the
+	    /// flow or the controller was rebuilt, and that is the bug the popup
+	    /// report is made of.
+	    if(_pick.wave != wave_count){
+	        scr_meta_log("LEVEL", "WARNING pick is for wave ", _pick.wave,
+	                     " but spawning wave ", wave_count, " - re-picking");
+	        _pick = scr_level_pick_store(wave_count);
+	    }
+	    if(instance_number(_levelControl) != 1){
+	        scr_meta_log("LEVEL", "WARNING ", instance_number(_levelControl),
+	                     " level controllers alive - two wave loops can send ",
+	                     "creatures no popup named");
+	    }
+
+	    is_boss_wave = _pick.is_boss;
+	    spawn_index  = _pick.index;
+
+	    /// guard: a pick with no row (-1) can only come from broken stage
+	    /// data; clamp instead of indexing a bank with -1 (LL-002)
+	    var _bank0 = is_boss_wave ? spawn_boss : spawn_mon;
+	    if(!is_real(spawn_index) || spawn_index < 0
+	    || spawn_index >= array_length(_bank0)){
+	        scr_meta_log("LEVEL", "WARNING spawner ", spawn_index, " is outside ",
+	                     is_boss_wave ? "spawn_boss" : "spawn_mon", " (",
+	                     array_length(_bank0), ") - clamping");
+	        spawn_index = clamp(spawn_index, 0, array_length(_bank0) - 1);
 	    }
 
 	    scr_meta_log("LEVEL", "wave ", wave_count, "/", _row.waves,
@@ -47,6 +74,14 @@ function scr_level_spawn() {
 	var _bank2 = is_boss_wave ? spawn_boss : spawn_mon,
 	    _mon   = _bank2[spawn_index];
 
+	/// what the popup PROMISED, against what is about to walk out (LL-058).
+	/// This can only fire if the decision and the bank disagree, which is the
+	/// one failure a player cannot diagnose from a screenshot.
+	if(is_array(_mon) && _pick.name != "" && _mon[MON.name] != _pick.name){
+	    scr_meta_log("LEVEL", "WARNING the popup said ", _pick.name,
+	                 " and wave ", wave_count, " spawns ", _mon[MON.name]);
+	}
+
 	if(is_boss_wave){
 	    /// the boss pays out money equal to the wave number
 	    _mon[@ MON.kill_money] = (wave_count + 1);
@@ -62,7 +97,9 @@ function scr_level_spawn() {
 	    wait_timer--;
 	    if(wait_timer <= 0){
 	        wait_timer = _fps * 0.5;
-	        var _inst = instance_create_depth(0,0,-60,obj_mon);
+	        /// created at the y=0 edge of the band: obj_mon/Create_0 immediately
+	        /// re-derives it from the spawn point it picked (LL-059)
+	        var _inst = instance_create_depth(0,0,scr_depth_band(0),obj_mon);
 	        spawn_current++;
 	        _inst.sprite_array = _mon[MON.sprite_data];
 	        _inst.data = array_duplicate(_mon);

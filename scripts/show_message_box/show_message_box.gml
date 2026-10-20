@@ -1,4 +1,16 @@
 /// @description  show_message_box(image,color,message)
+///
+/// APPENDS to a live box, which is what a cutscene wants and what a passive
+/// popup must never do - the "Up Next..." popup goes through
+/// show_portrait_box(), which RESETS the box instead (LL-058).  Portraits
+/// are not per message any more: `obj_textbox.portrait` is one sprite for
+/// the whole box.
+///
+/// APPENDS to a live box, which is what a cutscene wants and what a PASSIVE
+/// popup must never do - the "Up Next..." popup goes through
+/// show_portrait_box(), which RESETS the box instead (LL-058).  Portraits
+/// are not per message any more: `obj_textbox.portrait` is one sprite for
+/// the whole box.
 /// @param image
 /// @param color
 /// @param message
@@ -16,14 +28,12 @@ function show_message_box(argument0, argument1, argument2) {
 	    _box.message[0]          = _text;
 	    _box.message_image[0]    = _image;
 	    _box.message_color[0]    = _color;
-	    _box.message_portrait[0] = -1;   /// no portrait unless asked
 	}else{
 	//--------------------------- Modify Old Box
 	    var s = array_length(_box.message);
 	    _box.message[s]           = _text;
 	    _box.message_image[s]     = _image;
 	    _box.message_color[s]     = _color;
-	    _box.message_portrait[s]  = -1;  /// no portrait unless asked
 	}
 
 	/// set the end count for the textbox

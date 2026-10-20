@@ -48,11 +48,24 @@ set_item_value(points,0);
 /// it - Brutal starts with a quarter more.
 set_item_value(money, round(25 * difficulty_start_money_mult()));
 
+/// The part of a kill payout a whole-dollar purse has not paid yet.  Money is a
+/// count, so the difficulty column cannot be applied by rounding - round(1 x
+/// 1.25) is 1, which left Hard with no column at all (LL-042) - and it is
+/// CARRIED here instead: four kills at x1.25 pay 1, 1, 1, 2.
+/// See scr_kill_money (difficulty_data.gml).
+money_carry = 0;
+
 /// set starting life
 set_item_value(life,20);
 
-/// set starting wave
-set_item_value(waves,1);
+/// set starting wave.  This item is the CURRENT wave, so it is 0 until
+/// wave 1 begins and `add_item_value(waves,1)` in scr_level_spawn raises
+/// it as each wave starts - which makes it equal `wave_count` everywhere.
+/// It used to start at 1, which put every MID-WAVE reader (the speed ramp
+/// in scr_zomb_pathSpeed, the HUD number and the level log) one wave
+/// ahead of the wave being fought.  The pre-wave banner is the only
+/// consumer that wants the NEXT wave, and it now asks for it (LL-044).
+set_item_value(waves,0);
 
 /// STATINV
 
@@ -127,6 +140,15 @@ tower_selection = noone;
 tower_menu_selection = -1;
 tower_menu_hover = -1;
 
+/// The tower the POINTER is over, or noone.  ONE place answers that question
+/// (LL-021): Step_0 sets it exactly where the hover is decided, and the
+/// level's grid layer (Draw_73) reads it - so the cell highlight and the
+/// level above the plant can never name a different tower than the glow
+/// does.  It stays noone while a tower is being PLACED (tower_index >= 0),
+/// because then the pointer is a placement cursor rather than a question
+/// about a plant that already exists.
+tower_hovered = noone;
+
 /// ---- the tower card (roadmap 4.4.3) ----------------------------------
 /// ONE fixed card, docked bottom-left, never under the mouse.  It replaced a
 /// 256x256 panel centred on the screen (which competed with the range circle
@@ -149,8 +171,12 @@ tower_display = array(tower_card_x + tower_card_w*0.5, tower_card_y + tower_card
 /// linked rather than merely adjacent.
 tower_card_range_rect = array(tower_card_x, tower_card_y+34, tower_card_x+tower_card_w, tower_card_y+96);
 
-/// the range circle is deliberately subordinate to the card
-tower_range_alpha = 0.15;
+/// the range RING is deliberately subordinate to the card, and to the range
+/// itself: a 3px additive white circle at this alpha, drawn for the tower the
+/// pointer is over (roadmap 4.4.3 / 2026-10-15).  It read 0.15 when it was a
+/// decal that filled the whole circle - a ring needs less than a wash to carry
+/// the same information, but more than 0.15 to be seen at all.
+tower_range_alpha = 0.25;
 
 //---------------- setup buttons
 tower_price_save = array(
@@ -189,14 +215,34 @@ level_state      = LEVEL_STATE.NONE;
 level_state_next = LEVEL_STATE.START;
 level_state_time = 0;
 level_cleared    = false;
+/// the second stage exit (LEVEL_STATE.FAILED) needs its own one-shot, so
+/// a loss cannot fade twice - same shape as level_cleared above
+	level_finished   = false;
+
+	/// ---- the LEVEL COMPLETE sequence (LL-055) ---------------------------
+	/// level_ui_alpha is ONE number for the whole stage UI: 1 while playing,
+	/// 0 once the clear sequence has taken it off the board.  Draw_64 and the
+	/// speed buttons in _mainControl both read it, so the fade cannot drift
+	/// between the pieces it is fading.
+	level_ui_alpha   = 1;
+	/// how far into the clear sequence we are, in REAL seconds
+	level_clear_time = 0;
+	/// the camera fly-out: the view we started from, and the point it keeps
+	level_zoom_from  = array(0,0);
+	level_zoom_cx    = 0;
+	level_zoom_cy    = 0;
+	/// the banner only appears after the UI has cleared
+	level_banner_on  = false;
 wait_stuck       = 0;
 is_boss_wave     = false;
 
-/// the creature the NEXT wave will send.  Chosen when the level enters
-/// START or WAIT (scr_level_pick_spawn), previewed by scr_wave_preview
-/// and consumed by scr_level_spawn - so the popup and the wave agree.
-next_is_boss       = false;
-next_spawn_index   = 0;
+/// the creature the NEXT wave will send, as ONE decision (LL-058): chosen
+/// once per wave by scr_level_pick_store, previewed by scr_wave_preview
+/// and consumed by scr_level_spawn - so the popup and the wave read the
+/// SAME answer instead of two numbers that could drift apart.  It carries
+/// its own wave number and the row it resolved to, which is what lets
+/// SPAWN prove the popup right instead of assuming it.
+next_pick          = scr_level_pick_none();
 wave_preview_shown = false;   /// the Up Next popup shows once per WAIT
 
 show_start = false;

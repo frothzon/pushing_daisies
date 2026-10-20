@@ -63,7 +63,7 @@ One row per system. "Key resources" are the files to open first when changing it
 | Switches & receivers | `scripts/scr_setupSwitch`, `scripts/scr_updateSwitch`, `scripts/scr_set_switch`, `scripts/scr_trigger_switch`, `scripts/scr_switch_*`, `scripts/scr_setupReciever`, `scripts/scr_receiver_on` / `scr_receiver_off` | Generic "trigger fires → switch state changes → receiver runs a script" logic. Matching `team` values stop one switch firing another team's receivers. |
 | UI: buttons, menus, tooltips | `objects/_button`, `scripts/scr_iniButton`, `scripts/scr_stpButton`, `scripts/scr_create_button`, `scripts/scr_scaleButton`, `scripts/scr_button_greyout`, `scripts/show_menu*`, `scripts/draw9slice`, `scripts/show_tooltip` | Every button in the game is the `_button` object driven by callables. Menus, sliders, message boxes and the 9-slice panel drawing live here. |
 | Floating text | `scripts/float_text`, `scripts/float_text_gui`, `objects/_text_rise`, `objects/_waveNum`, `scripts/scr_showWave`, `scripts/scr_showMonDamage` | Damage numbers, score popups, the "Wave N" banner and monster damage counters. |
-| Text input | `objects/_oTextInput`, `objects/obj_textbox`, `scripts/scr_setup_textInput`, `scripts/scr_update_textInput`, `scripts/scr_draw_textInput`, `scripts/string_wordwrap_width`, `scripts/show_message_box`, `scripts/show_portrait_box`, `scripts/scr_wave_preview` | On-screen text entry (high-score name) and the typewriter-style message box. `show_portrait_box()` shows a creature PORTRAIT (a whole sprite, one per message - `obj_textbox.message_portrait`) instead of a frame of the one shared `message_sprite`; the "Up Next..." popup is built on it. |
+| Text input | `objects/_oTextInput`, `objects/obj_textbox`, `scripts/scr_setup_textInput`, `scripts/scr_update_textInput`, `scripts/scr_draw_textInput`, `scripts/string_wordwrap_width`, `scripts/show_message_box`, `scripts/show_portrait_box`, `scripts/scr_wave_preview` | On-screen text entry (high-score name) and the typewriter-style message box. `show_portrait_box()` shows a creature PORTRAIT (a whole sprite, ONE per box - `obj_textbox.portrait`, LL-058) instead of a frame of the one shared `message_sprite`; the "Up Next..." popup is built on it. |
 | Input | `objects/Input`, `scripts/Input_enums`, `scripts/scr_setup_input`, `scripts/scr_setup_keyboard`, `scripts/scr_setup_gamepad`, `scripts/scr_add_key`, `scripts/scr_key_get` | One `KEYCODE` enum mapped to either keyboard or gamepad at boot (`gamepad_is_connected(0)`), remappable and saved per user. |
 | Options & saving | `scripts/scr_loadOptions`, `scripts/scr_saveOptions`, `scripts/scr_saveArray` / `scr_loadArray`, `scripts/scr_save_keys` / `scr_load_keys`, `scripts/scr_save_gamepad` / `scr_load_gamepad`, `scripts/scr_save_static` / `scr_load_static`, `scripts/scr_autosave_statinv` | `gameOptions.dat` stores music volume, SE volume, shadow quality and clutter density; keys and gamepad bindings are stored the same way. See §7 for the one broken save path. |
 | Collision | `scripts/scr_setupCollider`, `scripts/scr_collide`, `scripts/scr_colliderAddObject`, `scripts/scr_colliderAddPoint`, `scripts/for_collGrid`, `scripts/for_collVisible`, `scripts/scr_inRangeBBOX`, `scripts/scr_pointInBBOX` | A collider grid (one cell per placeable object) used for placement checks and cheap range queries, plus bbox helpers. |
@@ -120,11 +120,15 @@ One row per system. "Key resources" are the files to open first when changing it
    `time_offset = irandom_range(1, 8)` (set in `obj_tower/Create_0`) de-syncs
    towers so they do not all fire on the same frame.
 2. `scr_tower_shoot` — plays the attack sprite, picks targets with
-   `find_all_range`, applies damage at the end of the animation
-   (`scr_do_damage`, which subtracts `damage` from `data[MON.life]` and adds it
-   to `damage_amount` for the on-screen counter), then spawns one
-   `data[TOWER.effect]` instance per target via `scr_damage_particles`.
-   If nothing is in range it falls through to the return animation.
+   `find_all_range`, and at the strike frame calls
+   `scr_do_damage(target, i, shot_damage)` for each: the amount is LOCKED on
+   the tower when the swing starts (`shot_damage`) and PASSED IN, because the
+   function used to read a `damage_calc` variable the caller had set - which
+   is why crit could not be added (LL-062). The call subtracts from
+   `data[MON.life]` and adds to the monster's `damage_amount` (the on-screen
+   counter). Then it spawns one `data[TOWER.effect]` instance per target via
+   `scr_damage_particles`. If nothing is in range it falls through to the
+   return animation.
 3. `scr_tower_return` — plays the return sprite, then back to normal.
 4. `obj_tower/Step_0` then calls `scr_tower_faceTarget(target)`, which mirrors
    the tower (`image_xscale = -abs(...)` / `abs(...)`) to face the nearest
@@ -264,6 +268,8 @@ Slot layout is `enum MON { name, speed, life, sprite_data, kill_score, kill_mone
 
 `MON.portrait` is a whole portrait SPRITE (e.g. `spr_grumble_portrait`) shown by the **"Up Next..."** popup. It is set in `scr_setupSpawning` *after* each `scr_makeMonster()` call, never through it: `scr_makeMonster`'s arguments are positional and `MON.maxLife` sits at index 7, so a tenth value cannot be passed safely.
 
+A portrait belongs to the **box**, not to a message: `obj_textbox.portrait` (LL-058). It used to be `message_portrait[]`, written at the index of the message being *added* and drawn at `message_current` - two numbers that only agree while the box holds one message, which is how the popup came to show an older preview's creature.
+
 The pre-restyle art (Bald/Angry/Brainy, Tuskinator/Zero, plus `spr_bald_swim`, `spr_hair_grab`, `spr_hair_idle`, `spr_boss`) is filed under `sprites/…/Zombie Sprites/Legacy/` and is no longer referenced by code.
 
 Wave rules (`scripts/scr_level_spawn`, `scripts/scr_level_wait`,
@@ -276,9 +282,31 @@ Wave rules (`scripts/scr_level_spawn`, `scripts/scr_level_wait`,
   made when the level enters START or WAIT, **not** at SPAWN, so the
   "Up Next..." popup and the wave it names can never disagree. SPAWN
   consumes the stored pick rather than re-rolling.
-* A stage's boss is its **final** wave (`wave_count >= _row.waves`); a
-  level's `boss_every` sets any mid-stage cadence. A boss rewrites its
+* The decision is ONE struct (`next_pick`: wave, is_boss, index, name,
+  portrait) made by `scr_level_pick_store()`, which is **idempotent per wave
+  number** - asking again for the same wave returns the first answer instead
+  of re-rolling (LL-058). The popup and the wave are two readers of it, and
+  SPAWN logs a `WARNING` if the wave, the row or the bank disagree.
+* The popup names the wave in its text (`Up Next...  wave 12`), so a
+  mismatch is two numbers apart rather than two pictures apart.
+* **A stage names BOTH of its bosses, in order: `bosses = [mid, end]`**
+  (LL-060). The mid one arrives on `boss_wave` (`GameLevelData`: `waves div 2`,
+  so 15 waves -> wave 7, 60 -> 30) and the end one on the last wave. Nothing is
+  rolled: a boss the player is meant to learn cannot be a different creature on
+  the next attempt. `region_data.boss_every` is legacy - kept in the row, no
+  longer read by the pick, the curve or the tester. A boss rewrites its
   `kill_money` to `wave_count + 1`.
+* Every agent's **depth is derived from the world y of its feet** by
+  `scr_depth_y()` (`scripts/scr_setDepth`): `-60 - y/32`, on the band the
+  plants already used, plus a 1e-5 tie-break from `id` (LL-059). Monsters
+  re-derive it in `obj_mon/Step_0` **every step**; plants and gravestones once,
+  at creation. A monster therefore draws behind a plant when it stands behind
+  it, and two monsters crossing sort against each other.
+* A monster is born at full life and **the emerge does not heal it** (the reset
+  at step 60 was removed 2026-10-18), so shooting one while it rises counts.
+* A leak costs one life and pays **half** a kill, applied inside
+  `scr_kill_money(base, wave, ramp, 0.5)` before its floor, so the fraction is
+  carried rather than rounded away (LL-042, LL-061).
 * Health scaling (`scr_level_difficulty`):
   `life *= power(2, max(0, wave_count / 5 - 2)) + 0.2 * (wave_count - 1)`.
   The first term is zero until wave 15, and the linear `0.2` term alone applies

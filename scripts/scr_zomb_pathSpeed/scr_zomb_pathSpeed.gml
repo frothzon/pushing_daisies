@@ -2,7 +2,11 @@
 function scr_zomb_pathSpeed() {
 
 
-	depth = -((y-__view_get( e__VW.YView, 0 )) div 16)-60;
+	/// NO DEPTH HERE (LL-059).  This file used to write one - view-relative,
+	/// `-((y - YView) div 16) - 60` - which is a FOURTH formula nobody could
+	/// predict from the other three, and it was already dead: obj_mon/Step_0
+	/// derives the depth from the feet AFTER scr_runState returns.  There is
+	/// one writer now (scr_depth_y), and this is not it.
 	inWater = false;
 
 	//---------------- grab position inside of grid

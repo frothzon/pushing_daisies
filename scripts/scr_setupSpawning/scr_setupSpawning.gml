@@ -33,6 +33,27 @@ function scr_setupSpawning() {
 	spawn_boss[0][MON.portrait] = spr_tusk_portrait;
 	spawn_boss[1][MON.portrait] = spr_zero_portrait;
 
+	/// ---- the boss bank, named out loud (LL-057) -------------------------
+	/// The one line that settles "the portraits are swapped": it prints what
+	/// each boss row ACTUALLY holds at runtime, so a stale build or a second
+	/// writer of MON.portrait shows up here instead of in a playtest.
+	/// Guarded: sprite_get_name on a missing sprite is fatal (LL-012).
+	var _bank_txt = "";
+	for(var _b = 0; _b < array_length(spawn_boss); _b++){
+	    var _rowb = spawn_boss[_b],
+	        _w = "none",
+	        _p = "none";
+	    if(sprite_exists(_rowb[MON.sprite_data][0])){
+	        _w = sprite_get_name(_rowb[MON.sprite_data][0]);
+	    }
+	    if(sprite_exists(_rowb[MON.portrait])){
+	        _p = sprite_get_name(_rowb[MON.portrait]);
+	    }
+	    _bank_txt += (_b > 0 ? " | " : "") + string(_b) + "=" + _rowb[MON.name]
+	               + " walk=" + _w + " portrait=" + _p;
+	}
+	scr_meta_log("LEVEL", "boss bank: ", _bank_txt);
+
 	//------------- List Size
 	spawn_pool = array_last_index(spawn_mon);
 	spawn_index = 0;

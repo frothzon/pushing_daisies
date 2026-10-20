@@ -47,8 +47,31 @@ anim_seconds = array(
 /// reload reports the PERIOD each animation was given.
 anim_reported = array(false, false, false);
 
-damage_calc = 0;
+/// the damage THIS swing will land, locked when the swing starts.  It
+/// lives on the tower for the duration of one swing because a swing spans
+/// frames - but the FUNCTION it is handed to takes it as an argument, so
+/// nothing reads another scope (AGENTS rule 6, LL-062).  It was called
+/// damage_calc, and scr_do_damage read it from here.
+shot_damage = 0;
 frame_number = 0;
+
+/// ---- the ATTACK TIMER (LL-054) -------------------------------------
+/// `attack_timer` counts frames since the last shot and ticks in EVERY
+/// state (obj_tower/Step_0), so a tower that has had nothing to shoot is
+/// READY the moment something walks in.  The timer used to exist only
+/// inside the shoot state, where it was also the length of the swing:
+/// a Pina Collider (fire_rate 0.10) wound up for 600 frames - ten seconds -
+/// and a zombie crosses its range in about a hundred, so it never fired.
+/// `attack_cycle` is the gap between shots (tower_cycle_frames) and stays 0
+/// until the first Step can read `data`, which the creator assigns AFTER
+/// instance_create - that 0 is the "not set up yet" sentinel Step_0 uses
+/// to make a freshly placed tower READY.
+attack_timer = 0;
+attack_cycle = 0;
+swing_frame  = 0;
+/// one line per tower, the first time it fires - the answer to "is this
+/// tower attacking at all?" without having to watch it (LL-011)
+shot_reported = false;
 
 /// create light - alarm0
 alarm[0] = 1;
@@ -71,6 +94,14 @@ draw_scale = 0.5;
 image_xscale = 1;
 image_yscale = 1;
 
+/// ---- the outline shader's uniforms (the LEVEL RING) ----------------
+/// Cached once, here, the same shape as setup_water_shader on obj_water.
+/// A tower's ring colour IS its level (tower_level_outline) and the Draw
+/// event draws it; this only looks the uniforms up and records whether
+/// the shader compiled at all, so a compile failure degrades to "no
+/// ring" rather than to a half-drawn tower (LL-012's shape of guard).
+scr_getOutlineShd();
+
 /// the tower the pointer is over, refreshed against the MASK every step
 /// (Step_1).  There is no second click box to keep in step any more.
 tower_hilight = false;
@@ -89,7 +120,15 @@ invested   = 0;
 var _x = clamp(x>>5,0,ds_grid_width(LEVEL.ground_map)-1),
     _y = clamp(y>>5,0,ds_grid_height(LEVEL.ground_map)-1);
 inWater = false;
+/// one line, once, naming the waterline this tower got - see
+/// water_line_report (draw_water_shader.gml).  A diagnostic, not mechanics.
+water_reported = false;
 if(LEVEL.ground_map[# _x,_y] < 2){
     inWater = true;
 }
 
+/// depth from where the tower meets the ground - the same rule the monsters
+/// and the gravestones use, so a zombie standing behind a plant is occluded
+/// by it and one standing in front passes over (LL-059).  LAST, so nothing
+/// the parent Create or scr_setupState did can put a flat -60 back.
+depth = scr_depth_y(y);

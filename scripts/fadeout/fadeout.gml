@@ -4,7 +4,7 @@
 /// @param  fade_time[s]
 /// @param  x
 /// @param  y
-function fadeout(argument0, argument1, argument2, argument3, argument4) {
+function fadeout(argument0, argument1, argument2, argument3, argument4, argument5) {
 	/*--------------------------------------------
 	Call this script anywere to initialize a
 	room transition
@@ -18,6 +18,15 @@ function fadeout(argument0, argument1, argument2, argument3, argument4) {
 	fade.fade_speed = game_get_speed(gamespeed_fps)/argument2;
 	fade.xx = argument3;
 	fade.yy = argument4;
+	/// a SIXTH argument asks for the room to be RESTARTED when it is the
+	/// room we are already in - a retry or a replay.  Omitted, the call
+	/// means exactly what it always did (LL-049).  Written as an if rather
+	/// than `(argument_count > 5) && argument5` so that no reader (and no
+	/// future GML) has to assume && short-circuits past an argument that
+	/// was never passed.
+	var _restart = false;
+	if(argument_count > 5) _restart = argument5;
+	fade.restart = _restart;
 
 	print("FADE  -> ", room_get_name(argument0), " in ", argument2, "s  (fps=", game_get_speed(gamespeed_fps), " -> ", fade.fade_speed, " alpha/frame; would take ", ceil(1/max(fade.fade_speed,0.0001)), " frames)");
 

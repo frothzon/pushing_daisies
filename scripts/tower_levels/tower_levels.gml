@@ -126,3 +126,111 @@ function tower_data_at_level(_base, _level, _clover_dmg, _clover_rate) {
 	return _out;
 }
 
+
+/// The ring's colour for a tower level, or -1 for "no ring" (level 1).
+///
+/// THE RING IS THE LEVEL.  A tower's size no longer changes with its level
+/// (choose-upgrade-scale), so this is the cue that says how far a tower has
+/// come - and level 1 has NONE, so a freshly placed tower reads as the art
+/// does.  It is indexed by ABSOLUTE level and divided by a FIXED 10, never by
+/// the current cap, which is what goal.md 4 rule 3 asks for: a tower placed at
+/// floor 6 must not look like one placed at floor 3, whatever the garden has
+/// unlocked.
+///
+/// THE FIRST FIVE LEVELS ARE rayu's PALETTE (tower-level-palette, 2026-10-15):
+/// 2 RED, 3 ORANGE, 4 GREEN, 5 BLUE - the four rungs money buys on a garden with
+/// no mastery, which is every tower the build can make today (mastery is seeded
+/// 0 in scr_meta_schema and nothing raises it yet).  Level 1 is the floor and
+/// has no ring, so the ladder reads as five steps of which the first is "none".
+///
+/// LEVELS 6-10 ARE NOT NAMED YET.  They are the mastery ladder (goal.md 4: the
+/// floor and the cap each rise one level per master node) and nothing in the
+/// build can reach them, so they still carry the first-pass cool ramp that ends
+/// in gold at the cap.  That is a separate question from the four colours above
+/// and it is on the board (tower-ring-mastery-palette) rather than settled here.
+///
+/// Built with make_colour_rgb() and NOT with a $RRGGBB literal: GameMaker's hex
+/// colour literals are $BBGGRR, so $FFD24A would come out blue.  NOT with
+/// c_red/c_green/c_blue either: GameMaker's c_green is (0,128,0), a DARK green
+/// that barely registers under the additive blending the ring is drawn with.
+///
+/// Guarded so a bad level returns "no ring" rather than throwing (LL-002).
+function tower_level_outline(_level) {
+	if(!is_real(_level)) return -1;
+
+	var _c = [
+		-1,                                 /// 0 - unused, so the table indexes by LEVEL
+		-1,                                 /// 1 - no ring, by design
+		make_colour_rgb(255,  64,  64),     /// 2  RED    - rayu's palette
+		make_colour_rgb(255, 152,  48),     /// 3  ORANGE - rayu's palette
+		make_colour_rgb( 72, 224,  96),     /// 4  GREEN  - rayu's palette
+		make_colour_rgb( 64, 144, 255),     /// 5  BLUE   - rayu's palette
+		make_colour_rgb(138, 107, 255),     /// 6  indigo - first pass, mastery only
+		make_colour_rgb(185,  92, 255),     /// 7  violet - first pass, mastery only
+		make_colour_rgb(232,  92, 216),     /// 8  magenta- first pass, mastery only
+		make_colour_rgb(255, 111, 176),     /// 9  pink   - first pass, mastery only
+		make_colour_rgb(255, 210,  74)      /// 10 gold   - first pass, the cap
+	];
+	var _i = clamp(round(_level), 1, array_length(_c) - 1);
+	return _c[_i];
+}
+
+/// How wide the level ring is, in SCREEN pixels.  The ONE number to turn if the
+/// ring is too thin or too fat - the same idiom as water_sink().  It is named in
+/// screen pixels on purpose: scr_drawSelfOutlined divides it by draw_scale, so
+/// every tower gets the same edge whatever canvas its art has.
+function tower_outline_px() {
+	return 2;
+}
+
+/// How OPAQUE the level ring is, in [0,1]: 25% at rest, 75% with the pointer
+/// over the tower.  The ring is drawn ADDITIVELY (scr_outline_begin), so this is
+/// how much light it adds - a quarter of the colour most of the time, three
+/// quarters while the player is looking at that tower, which is what makes the
+/// hover read as "this one" without a second outline.
+///
+/// ONE number, like tower_outline_px(), so the two states cannot drift apart and
+/// there is one place to turn if 25% is too faint over dark ground.
+function tower_outline_alpha(_hover) {
+	if(_hover) return 0.75;
+	return 0.25;
+}
+
+/// ---- the ATTACK TIMER (LL-054) -------------------------------------------
+///
+/// A tower's fire rate is a COOLDOWN, and these two functions are the two
+/// halves that used to be one number.  `frame_number = room_speed/fire_rate`
+/// was both the gap between shots AND the length of the attack animation, so
+/// a Pina Collider (0.10/s) swung for 600 frames and a zombie crossed its
+/// range long before the strike frame at the end of that swing - it never
+/// landed a hit.  Now the period is the wait (obj_tower/Step_0 ticks it in
+/// every state, so an idle tower is READY) and the swing is art.
+
+/// The gap between two shots, in frames.  Never 0 and never negative, so a
+/// bad rate cannot freeze the timer (LL-002's shape of guard).
+function tower_fire_period(_rate) {
+	var _fps = game_get_speed(gamespeed_fps);
+	if(!is_real(_rate) || _rate <= 0) return max(1, _fps);
+	return max(1, _fps/_rate);
+}
+
+/// How long the ATTACK ART takes, in seconds - the SWING, not the rate.
+/// Capped against the fire period (scr_tower_shoot takes the smaller), so a
+/// fast tower is untouched and a slow one strikes in this long instead of
+/// winding up for its whole period.  ONE number: turn this to make every
+/// strike heavier or snappier.
+function tower_swing_seconds() {
+	return 0.35;
+}
+
+/// The whole SHOT CYCLE, in frames: the fire period PLUS the return
+/// animation.  This is the number the tower waits out between two shots, and
+/// it is what the closed form and the sim call ``P + return`` - so no tower
+/// delivered rate moves (LL-054).  ``_return_seconds`` is the tower art own
+/// return length (anim_seconds[TOWER_ANIM.return]), because that is instanced
+/// data: a slower return lengthens its own tower cycle, exactly as before.
+function tower_cycle_frames(_rate, _return_seconds) {
+	var _fps = game_get_speed(gamespeed_fps),
+	    _ret = (is_real(_return_seconds) ? max(0, _return_seconds) : 0) * _fps;
+	return tower_fire_period(_rate) + _ret;
+}
