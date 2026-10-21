@@ -5,11 +5,11 @@
   "applyKerning":0,
   "ascender":0,
   "ascenderOffset":0,
-  "bold":true,
+  "bold":false,
   "canGenerateBitmap":true,
   "charset":1,
   "first":0,
-  "fontName":"Ink Free",
+  "fontName":"Garden Toon Outline",
   "glyphOperations":0,
   "glyphs":{
     "32":{"character":32,"h":34,"offset":0,"shift":9,"w":9,"x":167,"y":141,},
@@ -126,7 +126,7 @@
   "ranges":[
     {"lower":32,"upper":127,},
   ],
-  "regenerateBitmap":false,
+  "regenerateBitmap":true,
   "resourceType":"GMFont",
   "resourceVersion":"2.0",
   "sampleText":"abcdef ABCDEF\n0123456789 .,<>\"'&!?\nthe quick brown fox jumps over the lazy dog\nTHE QUICK BROWN FOX JUMPS OVER THE LAZY DOG\nDefault character: ▯ (9647)",

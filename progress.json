@@ -1603,6 +1603,30 @@
       "done": "2026-10-07"
     },
     {
+      "id": "font-toon-in-game",
+      "title": "Swap the UI font to Garden Toon Outline - GameMaker sees neither a user install nor COLR",
+      "status": "next",
+      "owner": "both",
+      "awaiting": "rayu",
+      "area": "art",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "Run the sudo install of BOTH TTFs into /usr/share/fonts (the IDE never reads ~/.local/share/fonts, LL-066), restart GameMaker, then press Regenerate Font Texture in each of fnt_size12/16/20/32/48 and save.",
+      "notes": "All five UI fonts are already rebound to family Garden Toon Outline / Regular / bold off through gm set-path, so only the baked glyph bitmaps are stale: fonts/fnt_size*/fnt_size*.png are still Ink Free. Two findings drove that. First, the Linux IDE discovers fonts by walking /usr/share/fonts and never asks fontconfig, so a font that fc-list and KDE both see is invisible to the picker - and the old text kept drawing because a GMFont is a baked atlas, not a reference. Second, Garden Toon is a COLR colour font (black silhouette plus a white inset); the IDE bakes with a 2015 FreeType that ignores COLR, so the original file would have come out as solid black blobs at size 32/48 (notes/font_garden_toon_colr.png). GardenToonASCII-outline.ttf is the same design with the inset punched out, so the outline survives any renderer; notes/font_garden_toon_sizes.png puts every size next to what Ink Free does today. Sizes are unchanged on purpose: line heights match (1.08 vs 1.10 em) but strings are 34-58% wider, which auto-sized buttons absorb and fixed panels may not.",
+      "refs": [
+        "fonts/fnt_size16/fnt_size16.yy",
+        "GardenToonASCII.ttf",
+        "GardenToonASCII-outline.ttf",
+        "notes/font_garden_toon_sizes.png",
+        "notes/font_garden_toon_colr.png",
+        "lessons_learned.md#ll-066"
+      ],
+      "created": "2026-10-20",
+      "updated": "2026-10-20",
+      "done": null
+    },
+    {
       "id": "font-toon-usable",
       "title": "Garden Toon ASCII font: fixed so it renders (it installed but came out blank)",
       "status": "done",
@@ -3717,6 +3741,12 @@
       "who": "cline",
       "task": "font-toon-usable",
       "what": "GardenToonASCII.ttf was never an install problem: it installed, it rendered blank. Every glyph was 90-215 separate 1-pixel-tall rectangle contours (20163 total) and the hinter snapped each one to zero height, so Qt drew 0 dark pixels at 13px. Rebuilt each glyph as one unioned outline (20163 -> 252 contours, 450KB -> 83KB, same em, advances and bboxes) and fixed the metadata that called a Regular font Bold (OS/2 usWeightClass 700, fsSelection 0x20, head.macStyle 1), the hmtx lsb of 0 against xMin 24-87, and OS/2 v0. Qt now draws 1355 dark pixels at 13px and 14958 at 48px. Tooling, backup and proof sheets: ~/Documents/GardenToonASCII-repair/."
+    },
+    {
+      "date": "2026-10-20",
+      "who": "cline",
+      "task": "font-toon-in-game",
+      "what": "Garden Toon was invisible to GameMaker for two reasons, not one. The Linux IDE discovers fonts by walking /usr/share/fonts and links no fontconfig, so a font installed for the user (fc-list and KDE both fine) does not exist for it; and the font itself is a COLR colour font whose white inset the IDE bakes with a 2015 FreeType, so it would have come out as solid black blobs at size 32/48. Rebound fnt_size12/16/20/32/48 to a COLR-free variant (GardenToonASCII-outline.ttf, the inset punched out of all 94 glyphs), sizes unchanged because the line heights match while strings grow 34-58% wider. Glyphs on disk stay Ink Free until rayu installs both TTFs into /usr/share/fonts and presses Regenerate Font Texture in each font. New lesson LL-066; roundtrip 0 differ, 170 tests OK."
     }
   ]
 }

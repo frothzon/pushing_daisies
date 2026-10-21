@@ -86,9 +86,11 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-063](#ll-063) | **A test changed colour with no edit** - it asserted a LINE, and the IDE re-saved an equivalent one | `assertIn("id mod 97", src)` vs the code's `irandom(97) * 0.00001`, after GameMaker wrote `.gml` + `.yy` in the same millisecond. Test the PROPERTY (rolled once, too small to reorder); on an unexplained red, check mtimes before theories | **FIXED** |
 | [LL-065](#ll-065) | Monsters **vanish ~5 s after being stunned**, and the stage loses Exterminator | The LL-031 safety valve fires on "`path_position` has not moved", which a stun produces ON PURPOSE. A held monster is not a stuck one: the counter now only runs while `status_speed_mult() > 0` | **FIXED** |
 | [LL-064](#ll-064) | The **music fades out in the middle of a stage**, and the menu goes quiet every ~3 minutes - no error, and the track is still "playing" | The loop had **one end**: `loop_in` was the chorus start and the loop ran to END OF FILE, so every cycle played the outro fade. The menu did not set loop points at all, so it was worse there. A loop **section** has two ends | **FIXED** |
+| [LL-066](#ll-066) | A font **installed for the user works everywhere except GameMaker** - `fc-list` finds it, KDE renders it, the font picker does not list it | The Linux IDE discovers fonts by **walking `/usr/share/fonts`**, never fontconfig, so `~/.local/share/fonts` does not exist as far as it is concerned - and a font resource keeps drawing text without any TTF, because its glyphs are **baked** into a PNG atlas | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
+`font` `fontconfig` `atlas` `IDE` `user install`
 `enum` `crlf` `room_speed` `built-in` `shadowing` `null` `log` `debug`
 `flip` `image_xscale` `sprite_index` `sprite_get_width` `-1` `_text_rise`
 `facing` `mirror` `image_yscale` `draw_sprite_pos` `shadow` `orientation` `sign`
@@ -4600,6 +4602,142 @@ the same change as the status spine so `combat-status-stun` cannot inherit it.
 `scripts/scr_zomb_updatePosition/scr_zomb_updatePosition.gml`,
 `scripts/scr_zomb_pathSpeed/scr_zomb_pathSpeed.gml`,
 `objects/obj_mon/{Create_0,Step_0,Draw_0}.gml`
+
+---
+
+<a name="ll-066"></a>
+## LL-066 - The Linux IDE finds fonts by walking /usr/share/fonts, so a user install does not exist
+
+**Symptom.** A TTF is installed for the user, and every other program sees it:
+
+```
+$ fc-list | grep -i garden
+/home/rayu/.local/share/fonts/GardenToonASCII.ttf: Garden Toon:style=Regular
+$ fc-validate GardenToonASCII.ttf
+```
+
+Qt apps render it. GameMaker does not: the font resource's picker has no
+"Garden Toon", and opening the resource shows the editor's
+`label_missing_font` warning. Meanwhile the game itself still draws text in the
+*old* font, which is the part that sends you hunting in the wrong place - you
+conclude the resource is fine and the problem is somewhere else.
+
+**Root cause.** Two separate facts, and the second is why the first is invisible.
+
+1. GameMaker's Linux IDE never asks fontconfig. Font discovery is a filesystem
+   walk, and its roots are fixed:
+
+   ```
+   $ strings -el /opt/GameMaker-Beta/x86_64/IDE.dll | grep -n -B2 -A3 '/usr/share/fonts'
+   187:/usr/share/fonts
+   188-/System/Library/Fonts
+   189-/Library/Fonts
+   190-Discovered system fonts via filesystem in {0}ms
+   ```
+
+   `ldd .../IDENativeLib.so` links no `libfontconfig`, and there is no `fc-list`
+   call anywhere in the install. So `~/.local/share/fonts` (and `~/.fonts`)
+   simply are not on its path, and the list it builds is a **startup** snapshot.
+
+2. A `GMFont` resource is **baked**, not a reference. `fonts/fnt_size16/` holds
+   `fnt_size16.png` - a 256x256 atlas of white glyphs on alpha - plus a `glyphs`
+   table in the `.yy` (`character`, `x`, `y`, `w`, `h`, `shift` = advance,
+   `offset` = x bearing). The build packs that atlas into a texture page and
+   never opens a TTF. This is why this project has drawn "Ink Free" text on a
+   machine that has never had Ink Free installed, and why "the game still draws
+   text" proves nothing about what is installed.
+
+3. Garden Toon is a **colour font**, and the colour part is the letterform. The
+   `COLR` table is layer 0 (a black silhouette) plus layer 1 (a white inset),
+   palette `#000000` / `#FFFFFF`, 94 base glyphs. A COLR-aware renderer
+   composites both layers and you get the outlined toon letter of the design.
+   Qt 5 - KDE's engine - does **not**, and neither does the IDE's SharpFont (a
+   2015 FreeType): both draw **layer 0 only**, the solid black silhouette. The
+   probe worth reusing: draw `H` at 96 px on magenta and read the centre pixel -
+   black means silhouette, background means a real ring. At `size 12` the
+   silhouette is merely heavy; at `size 48` the title is unreadable.
+   `notes/font_garden_toon_colr.png` shows the three looks side by side.
+
+   The fix is not a GameMaker setting, it is to make the black part a real ring:
+   `make_outline_variant.py` subtracts the inset layer from the base glyph with
+   pyclipper (94 glyphs punched, `COLR`/`CPAL` dropped, geometry and advances
+   untouched) and ships that as a second family, **Garden Toon Outline**:
+
+   ```
+   GardenToonASCII.ttf          <- the design: COLR. For KDE, Qt, browsers, Inkscape
+   GardenToonASCII-outline.ttf  <- COLR-free. For GameMaker, and anything without COLR
+   ```
+
+   The interior becomes transparent instead of white, and GameMaker tints the
+   glyph with `draw_set_colour` as it always did, so one outline works over any
+   background.
+
+**Fix.** Install for the whole machine, restart the IDE so the walk runs again,
+then let the editor re-bake:
+
+```bash
+sudo install -Dm644 GardenToonASCII-outline.ttf GardenToonASCII.ttf \
+  /usr/share/fonts/truetype/gardentoon/
+sudo fc-cache -f          # so fontconfig's users (Qt, KDE, browsers) agree
+# restart GameMaker, open the project, and in each font: Regenerate Font Texture, Save
+```
+
+The `.yy` side of that, through the toolkit so the file stays in GameMaker's
+canonical form (a font resource is only ever *rebound* here - the `glyphs` table
+and the `.png` stay untouched until the editor regenerates them):
+
+```bash
+for f in fnt_size12 fnt_size16 fnt_size20 fnt_size32 fnt_size48; do
+  PYTHONPATH=python_tools python3 -m gm set-path $f fontName 'Garden Toon Outline' --raw
+  PYTHONPATH=python_tools python3 -m gm set-path $f styleName 'Regular' --raw
+  PYTHONPATH=python_tools python3 -m gm set-path $f bold false
+  PYTHONPATH=python_tools python3 -m gm set-path $f regenerateBitmap true
+done
+```
+
+An alternative with no root and no font cache: tick **Include TTF** in the font
+editor (`checkbox_includettf` / `label_ttfpath`); the `.yy` grows
+`"includeTTF": true` with a `"TTFName"` and the TTF is copied into the resource
+folder, so the project bakes from its own file on any machine. This is the right
+end state for a shipped project even if the system install is what unblocks the
+picker today.
+
+**Guard rails.**
+* **Check `/usr/share/fonts` before blaming the resource.** `ls /usr/share/fonts/truetype`
+  is the whole test; a font in `~/.local/share/fonts` is installed for every
+  program except the one you are using.
+* **`fontName` is the FAMILY, `styleName` the FACE.** "Garden Toon ASCII" is the
+  full name; the family is "Garden Toon". `fc-match "Garden Toon ASCII"` silently
+  falls back to Noto Sans, which is what a wrong `fontName` does in the editor.
+* **A one-face family wants `"bold": false`.** With `bold: true` FreeType
+  synthesises an emboldened Regular; on a font whose strokes are 1-2 px that
+  smears, it does not thicken.
+* **Sizes do not transfer between families.** Measured per em: Ink Free advances
+  0.48 em with a 0.71 em cap; Garden Toon advances 0.70 em with a 0.847 em cap -
+  46% wider and 19% taller at the same `size`. Line height is nearly identical
+  (1.08 vs 1.10 em), so keeping the existing sizes preserves the vertical
+  rhythm and every auto-sized button (`scr_scaleButton`), while every *fixed*
+  panel has to be looked at.
+* **A stale `.gms1.yy`/`.gms1.png` pair is a leftover, not a fallback.** The IDE
+  writes them when `maintainGms1Font` is unticked; they are never read. And it
+  really is a leftover worth keeping: it is the only copy of the pre-rebind
+  resource if the toggle goes back on.
+* **A font that looks right in KDE and wrong in the game is a colour font.**
+  Check `ttx -t COLR -l font.ttf` first: no `COLR` in the baker means the layers
+  are dropped, not that the font failed to install.
+
+**Status.** FIXED 2026-10-20: the discovery mechanism is understood, the five UI
+fonts are rebound to **Garden Toon Outline**, `roundtrip` is clean, and both TTFs
+render with ink at every size the project uses, hinted and unhinted (the old
+fault - hairlines snapped to zero height - is gone with the rebuilt outlines).
+What is still Ink Free on disk is the *baked bitmap*: the glyphs land when the
+editor regenerates them, and `fonts/fnt_size*/fnt_size*.png` changing hash is the
+check that the re-bake actually happened.
+
+**Files.** `fonts/fnt_size{12,16,20,32,48}/{*.yy,*.png}`, `GardenToonASCII.ttf`,
+`GardenToonASCII-outline.ttf`, `notes/font_garden_toon_{sizes,colr}.png`,
+`scripts/scr_scaleButton/scr_scaleButton.gml` (why buttons survive a wider face);
+generators: `~/Documents/GardenToonASCII-repair/{make_outline_variant,sheet_sizes}.py`.
 
 ---
 
