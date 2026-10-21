@@ -30,7 +30,7 @@ function scr_setup_menuStates() {
 
 	/// set start room
 	game_room = global.startRoom;
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size16);
 
 	/// reset positions
 	var _xmid = display_get_gui_width()*0.5,

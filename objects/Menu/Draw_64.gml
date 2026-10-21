@@ -19,7 +19,7 @@ if(menu_state == MENU_STATE.START){
     draw_text_outline(_xmid,_ypos,_txt,c_white,c_black,2);
     
     //--------------------------------------------------//
-    draw_set_font(fnt_debug);
+    draw_set_font(fnt_size16);
 }
 
 /// show sliders
@@ -44,7 +44,7 @@ if(menu_state == MENU_STATE.OPTIONS && menu_state_time > 5){
     };
     
 }
-draw_set_font(fnt_debug);
+draw_set_font(fnt_size16);
 
 /// ---- the meta screens (roadmap 1.1/1.2/1.7).  Each one draws itself.
 /// The click handling lives in the Step event: a helper that both drew
@@ -55,5 +55,11 @@ if(menu_state == MENU_STATE.DEPLOY)    meta_draw_deploy();
 if(menu_state == MENU_STATE.GARDEN)    meta_draw_garden();
 if(menu_state == MENU_STATE.RESULTS)   meta_draw_results();
 
-draw_text(bbox_right + 25, y + 8, $"State: {menu_state}");
+/// the state readout is a DEVELOPER overlay, not UI - with devMode off
+/// it must not sit on the title screen or over a meta screen.
+if(global.devMode){
+	draw_set_font(fnt_size12);
+	draw_text(bbox_right + 25, y + 8, $"State: {menu_state}");
+	draw_reset();
+}
 

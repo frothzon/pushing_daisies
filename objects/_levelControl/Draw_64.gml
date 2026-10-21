@@ -18,7 +18,7 @@ if(level_state == LEVEL_STATE.WAIT && instance_number(obj_mon) == 0){
     draw_text_outline(show_position[0],show_position[1],spawn_timer div game_get_speed(gamespeed_fps),c_white,c_black,2);
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
-    draw_set_font(fnt_debug);
+    draw_set_font(fnt_size16);
 }
 
 /// tower placement
@@ -47,7 +47,7 @@ if(level_state == LEVEL_STATE.START && level_state_time > 5){
 }
 draw_set_halign(fa_left);
 draw_set_valign(fa_top);
-draw_set_font(fnt_debug);
+draw_set_font(fnt_size16);
 
 /// draw tower
 
@@ -62,7 +62,7 @@ if(_ui > 0.01 && scr_isValidInstance(tower_selection)){
     /// draw upgrade choices
     draw_set_font(fnt_size16);
     for_dgrid(tower_dgrid,scr_drawTowerMod);
-    draw_set_font(fnt_debug);
+    draw_set_font(fnt_size16);
 }
 
 /// the curve diagnostic panel (card curve-diagnostic) - the curve and the

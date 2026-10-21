@@ -36,7 +36,7 @@ if(state == scr_main_startup){
     ////
     draw_set_halign(fa_left);
     draw_set_halign(fa_top);
-    draw_set_font(fnt_debug);
+    draw_set_font(fnt_size16);
 }
 
 /// draw pause
@@ -87,7 +87,7 @@ if(blackScreen > 0 && (state == scr_main_gameOver || state == scr_main_highScore
     _mg = string_height_spr(string_hash_to_newline("High Scores"));
     draw_text_outline(display_get_gui_width()*0.5,16,"High Scores",c_yellow,c_black,2);
     draw_set_colour(c_white);
-    draw_set_font(fnt_debug);
+    draw_set_font(fnt_size16);
     draw_set_halign(fa_left);
     draw_set_alpha(1);
 }
@@ -114,7 +114,7 @@ if(state == scr_main_highScore){
             draw_text_outline(_x,_y,_text,_col1,_col2,1);
         }
     };
-    draw_set_font(fnt_debug);
+    draw_set_font(fnt_size16);
     draw_set_halign(fa_left);
     
 }

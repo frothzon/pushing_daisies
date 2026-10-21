@@ -94,7 +94,7 @@ if(_hov != noone){
     /// in this same event, and so does whatever follows it
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
-    draw_set_font(fnt_debug);
+    draw_set_font(fnt_size16);
 }
 
 

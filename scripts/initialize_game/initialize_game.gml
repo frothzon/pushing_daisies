@@ -3,7 +3,18 @@ function initialize_game() {
 
 	gml_pragma("global", "initialize_game()");   /// call at startup
     
-    var _fontText = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    /// ---- the sprite fonts --------------------------------------------
+    /// font_add_sprite_ext() maps sub-image i to string_map[i], so the map
+    /// must hold EXACTLY one character per frame: 94 frames, 94 characters.
+    /// A space is not in "!".."~", so it needs a slot of its own - and here
+    /// it takes the backtick's, because the backtick is the one printable
+    /// character that appears in NO string in this project (the only
+    /// literal holding it was this table).  That does not draw a backtick:
+    /// the manual says the space image "will never be rendered", only its
+    /// WIDTH is used - and with no slot at all the fallback is "the width of
+    /// the widest character in the sprite font", which is an em-wide gap
+    /// between every word in the game (see LL-067).
+    var _fontText = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_ abcdefghijklmnopqrstuvwxyz{|}~";
     
     global.font_list = {
         p12: font_add_sprite_ext(spr_toonfont_12x, _fontText, true, -2),
@@ -21,6 +32,21 @@ function initialize_game() {
 
 	//------------------- Initialize global values
 	global.devMode = false;  /// set developer mode
+
+	/// One line that PROVES the fonts mapped, for global.devMode = true.
+	/// Nothing else in the game can show a font metric.  Read it as:
+	///   p16 i=.. W=.. space=.. line=..
+	/// i narrower than W means `prop` was honoured, and `space` must be a
+	/// third of W - if it ever reads the same as W, the space slot is gone.
+	draw_set_font(fnt_size16);
+	scr_meta_log("FONT  ", "p16 i=", string_width("i"),
+	             " W=", string_width("W"),
+	             " space=", string_width("a a") - 2*string_width("a"),
+	             " line=", string_height("H"));
+	draw_set_font(fnt_size48);
+	scr_meta_log("FONT  ", "p48 W=", string_width("W"),
+	             " space=", string_width("a a") - 2*string_width("a"));
+	draw_reset();
 
 	/// initialize sound control variables
 	scr_initSoundEmitters();

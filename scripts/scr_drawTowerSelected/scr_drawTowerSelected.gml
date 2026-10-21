@@ -80,7 +80,7 @@ function scr_drawTowerSelected() {
 	if(_can) _dps_txt = concat(_dps_txt, " -> ", round(_dmg2*_rate));
 	draw_text_outline(_x+176, _y+80, concat("DPS  ", _dps_txt), c_yellow, c_black, 1);
 
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size16);
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 }

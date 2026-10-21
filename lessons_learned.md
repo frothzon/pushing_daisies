@@ -87,6 +87,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-065](#ll-065) | Monsters **vanish ~5 s after being stunned**, and the stage loses Exterminator | The LL-031 safety valve fires on "`path_position` has not moved", which a stun produces ON PURPOSE. A held monster is not a stuck one: the counter now only runs while `status_speed_mult() > 0` | **FIXED** |
 | [LL-064](#ll-064) | The **music fades out in the middle of a stage**, and the menu goes quiet every ~3 minutes - no error, and the track is still "playing" | The loop had **one end**: `loop_in` was the chorus start and the loop ran to END OF FILE, so every cycle played the outro fade. The menu did not set loop points at all, so it was worse there. A loop **section** has two ends | **FIXED** |
 | [LL-066](#ll-066) | A font **installed for the user works everywhere except GameMaker** - `fc-list` finds it, KDE renders it, the font picker does not list it | The Linux IDE discovers fonts by **walking `/usr/share/fonts`**, never fontconfig, so `~/.local/share/fonts` does not exist as far as it is concerned - and a font resource keeps drawing text without any TTF, because its glyphs are **baked** into a PNG atlas | **FIXED** |
+| [LL-067](#ll-067) | A sprite font puts an **em-wide gap between every word**, and **half the UI still draws in the old font** | The string map is **positional** and the sheets are `"!"`..`"~"` with **no space**, so the documented fallback is the **widest glyph's** width; and `draw_reset()`'s font is *ambient*, so any draw path that never calls `draw_set_font` keeps the old face | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
@@ -4738,6 +4739,148 @@ check that the re-bake actually happened.
 `GardenToonASCII-outline.ttf`, `notes/font_garden_toon_{sizes,colr}.png`,
 `scripts/scr_scaleButton/scr_scaleButton.gml` (why buttons survive a wider face);
 generators: `~/Documents/GardenToonASCII-repair/{make_outline_variant,sheet_sizes}.py`.
+
+---
+
+
+<a name="ll-067"></a>
+## LL-067 - A sprite font with no space frame spaces every word by its WIDEST glyph, and the string map is positional
+
+**Symptom.** Two, and the second is what makes the first hard to see.
+
+1. The UI moves to a sprite font and every **word gap is as wide as a capital
+   M**: `"Seeds    0    Clovers 3"` arrives with gaps that push the panels
+   apart, and `"Region 1   Stage 3"` on the results card is 150 px wider than
+   the box it was designed for. Nothing errors; the text is simply *spaced*.
+2. **Half the game still draws in the old font**, and the half that changed is
+   not the half you looked at: a helper that never calls `draw_set_font()`
+   inherits whatever the last `draw_set_font` left set, so a screen drawn after
+   a title (48 px) and a screen drawn after a body line (16 px) disagree.
+
+**Root cause.**
+
+1. `font_add_sprite_ext(spr, string_map, prop, sep)` maps **sub-image `i` to
+   `string_map[i]`** - positionally, with no table anywhere. The toon sheets are
+   `"!"` to `"~"`: 94 frames, 94 characters, and **no space**. The manual's
+   fallback when a space has no sub-image is *"the width of the widest
+   character in the sprite font"*, so a space costs an em instead of a third of
+   one - and it scales with the sheet, so the 48 px title is the worst case.
+2. `draw_reset()` sets a font as the *ambient* default. Any draw path that does
+   not set its own font renders in whatever was set last, which is the whole
+   mechanism behind "some of it is the new font, some isn't".
+
+**Fix.** Give the space a slot, and make every draw path name its font.
+
+The space does not need a frame of its own - the manual is explicit that the
+space image *"will never be rendered"*, only its **width** is used:
+
+> "You can define 'space' as being any character you want ... and all spaces
+> in text will be rendered at that width (but the image chosen will never be
+> rendered), or if you don't supply a sprite for space then the width of the
+> widest character in the sprite font will be used instead."
+
+So the space borrows a **narrow glyph that nothing else uses**, and the map stays
+exactly 94 characters long:
+
+```gml
+    /// font_add_sprite_ext() maps sub-image i to string_map[i], so the map
+    /// must hold EXACTLY one character per frame: 94 frames, 94 characters.
+    /// A space is not in "!".."~", so it needs a slot of its own - and here
+    /// it takes the backtick's, because the backtick is the one printable
+    /// character that appears in NO string in this project (the only
+    /// literal holding it was this table).
+    var _fontText = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_ abcdefghijklmnopqrstuvwxyz{|}~";
+```
+
+`_fontText` now scans `...]^_ abcdef...`: the space sits where the backtick was.
+Choosing the sacrifice is a **measurement**, not a guess - read every string
+literal in the project (comments excluded, and the map itself excluded so the
+map cannot vote for its own characters) and list what is left:
+
+```bash
+python3 - <<'PY'
+import glob, collections
+counts = collections.Counter()
+for f in glob.glob('**/*.gml', recursive=True):
+    s = open(f, encoding='utf-8', errors='replace').read()
+    s = '\n'.join(l for l in s.split('\n') if 'var _fontText' not in l)
+    i = 0
+    while i < len(s):
+        if s.startswith(('//', '/*'), i):                       # skip comments
+            j = s.find('\n', i) if s[i + 1] == '/' else s.find('*/', i) + 2
+            i = len(s) if j < 0 else j
+            continue
+        if s[i] == '"':                                         # read a literal
+            i += 1
+            while i < len(s) and s[i] != '"':
+                c = s[i]
+                if c == '\\':
+                    c, i = s[i + 1], i + 1
+                counts[c] += 1
+                i += 1
+        i += 1
+p = list(map(chr, range(33, 127)))
+print('free characters:', [c for c in p if not counts[c]])
+PY
+free characters: ['&', '*', '7', '9', '\\', '^', '`']
+```
+
+Seven candidates, and two of them are **traps**: `7` and `9` are absent from the
+*literals*, but `string(7)` puts one on screen every time a score ends in 7 -
+sacrificing a digit is the choice that breaks silently, a week later, on a
+number. Free in the literals AND never produced at runtime: `&`, `*`, `\`, `^`
+and the backtick. Take the **narrowest** of those, the backtick (6 px of ink at
+a 12 px size, 23 px at 48 px), so a space is a word gap rather than another em.
+
+The residual cost is small and worth stating: a **typed** high-score name may
+contain a backtick, and that character now maps to the space slot - whose image
+*is never rendered* - so it draws as a narrow gap. The failure mode is one
+invisible character in a player-entered name, not a crash and not a broken
+screen.
+
+Every UI site was then changed to name a macro, and `draw_reset()` - the ambient
+default - became `fnt_size16`:
+
+```gml
+draw_set_font(fnt_size16);   /// was fnt_debug
+```
+
+**Guard rails.**
+
+* **The map is positional: one character per frame, or every glyph after the
+  hole is wrong.** Add a frame to ONE sheet and the whole alphabet shifts one
+  letter. `python_tools/tests/test_gm.py::ToonFontTests` now checks exactly that
+  against the five `.yy` frame counts (plus: a space exists, no character is
+  mapped twice, every letter and digit has a glyph).
+* **Do not assume `prop = true` means narrow.** The advance is the glyph's
+  *ink*, and these sheets' ink runs 4-12 px at 12 px against a 12 px canvas -
+  so `fnt_size12` is width-compatible with the old Arial 12 (~6.7 px/char) and
+  `fnt_size16` is about **1.4x wider**. Body text that has to *fit* a fixed
+  box is 12; 16 is for headers and labels. `initialize_game` prints
+  `FONT  [FONT  ] p16 i=.. W=.. space=.. line=..` at every boot with
+  `global.devMode = true`: if `i` and `W` read the same the engine is using the
+  canvas (monospaced) and a 16 px body will not fit anywhere 12 did.
+* **A line gap tuned for Arial is 3 px short for the toon font.** A 12 px toon
+  line is 13.8 px high, so `meta_text_fit`'s wrapped-line gaps went 11 -> 15
+  and 10 -> 14; anything else measured with a 12 px Arial assumption needs the
+  same look.
+* **A draw helper owns its font.** `draw_set_font` at the top of the function
+  that draws, or the next screen inherits yours. `show_slider` is the worked
+  example. "Half old font, half new" is the signature of an inherited font.
+* **Acceptance is a grep**, not a screenshot: `grep -rn fnt_debug scripts objects`
+  must return exactly the two developer overlays that want the old face
+  (`scr_curve`, `scr_level_state`).
+
+**Status.** FIXED 2026-10-20. 36 `draw_set_font(fnt_debug)` sites in 17 files:
+34 became `fnt_size12`/`fnt_size16`, and the 2 developer overlays were left
+alone on purpose.
+
+**Files.** `scripts/initialize_game/initialize_game.gml` (the map and the boot
+log), `scripts/draw_reset/draw_reset.gml` (the ambient default),
+`scripts/scr_meta_screen/scr_meta_screen.gml` (16 of the 34, plus the line gaps),
+`scripts/show_slider/show_slider.gml`, `objects/Menu/Draw_64.gml`,
+`sprites/spr_toonfont_{12x,16x,20x,32x,48x}/`,
+`python_tools/tests/test_gm.py` (the `ToonFontTests` guard).
 
 ---
 

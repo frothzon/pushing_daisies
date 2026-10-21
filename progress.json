@@ -20,7 +20,7 @@
   },
   "focus": {
     "now": [
-      "combat-crit"
+      "font-toon-in-game"
     ],
     "next": [
       "dev-seed-sandbox",
@@ -28,7 +28,7 @@
       "combat-status-burn",
       "tower-card-status-line"
     ],
-    "note": "2026-10-20: the status spine is IN (scr_status + Chillip, LL-065), so the rest of Wave 2 is now unblocked and is all code: crit next, then burn, stun, resistances. tower-belladonna also stopped being art-blocked (its trio has been in the repo since 2026-10-12). The art cards still have no owner (art-track-ownership), and cannon/meat placeholders still need spr_t3_*/spr_t4_*."
+    "note": "2026-10-20: the status spine is IN (scr_status + Chillip, LL-065), so the rest of Wave 2 is now unblocked and is all code: crit next, then burn, stun, resistances. tower-belladonna also stopped being art-blocked (its trio has been in the repo since 2026-10-12). The art cards still have no owner (art-track-ownership), and cannon/meat placeholders still need spr_t3_*/spr_t4_*. 2026-10-20 (font): the toon pass took the session - the board's now-card is the run that has to happen before combat-crit."
   },
   "tasks": [
     {
@@ -1604,23 +1604,25 @@
     },
     {
       "id": "font-toon-in-game",
-      "title": "Swap the UI font to Garden Toon Outline - GameMaker sees neither a user install nor COLR",
-      "status": "next",
+      "title": "The UI font is the Garden Toon sprite font - fnt_size12/16/20/32/48 are sheets now, and every screen names one",
+      "status": "review",
       "owner": "both",
       "awaiting": "rayu",
       "area": "art",
       "phase": "2",
-      "size": "S",
+      "size": "M",
       "prio": 2,
-      "needs": "Run the sudo install of BOTH TTFs into /usr/share/fonts (the IDE never reads ~/.local/share/fonts, LL-066), restart GameMaker, then press Regenerate Font Texture in each of fnt_size12/16/20/32/48 and save.",
-      "notes": "All five UI fonts are already rebound to family Garden Toon Outline / Regular / bold off through gm set-path, so only the baked glyph bitmaps are stale: fonts/fnt_size*/fnt_size*.png are still Ink Free. Two findings drove that. First, the Linux IDE discovers fonts by walking /usr/share/fonts and never asks fontconfig, so a font that fc-list and KDE both see is invisible to the picker - and the old text kept drawing because a GMFont is a baked atlas, not a reference. Second, Garden Toon is a COLR colour font (black silhouette plus a white inset); the IDE bakes with a 2015 FreeType that ignores COLR, so the original file would have come out as solid black blobs at size 32/48 (notes/font_garden_toon_colr.png). GardenToonASCII-outline.ttf is the same design with the inset punched out, so the outline survives any renderer; notes/font_garden_toon_sizes.png puts every size next to what Ink Free does today. Sizes are unchanged on purpose: line heights match (1.08 vs 1.10 em) but strings are 34-58% wider, which auto-sized buttons absorb and fixed panels may not.",
+      "needs": "Reload the project (GameMaker must not be holding the files), set global.devMode = true, run it, and read the two 'FONT  ' lines in the Output window. Then walk Title -> Options -> World Map -> Deploy -> Garden Book and the results card, and say which text overflows its box or reads too big.",
+      "notes": "The TTF route is dead, and LL-066 says why: the Linux IDE never reads ~/.local/share/fonts, and it bakes with a FreeType that ignores COLR, so Garden Toon arrived as black blobs. The fonts are five SPRITE sheets now (spr_toonfont_12x/16x/20x/32x/48x, 94 frames each, '!'..'~'), turned into font handles by font_add_sprite_ext() in initialize_game and exposed as the macros fnt_size12/16/20/32/48; the five GMFont resources are gone. Every draw_set_font in the project names a macro except the two developer overlays (scr_curve, scr_level_state), which keep fnt_debug. The sheets had no space frame, and with no space slot GameMaker spaces every word by the WIDEST glyph, so the space borrows the backtick's slot - a character in no string in the project and never produced at runtime - and is measured but never rendered (LL-067). Width is the thing to watch: measured ink makes fnt_size12 width-compatible with the old Arial 12 (~6.7 px/char) while fnt_size16 is ~1.4x wider, so body text that has to fit a fixed box is 12 and only headers/labels are 16. meta_text_fit's line gaps went 11->15 and 10->14 for the same reason (a 12 px toon line is 13.8 px tall).",
       "refs": [
-        "fonts/fnt_size16/fnt_size16.yy",
-        "GardenToonASCII.ttf",
-        "GardenToonASCII-outline.ttf",
-        "notes/font_garden_toon_sizes.png",
-        "notes/font_garden_toon_colr.png",
-        "lessons_learned.md#ll-066"
+        "scripts/initialize_game/initialize_game.gml",
+        "scripts/draw_reset/draw_reset.gml",
+        "scripts/scr_meta_screen/scr_meta_screen.gml",
+        "scripts/show_slider/show_slider.gml",
+        "sprites/spr_toonfont_16x/spr_toonfont_16x.yy",
+        "python_tools/tests/test_gm.py",
+        "lessons_learned.md#ll-066",
+        "lessons_learned.md#ll-067"
       ],
       "created": "2026-10-20",
       "updated": "2026-10-20",
@@ -3747,6 +3749,12 @@
       "who": "cline",
       "task": "font-toon-in-game",
       "what": "Garden Toon was invisible to GameMaker for two reasons, not one. The Linux IDE discovers fonts by walking /usr/share/fonts and links no fontconfig, so a font installed for the user (fc-list and KDE both fine) does not exist for it; and the font itself is a COLR colour font whose white inset the IDE bakes with a 2015 FreeType, so it would have come out as solid black blobs at size 32/48. Rebound fnt_size12/16/20/32/48 to a COLR-free variant (GardenToonASCII-outline.ttf, the inset punched out of all 94 glyphs), sizes unchanged because the line heights match while strings grow 34-58% wider. Glyphs on disk stay Ink Free until rayu installs both TTFs into /usr/share/fonts and presses Regenerate Font Texture in each font. New lesson LL-066; roundtrip 0 differ, 170 tests OK."
+    },
+    {
+      "date": "2026-10-20",
+      "who": "cline",
+      "task": "font-toon-in-game",
+      "what": "Every UI draw_set_font now names a toon macro (34 sites, 14 files); the space borrows the backtick's slot so words are not em-spaced; ToonFontTests guards one-character-per-frame."
     }
   ]
 }

@@ -53,6 +53,10 @@ function show_slider(argument0, argument1, argument2, argument3, argument4, argu
 	    _knob = _SC*(_grab ? 1.25 : 1);
 
 	//----------------------- draw slider
+	/// the label and the % readout are this function's, so it sets the font
+	/// they are measured AND drawn in - an inherited font is how the whole
+	/// UI ended up half old-font, half new (LL-067).
+	draw_set_font(fnt_size16);
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 	draw_set_colour(_c2);

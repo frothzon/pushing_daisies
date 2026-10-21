@@ -43,7 +43,7 @@ function meta_title(_text) {
 	draw_set_valign(fa_top);
 	draw_text_outline(display_get_gui_width()*0.5, 20, _text, c_white, c_black, 2);
 	draw_set_halign(fa_left);
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size16);
 }
 
 /// A line of body text.  `_align` lets a caller right-align a value next to
@@ -57,7 +57,7 @@ function meta_text(_x, _y, _text, _col, _align) {
 
 /// The line every meta screen shows: the three currencies that exist so far.
 function meta_currency_line(_x, _y) {
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size16);
 	meta_text(_x, _y,
 	          "Seeds " + string(seeds_get()) +
 	          "    Clovers " + string(clovers_get()) +
@@ -77,7 +77,7 @@ function meta_currency_line(_x, _y) {
 function meta_draw_tower_wall(_x, _y, _cell, _cols) {
 	var _all = tower_roster(),
 	    _out = [];
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size12);
 	draw_set_valign(fa_top);
 
 	for(var _i = 0; _i < array_length(_all); _i++){
@@ -104,9 +104,9 @@ function meta_draw_tower_wall(_x, _y, _cell, _cols) {
 
 		/// the name, wrapped onto a second line if it will not fit on one -
 		/// see meta_wrap.  The font must be set before measuring.
-		draw_set_font(fnt_debug);
+		draw_set_font(fnt_size12);
 		meta_text_fit(_cx + _w*0.5, _cy + 64, _e.name,
-		              _unlocked ? c_white : c_dkgray, fa_center, _w - 8, 11);
+		              _unlocked ? c_white : c_dkgray, fa_center, _w - 8, 15);
 
 		if(!_unlocked){
 			/// say WHY it is locked, not merely that it is
@@ -117,7 +117,7 @@ function meta_draw_tower_wall(_x, _y, _cell, _cols) {
 				_req = string(_e.unlock) + " seeds";
 			}
 			meta_text_fit(_cx + _w*0.5, _cy + 92, _req,
-			              c_silver, fa_center, _w - 8, 10);
+			              c_silver, fa_center, _w - 8, 14);
 		}
 
 		_out[_i] = [_cx, _cy, _cx + _w, _cy + _h];
@@ -158,7 +158,7 @@ function meta_button_draw(_r, _text, _enabled) {
 	draw_text((_r[0] + _r[2])*0.5, (_r[1] + _r[3])*0.5, _text);
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size16);
 
 	return _hov;
 }
@@ -245,7 +245,7 @@ function meta_draw_worldmap() {
 
 	for(var _r = 1; _r <= 6; _r++){
 		/// a region label, which also greys once the region is finished
-		draw_set_font(fnt_debug);
+		draw_set_font(fnt_size16);
 		draw_set_halign(fa_right);
 		draw_set_colour(region_cleared(_r) ? c_lime : c_silver);
 		draw_text(_g.x0 - 12, _g.y0 + (_r-1)*_g.ch + _g.ch*0.5 - 8,
@@ -276,7 +276,7 @@ function meta_draw_worldmap() {
 			meta_panel(_rect[0], _rect[1], _rect[2]-_rect[0], _rect[3]-_rect[1],
 			           _bg, (_hov && _open) ? c_white : c_black);
 
-			draw_set_font(fnt_debug);
+			draw_set_font(fnt_size16);
 			draw_set_halign(fa_center);
 			draw_set_colour(_open ? c_white : c_dkgray);
 			/// a node with no level shows a dash, not a stage number: the
@@ -306,7 +306,7 @@ function meta_draw_worldmap() {
 		    _lvl = level_get(_hr, _hs),
 		    _bar = _g.y0 + 6*_g.ch + 10;
 		meta_panel(_g.x0, _bar, 460, 30, make_colour_rgb(20, 20, 24), c_black);
-		draw_set_font(fnt_debug);
+		draw_set_font(fnt_size16);
 		if(is_undefined(_lvl)){
 			meta_text(_g.x0 + 8, _bar + 6,
 			          "Region " + string(_hr) + " is not available yet",
@@ -384,7 +384,7 @@ function meta_draw_deploy() {
 	}
 
 	/// ---- the difficulty picker
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size16);
 	meta_text(_g.diffs[0][0], _g.diffs[0][1] - 22, "Difficulty", c_silver, fa_left);
 	var _diffs = difficulty_data();
 	for(var _d = 0; _d < array_length(_diffs); _d++){
@@ -401,12 +401,15 @@ function meta_draw_deploy() {
 	}
 
 	/// ---- the tower wall.  Locked towers drawn greyed, with the reason.
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size16);
 	meta_text(_g.wall_x, _g.wall_y - 22,
 	          "Your garden - click a tower to slot it", c_silver, fa_left);
 	meta_draw_tower_wall(_g.wall_x, _g.wall_y, _g.wall_cell, _g.wall_cols);
 
 	/// ---- the four slots
+	/// the wall left the font at 12 for its cells, so the header goes
+	/// back on the body size first - one font per row of the screen
+	draw_set_font(fnt_size16);
 	meta_text(_g.slot_x, _g.slot_y - 22,
 	          "Loadout (" + string(array_length(_load)) + "/" +
 	          string(loadout_size()) + ")    click a slotted tower to remove it",
@@ -424,11 +427,11 @@ function meta_draw_deploy() {
 			meta_sprite_fit(_e.sprites[0], (_sr[0]+_sr[2])*0.5, _sr[1] + 36,
 			                _g.slot_w - 14, 58, c_white, 1);
 		}
-		draw_set_font(fnt_debug);
+		draw_set_font(fnt_size12);
 		meta_text_fit((_sr[0]+_sr[2])*0.5, _sr[3] - 40,
 		              (_nm == "") ? "empty" : _nm,
 		              (_nm == "") ? c_silver : c_white,
-		              fa_center, _g.slot_w - 10, 11);
+		              fa_center, _g.slot_w - 10, 15);
 	}
 
 	/// ---- the actions.  Deploy is refused when a slot is empty, which the
@@ -438,7 +441,7 @@ function meta_draw_deploy() {
 	meta_button_draw(_g.deploy, "Deploy", _ready);
 	meta_button_draw(_g.back,   "Back",   true);
 	if(!_ready){
-		draw_set_font(fnt_debug);
+		draw_set_font(fnt_size16);
 		meta_text(_g.deploy[0], _g.deploy[1] - 20,
 		          "fill all " + string(loadout_size()) + " slots",
 		          c_red, fa_left);
@@ -508,7 +511,7 @@ function meta_draw_garden() {
 	draw_set_colour(c_white);
 	draw_set_halign(fa_left);
 	draw_text(_g.node_x, _g.node_y - 30, "Offense");
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size12);
 
 	for(var _i = 0; _i < array_length(_nodes); _i++){
 		var _n    = _nodes[_i],
@@ -529,14 +532,21 @@ function meta_draw_garden() {
 		draw_set_colour(c_white);
 		draw_text(_rc[0] + 10, _rc[1] + 10, _n.label);
 
-		draw_set_font(fnt_debug);
+		/// the rank shares the LABEL's row, so it is drawn at the label's
+		/// size; the cost shares the DESCRIPTION's row, at its size.  One
+		/// font per row is what keeps two columns on the same baseline.
+		draw_set_halign(fa_right);
+		draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
+		draw_text(_rc[2] - 10, _rc[1] + 10,
+		          "rank " + string(_rank) + "/" + string(_n.ranks));
+		draw_set_halign(fa_left);
+
+		draw_set_font(fnt_size12);
 		draw_set_colour(c_silver);
 		draw_text(_rc[0] + 10, _rc[1] + 32, _n.desc);
 
 		draw_set_halign(fa_right);
 		draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
-		draw_text(_rc[2] - 10, _rc[1] + 10,
-		          "rank " + string(_rank) + "/" + string(_n.ranks));
 		draw_text(_rc[2] - 10, _rc[1] + 32,
 		          _max ? "maxed" : (string(_cost) + " clovers"));
 		draw_set_halign(fa_left);
@@ -546,7 +556,7 @@ function meta_draw_garden() {
 	draw_set_font(fnt_size16);
 	draw_set_colour(c_white);
 	draw_text(_g.wall_x, _g.wall_y - 30, "Seed Shop");
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size12);
 
 	meta_draw_tower_wall(_g.wall_x, _g.wall_y, _g.wall_cell, _g.wall_cols);
 
@@ -759,7 +769,7 @@ function meta_draw_results() {
 
 	/// the numbers.  A loss shows what it did NOT pay, because "nothing" is
 	/// the design decision a player should be able to read (goal.md 27.3).
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size16);
 	var _lines = [
 		"Difficulty      " + difficulty_name(_res.difficulty),
 		"Lives left      " + string(_res.lives),

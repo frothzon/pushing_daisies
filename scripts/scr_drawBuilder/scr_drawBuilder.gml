@@ -55,7 +55,7 @@ function scr_drawBuilder(argument0, argument1) {
 	    }
 	}
 	draw_set_alpha(1);
-	draw_set_font(fnt_debug);
+	draw_set_font(fnt_size16);
 
 
 

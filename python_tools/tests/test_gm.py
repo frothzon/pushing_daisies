@@ -17,6 +17,7 @@ import contextlib
 import io
 import json
 import re
+import string
 import sys
 import tempfile
 import unittest
@@ -378,6 +379,63 @@ class ProgressTests(unittest.TestCase):
         doc["tasks"][0]["refs"] = ["this/file/does/not/exist.gml"]
         errs = progress.validate(doc, PROJECT_ROOT)
         self.assertTrue(any("does not exist" in e for e in errs), errs)
+
+
+class ToonFontTests(unittest.TestCase):
+    """The toon sprite fonts: one string_map character per sub-image.
+
+    ``font_add_sprite_ext()`` maps sub-image *i* to ``string_map[i]``, so a map
+    that is one character SHORT shifts every glyph after the gap, and one that
+    is one character LONG asks for a sub-image that is not there.  Neither
+    throws: the text simply comes out wrong, and the cause is invisible from
+    the game window.  So the invariant is checked here instead of trusted
+    (LL-067).
+    """
+
+    INIT = "scripts/initialize_game/initialize_game.gml"
+
+    def _font_map(self):
+        if PROJECT_ROOT is None:
+            self.skipTest("no GameMaker project found")
+        path = PROJECT_ROOT / self.INIT
+        self.assertTrue(path.exists(), f"{self.INIT} is missing")
+        text = gml.read_gml(path)
+        match = re.search(r'var _fontText = "((?:[^"\\]|\\.)*)";', text)
+        self.assertIsNotNone(match, "no _fontText literal in initialize_game")
+        return re.sub(r"\\(.)", r"\1", match.group(1))
+
+    def _font_sprites(self):
+        if PROJECT_ROOT is None:
+            self.skipTest("no GameMaker project found")
+        return sorted(PROJECT_ROOT.glob("sprites/spr_toonfont_*/*.yy"))
+
+    def test_there_are_five_toon_font_sprites(self):
+        self.assertEqual(len(self._font_sprites()), 5)
+
+    def test_one_character_per_sub_image(self):
+        mapping = self._font_map()
+        for path in self._font_sprites():
+            frames = yy.Document.from_file(path).data["frames"]
+            self.assertEqual(
+                len(mapping), len(frames),
+                f"{path.parent.name} has {len(frames)} frames but the map has "
+                f"{len(mapping)} characters",
+            )
+
+    def test_the_map_has_a_space(self):
+        # without a space slot GameMaker spaces every word by the WIDEST glyph
+        self.assertIn(" ", self._font_map())
+
+    def test_no_character_is_mapped_twice(self):
+        mapping = self._font_map()
+        self.assertEqual(len(mapping), len(set(mapping)),
+                         "a duplicated character leaves another glyph unmapped")
+
+    def test_every_letter_and_digit_is_mapped(self):
+        mapped = set(self._font_map())
+        missing = [c for c in string.ascii_letters + string.digits
+                   if c not in mapped]
+        self.assertEqual(missing, [], f"no glyph for {missing}")
 
 
 if __name__ == "__main__":
