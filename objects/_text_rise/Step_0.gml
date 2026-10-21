@@ -16,6 +16,6 @@ if(text_timer < time_max*0.2){
 
 //---------------- resize text object for collisions
 var _w = string_width(string_hash_to_newline(message))*scale*0.75,
-    _h = string_height(string_hash_to_newline(message))*scale*0.75;
+    _h = string_height_spr(string_hash_to_newline(message))*scale*0.75;
 scr_scale_sprite(_w,_h);
 

@@ -5,7 +5,7 @@ function scr_drawTowerStats(argument0) {
 	/// draw stats
 	draw_set_font(fnt_size16);
 	var _w = string_width(string_hash_to_newline(tower_string)),
-	    _h = string_height(string_hash_to_newline(tower_string)),
+	    _h = string_height_spr(string_hash_to_newline(tower_string)),
 	    _x = x,
 	    _y = y + _h,
 	    _m = 4;

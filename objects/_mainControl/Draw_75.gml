@@ -84,7 +84,7 @@ if(blackScreen > 0 && (state == scr_main_gameOver || state == scr_main_highScore
     draw_background_stretched_ext(bck_scores,0,0,display_get_gui_width(),display_get_gui_height(),c_white,blackScreen);
     draw_set_halign(fa_center);
     draw_set_font(fnt_size32);
-    _mg = string_height(string_hash_to_newline("High Scores"));
+    _mg = string_height_spr(string_hash_to_newline("High Scores"));
     draw_text_outline(display_get_gui_width()*0.5,16,"High Scores",c_yellow,c_black,2);
     draw_set_colour(c_white);
     draw_set_font(fnt_debug);
@@ -104,7 +104,7 @@ if(state == scr_main_highScore){
             _dots = string_repeat(".",50-string_length(_values[0])),
             _text = concat(i+1,". -- ",_values[1]," ",_dots," ",_values[0]," Points"),
             _x = display_get_gui_width()*0.5,
-            _y = 32 + _mg + (i-_start)*string_height(string_hash_to_newline("H"))*1.2;
+            _y = 32 + _mg + (i-_start)*string_height_spr(string_hash_to_newline("H"))*1.2;
         if(i != highScoreIndex){
             draw_text_outline(_x,_y,_text,c_white,c_green,1);
         } else {

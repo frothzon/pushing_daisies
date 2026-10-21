@@ -1,8 +1,10 @@
 /// @description  draw textbox
 
+draw_set_font(message_font);
+
 /// backgorund rectangle
 draw_set_halign(fa_left);
-draw_set_colour(c_black);
+draw_set_colour(c_white);
 
 draw9slice(spr_towerUpgrade,m_pos[0],m_pos[1],m_pos[4],m_pos[5],c_white,1);
 
@@ -20,7 +22,7 @@ var xx = m_pos[0] + p_pos[0],
     yy = m_pos[1] + p_pos[1];
 
 if(sprite_exists(_portrait)){
-    draw_sprite_stretched(_portrait,0,xx,yy,p_pos[2],p_pos[3]);
+    draw_sprite_stretched(_portrait,0,xx+4,yy-2,p_pos[2],p_pos[3]);
 } else if(message_image[message_current] >= 0 && sprite_exists(message_sprite)){
     draw_sprite_stretched(message_sprite,message_image[message_current],xx,yy,p_pos[2],p_pos[3]);
 }

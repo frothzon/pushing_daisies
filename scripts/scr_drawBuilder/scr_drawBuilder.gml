@@ -47,7 +47,7 @@ function scr_drawBuilder(argument0, argument1) {
 	        var _mpos = dgrid_get_cell(argument0,0),
 	            _str  = _tower[1],
 	            _stw  = string_width(string_hash_to_newline(_str)),
-	            _sth  = string_height(string_hash_to_newline(_str));
+	            _sth  = string_height_spr(string_hash_to_newline(_str));
             
 	        _mpos[1] -= 16;
 	        draw_sprite_stretched_ext(spr_towerStr,0,_mpos[0]-1,_mpos[1]-17,_stw+2,_sth+2,c_white,list_opacity);

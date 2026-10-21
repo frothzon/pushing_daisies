@@ -40,7 +40,7 @@ function scr_draw_statinv() {
 	            draw_set_font(fnt_size12);
 	            var _name = string(_item[2]),
 	                _w2 = string_width(string_hash_to_newline(_name)),
-	                _h2 = string_height(string_hash_to_newline(_name)),
+	                _h2 = string_height_spr(string_hash_to_newline(_name)),
 	                _mg = 2,
 	                _vo = 16;
 	            if(point_in_rectangle(_mouse[0],_mouse[1],xx,yy,xx+_w2,yy+_h2+_vo)){

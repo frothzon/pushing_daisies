@@ -8,6 +8,7 @@ message_draw = "";
 message_speed = 1;
 characters = 0;
 action_hold = 0;
+message_font = fnt_size16;
 
 /// get the number of characters in the first message
 message_length = string_length(message[message_current]);

@@ -47,7 +47,7 @@ function show_slider(argument0, argument1, argument2, argument3, argument4, argu
 	    _c2 = c_white,
 	    _SP = spr_slider_bar,
 	    _SC = sprite_get_height(_SP)/(_hh<<1),
-	    _h2 = string_height(string_hash_to_newline("H"))*1.2,
+	    _h2 = string_height_spr(string_hash_to_newline("H"))*1.2,
 	    /// the knob grows while it is held, so it is obvious WHICH slider the
 	    /// drag belongs to even when the pointer has left the track
 	    _knob = _SC*(_grab ? 1.25 : 1);

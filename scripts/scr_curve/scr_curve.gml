@@ -308,7 +308,7 @@ function scr_curve_draw() {
 
 	var _x  = 8,
 	    _y  = 8,
-	    _fh = string_height(string_hash_to_newline("H")) + 2,
+	    _fh = string_height_spr(string_hash_to_newline("H")) + 2,
 	    _h  = array_length(curve_lines) * _fh + 8,
 	    _w  = 0;
 

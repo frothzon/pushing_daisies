@@ -15,7 +15,7 @@ function scr_make_input(argument0, argument1, argument2, argument3) {
 	    _y = argument1,             /// y position of box origin
 	    _hc = argument2,            /// horizontal box count
 	    _w = string_width(string_hash_to_newline("H"))*1.4, /// width of character
-	    _h = string_height(string_hash_to_newline("H")),    /// height of character
+	    _h = string_height_spr(string_hash_to_newline("H")),    /// height of character
 	    _hind = 0,                  /// horizontal loop index
 	    _vind = 0,                  /// vertical loop index
 	    /// position place holder values

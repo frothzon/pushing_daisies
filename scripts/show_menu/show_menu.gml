@@ -23,7 +23,7 @@ function show_menu() {
 	        case 1: _y1 = argument[_i];
 	        break
 	        default: _str[_i-2] = argument[_i];
-	            _str_h[_i-2] = string_height(string_hash_to_newline(argument[_i]));
+	            _str_h[_i-2] = string_height_spr(string_hash_to_newline(argument[_i]));
 	            _str_w = max(_str_w,string_width(string_hash_to_newline(argument[_i])));
 	        }
 

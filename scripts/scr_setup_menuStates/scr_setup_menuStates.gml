@@ -5,7 +5,7 @@ function scr_setup_menuStates() {
 	var _x = display_get_gui_width()*0.5,
 	    _ym = display_get_gui_height(),
 	    _y = _ym*0.5,
-	    _h = string_height(string_hash_to_newline("H"))*2;
+	    _h = string_height_spr(string_hash_to_newline("H"))*2;
     
     
     

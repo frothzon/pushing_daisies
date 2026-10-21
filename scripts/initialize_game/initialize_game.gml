@@ -2,6 +2,22 @@
 function initialize_game() {
 
 	gml_pragma("global", "initialize_game()");   /// call at startup
+    
+    var _fontText = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    
+    global.font_list = {
+        p12: font_add_sprite_ext(spr_toonfont_12x, _fontText, true, -2),
+        p16: font_add_sprite_ext(spr_toonfont_16x, _fontText, true, -2),
+        p20: font_add_sprite_ext(spr_toonfont_20x, _fontText, true, -4),
+        p32: font_add_sprite_ext(spr_toonfont_32x, _fontText, true, -4),
+        p48: font_add_sprite_ext(spr_toonfont_48x, _fontText, true, -4)
+    };
+    
+    #macro fnt_size12 global.font_list.p12
+    #macro fnt_size16 global.font_list.p16
+    #macro fnt_size20 global.font_list.p20
+    #macro fnt_size32 global.font_list.p32
+    #macro fnt_size48 global.font_list.p48
 
 	//------------------- Initialize global values
 	global.devMode = false;  /// set developer mode

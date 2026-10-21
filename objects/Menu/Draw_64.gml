@@ -8,12 +8,12 @@ if(menu_state == MENU_STATE.START){
     //--------------------------------------------------//
     var _txt = game_title,
         _w = string_width(string_hash_to_newline(_txt)),
-        _h = string_height(string_hash_to_newline(_txt)),
+        _h = string_height_spr(string_hash_to_newline(_txt)),
         _xmid = title_text_pos[0]-_w*0.5,
         _ypos = title_text_pos[2]-_h*0.5;
         
     var _padx = 40;
-    var _pady = 30;
+    var _pady = 60;
     draw_sprite_stretched(spr_title_image,0,_xmid-_padx,_ypos-_pady,_w+_padx*2,_h+_pady*2);
     ///draw_background_stretched(bck_title_hilight,_xmid-24,_ypos-16,_w+48,_h+32);
     draw_text_outline(_xmid,_ypos,_txt,c_white,c_black,2);

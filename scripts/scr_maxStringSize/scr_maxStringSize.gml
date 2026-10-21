@@ -13,7 +13,7 @@ function scr_maxStringSize(argument0) {
 	for (var i=0; i<_last; i+=1)
 	{
 	    _w = max(_w,string_width(string_hash_to_newline(_sArr[i])));
-	    _h += string_height(string_hash_to_newline(_sArr[i]));
+	    _h += string_height_spr(string_hash_to_newline(_sArr[i]));
 	};
 
 	return(array(_w,_h));
