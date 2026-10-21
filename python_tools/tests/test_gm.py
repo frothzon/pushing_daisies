@@ -285,6 +285,13 @@ class ProgressTests(unittest.TestCase):
         self.assertIn(before, md)
         self.assertNotIn(after, md)
 
+    def test_awaiting_none_survives_the_cli_coercion(self):
+        # A backlog card is "awaiting none" - the STRING - and the generic
+        # "none means absent" rule used to turn it into null, which the
+        # validator then rejected.  Backlog cards had to be hand-edited.
+        self.assertEqual(progress._coerce("awaiting", "none"), "none")
+        self.assertIsNone(progress._coerce("done", "none"))
+
     def test_save_and_load_round_trip_in_canonical_order(self):
         doc = self._doc()
         with tempfile.TemporaryDirectory() as tmp:
@@ -436,6 +443,108 @@ class ToonFontTests(unittest.TestCase):
         missing = [c for c in string.ascii_letters + string.digits
                    if c not in mapped]
         self.assertEqual(missing, [], f"no glyph for {missing}")
+
+
+class FlexPanelTests(unittest.TestCase):
+    """Introspection guards for the flex UI layer (2026-10-21).
+
+    Two mistakes in a flex panel UI are silent, which is why they are checked
+    here instead of trusted:
+
+    * a style property or function this runtime does not have does not error -
+      it simply does nothing, and the screen comes out wrong with no message;
+    * the layout talks to itself by NAME (``ui_rect("menu", "menu.brand")``),
+      and a name no node has returns an EMPTY rectangle rather than throwing,
+      so a typo looks like "the title moved to the corner".
+
+    Neither can be caught by a compile, and neither shows up in a screenshot
+    taken on the machine where it was written.
+    """
+
+    LAYOUT_SCRIPTS = ("scripts/scr_ui_layout_menu/scr_ui_layout_menu.gml",)
+
+    def _gml_files(self):
+        if PROJECT_ROOT is None:
+            self.skipTest("no GameMaker project found")
+        return sorted(PROJECT_ROOT.glob("**/*.gml"))
+
+    def _active_runtime_fnames(self):
+        """The fnames file of the ACTIVE runtime, or None if this machine has
+        no runtime cache (CI, a fresh checkout)."""
+        for cfg in sorted(Path.home().glob(".local/share/GameMakerStudio2*/runtime.json")):
+            try:
+                data = json.loads(cfg.read_text())
+            except (OSError, ValueError):
+                continue
+            name = data.get("active")
+            if not name:
+                continue
+            fnames = cfg.parent / "Cache" / "runtimes" / f"runtime-{name}" / "fnames"
+            if fnames.exists():
+                return fnames
+        return None
+
+    def test_every_flexpanel_symbol_used_exists_in_the_runtime(self):
+        fnames = self._active_runtime_fnames()
+        if fnames is None:
+            self.skipTest("no GameMaker runtime fnames on this machine")
+
+        known = set()
+        for line in fnames.read_text(errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # enum constants are listed as "??flexpanel_align", functions as
+            # "flexpanel_create_node([struct])" - the identifier is the name
+            match = re.match(r"\?*([A-Za-z_][A-Za-z0-9_]*)", line)
+            if match:
+                known.add(match.group(1))
+
+        used = set()
+        for path in self._gml_files():
+            used.update(re.findall(r"\b(flexpanel_[A-Za-z0-9_]*[A-Za-z0-9])\b",
+                                   gml.read_gml(path)))
+
+        self.assertTrue(used, "the GML no longer mentions flex panels")
+        missing = sorted(name for name in used if name not in known)
+        self.assertEqual(
+            missing, [],
+            "used but not in the active runtime's fnames: "
+            f"{missing} - the call will fail only when this branch runs",
+        )
+
+    def test_every_layout_name_asked_for_is_a_node_in_the_tree(self):
+        if PROJECT_ROOT is None:
+            self.skipTest("no GameMaker project found")
+
+        names = set()
+        for rel in self.LAYOUT_SCRIPTS:
+            path = PROJECT_ROOT / rel
+            self.assertTrue(path.exists(), f"{rel} is missing")
+            names.update(re.findall(r'\bname:\s*"([^"]+)"', gml.read_gml(path)))
+        self.assertTrue(names, "no named nodes in the layout scripts")
+
+        # every "<tree>", "<node>" pair handed to a rect lookup
+        lookup = re.compile(r'\bui_(?:rect|box|hit|place|centre)\(\s*"[^"]*"\s*,\s*"([^"]+)"')
+        used = set()
+        for path in self._gml_files():
+            used.update(lookup.findall(gml.read_gml(path)))
+
+        self.assertTrue(used, "nothing reads a layout rectangle by name")
+        # Names are built by concatenation where there are four of them
+        # ("options.slider." + string(i)), so a used name and a declared name
+        # may be a prefix of each other in EITHER direction.  A typo still
+        # fails both tests, which is what this is for.
+        unknown = sorted(
+            name for name in used
+            if not any(node == name or node.startswith(name) or name.startswith(node)
+                       for node in names)
+        )
+        self.assertEqual(
+            unknown, [],
+            f"asked for a rectangle no node in {self.LAYOUT_SCRIPTS} has: {unknown}",
+        )
+
 
 
 if __name__ == "__main__":

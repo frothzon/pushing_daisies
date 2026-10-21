@@ -45,12 +45,19 @@ function scr_main_cutscene() {
 	sc_amt = 10;
 	/// return to game
 	if(section == 3){
-	    if(__view_get( e__VW.WView, 0 ) < 960){
+	    /// "back to the normal view" is the DESIGN WIDTH, not 960: on a wider
+	    /// window the design is wider, and stopping at 960 would zoom the
+	    /// world in against a GUI that is 1260 wide - the aspect would still
+	    /// match (HView follows), but the world would no longer be 1:1 with
+	    /// the GUI units the HUD is drawn in.
+	    if(__view_get( e__VW.WView, 0 ) < global.ui.w){
 	        __view_set( e__VW.WView, 0, __view_get( e__VW.WView, 0 ) + (sc_amt) );
 	        __view_set( e__VW.HView, 0, __view_get( e__VW.HView, 0 ) + (sc_amt * ratio) );
 	    } else {
-	        __view_set( e__VW.WView, 0, 960 );
-	        __view_set( e__VW.HView, 0, 960 * ratio );
+	        /// the design space, both axes - never the port ratio, which is
+	        /// what the old 960/960*ratio pair assumed was always 16:9
+	        __view_set( e__VW.WView, 0, global.ui.w );
+	        __view_set( e__VW.HView, 0, global.ui.h );
 	        section_timer++;
 	    }
 	    if(section_timer > room_speed){

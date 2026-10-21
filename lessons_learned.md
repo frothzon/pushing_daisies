@@ -88,6 +88,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-064](#ll-064) | The **music fades out in the middle of a stage**, and the menu goes quiet every ~3 minutes - no error, and the track is still "playing" | The loop had **one end**: `loop_in` was the chorus start and the loop ran to END OF FILE, so every cycle played the outro fade. The menu did not set loop points at all, so it was worse there. A loop **section** has two ends | **FIXED** |
 | [LL-066](#ll-066) | A font **installed for the user works everywhere except GameMaker** - `fc-list` finds it, KDE renders it, the font picker does not list it | The Linux IDE discovers fonts by **walking `/usr/share/fonts`**, never fontconfig, so `~/.local/share/fonts` does not exist as far as it is concerned - and a font resource keeps drawing text without any TTF, because its glyphs are **baked** into a PNG atlas | **FIXED** |
 | [LL-067](#ll-067) | A sprite font puts an **em-wide gap between every word**, and **half the UI still draws in the old font** | The string map is **positional** and the sheets are `"!"`..`"~"` with **no space**, so the documented fallback is the **widest glyph's** width; and `draw_reset()`'s font is *ambient*, so any draw path that never calls `draw_set_font` keeps the old face | **FIXED** |
+| [LL-068](#ll-068) | "**The buttons do not work**" on a 16:10 or 21:9 window - the highlight follows the pointer onto the wrong button, and a click opens the wrong screen | `points_to_gui()` divides **GUI by view** on each axis, so the two must share an **aspect**; the GUI was pinned to 960x540 while the window was sized from the **display** aspect (960x600 on 16:10), which is a 60px vertical error at the bottom of the screen | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
@@ -476,6 +477,28 @@ grep -cF '\r' objects/Menu/Step_0.gml     # fixed-string: must print 0
 
 * Never "normalise" line endings as a side effect of an edit. Preserve what is
   on disk and let the IDE/git decide.
+
+* **`git add` tells you when you broke this rule - believe it.** The line
+  `warning: in the working copy of 'objects/Menu/Step_0.gml', CRLF will be
+  replaced by LF the next time Git touches it` on `2026-10-21` meant the whole
+  411-line event had come back **CRLF-only** from an editing tool that had been
+  inserting LF lines into an LF file. Measure with **bytes**, not with
+  `read_text()` / `subprocess(text=True)`: Python's universal-newlines mode
+  turns `\r\n` into `\n` on the way IN, so a comparison written that way
+  reports "no change" for a file that changed completely. The check that
+  caught it:
+
+  ```python
+  old = subprocess.run(["git", "show", "HEAD~1:" + rel], capture_output=True).stdout
+  new = open(rel, "rb").read()
+  crlf = new.count(b"\r\n")
+  print(rel, "crlf", crlf, "lf-only", new.count(b"\n") - crlf)
+  ```
+
+  Fix by converting back (`b.replace(b"\r\n", b"\n")`) and committing the file
+  GameMaker will actually read - not by letting git store a normalised copy
+  the IDE then disagrees with.
+
 
 ---
 
@@ -4881,6 +4904,103 @@ log), `scripts/draw_reset/draw_reset.gml` (the ambient default),
 `scripts/show_slider/show_slider.gml`, `objects/Menu/Draw_64.gml`,
 `sprites/spr_toonfont_{12x,16x,20x,32x,48x}/`,
 `python_tools/tests/test_gm.py` (the `ToonFontTests` guard).
+
+<a name="ll-068"></a>
+## LL-068 — A GUI pinned to 960x540 over a window sized from the display puts every click in the wrong place
+
+**Symptom.** "The buttons do not work" - but only sometimes, and only on some
+machines. On a 16:9 monitor everything is fine. On a 16:10 laptop the title
+screen's buttons hover (the highlight follows the pointer ONTO them) but a
+click aimed at Start opens Options, and a slider grabs when the pointer is a
+finger's width below its track. Nothing errors, nothing logs, and a screenshot
+looks normal - which is why this survived so long.
+
+**Root cause.** `points_to_gui(x, y, view)` converts the pointer with
+
+```
+gui_x = (mouse_x - view_x) * gui_width  / view_width
+gui_y = (mouse_y - view_y) * gui_height / view_height
+```
+
+`mouse_x` / `mouse_y` are ROOM coordinates, so the division by the VIEW is the
+port's scale: **window pixels -> GUI units through the port**. But the GUI is
+not drawn through the port - it is drawn onto the application surface and
+scaled by `surface / gui`. Two scales, and they are only equal when
+
+```
+port  ==  surface  ==  window   and   gui == view
+```
+
+`scr_initResolution()` broke every clause at once. It took the aspect from
+`display_get_width()/display_get_height()`, clamped it to 16:10..21:9, resized
+the WINDOW and the application SURFACE to `540 * aspect` - and then finished
+with `display_set_gui_size(960, 540)` regardless. The view PORT was never
+touched, so it stayed at the room's authored 960x540:
+
+| display | window and surface | port (from the room) | GUI | window px per GUI unit: drawn vs clicked |
+| --- | --- | --- | --- | --- |
+| 1920x1080 (16:9) | 960x540 | 960x540 | 960x540 | 1.000 / 1.000 - fine |
+| 1920x1200 (16:10) | 960x600 | 960x540 | 960x540 | **1.111 / 1.000** |
+| 2560x1080 (21:9) | 960x411 | 960x540 | 960x540 | **0.761 / 1.000** |
+
+On the 16:10 case a button drawn at GUI y = 500 appears at window y = 555, and
+a click **on the pixels where it is drawn** reports GUI y = 555: 55 units below
+the control, which is the row above it. Aim at the button and nothing happens;
+aim above it and the *hover highlight* appears on it - and because the hover
+test and the click test use the same wrong number, the highlight is on the
+button that will fire. That is why the symptom reads as "the wrong button
+fired" rather than "the mouse is offset", and why a 16:9 machine never sees it.
+
+**Fix.** One file owns the decision (`scripts/scr_ui_screen`), and it keeps the
+GUI and the camera in the same shape:
+
+```gml
+var _gw = ui_screen_width_for(_sw, _sh),   // 540 * aspect, clamped
+    _gh = UI_BASE_H;                       // 540, always
+surface_resize(application_surface, _sw, _sh);   // surface = the window
+__view_set(e__VW.WPort, 0, _sw);                 // port    = the surface
+__view_set(e__VW.HPort, 0, _sh);
+display_set_gui_size(_gw, _gh);                  // GUI     = the design space
+ui_screen_apply_camera();                        // view    = the same aspect
+```
+
+`ui_screen_apply_camera()` is the "vertical fit, horizontal reveal" rule: it
+KEEPS `HView` and sets `WView = HView * (gui_w/gui_h)`, then re-centres and
+clamps into the room. A 21:9 window therefore shows 1260 world units across, not
+960 stretched over 1260 pixels - and because GUI units and world units stay 1:1,
+`points_to_gui()` ends up multiplying by exactly 1 on both axes.
+
+**Guard rails.**
+
+* `ui_screen_log()` prints the canary on every boot and every resize:
+
+  ```
+  UI    [layout]  gui 960x540  surface 1920x1080  port 1920x1080  view 960x540  full=0
+  UI    [ASPECT]  gui 1.7778 / view 1.7778  OK
+  ```
+
+  `MISMATCH` is the failure, and it names the two numbers that disagree. A
+  screenshot cannot show this; the log can.
+* **Anything that sets a view size must take it from `global.ui.w/h`**, never
+  from a literal. `scr_main_cutscene` ended its zoom-out on a hard `960` and
+  `960 * ratio`; on a wide window the aspect still matched (so no drift) but
+  the world was no longer 1:1 with the GUI. Fixed there too.
+* **The port must equal the application surface.** A port smaller than the
+  surface leaves a strip that nothing paints, and a port larger is cropped -
+  both look like a rendering bug, not a layout one.
+* **A window that is not 16:9 is the test**, not a 16:9 one. Drag the window
+  wider and watch for `ASPECT ... OK` plus a click that lands where it points.
+
+**Status.** FIXED 2026-10-21.
+
+**Files.** `scripts/scr_ui_screen/scr_ui_screen.gml` (the invariant, the
+refresh order, the canary), `scripts/scr_initResolution/scr_initResolution.gml`
+(now a one-line call), `scripts/scr_level_boot/scr_level_boot.gml` (the room's
+view gets the design aspect on every entry), `scripts/scr_main_cutscene/scr_main_cutscene.gml`,
+`objects/obj_ui/Step_0.gml` (polls the window).
+
+---
+
 
 ---
 

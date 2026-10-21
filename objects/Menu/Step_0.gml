@@ -33,6 +33,22 @@ if(menu_state_next != -1){
 }
 
 //--------------------------------------------------------------
+// the canvas moved: re-place everything this screen takes from the tree.
+// global.ui.gen is bumped by ui_screen_refresh() (a resize, or a fullscreen
+// toggle), and comparing it here is what makes that ONE frame's work instead
+// of a per-frame recompute.  -1 means "never placed", so the first frame -
+// before the buttons exist - is skipped rather than errors.
+if(!variable_instance_exists(id, "ui_gen_seen")) ui_gen_seen = -1;
+var _gen = variable_global_exists("ui") ? global.ui.gen : 0;
+if(_gen != ui_gen_seen){
+    ui_gen_seen = _gen;
+    if(buttons_loaded
+    && (menu_state == MENU_STATE.START || menu_state == MENU_STATE.OPTIONS)){
+        scr_menu_place_buttons();
+    }
+}
+
+//--------------------------------------------------------------
 // states
 switch(menu_state){
 

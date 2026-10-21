@@ -31,7 +31,11 @@ function initialize_game() {
     #macro fnt_size48 global.font_list.p48
 
 	//------------------- Initialize global values
-	global.devMode = false;  /// set developer mode
+	/// TRUE while the flex/screen layer is being verified (2026-10-21).
+	/// Every UI log line is gated on this (ui_log, scr_meta_log, print), so
+	/// it is the switch that makes the log the thing to read after a reload.
+	/// Flip it back to false when the layer is trusted.
+	global.devMode = true;   /// set developer mode
 
 	/// One line that PROVES the fonts mapped, for global.devMode = true.
 	/// Nothing else in the game can show a font metric.  Read it as:
@@ -82,6 +86,13 @@ function initialize_game() {
 	/// Graphics Settings
 	global.shadowQuality = 1.0;
 	global.clutterDensity = 1.0;
+
+	/// ---- the UI layer (2026-10-21) --------------------------------------
+	/// BEFORE the options, because scr_loadOptions() writes the saved
+	/// fullscreen flag into global.ui; and before any room exists, because
+	/// scr_initResolution() (obj_title's Create) reads it back to decide how
+	/// big the window is on this launch.
+	ui_init();
 
 	/// load saved options
 	scr_loadOptions();

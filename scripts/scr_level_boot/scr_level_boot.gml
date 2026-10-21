@@ -57,6 +57,16 @@ function scr_level_boot() {
 	/// using the object's own depth - the same call Control used to make.
 	instance_create(0, 0, _mainControl);
 
+	/// ---- the camera, in the DESIGN aspect (2026-10-21) -----------------
+	/// A room's view comes from its .yy, which is authored at 960x540.  On a
+	/// window that is not 16:9 the GUI is a different width, and
+	/// points_to_gui() maps the pointer with gui/view on each axis - so the
+	/// view has to take the same aspect or every click in the stage lands in
+	/// the wrong place (LL-068).  AFTER _mainControl exists: its Create is
+	/// what gives view 0 its camera.
+	ui_screen_apply_camera();
+	ui_screen_log();
+
 	/// the line to look for.  `main=` must be 1 on EVERY entry to the room,
 	/// the first and the fifth alike - that is the whole point of this file.
 	scr_meta_log("LEVEL", "boot ", _row.region, "-", _row.stage,

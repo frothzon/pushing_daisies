@@ -957,6 +957,13 @@ def _coerce(key: str, raw: str) -> Any:
             raise SystemExit("prio must be a number, got %r" % raw)
     if key == "refs":
         return [p.strip() for p in raw.split(",") if p.strip()]
+    # `awaiting` is a STRING that legitimately takes the value "none" - it is
+    # how a card says "nobody is holding this".  The "none -> None" rule below
+    # is for genuinely optional values (`done`, `log`), and it used to swallow
+    # this one too, so `awaiting=none` on the command line silently became
+    # null and every backlog card had to be hand-edited into the JSON.
+    if key == "awaiting":
+        return raw
     if raw in ("", "null", "none", "None"):
         return None
     return raw

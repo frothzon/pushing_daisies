@@ -2,7 +2,7 @@
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-20",
+    "updated": "2026-10-21",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set <id> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -20,7 +20,8 @@
   },
   "focus": {
     "now": [
-      "font-toon-in-game"
+      "ui-flex-screen-layer",
+      "ui-fullscreen-option"
     ],
     "next": [
       "dev-seed-sandbox",
@@ -28,7 +29,7 @@
       "combat-status-burn",
       "tower-card-status-line"
     ],
-    "note": "2026-10-20: the status spine is IN (scr_status + Chillip, LL-065), so the rest of Wave 2 is now unblocked and is all code: crit next, then burn, stun, resistances. tower-belladonna also stopped being art-blocked (its trio has been in the repo since 2026-10-12). The art cards still have no owner (art-track-ownership), and cannon/meat placeholders still need spr_t3_*/spr_t4_*. 2026-10-20 (font): the toon pass took the session - the board's now-card is the run that has to happen before combat-crit."
+    "note": "2026-10-21 (flex UI): the screen layer, the flex library and the Options screen are in and the board is waiting on ONE run - reload, read the 'UI    [ASPECT] ... OK' and 'UI    [check] menu layout ok' lines, then drag the window and toggle fullscreen. The in-game HUD and the four meta screens are still hand-placed (ui-hud-flex, ui-meta-flex), and that is deliberate: the layer is proved on one screen first. The rest of Wave 2 (crit, burn, stun) is unchanged and still next once that run is green."
   },
   "tasks": [
     {
@@ -3040,6 +3041,84 @@
       "done": null
     },
     {
+      "id": "ui-flex-screen-layer",
+      "title": "Flex screen layer: GUI and camera share the window's aspect",
+      "status": "review",
+      "owner": "both",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 1,
+      "needs": "Reload the project in GameMaker (it must not be holding the files), run it with devMode on, and read the UI lines: 'UI    [ASPECT] gui 1.7778 / view 1.7778  OK' and 'UI    [check] menu layout ok (all within 2px)'. Then drag the window wider and narrower: the title, the four buttons, the four sliders and Return must stay centred and correctly sized, and clicks must still land on them. A MISMATCH or an OFF line is the failure.",
+      "notes": "",
+      "refs": [
+        "scripts/scr_ui_screen/scr_ui_screen.gml",
+        "scripts/scr_ui_flex/scr_ui_flex.gml",
+        "scripts/scr_ui_layout_menu/scr_ui_layout_menu.gml",
+        "objects/obj_ui/Step_0.gml"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": null
+    },
+    {
+      "id": "ui-fullscreen-option",
+      "title": "Fullscreen option: saved flag, Options button and F11",
+      "status": "review",
+      "owner": "both",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "In Options, click 'Fullscreen: Off' (or press F11) and say: does the game fill the screen, does the label change to 'Fullscreen: On', do the sliders and Return still sit where the pointer expects them, and is it still fullscreen after quitting to the title? Then relaunch to confirm the setting was saved. If true fullscreen picks a bad mode on this machine, say so - a borderless window is the fallback.",
+      "notes": "",
+      "refs": [
+        "scripts/scr_ui_screen/scr_ui_screen.gml",
+        "scripts/fcn_button_fullscreen/fcn_button_fullscreen.gml",
+        "scripts/scr_loadOptions/scr_loadOptions.gml",
+        "scripts/scr_saveOptions/scr_saveOptions.gml"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": null
+    },
+    {
+      "id": "ui-hud-flex",
+      "title": "Move the in-game HUD onto flex nodes (stat card, tower card, speed buttons)",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "3",
+      "size": "M",
+      "prio": 2,
+      "needs": "",
+      "notes": "",
+      "refs": [],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": null
+    },
+    {
+      "id": "ui-meta-flex",
+      "title": "Move the meta screens (map, deploy, garden, results) onto flex nodes",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "3",
+      "size": "L",
+      "prio": 2,
+      "needs": "",
+      "notes": "",
+      "refs": [],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": null
+    },
+    {
       "id": "unlock-prices",
       "title": "Cannon Tulip and Meat Bulb: the seed unlock is the worst value in the roster",
       "status": "done",
@@ -3755,6 +3834,18 @@
       "who": "cline",
       "task": "font-toon-in-game",
       "what": "Every UI draw_set_font now names a toon macro (34 sites, 14 files); the space borrows the backtick's slot so words are not em-spaced; ToonFontTests guards one-character-per-frame."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "cline",
+      "task": "ui-flex-screen-layer",
+      "what": "The GUI was pinned to 960x540 while the window was sized from the display aspect, so on anything but 16:9 the GUI and the camera view disagreed about their shape - and points_to_gui(), which divides one by the other, maps the pointer to the wrong place (11% off on a 16:10 monitor, which reads as 'the buttons are broken'). New scr_ui_screen owns the one decision: fixed design height 540, width = 540 * aspect, surface and port = the window, and the camera keeps its height and widens to the same aspect, so extra width is extra WORLD. New scr_ui_flex wraps the runtime's flexpanel API (trees are manual memory, rects are cached by node name and read with `false` so they are absolute), scr_ui_layout_menu describes the title/Options screen as a tree, and obj_ui (persistent) polls the window instead of trusting the Window Resize event. The menu's numbers are unchanged at 960x540: ui_menu_check() logs every one against the old hand-placed value with a 2px tolerance. Two static tests: every flexpanel symbol exists in the active runtime's fnames, and every ui_rect()/ui_place() name is a node in the layout. roundtrip 0 differ, 178 tests OK."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "cline",
+      "task": "ui-fullscreen-option",
+      "what": "Fullscreen is a saved option now: scr_saveOptions writes slot [4] (0/1, read back from the window, not from a flag) and scr_loadOptions reads it behind `array_length(_data) > 4`, because the save is positional and a four-entry file would make _data[4] a fatal out-of-range read. The Options screen grows a second menu_options entry - a 'Fullscreen: Off/On' button whose label IS the state - and F11 does the same thing through obj_ui. Also fixed a toolkit bug found while filing these cards: _coerce() turned `awaiting=none` into null, so no backlog card could be created from the command line. True fullscreen is the default; a borderless window is the fallback if this machine picks a bad display mode."
     }
   ]
 }

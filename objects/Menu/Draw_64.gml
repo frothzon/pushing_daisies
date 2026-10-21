@@ -6,6 +6,10 @@ if(menu_state == MENU_STATE.START){
     draw_set_halign(fa_left);
     draw_set_valign(fa_top);
     //--------------------------------------------------//
+    /// The anchor is the flex tree's `menu.brand` centre: scr_menu_place_buttons()
+    /// writes it into title_text_pos[0] and [2] on every setup and every
+    /// resize, so this event does not do layout - it reads three numbers that
+    /// something else keeps true.
     var _txt = game_title,
         _w = string_width(string_hash_to_newline(_txt)),
         _h = string_height_spr(string_hash_to_newline(_txt)),

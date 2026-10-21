@@ -36,6 +36,18 @@ function scr_slider_count() {
 /// row height and the half-width are named here rather than typed twice; they
 /// are the numbers Menu/Draw_64 used to carry inline.
 function scr_slider_rect(_i) {
+	/// ---- the tree owns the geometry now (2026-10-21) ------------------
+	/// `options.slider.<i>` IS the 256x16 track, so the Step's hit-test and
+	/// the Draw's track cannot disagree: they are the same rectangle, and a
+	/// wider window moves it without this function knowing why.
+	var _r = ui_rect("menu", "options.slider." + string(_i));
+	if(array_length(_r) >= 4) return array(_r[0], _r[1], _r[2], _r[3]);
+
+	/// ---- the old formula, kept as the fallback ------------------------
+	/// If the tree is missing - a screen entered before the tree was built,
+	/// or a future caller with no Menu at all - the sliders must still be
+	/// where they always were, not stacked at 0,0.  Same shape as before:
+	/// 256 wide, 16 tall, 64 apart, first track centred on title_text_pos[1].
 	var _xmid = title_text_pos[0],
 	    _ypos = title_text_pos[1],
 	    _row  = 64,
