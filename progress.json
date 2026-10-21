@@ -1603,6 +1603,25 @@
       "done": "2026-10-07"
     },
     {
+      "id": "font-toon-usable",
+      "title": "Garden Toon ASCII font: fixed so it renders (it installed but came out blank)",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "art",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "",
+      "notes": "The file rayu dropped in ~/.local/share/fonts really did install - fc-list showed 'Garden Toon' - but every glyph was drawn from 90-215 separate 7-unit-tall rectangle contours (20163 of them), and FreeType's hinter snaps each hairline to zero height: at 13px Qt rendered 0 dark pixels, at 48px 4, so the font looked like it had not installed. rebuild_font.py unions each glyph into one outline (20163 -> 252 contours, 450KB -> 83KB, same em/advances/bboxes), and also fixes head.macStyle/OS-2 usWeightClass 700 + fsSelection BOLD while the style said Regular, hmtx lsb 0 vs xMin 24-87, and OS-2 v0. Verified through Qt itself (KDE's engine): 13px 0 -> 1355 dark pixels, 48px 4 -> 14958. The repo copy of the TTF is the fixed one now; scripts, backup and proof sheets are in ~/Documents/GardenToonASCII-repair/. Family name is still 'Garden Toon' (full name 'Garden Toon ASCII').",
+      "refs": [
+        "GardenToonASCII.ttf"
+      ],
+      "created": "2026-10-20",
+      "updated": "2026-10-20",
+      "done": "2026-10-20"
+    },
+    {
       "id": "garden-currency-hud",
       "title": "Currency HUD: all four, with a new-value highlight",
       "status": "backlog",
@@ -3692,6 +3711,12 @@
       "who": "cline",
       "task": "combat-status-slow",
       "what": "The status spine: scr_status (one instance per kind per monster, frames from game_get_speed, apply/refresh/expire under 'STAT  '), wired into obj_mon Create/Step/Draw and scr_zomb_pathSpeed; Chillip ships as roster slot 7 with its slow as a NAMED trait row; and the LL-031 stuck valve no longer fires on a monster a stun is holding on purpose (LL-065)."
+    },
+    {
+      "date": "2026-10-20",
+      "who": "cline",
+      "task": "font-toon-usable",
+      "what": "GardenToonASCII.ttf was never an install problem: it installed, it rendered blank. Every glyph was 90-215 separate 1-pixel-tall rectangle contours (20163 total) and the hinter snapped each one to zero height, so Qt drew 0 dark pixels at 13px. Rebuilt each glyph as one unioned outline (20163 -> 252 contours, 450KB -> 83KB, same em, advances and bboxes) and fixed the metadata that called a Regular font Bold (OS/2 usWeightClass 700, fsSelection 0x20, head.macStyle 1), the hmtx lsb of 0 against xMin 24-87, and OS/2 v0. Qt now draws 1355 dark pixels at 13px and 14958 at 48px. Tooling, backup and proof sheets: ~/Documents/GardenToonASCII-repair/."
     }
   ]
 }
