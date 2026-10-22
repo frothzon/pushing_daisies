@@ -313,6 +313,12 @@ function level_clear_banner_seconds() { return 3.00; }   /// the hold
 function level_clear_banner_from()    { return 0.80; }   /// 80% -> 100%
 function level_clear_banner_height()  { return 0.60; }   /// of the PORT
 
+/// The banner ART, in one place, so a redraw is one line here and nothing
+/// else moves.  It is named bck_ because it was filed with the backgrounds
+/// (art_descriptions 3.6 calls it spr_level_complete_banner); renaming it in
+/// the IDE is a one-word change to this function.
+function level_complete_banner_sprite() { return bck_level_complete_banner; }
+
 /// Is a stage in its END sequence (CLEAR or FAILED)?
 /// The camera asks this so the fly-out is not fought by the wheel or by a
 /// drag.  Reads another instance state through with() (LL-003) and cannot
@@ -332,21 +338,32 @@ function scr_level_exiting() {
 }
 
 /// Draw the LEVEL COMPLETE banner.  Called from _levelControl/Draw_64 - the
-/// Draw GUI event - so everything here is GUI pixels.  scr_initResolution
-/// pins the GUI to 960x540, the same size as the camera port, which is what
-/// makes "60% of the port height" hold at every window size.
+/// Draw GUI event - so everything here is GUI pixels.
 ///
-/// THE ART, NOT THE CANVAS.  spr_level_complete is 200x100 with the drawing
-/// inside 165x62 of it, so the canvas and the banner are not the same size.
-/// Measuring the automatic bbox (bboxMode 0) and centring the ART means the
-/// placeholder and any redraw land on the same spot, and that 60% means the
-/// part the player can see.  A degenerate bbox falls back to the canvas.
+/// THE GUI IS NOT 960x540 ANY MORE (2026-10-21).  scr_ui_screen fixes the
+/// design HEIGHT at 540 and lets the width follow the window's aspect, so
+/// "60% of the GUI height" is still a fixed number of pixels on every screen,
+/// while the width is whatever the window happens to be.  Vertical placement
+/// is therefore still exact; horizontal placement is "centred on the GUI".
+///
+/// THE ART, NOT THE CANVAS.  bck_level_complete_banner is 680x360 with the
+/// drawing inside 647x323 of it, so the canvas and the banner are not the same
+/// size.  Measuring the automatic bbox (bboxMode 0) and centring the ART means
+/// a redraw lands on the same spot, and that 60% means the part the player can
+/// see.  A degenerate bbox falls back to the canvas.
+///
+/// At 16:9 that works out at 540*0.60/323 = 1.003 - one art pixel to one
+/// screen pixel, which is the size the banner was drawn at (art_descriptions
+/// 3.6).  Blur on the lettering therefore means _ah was measured wrong, not
+/// that the art is too small.
 function scr_level_complete_draw() {
 	if(!variable_instance_exists(id, "level_state")) return;
 	if(level_state != LEVEL_STATE.CLEAR) return;
 	if(!variable_instance_exists(id, "level_banner_on")) return;
 	if(!level_banner_on) return;
-	if(!sprite_exists(spr_level_complete)) return;              /// LL-012
+
+	var _spr = level_complete_banner_sprite();
+	if(!sprite_exists(_spr)) return;              /// LL-012
 
 	var _gw = display_get_gui_width(),
 	    _gh = display_get_gui_height(),
@@ -355,10 +372,10 @@ function scr_level_complete_draw() {
 	    /// 80% -> 100% across the hold
 	    _k  = lerp(level_clear_banner_from(), 1,
 	               _t / max(level_clear_banner_seconds(), 0.001)),
-	    _l  = sprite_get_bbox_left(spr_level_complete),
-	    _r  = sprite_get_bbox_right(spr_level_complete),
-	    _tp = sprite_get_bbox_top(spr_level_complete),
-	    _bt = sprite_get_bbox_bottom(spr_level_complete),
+	    _l  = sprite_get_bbox_left(_spr),
+	    _r  = sprite_get_bbox_right(_spr),
+	    _tp = sprite_get_bbox_top(_spr),
+	    _bt = sprite_get_bbox_bottom(_spr),
 	    _aw = _r - _l,
 	    _ah = _bt - _tp;
 
@@ -367,22 +384,22 @@ function scr_level_complete_draw() {
 	if(_aw <= 0 || _ah <= 0){
 	    _l  = 0;
 	    _tp = 0;
-	    _aw = sprite_get_width(spr_level_complete);
-	    _ah = sprite_get_height(spr_level_complete);
+	    _aw = sprite_get_width(_spr);
+	    _ah = sprite_get_height(_spr);
 	}
 
 	var _s = (_gh * level_clear_banner_height() / max(_ah, 1)) * _k,
 	    /// the ART centre goes on the screen centre.  The canvas origin is
 	    /// at (xorigin,yorigin), so the offset is (art centre - origin) * s.
 	    _x = _gw*0.5 - (((_l + _aw*0.5)
-	                     - sprite_get_xoffset(spr_level_complete)) * _s),
+	                     - sprite_get_xoffset(_spr)) * _s),
 	    _y = _gh*0.5 - (((_tp + _ah*0.5)
-	                     - sprite_get_yoffset(spr_level_complete)) * _s),
+	                     - sprite_get_yoffset(_spr)) * _s),
 	    /// and it leaves WITH the fade rather than hanging over the black
 	    _alpha = 1 - clamp((level_clear_time - (level_clear_banner_delay()
 	                       + level_clear_banner_seconds())) / 0.25, 0, 1);
 
-	draw_sprite_ext(spr_level_complete, 0, _x, _y, _s, _s, 0, c_white, _alpha);
+	draw_sprite_ext(_spr, 0, _x, _y, _s, _s, 0, c_white, _alpha);
 
 	/// put the draw state back: the rest of this Draw GUI pass must not
 	/// inherit anything from here

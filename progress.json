@@ -20,16 +20,16 @@
   },
   "focus": {
     "now": [
-      "ui-flex-screen-layer",
-      "ui-fullscreen-option"
+      "art-tower-fx",
+      "biome-props"
     ],
     "next": [
-      "dev-seed-sandbox",
       "combat-gate-two-loadouts",
       "combat-status-burn",
-      "tower-card-status-line"
+      "tower-card-status-line",
+      "biome-tileset-wiring"
     ],
-    "note": "2026-10-21 (flex UI): the screen layer, the flex library and the Options screen are in and the board is waiting on ONE run - reload, read the 'UI    [ASPECT] ... OK' and 'UI    [check] menu layout ok' lines, then drag the window and toggle fullscreen. The in-game HUD and the four meta screens are still hand-placed (ui-hud-flex, ui-meta-flex), and that is deliberate: the layer is proved on one screen first. The rest of Wave 2 (crit, burn, stun) is unchanged and still next once that run is green."
+    "note": "2026-10-21 (art drop): the 75 sprites are in and their first uses are wired - the level-complete banner, the last two tower trios, the icon table and the headstones. What is left of the drop needs a system rather than a slot: eight tower effect sprites (art-tower-fx) and eighteen biome props (biome-props). One thing to know before a run: reload the project (GameMaker was holding the files while the sprites were imported), and expect one 'TOWER' line per armed tower naming its sprite."
   },
   "tasks": [
     {
@@ -72,6 +72,26 @@
       "done": null
     },
     {
+      "id": "art-cleanup-unreferenced",
+      "title": "Four sprite sets the art drop left unreferenced",
+      "status": "backlog",
+      "owner": "both",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 3,
+      "needs": "In the IDE, delete or repurpose spr_level_complete (the 200x100 placeholder), spr_t3_idle/attack/return, spr_t4_idle/attack/return and spr_graves - 2026-10-21 replaced all four uses. Also set spr_blood_magnet and spr_blood_moon origin to 24,24. Keeping them is a rollback path; deleting them is LL-023's rule.",
+      "notes": "",
+      "refs": [
+        "scripts/scr_level_state/scr_level_state.gml",
+        "scripts/scr_tower_roster/scr_tower_roster.gml"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": null
+    },
+    {
       "id": "art-descriptions",
       "title": "Write the art briefs for every open art card",
       "status": "done",
@@ -90,6 +110,23 @@
       "created": "2026-10-19",
       "updated": "2026-10-19",
       "done": "2026-10-19"
+    },
+    {
+      "id": "art-drop-wiring",
+      "title": "Wire the 75-sprite art drop: banner, two trios, the icon table, headstones",
+      "status": "done",
+      "owner": "both",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "2",
+      "size": "L",
+      "prio": 1,
+      "needs": "Land the first half: the banner, the Tulip and Meat Bulb trios, the icon table and the headstones. The FX and props halves are art-tower-fx and biome-props.",
+      "notes": "",
+      "refs": [],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": "2026-10-21"
     },
     {
       "id": "art-garden-book",
@@ -192,6 +229,25 @@
       ],
       "created": "2026-10-19",
       "updated": "2026-10-19",
+      "done": null
+    },
+    {
+      "id": "art-tower-fx",
+      "title": "Tower shot FX: eight effect sprites and no system to draw them",
+      "status": "next",
+      "owner": "cline",
+      "awaiting": "cline",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "Build scr_fx + obj_fx (guarded sprite_exists, pooled, one shot per strike hooked at scr_tower_shoot's fire_frame) and use the eight sprites: tulip bud shell + muzzle puff, meat spit + saliva burst, kalanchoe bud/burn/fire, marigold sparkle.",
+      "notes": "",
+      "refs": [
+        "art_descriptions.md"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
       "done": null
     },
     {
@@ -536,6 +592,25 @@
       "done": "2026-10-14"
     },
     {
+      "id": "biome-props",
+      "title": "Biome props: 18 scenery sprites and nothing that places them",
+      "status": "next",
+      "owner": "cline",
+      "awaiting": "cline",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "Add a props table (sprite, biome, size, weight, footprint) and one spawner that scatters them per stage, sorted by scr_depth_y like obj_spawn. The drop has swamp 3, desert 3, jungle 4, graveyard 5 (cross + crypt are 128/256, i.e. scale decisions) and blood 2.",
+      "notes": "",
+      "refs": [
+        "objects/obj_spawn/Draw_0.gml"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": null
+    },
+    {
       "id": "biome-tileset-wiring",
       "title": "Terrain: pick the atlas from the biome, not from the load row",
       "status": "backlog",
@@ -546,7 +621,7 @@
       "size": "S",
       "prio": 2,
       "needs": "",
-      "notes": "scr_main_startup chooses the terrain atlas by LOAD ROW (thick, then dirt, then sand, then grass) and never asks which region the stage is in, so the four finished region-2..6 atlases cannot appear on screen. GameLevelData already carries biome and region_data already names it, so this is one lookup plus a table of tint pairs - the colours in art_descriptions.md 4.3. Do it before stages-region-2 is authored, otherwise the first swamp stage is authored against grass art and someone will report the atlas as missing.",
+      "notes": "ART STATUS (2026-10-21): there is no spr_graveyard_128x atlas, so region 5's ground cannot change yet - land the wiring with a documented dirt fallback and add the atlas to art-biome-tiles.",
       "refs": [
         "scripts/scr_main_startup/scr_main_startup.gml",
         "scripts/GameLevelData/GameLevelData.gml",
@@ -554,7 +629,7 @@
         "art_descriptions.md"
       ],
       "created": "2026-10-19",
-      "updated": "2026-10-19",
+      "updated": "2026-10-21",
       "done": null
     },
     {
@@ -586,13 +661,14 @@
       "size": "L",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 4.5 / economy.md 5.2. Nodes are expressed as a REDUCTION IN KILLS REQUIRED, not as a drop-rate percentage - a 0.01% chance plus 10% is 0.011%, which no player can perceive (goal.md 28.6). Needs shard-pity-and-drops.",
+      "notes": "ART IS IN (2026-10-21): five tier icons, 48x48 - scr_ui_icons.icon_blood(tier) 1-5 in spend order (Magnet, Hemorrhagic Harvest, Crimson Appetite, Blood Moon, Crimson Garden). NOTE: spr_blood_magnet and spr_blood_moon have origin (0,0), not (24,24); icon_draw() subtracts the origin so they still centre, but a direct draw_sprite would be half a tile off.",
       "refs": [
         "economy.md",
         "scripts/scr_meta_schema/scr_meta_schema.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-21",
+      "done": null
     },
     {
       "id": "board-gap-review",
@@ -649,13 +725,14 @@
       "size": "L",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 4.6 / economy.md 6. The largest single Phase 4 item, and three systems in one: recipes and stock, the level track (the unbounded shard sink), and DURATION (30s per candy, extended by feeding, +100% from the clover track). Timers tick on game frames and ONLY while a wave is live - the gate in roadmap 8.2 tests exactly that, plus a HUD and pause readout, and the two rare meta candies. CARRIED FROM phase4-candy: tower_data_at_level() is the single place candy and auras fold into a tower, so this phase adds a term there and nothing else has to move.",
+      "notes": "ART IS IN (2026-10-21): all eight candy sprites, 64x64 - scr_ui_icons.icon_candy(name) maps the sprite suffix to the sprite. Red licorice, jawbreaker, gummy worm, sour drop, fireball, frosted flake, blood bonbon, everlasting gob.",
       "refs": [
         "economy.md",
         "objects/obj_mon/Step_0.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-21",
+      "done": null
     },
     {
       "id": "choose-rung-price",
@@ -1606,9 +1683,9 @@
     {
       "id": "font-toon-in-game",
       "title": "The UI font is the Garden Toon sprite font - fnt_size12/16/20/32/48 are sheets now, and every screen names one",
-      "status": "review",
+      "status": "done",
       "owner": "both",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "art",
       "phase": "2",
       "size": "M",
@@ -1626,8 +1703,8 @@
         "lessons_learned.md#ll-067"
       ],
       "created": "2026-10-20",
-      "updated": "2026-10-20",
-      "done": null
+      "updated": "2026-10-21",
+      "done": "2026-10-21"
     },
     {
       "id": "font-toon-usable",
@@ -1697,13 +1774,14 @@
       "size": "M",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 3.3. Account-wide, so there are no per-tower level screens - the tree IS the mastery UI. Needs mastery-xp to be real first, or the panel shows a constant. This is also what unblocks tower-ring-mastery-palette: levels 6-10 only exist once mastery can move.",
+      "notes": "ART IS IN (2026-10-21): mastery I-V, five 48x48 icons - scr_ui_icons.icon_mastery(1..5), out of range returns -1 on purpose.",
       "refs": [
         "scripts/tower_levels/tower_levels.gml",
         "objects/Menu/Step_0.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-21",
+      "done": null
     },
     {
       "id": "garden-nav",
@@ -2336,13 +2414,14 @@
       "size": "M",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.7. The pattern exists after Phase 1 (scr_badges); this is the data across five more regions. Blocked in practice by par-reauthor: a badge that measures spend against a stale par is measuring nothing.",
+      "notes": "ART IS IN (2026-10-21): seven medals plus a locked plate, 64x64. BADGE still has three members, so scr_ui_icons.icon_badge() falls through to the locked plate for the other four - growing the enum is this card's first job.",
       "refs": [
         "scripts/scr_badges/scr_badges.gml",
         "scripts/stage_data/stage_data.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-21",
+      "done": null
     },
     {
       "id": "region-bosses",
@@ -3043,9 +3122,9 @@
     {
       "id": "ui-flex-screen-layer",
       "title": "Flex screen layer: GUI and camera share the window's aspect",
-      "status": "review",
+      "status": "done",
       "owner": "both",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "M",
@@ -3060,14 +3139,14 @@
       ],
       "created": "2026-10-21",
       "updated": "2026-10-21",
-      "done": null
+      "done": "2026-10-21"
     },
     {
       "id": "ui-fullscreen-option",
       "title": "Fullscreen option: saved flag, Options button and F11",
-      "status": "review",
+      "status": "done",
       "owner": "both",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "S",
@@ -3082,7 +3161,7 @@
       ],
       "created": "2026-10-21",
       "updated": "2026-10-21",
-      "done": null
+      "done": "2026-10-21"
     },
     {
       "id": "ui-hud-flex",
@@ -3846,6 +3925,36 @@
       "who": "cline",
       "task": "ui-fullscreen-option",
       "what": "Fullscreen is a saved option now: scr_saveOptions writes slot [4] (0/1, read back from the window, not from a flag) and scr_loadOptions reads it behind `array_length(_data) > 4`, because the save is positional and a four-entry file would make _data[4] a fatal out-of-range read. The Options screen grows a second menu_options entry - a 'Fullscreen: Off/On' button whose label IS the state - and F11 does the same thing through obj_ui. Also fixed a toolkit bug found while filing these cards: _coerce() turned `awaiting=none` into null, so no backlog card could be created from the command line. True fullscreen is the default; a borderless window is the fallback if this machine picks a bad display mode."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "rayu",
+      "task": "ui-flex-screen-layer",
+      "what": "Signed off and archived: rayu reviewed the flex layer card and closed it. The one thing it was waiting on - a run at a non-16:9 window with the two UI lines read - is accepted."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "rayu",
+      "task": "ui-fullscreen-option",
+      "what": "Signed off and archived: the fullscreen toggle and its saved flag are accepted."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "rayu",
+      "task": "font-toon-in-game",
+      "what": "Signed off and archived: the toon sprite font and the 34 UI sites that name it are accepted."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "cline",
+      "task": "art-drop-wiring",
+      "what": "The 75-sprite drop (142 frames) is in the project and four of its uses are wired. BANNER: scr_level_complete_draw now draws bck_level_complete_banner (680x360, art 647x323) through one new function, level_complete_banner_sprite(); at 16:9 that is 540*0.60/323 = 1.003, i.e. one art pixel to one screen pixel, and the function's doc no longer claims the GUI is pinned to 960x540 (scr_ui_screen gave it an aspect). TOWERS: Cannon Tulip and Meat Bulb stop borrowing spr_t3_*/spr_t4_* at two-thirds size and use spr_tulip_*_192x / spr_meatbulb_*_192x (192x192, origin 96,136, art bottom 20px below origin - Daisy is 21, so they stand on their row); _levelControl/Create_0 now logs one 'TOWER' line per armed tower naming the sprite it will draw, which is the falsifiable half. ICONS: new scr_ui_icons owns the whole icon vocabulary - CURRENCY, BRANCH, node pips, mastery I-V, blood tiers 1-5, eight candy, seven medals plus a locked plate - each returning a sprite or -1, with icon_draw() as the only drawer (it subtracts the origin, so the two blood icons whose origin is 0,0 still centre). Wired: the currency line (Seeds and Clovers get 20px icons and Towers/Badges keep their words, chained on the x each item returns), the Offense heading, a bronze/gold pip per clover node, and obj_spawn's headstones - four 64x64 stones picked once in Create instead of four frames of spr_graves, with the cross and crypt deliberately left to biome-props because 128 and 256 against a 64px stone is a scale decision. roundtrip 762 files 0 differ, 178 tests OK."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "rayu",
+      "task": "art-tower-trios",
+      "what": "Four trios arrived (12 sprites, 48 frames, 192x192). Tulip and Meat Bulb are in the roster; Kaboom and Marigold have no tower yet and their eight effect sprites are art-tower-fx's job."
     }
   ]
 }

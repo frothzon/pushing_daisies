@@ -57,6 +57,9 @@ function ui_screen_is_full() {
 function ui_screen_source_size() {
 	if(ui_screen_is_full()){
 		return [max(display_get_width(), 1), max(display_get_height(), 1)];
+	}
+	return [max(window_get_width(), 1), max(window_get_height(), 1)];
+}
 
 /// Boot the screen layer: put the window where it belongs (ONCE per launch),
 /// size the surfaces, create the one persistent UI instance.
@@ -166,9 +169,6 @@ function ui_screen_refresh(_why) {
 	return true;
 }
 
-	}
-	return [max(window_get_width(), 1), max(window_get_height(), 1)];
-}
 
 /// The design width for a source size.  Separate from refresh so the arithmetic
 /// can be read (and tested) without a window.

@@ -108,6 +108,30 @@ scr_meta_log("LOADOUT", "armed with ", _armed, " towers ", string(_load),
              " fire rate +", _rate_bonus*100, "%",
              " | floor ", _floor, " cap ", tower_cap());
 
+/// ONE LINE PER ARMED TOWER, NAMING THE SPRITE IT WILL DRAW (2026-10-21).
+/// The art drop replaced the last two placeholders, and a swapped trio is
+/// otherwise only visible on screen - this line makes it a thing the log can
+/// be wrong about: 'Cannon Tulip -> spr_tulip_idle_192x 192x192'.
+/// Nothing here can throw (LL-002): the shape of tower_array was written
+/// thirty lines up, and every read is guarded anyway, because a sprite name
+/// read out of a bad index is exactly how a diagnostic becomes the bug.
+for(var _ai = 0; _ai < _armed; _ai++){
+    var _an = "?", _as = -1;
+    if(is_array(tower_array[_ai])){
+        var _row = tower_array[_ai];
+        if(array_length(_row) > 0 && is_array(_row[0]) && array_length(_row[0]) > 0){
+            _as = _row[0][0];
+        }
+        if(array_length(_row) > 1) _an = string(_row[1]);
+    }
+    if(sprite_exists(_as)){
+        scr_meta_log("TOWER", _an, " -> ", sprite_get_name(_as), " ",
+                     sprite_get_width(_as), "x", sprite_get_height(_as));
+    } else {
+        scr_meta_log("TOWER", _an, " -> NO SPRITE (LL-012)");
+    }
+}
+
 /// ---- badge tracking (roadmap 1.8).  Untouched reads the life left at
 /// the end, but Exterminator needs its own counters: "no life lost" and
 /// "nothing reached the exit, and no straggler had to be force-cleared"

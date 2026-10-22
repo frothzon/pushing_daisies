@@ -55,15 +55,48 @@ function meta_text(_x, _y, _text, _col, _align) {
 	draw_set_halign(fa_left);
 }
 
-/// The line every meta screen shows: the three currencies that exist so far.
+/// [icon] text, returning the x the NEXT item starts at.
+///
+/// The gap is part of the return value, not a constant at the call site, and a
+/// missing icon (_spr = -1, or a sprite this build does not have) costs ZERO
+/// width instead of leaving a hole - so a line of four items still reads as a
+/// line when only two of them have art yet.
+function meta_icon_value(_x, _y, _spr, _text, _col, _size) {
+	var _w = 0;
+	if(_size <= 0) _size = 20;
+	/// the band the text occupies, so an icon and a value share a centre line
+	if(icon_draw(_spr, _x + _size*0.5, _y + string_height("Ag")*0.5, _size)){
+		_w = _size + 6;
+	}
+	draw_set_colour(_col);
+	draw_set_halign(fa_left);
+	draw_text(_x + _w, _y, _text);
+	return _x + _w + string_width(_text) + 20;
+}
+
+/// The line every meta screen shows: the currencies that exist so far, each
+/// with its icon where the art has one.
+///
+/// ONE CALL PER ITEM, chained on the x each returns (2026-10-21: the icons are
+/// scr_ui_icons' CURRENCY set, drawn at 20px rather than the 24px canvas so
+/// they sit on the 16pt baseline instead of standing above it).  Towers and
+/// Badges have no icon in the drop, so they keep their words and start where
+/// the previous value ended - the same spacing either way.
 function meta_currency_line(_x, _y) {
 	draw_set_font(fnt_size16);
-	meta_text(_x, _y,
-	          "Seeds " + string(seeds_get()) +
-	          "    Clovers " + string(clovers_get()) +
-	          "    Towers " + string(tower_owned_count()) + "/" + string(array_length(tower_roster())) +
-	          "    Badges " + string(badge_total_earned()) + "/" + string(badge_total_possible()),
-	          c_white, fa_left);
+	draw_set_halign(fa_left);
+	draw_set_valign(fa_top);
+	var _i = 20;                            /// on screen; the canvas is 24
+	_x = meta_icon_value(_x, _y, icon_currency(CURRENCY.SEEDS),
+	                     string(seeds_get()), c_white, _i);
+	_x = meta_icon_value(_x, _y, icon_currency(CURRENCY.CLOVERS),
+	                     string(clovers_get()), c_white, _i);
+	_x = meta_icon_value(_x, _y, -1,
+	                     "Towers " + string(tower_owned_count()) + "/" +
+	                     string(array_length(tower_roster())), c_white, _i);
+	_x = meta_icon_value(_x, _y, -1,
+	                     "Badges " + string(badge_total_earned()) + "/" +
+	                     string(badge_total_possible()), c_white, _i);
 }
 
 /// Draw the tower wall and return the rectangle of every cell, in roster
@@ -506,10 +539,15 @@ function meta_draw_garden() {
 	meta_title("Garden Book");
 	meta_currency_line(80, 24);
 
-	/// ---- the Offense branch
+	/// ---- the Offense branch.  The heading takes the branch's own icon
+	/// (scr_ui_icons): 36px centred in the 56px gutter the rows already leave
+	/// to the left of node_x, so nothing on the panels moves.
 	draw_set_font(fnt_size16);
 	draw_set_colour(c_white);
 	draw_set_halign(fa_left);
+	draw_set_valign(fa_top);
+	icon_draw(icon_branch(BRANCH.OFFENSE), _g.node_x - 38,
+	          (_g.node_y - 30) + string_height("Offense")*0.5, 36);
 	draw_text(_g.node_x, _g.node_y - 30, "Offense");
 	draw_set_font(fnt_size12);
 
@@ -528,9 +566,15 @@ function meta_draw_garden() {
 		meta_panel(_rc[0], _rc[1], _rc[2]-_rc[0], _rc[3]-_rc[1], _bg,
 		           (_can && _hov) ? c_lime : c_black);
 
+		/// the node's pip - bronze while it has ranks left, gold once it is
+		/// maxed (scr_ui_icons) - then the text 54px in, clear of it.  Both
+		/// text rows move together: a label indented and a description not
+		/// would put the pip through the description.
+		icon_draw(icon_node(_max), _rc[0] + 26, _rc[1] + 28, 40);
+
 		draw_set_font(fnt_size16);
 		draw_set_colour(c_white);
-		draw_text(_rc[0] + 10, _rc[1] + 10, _n.label);
+		draw_text(_rc[0] + 54, _rc[1] + 10, _n.label);
 
 		/// the rank shares the LABEL's row, so it is drawn at the label's
 		/// size; the cost shares the DESCRIPTION's row, at its size.  One
@@ -543,7 +587,7 @@ function meta_draw_garden() {
 
 		draw_set_font(fnt_size12);
 		draw_set_colour(c_silver);
-		draw_text(_rc[0] + 10, _rc[1] + 32, _n.desc);
+		draw_text(_rc[0] + 54, _rc[1] + 32, _n.desc);
 
 		draw_set_halign(fa_right);
 		draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));

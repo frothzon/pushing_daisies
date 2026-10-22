@@ -71,7 +71,8 @@ if(_hov != noone){
     /// sprite_get_bbox_top() IS MEASURED FROM THE CANVAS, NOT THE ORIGIN
     /// ("relative to the upper left corner of the base sprite asset being
     /// 0,0"), and these sprites put their origin at the plant's FEET -
-    /// spr_t3_idle is 66x88 with origin (32,75) and bbox_top 3.  The top of
+    /// spr_tulip_idle_192x is 192x192 with origin (96,136) and bbox_top 11,
+    /// so the top of its art is 125px above the origin.  The top of
     /// the art relative to the origin is therefore the DIFFERENCE, which is
     /// negative; bbox_top on its own would put the number down in the middle
     /// of the plant.  The break below is inside an unclosed bracket on

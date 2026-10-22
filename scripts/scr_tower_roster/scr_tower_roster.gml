@@ -19,8 +19,16 @@
 /// it - Chillip first, because a slow is the one status a player can SEE
 /// without being told what it is: the monster is still walking, and it is
 /// visibly late.  Their art already existed (spr_chillip_*, spr_bella_*,
-/// spr_bindweed_*, spr_thornamental_*), so no status tower is a
-/// placeholder the way Cannon Tulip and Meat Bulb still are.
+/// spr_bindweed_*, spr_thornamental_*).
+///
+/// NO TOWER IS A PLACEHOLDER ANY MORE (2026-10-21).  The last two - Cannon
+/// Tulip and Meat Bulb - borrowed another tower's trio at half size, and the
+/// art drop replaced them with spr_tulip_*_192x and spr_meatbulb_*_192x, which
+/// are 192x192 with their art bottom 20px below the origin.  That 20 is the
+/// number that makes a tower stand on its row: Daisy is 21, Mandrake 22,
+/// Belladonna 24, Pina 16 - see the feet check in art_descriptions 3.1.  So
+/// these two now draw at the same size as every other tower instead of at
+/// two-thirds of it, which is the only visible change the swap makes.
 
 /// One tower.  `unlock` is the seed cost (0 = a free starter) and `gate` is
 /// the region that must be fully cleared before it can be bought (0 = none).
@@ -71,14 +79,14 @@ function tower_roster() {
 		/// ---- the two Phase 1 unlocks: pure stat changes, no status effect,
 		///      so they do not need Phase 2 (roadmap 5.2)
 		///
-		///      ART: these borrow an existing sprite trio until roadmap 1.11
-		///      draws spr_t5_* / spr_t6_*.  A placeholder is honest; a tower
-		///      with no sprite at all is a fatal error (LL-012).
+		///      ART: their own trios since 2026-10-21 (spr_tulip_*_192x,
+		///      spr_meatbulb_*_192x).  The cost/rate/range numbers below are
+		///      unchanged by that - only the picture moved.
 		tower_entry("Cannon Tulip",
-		            [spr_t3_idle, spr_t3_attack, spr_t3_return],
+		            [spr_tulip_idle_192x, spr_tulip_attack_192x, spr_tulip_return_192x],
 		             60, scr_towerData(200,  60,  0.5, _eff_xplod,  5), 25, 1),
 		tower_entry("Meat Bulb",
-		            [spr_t4_idle, spr_t4_attack, spr_t4_return],
+		            [spr_meatbulb_idle_192x, spr_meatbulb_attack_192x, spr_meatbulb_return_192x],
 		             80, scr_towerData( 90, 250, 0.75, _eff_spikes, 1), 40, 1),
 
 		/// ---- the Phase 2 tower: a slow, and the first one -----------------
