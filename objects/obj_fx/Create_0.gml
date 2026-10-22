@@ -8,7 +8,7 @@
 spr    = -1;
 frames = 0;
 scale  = 1;
-fps    = 12;
+fpsec    = 12;
 fade   = true;
 t      = 0;
 

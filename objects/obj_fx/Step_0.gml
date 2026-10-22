@@ -9,7 +9,7 @@ t += delta_time * 0.000001;
 /// `frames <= 0` is the no-art case (fx_play refuses to create one, but a
 /// hand-placed instance in the room editor has no Create to set it): delete
 /// rather than divide by zero a frame later.
-if(frames <= 0 || t >= frames / max(fps, 0.001)){
+if(frames <= 0 || t >= frames / max(fpsec, 0.001)){
 	instance_destroy();
 }
 
