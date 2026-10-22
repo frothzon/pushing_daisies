@@ -90,6 +90,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-067](#ll-067) | A sprite font puts an **em-wide gap between every word**, and **half the UI still draws in the old font** | The string map is **positional** and the sheets are `"!"`..`"~"` with **no space**, so the documented fallback is the **widest glyph's** width; and `draw_reset()`'s font is *ambient*, so any draw path that never calls `draw_set_font` keeps the old face | **FIXED** |
 | [LL-068](#ll-068) | "**The buttons do not work**" on a 16:10 or 21:9 window - the highlight follows the pointer onto the wrong button, and a click opens the wrong screen | `points_to_gui()` divides **GUI by view** on each axis, so the two must share an **aspect**; the GUI was pinned to 960x540 while the window was sized from the **display** aspect (960x600 on 16:10), which is a 60px vertical error at the bottom of the screen | **FIXED** |
 | [LL-069](#ll-069) | The **World Map title runs through the Garden Book button**, Deploy's **wall sits under its own slots**, the Garden Book's shop **hangs off the right edge** - and every locked tower's **name touches its reason** | Every one of those numbers was placed by hand in 960x540, so the layout could say "at x=600" but not "under that" - and the title was centred on the **canvas** while the button was measured from the **right edge**. Three of the four screens were already wrong at 16:9 | **FIXED** |
+| [LL-070](#ll-070) | The game **dies inside a Draw event** naming a variable nobody ever assigned: `Variable Menu.json_string(…) not set before reading it` - and the build was clean | **`json_string` is not a GameMaker function** (`json_stringify` is), and GML compiles an **unknown call as a variable read**, so a misspelt function is a runtime crash that blames a variable | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
@@ -108,6 +109,8 @@ Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
 `verifier` `false positive` `visible` `hide` `draw event` `button`
 `draw_sprite_ext` `aspect ratio` `text wrap` `loadout`
 `persistent` `room change` `_shadows` `_dayCycle` `day cycle`
+`json_string` `json_stringify` `fnames` `unknown function` `variable read`
+`not set before reading it` `diagnostic` `Draw event` `crash on open`
 `level start` `missing instance` `Unable to find instance`
 `single source of truth` `world map` `level data` `level_exists`
 `GameLevelData` `phantom stage` `deploy`
@@ -5081,7 +5084,7 @@ stop the overlap, the fitting stops the spill, and the dump proves both.
    build time:
 
    ```
-   UI    [meta]  deploy  canvas 675x540  nodes 19  missing 0  off-canvas 0  ok
+   UI    [meta]  deploy  canvas 675x540  checked 19  missing 0  off-canvas 0  ok
    ```
 
    A `FAIL` there means a node name the draw code reads does not exist, or a
@@ -5117,6 +5120,128 @@ findings from `gm layout check`.
 `scripts/scr_meta_screen/scr_meta_screen.gml`,
 `scripts/scr_ui_check/scr_ui_check.gml`, `objects/Menu/Draw_64.gml`,
 `python_tools/gm/layout/` (`metrics.py`, `dump.py`, `rules.py`, `report.py`).
+
+---
+
+<a name="ll-070"></a>
+## LL-070 — GameMaker compiles an unknown function call as a VARIABLE READ, so a missing name fails only when the line runs, and blames a variable that never existed
+
+**Symptom.** The first real run of the layout gate: the World Map screen built its
+entire 140-item dump, then the game died **inside the Draw event**, two lines
+after logging `UI    [GEOM] begin worldmap 960x540 items 140`:
+
+```
+ERROR in action number 1
+of Draw Event for object Menu:
+Variable Menu.json_string(101726, -2147483648) not set before reading it.
+ at gml_Script_ui_check_end (line 146) - _str += " " + json_string(_it.t);
+gml_Script_ui_check_end (line 146)
+gml_Object_Menu_Draw_64 (line 64) - ui_check_begin("worldmap");  meta_draw_worldmap();  ui_check_end();
+Script_Free called with 1208 and global 419
+FAILED: Run Program Complete
+```
+
+`Variable Menu.json_string` names a **variable**. `scr_ui_check` has no such
+variable and assigns one nowhere — so the message sends you looking for an
+assignment that does not exist, in a file you have just read. (The number in
+the brackets is the frame's instance information, not an argument count, which
+is what makes it read like a scope bug — LL-003 — instead of a spelling bug.)
+
+The layout work underneath was fine: `[tree] … nodes=12` and
+`[meta] … missing 0  off-canvas 0  ok` both printed. The only thing wrong was
+the **name of a function in the print line**.
+
+**Root cause.** `json_string` is not a GameMaker function. The pair is
+`json_parse` / **`json_stringify`** (this project already calls
+`json_stringify` in `scr_save_meta`). The name came from muscle memory —
+`JSON.stringify`, Python's `json.dumps` — which is exactly the sort of guess a
+compiler normally catches.
+
+GML does not: an identifier it does not recognise followed by `(` compiles as a
+**read of a variable of that name**, and only fails when the line is reached.
+So the failure has three properties that make it expensive:
+
+* **not a compile error** — the build succeeds, "Compile Errors" stays empty;
+* **not at startup** — 18 seconds of the run were healthy;
+* **not at the first frame of the screen** — it fires on the frame that reaches
+  the line, which for a once-per-screen dump is the frame that opens the screen.
+
+And because the line was a **diagnostic**, it also broke working rule 5: a log
+line that can throw takes the game down while reporting that everything is
+fine.
+
+**Fix.** The real function, and a read that cannot fault:
+
+```gml
+	for(var _i = 0; _i < _n; _i++){
+		var _it = _items[_i],
+		    _str;
+
+		/// an item is built by ui_reg_box, so these fields exist - but this
+		/// runs inside a Draw event, where one bad read takes the whole run
+		/// down mid-frame, so the read is guarded rather than trusted (LL-002)
+		if(!is_struct(_it)) continue;
+		if(!variable_struct_exists(_it, "x1")) continue;
+
+		_str = "  " + _it.k + " " + _it.n + " " + …;
+
+		if(variable_struct_exists(_it, "t") && is_string(_it.t) && _it.t != ""){
+			_str += " " + json_stringify(_it.t);
+		}
+		ui_log("GEOM", _str);
+	}
+```
+
+`json_stringify` produces the literal the Python side already reads
+(`_read_string` → `json.loads`), so the dump format did not change.
+
+**Guard rails.**
+
+* **An unfinished dump is a FAILURE, not a pass.** The same run exposed a
+  second hole: `gm layout check` printed
+  `ok    1 screen at 1 size, 0 findings  (1 incomplete: worldmap 960x540)` and
+  **exited 0**, because a block with no `end` line has no rectangles to
+  collide - the run died before printing any. Zero findings from zero
+  rectangles is not a pass, so `report.incomplete(frames)` now decides both the
+  summary label and the exit code, and two tests pin it (a block with no `end`,
+  and a block one item short of the count it declared). *A gate that cannot
+  fail is worse than no gate: it converts "nobody looked" into "checked".*
+* **`CalledFunctionTests.test_every_called_name_exists`** in
+  `python_tools/tests/test_gm.py`: every `name(` in every `.gml` is matched
+  against the **active runtime's `fnames`** file (the IDE's own list of
+  everything the runtime provides) plus what the project itself defines —
+  `function name(`, `name: function` / `static name = function`, `#macro`,
+  script folders, and `var`-declared callables. Run it alone with:
+
+  ```bash
+  PYTHONPATH=python_tools python3 -m unittest discover -s python_tools/tests \
+      -k test_every_called_name_exists
+  ```
+
+  It was **falsified before being trusted**: re-introducing `json_string(`
+  produced `['json_string() in scripts/scr_ui_check/scr_ui_check.gml']`.
+  The comment/string stripper it depends on has its own test, because a `(`
+  inside a doc comment is not a call and a `//` inside a string is not a
+  comment.
+* **If you are writing a GameMaker function name from memory, check it.**
+  `grep -x 'json_stringify.*' ~/.local/share/GameMakerStudio2*/Cache/runtimes/*/fnames`
+  answers "does this exist" in one second, offline. This is the same `fnames`
+  file the flex-panel test has used since LL-069.
+* **A diagnostic must be able to read only what it wrote.** Guarded field
+  reads, no clever formatting, no marshalling library — the print path is the
+  worst possible place for a first use of a function.
+* **When an error names a variable you know does not exist, suspect the
+  NAME.** `Variable X not set before reading it` where `X` is also the last
+  word before `(` is a call, not a read.
+
+**Status.** FIXED 2026-10-22. Confirmed by 243 tests `OK` and the falsification
+above; the *layout* confirmation is still the run described in LL-069
+(`global.devMode = true`, three canvas widths, `gm layout check <log>` → `ok`).
+
+**Files.** `scripts/scr_ui_check/scr_ui_check.gml`,
+`python_tools/tests/test_gm.py`, `python_tools/tests/test_layout.py`,
+`python_tools/gm/layout/report.py`, `python_tools/gm/layout/cli.py`,
+`scripts/scr_ui_layout_meta/scr_ui_layout_meta.gml`.
 
 ---
 

@@ -34,8 +34,14 @@
 ///     UI    [GEOM]   text cur_0 80,24,141,40 "48"
 ///     UI    [GEOM] end worldmap 14 items
 ///
-/// `json_string()` does the quoting, so a tower name containing a quote cannot
-/// break a line - the parser reads the string as JSON rather than splitting it.
+/// `json_stringify()` does the quoting, so a tower name containing a quote
+/// cannot break a line - the parser reads the label as JSON rather than
+/// splitting it.  It is `json_stringify`, NOT `json_string`: the latter is not a
+/// GameMaker function at all, and GameMaker compiles an unknown call as a
+/// VARIABLE READ, so it does not fail until the line runs and then blames a
+/// variable that was never assigned (LL-070).  A missing function name in a
+/// Draw event is a crashed run, not a compile error - which is why this file is
+/// written to only read fields it built itself.
 
 /// Is a capture running AND is this a developer build?  Every ui_reg_* starts
 /// with this, so a diagnostic can never cost a release build anything, and can
@@ -87,7 +93,7 @@ function ui_reg_box(_kind, _name, _x1, _y1, _x2, _y2, _text) {
 		k: string(_kind), n: string(_name),
 		x1: _a, y1: _c, x2: _b, y2: _d,
 		t: is_undefined(_text) ? "" : string(_text)
-	}`);
+	});
 	return 1;
 }
 
@@ -138,12 +144,21 @@ function ui_check_end() {
 	       " ", round(_w), "x", round(_h), " items ", _n);
 
 	for(var _i = 0; _i < _n; _i++){
-		var _it  = _items[_i],
-		    _str = "  " + _it.k + " " + _it.n + " " +
-		           string(_it.x1) + "," + string(_it.y1) + "," +
-		           string(_it.x2) + "," + string(_it.y2);
-		if(is_string(_it.t) && _it.t != ""){
-			_str += " " + json_string(_it.t);
+		var _it = _items[_i],
+		    _str;
+
+		/// an item is built by ui_reg_box, so these fields exist - but this
+		/// runs inside a Draw event, where one bad read takes the whole run
+		/// down mid-frame, so the read is guarded rather than trusted (LL-002)
+		if(!is_struct(_it)) continue;
+		if(!variable_struct_exists(_it, "x1")) continue;
+
+		_str = "  " + _it.k + " " + _it.n + " " +
+		       string(_it.x1) + "," + string(_it.y1) + "," +
+		       string(_it.x2) + "," + string(_it.y2);
+
+		if(variable_struct_exists(_it, "t") && is_string(_it.t) && _it.t != ""){
+			_str += " " + json_stringify(_it.t);
 		}
 		ui_log("GEOM", _str);
 	}

@@ -127,7 +127,7 @@ PYTHONPATH=python_tools python3 -m gm roundtrip
 
 # 2. toolkit test suite
 #    expect: `Ran N tests ... OK`, and N must NOT DROP
-#    (168 on 2026-10-20; it was 101 when this file was written, and a number
+#    (243 on 2026-10-22; it was 101 when this file was written, and a number
 #     here goes stale every session - the signal is a drop, and after adding
 #     *n* tests the count must rise by *n*: a suite that cannot notice a
 #     missing test has a hole in it, LL-041)
@@ -152,7 +152,9 @@ PYTHONPATH=python_tools python3 -m gm progress check
 
 # 7. the layout gate - only after a run with global.devMode = true that has
 #    opened the meta screens (the F12/GUI dump lives in the log, not on disk)
-#    expect: "ok  ..." and exit 0; a finding is a rectangle in the wrong place
+#    expect: "ok  ..." and exit 0; a finding is a rectangle in the wrong place,
+#    and an INCOMPLETE block (no `end` line, or fewer items than it declared)
+#    also exits 1 - that is a run that died mid-dump, not a clean screen (LL-070)
 PYTHONPATH=python_tools python3 -m gm layout check <the run's log>
 ```
 

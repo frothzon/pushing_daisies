@@ -7,8 +7,9 @@ a first-class action rather than a comment (a metric nobody checks is a metric
 that is wrong).
 
 ``check`` reads the ``[GEOM]`` dumps out of one or more logs and reports every
-overlap, spill and off-canvas rectangle.  Exit code 1 when there is one, so a
-shell or CI can gate on it.
+overlap, spill and off-canvas rectangle.  Exit code 1 when there is one - and
+also when a dump did not finish, because a block the game never printed to the
+end was never checked (LL-070), so a shell or CI can gate on it.
 """
 
 from __future__ import annotations
@@ -54,9 +55,18 @@ def _check(args) -> int:
     for line in report.render(frames, findings, show_items=getattr(args, "items", False)):
         print(line)
 
-    okay = not findings
+    # A block the game never finished is not "0 findings": it is "not looked at".
+    # The first real run died mid-dump and this printed `ok`, which is a gate
+    # that cannot fail (LL-070).
+    broken = report.incomplete(frames)
+    okay = not findings and not broken
     print("%s  %s" % ("ok  " if okay else "FAIL", report.summary(frames, findings)))
-    if not okay:
+    if broken:
+        print("A block with no `end` line - or one short of the item count it declared - "
+              "means the run stopped while it was printing, so those rectangles were "
+              "never checked. Re-run, and look above the block for an ERROR: a crash "
+              "in a draw helper looks exactly like this (LL-070).")
+    if findings:
         print("Each line above is a rectangle the player can see in the wrong place. "
               "Fix the layout, not the tolerance.")
     return 0 if okay else 1

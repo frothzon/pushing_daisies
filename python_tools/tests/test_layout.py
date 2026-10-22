@@ -619,6 +619,29 @@ class CheckCliTests(unittest.TestCase):
         self.assertEqual(1, code, out)
         self.assertIn("no `UI    [GEOM] begin", out)
 
+    def test_a_dump_that_never_finished_fails_the_gate(self):
+        """The first real run died mid-dump, and `check` said `ok` (LL-070).
+
+        A block with no `end` has 0 findings only because nothing was examined -
+        the rectangles that never printed cannot collide. So it is a failure, and
+        the message has to say what it looks like: an ERROR above the block.
+        """
+        code, out = self._run(self._log("cut.log", TRUNCATED_LOG))
+        self.assertEqual(1, code, out)
+        self.assertIn("FAIL", out)
+        self.assertIn("INCOMPLETE", out)
+        self.assertIn("never checked", out)
+
+    def test_a_dump_one_item_short_of_its_count_fails_the_gate(self):
+        """The other way a dump stops early: `end` prints, but fewer items than
+        the `begin` line declared. The count mismatch is already flagged by the
+        report - this pins that it also moves the exit code."""
+        log = TRUNCATED_LOG + "UI    [GEOM] end garden 2 items\n"
+        text = log.replace("items 2\n", "items 3\n", 1)
+        code, out = self._run(self._log("short.log", text))
+        self.assertEqual(1, code, out)
+        self.assertIn("MISSING ITEMS", out)
+
     def test_items_flag_lists_the_rectangles_behind_the_findings(self):
         code, out = self._run(self._log("deploy.log", BAD_LOG), items=True)
         self.assertEqual(1, code, out)

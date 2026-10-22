@@ -2,7 +2,7 @@
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-21",
+    "updated": "2026-10-22",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set <id> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -3162,6 +3162,26 @@
       "done": null
     },
     {
+      "id": "ui-flex-other-screens",
+      "title": "The other screens are still hand-placed: Options, Level Complete, HUD",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "3",
+      "size": "M",
+      "prio": 3,
+      "needs": "Port one screen per session onto scr_ui_layout_* the way the menu and the meta screens now are, starting with whichever reports a finding first.",
+      "notes": "The meta screens are the model. These four still place themselves by hand and none of them is dumped by the layout gate, so a finding there would be found by a player rather than by gm layout check.",
+      "refs": [
+        "objects/obj_ui/Step_0.gml",
+        "scripts/scr_ui_flex/scr_ui_flex.gml"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": null
+    },
+    {
       "id": "ui-flex-screen-layer",
       "title": "Flex screen layer: GUI and camera share the window's aspect",
       "status": "done",
@@ -3232,8 +3252,8 @@
       "phase": "3",
       "size": "L",
       "prio": 2,
-      "needs": "Reload the project (GameMaker held the files this session), run with global.devMode = true, then open World Map, Deploy and the Garden Book at 675x540, 960x540 and 1260x540 and send the log. The two lines to look for per screen are UI    [meta]  <screen>  canvas WxH  nodes N  missing 0  off-canvas 0  ok, then the [GEOM] blocks; a FAIL there or a finding from gm layout check means this card is not done.",
-      "notes": "Four trees in scr_ui_layout_meta - worldmap, deploy, garden, results - and meta_*_geom() now READS them back by name, returning the same struct shape it always did, so objects/Menu/Step_0's hit tests were not touched. What actually changed: the top band is [currency 240 | title flexGrow | actions 240], so the title sits between the two fixed columns instead of under one; Deploy's slots are a row at the top and its wall is 4x2 of 112 cells beside a 160-wide difficulty column; the Garden's shop is a 4x2 wall sized by SUBTRACTION (the left column keeps 260, the cells get the rest), so it cannot hang off a 675 canvas; Results gets a band for its title. Cell size is recovered as node width / ui_meta_wall_cols(), never remembered. scr_ui_text adds ui_fit_font/ui_clip_text so the title, the currency line and the results rows SHRINK or clip instead of spilling, and ui_meta_check() logs one line per screen (missing 0, off-canvas 0) at build time.",
+      "needs": "Reload the project (GameMaker held the files this session), run with global.devMode = true, then open World Map, Deploy and the Garden Book at 675x540, 960x540 and 1260x540 and send the log. Per screen look for UI    [meta]  <screen>  canvas WxH  checked N  missing 0  off-canvas 0  ok and then a [GEOM] begin/end block with one line per rectangle. A FAIL on that line, a finding from gm layout check, or a second ERROR immediately after a [GEOM] begin means this card is not done - the first run died exactly there (LL-070), and that crash is fixed.",
+      "notes": "Four trees in scr_ui_layout_meta - worldmap, deploy, garden, results - and meta_*_geom() now READS them back by name, returning the same struct shape it always did, so objects/Menu/Step_0's hit tests were not touched. What actually changed: the top band is [currency 240 | title flexGrow | actions 240], so the title sits between the two fixed columns instead of under one; Deploy's slots are a row at the top and its wall is 4x2 of 112 cells beside a 160-wide difficulty column; the Garden's shop is a 4x2 wall sized by SUBTRACTION (the left column keeps 260, the cells get the rest), so it cannot hang off a 675 canvas; Results gets a band for its title. Cell size is recovered as node width / ui_meta_wall_cols(), never remembered. scr_ui_text adds ui_fit_font/ui_clip_text so the title, the currency line and the results rows SHRINK or clip instead of spilling, and ui_meta_check() logs one line per screen (missing 0, off-canvas 0) at build time. The 2026-10-22 run got as far as the World Map and then died inside the dump itself - json_string is not a GML function (LL-070) - so scr_ui_check calls json_stringify now, guards every field it reads, and the line says checked rather than nodes because ui_meta_names() verifies a subset of the tree.",
       "refs": [
         "scripts/scr_ui_layout_meta/scr_ui_layout_meta.gml",
         "scripts/scr_ui_text/scr_ui_text.gml",
@@ -3241,7 +3261,7 @@
         "objects/Menu/Step_0.gml"
       ],
       "created": "2026-10-21",
-      "updated": "2026-10-21",
+      "updated": "2026-10-22",
       "done": null
     },
     {
@@ -3264,6 +3284,26 @@
       "created": "2026-10-21",
       "updated": "2026-10-21",
       "done": "2026-10-21"
+    },
+    {
+      "id": "ui-palette-adopt",
+      "title": "ui_palette() exists; the colour literals are still spread over six files",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "3",
+      "size": "M",
+      "prio": 3,
+      "needs": "Replace the remaining make_colour_rgb literals with ui_palette() keys, one screen at a time.",
+      "notes": "Cosmetic and independent of the layout work, which is why it was NOT folded into ui-meta-flex: a restyle mixed into a reflow is two changes that cannot be told apart when one of them looks wrong.",
+      "refs": [
+        "scripts/scr_ui_text/scr_ui_text.gml",
+        "scripts/scr_meta_screen/scr_meta_screen.gml"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": null
     },
     {
       "id": "unlock-prices",
@@ -3350,46 +3390,6 @@
       "created": "2026-10-05",
       "updated": "2026-10-05",
       "done": "2026-10-05"
-    },
-    {
-      "id": "ui-flex-other-screens",
-      "title": "The other screens are still hand-placed: Options, Level Complete, HUD",
-      "status": "backlog",
-      "owner": "cline",
-      "awaiting": "none",
-      "area": "code",
-      "phase": "3",
-      "size": "M",
-      "prio": 3,
-      "needs": "Port one screen per session onto scr_ui_layout_* the way the menu and the meta screens now are, starting with whichever reports a finding first.",
-      "notes": "The meta screens are the model. These four still place themselves by hand and none of them is dumped by the layout gate, so a finding there would be found by a player rather than by gm layout check.",
-      "refs": [
-        "objects/obj_ui/Step_0.gml",
-        "scripts/scr_ui_flex/scr_ui_flex.gml"
-      ],
-      "created": "2026-10-21",
-      "updated": "2026-10-21",
-      "done": null
-    },
-    {
-      "id": "ui-palette-adopt",
-      "title": "ui_palette() exists; the colour literals are still spread over six files",
-      "status": "backlog",
-      "owner": "cline",
-      "awaiting": "none",
-      "area": "code",
-      "phase": "3",
-      "size": "M",
-      "prio": 3,
-      "needs": "Replace the remaining make_colour_rgb literals with ui_palette() keys, one screen at a time.",
-      "notes": "Cosmetic and independent of the layout work, which is why it was NOT folded into ui-meta-flex: a restyle mixed into a reflow is two changes that cannot be told apart when one of them looks wrong.",
-      "refs": [
-        "scripts/scr_ui_text/scr_ui_text.gml",
-        "scripts/scr_meta_screen/scr_meta_screen.gml"
-      ],
-      "created": "2026-10-21",
-      "updated": "2026-10-21",
-      "done": null
     }
   ],
   "log": [
@@ -4087,6 +4087,12 @@
       "who": "cline",
       "task": "tower-slice-trios",
       "what": "Closed by the 2026-10-21 drop: all four trios (Tulip, Meat Bulb, Kaboom, Marigold; 12 sprites, 48 frames, 192x192, origin 96,136). Tulip and Meat Bulb are in the roster, so the half-size placeholder era is over; Kaboom and Marigold have no tower and their sprites wait on the design cards (roadmap 5.5). what_still_wrong: none - the eight effect sprites are wired through scr_fx."
+    },
+    {
+      "date": "2026-10-22",
+      "who": "cline",
+      "task": "ui-meta-flex",
+      "what": "The first real run of the layout gate got as far as the World Map screen and died inside its own dump: Variable Menu.json_string(...) not set before reading it - json_string is not a GameMaker function, and an unknown call compiles as a VARIABLE READ, so it failed only when the line ran (LL-070). scr_ui_check now calls json_stringify and guards every field it reads, and the [meta] line says 'checked' rather than 'nodes' because it checks a subset of the tree's nodes. A new test, CalledFunctionTests.test_every_called_name_exists, matches every name( in every .gml against the runtime fnames file plus the project's own definitions; it was falsified by putting json_string back, which it named exactly. Still open on this card: the reload and the three-aspect run."
     }
   ]
 }

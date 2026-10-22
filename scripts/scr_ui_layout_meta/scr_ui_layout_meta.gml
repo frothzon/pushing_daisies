@@ -475,7 +475,7 @@ function ui_meta_check(_screen) {
 	var _bad = array_length(_miss) + array_length(_off);
 
 	ui_log("meta", "  ", _key, "  canvas ", global.ui.w, "x", global.ui.h,
-	       "  nodes ", array_length(_names), "  missing ", array_length(_miss),
+	       "  checked ", array_length(_names), "  missing ", array_length(_miss),
 	       "  off-canvas ", array_length(_off),
 	       (_bad == 0) ? "  ok" : "  FAIL");
 

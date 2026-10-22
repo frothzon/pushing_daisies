@@ -18,12 +18,24 @@ from typing import Dict, List, Sequence
 from . import dump, rules
 
 
+def incomplete(frames: Sequence[dump.Frame]) -> List[dump.Frame]:
+    """Frames whose block never finished, or finished one item short.
+
+    A block with no ``end`` line means the game stopped while it was printing -
+    which is what a crash inside a draw helper looks like (LL-070).  The
+    rectangles it never printed were never examined, so they are not "no
+    overlap": they are "not looked at".  ``gm layout check`` fails on these for
+    that reason, and both the summary and the exit code ask this one function.
+    """
+    return [frame for frame in frames
+            if not frame.complete or frame.declared != len(frame.items)]
+
+
 def summary(frames: Sequence[dump.Frame], findings: Sequence[rules.Finding]) -> str:
     """``3 screens at 3 sizes, 0 findings`` - or the count that is not zero."""
     screens = len({frame.screen for frame in frames})
     sizes = len({frame.size for frame in frames})
-    broken = [frame for frame in frames if not frame.complete
-              or frame.declared != len(frame.items)]
+    broken = incomplete(frames)
     text = "%d screen%s at %d size%s, %d finding%s" % (
         screens, "" if screens == 1 else "s",
         sizes, "" if sizes == 1 else "s",
@@ -63,4 +75,4 @@ def render(frames: Sequence[dump.Frame], findings: Sequence[rules.Finding],
     return lines
 
 
-__all__ = ["render", "summary"]
+__all__ = ["incomplete", "render", "summary"]

@@ -41,6 +41,89 @@ def find_project_root():
 PROJECT_ROOT = find_project_root()
 
 
+def runtime_fnames():
+    """The ``fnames`` file of the ACTIVE runtime, or None when this machine has
+    no runtime cache (CI, a fresh checkout).
+
+    ``fnames`` is the IDE's own table of everything the runtime provides: one
+    identifier per line, a function as ``json_stringify(val, [prettify])`` and an
+    enum constant as ``??flexpanel_align``.  It is the only offline authority on
+    "does this function exist", which is what makes the tests below possible.
+    """
+    for cfg in sorted(Path.home().glob(".local/share/GameMakerStudio2*/runtime.json")):
+        try:
+            data = json.loads(cfg.read_text())
+        except (OSError, ValueError):
+            continue
+        name = data.get("active")
+        if not name:
+            continue
+        fnames = cfg.parent / "Cache" / "runtimes" / f"runtime-{name}" / "fnames"
+        if fnames.exists():
+            return fnames
+    return None
+
+
+def runtime_identifiers(path):
+    """Every identifier defined by an ``fnames`` file."""
+    known = set()
+    for line in Path(path).read_text(errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # strip the enum marker, then take the name: the signature after it
+        # ("([struct])", "(val, [prettify])") is documentation, not a name
+        match = re.match(r"\?*([A-Za-z_][A-Za-z0-9_]*)", line)
+        if match:
+            known.add(match.group(1))
+    return known
+
+
+def strip_gml(source):
+    """``source`` with comments and string literals removed (2026-10-22).
+
+    Needed before asking "what does this code call", because a ``(`` inside a
+    doc comment or a label is not a call, and a ``//`` inside a string is not a
+    comment.  One left-to-right scan decides both; two regexes cannot, because
+    which one wins would depend on the order they ran in.
+    """
+    out = []
+    index, size = 0, len(source)
+    while index < size:
+        char = source[index]
+        if char == "/" and source.startswith("//", index):
+            end = source.find("\n", index)
+            index = size if end < 0 else end
+        elif char == "/" and source.startswith("/*", index):
+            end = source.find("*/", index + 2)
+            index = size if end < 0 else end + 2
+        elif source.startswith('@"', index):
+            # a verbatim string: "" is the escape, a backslash is literal
+            index += 2
+            while index < size:
+                if source.startswith('""', index):
+                    index += 2
+                elif source[index] == '"':
+                    index += 1
+                    break
+                else:
+                    index += 1
+        elif char == '"':
+            index += 1
+            while index < size:
+                if source[index] == "\\":
+                    index += 2
+                elif source[index] == '"':
+                    index += 1
+                    break
+                else:
+                    index += 1
+        else:
+            out.append(char)
+            index += 1
+    return "".join(out)
+
+
 class YyRoundTripTests(unittest.TestCase):
     def test_all_project_files_round_trip(self):
         if PROJECT_ROOT is None:
@@ -469,36 +552,15 @@ class FlexPanelTests(unittest.TestCase):
         return sorted(PROJECT_ROOT.glob("**/*.gml"))
 
     def _active_runtime_fnames(self):
-        """The fnames file of the ACTIVE runtime, or None if this machine has
-        no runtime cache (CI, a fresh checkout)."""
-        for cfg in sorted(Path.home().glob(".local/share/GameMakerStudio2*/runtime.json")):
-            try:
-                data = json.loads(cfg.read_text())
-            except (OSError, ValueError):
-                continue
-            name = data.get("active")
-            if not name:
-                continue
-            fnames = cfg.parent / "Cache" / "runtimes" / f"runtime-{name}" / "fnames"
-            if fnames.exists():
-                return fnames
-        return None
+        """The fnames file of the ACTIVE runtime, or None."""
+        return runtime_fnames()
 
     def test_every_flexpanel_symbol_used_exists_in_the_runtime(self):
         fnames = self._active_runtime_fnames()
         if fnames is None:
             self.skipTest("no GameMaker runtime fnames on this machine")
 
-        known = set()
-        for line in fnames.read_text(errors="replace").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            # enum constants are listed as "??flexpanel_align", functions as
-            # "flexpanel_create_node([struct])" - the identifier is the name
-            match = re.match(r"\?*([A-Za-z_][A-Za-z0-9_]*)", line)
-            if match:
-                known.add(match.group(1))
+        known = runtime_identifiers(fnames)
 
         used = set()
         for path in self._gml_files():
@@ -545,6 +607,113 @@ class FlexPanelTests(unittest.TestCase):
             f"asked for a rectangle no node in {self.LAYOUT_SCRIPTS} has: {unknown}",
         )
 
+
+class CalledFunctionTests(unittest.TestCase):
+    """Every identifier the GML CALLS has to exist (2026-10-22).
+
+    ``json_string(_it.t)`` - a name borrowed from JSON.stringify and Python's
+    ``json.dumps`` habit instead of from GameMaker - cost a whole run.  GameMaker
+    never says "no such function": an unknown call compiles to a VARIABLE READ,
+    so the World Map screen built its entire 140-item dump and then died inside
+    the Draw event with
+
+        Variable Menu.json_string(101726, -2147483648) not set before reading it.
+
+    naming a variable that is assigned nowhere, in a file that has no such
+    variable.  The runtime's own fnames list spells it ``json_stringify``.
+
+    Nothing before that line could see it: it compiles, the rest of the run is
+    healthy, and only the frame that reaches the call fails.  So every ``name(``
+    in the project is matched against the runtime's fnames and against what the
+    project itself defines.  A script counts, because GML lets one be called by
+    its own name.
+
+    What this cannot see: a wrong ARGUMENT, a name built into a string, or a
+    function that only a NEWER runtime than this machine has.
+    """
+
+    #: GML words a `(` may follow without that being a call.
+    KEYWORDS = frozenset({
+        "if", "else", "while", "for", "do", "switch", "with", "repeat",
+        "return", "function", "catch", "throw", "try", "finally", "new",
+    })
+
+    def _files(self):
+        """{relative path: source} for every .gml the game runs."""
+        if PROJECT_ROOT is None:
+            self.skipTest("no GameMaker project found")
+        paths = []
+        for folder in ("scripts", "objects", "rooms"):
+            root = PROJECT_ROOT / folder
+            if root.is_dir():
+                paths += sorted(root.glob("**/*.gml"))
+        self.assertTrue(paths, "no GML found")
+        return {str(path.relative_to(PROJECT_ROOT)): gml.read_gml(path)
+                for path in paths}
+
+    def _called(self, code):
+        """The names this code calls as a function.
+
+        ``x.foo()`` and ``global.foo()`` are member calls, so the lookbehind
+        rejects a name with a dot in front of it.
+        """
+        return set(re.findall(r"(?<![\w.$])([A-Za-z_]\w*)\s*\(", code))
+
+    def _defined(self, sources):
+        """Every callable name the PROJECT defines."""
+        defined = set()
+        for folder in ("scripts", "objects"):
+            root = PROJECT_ROOT / folder
+            if root.is_dir():
+                for path in root.iterdir():
+                    if path.is_dir():
+                        defined.add(path.name)      # a script / an object
+        for source in sources.values():
+            # function foo(...) - a script function or a constructor
+            defined.update(re.findall(r"\bfunction\s+([A-Za-z_]\w*)\s*\(", source))
+            # a struct member holding a function literal:
+            # `to_key: function(dx, dy){`, `static add_sprite = function(...)`
+            defined.update(re.findall(r"([A-Za-z_]\w*)\s*[:=]\s*function\b", source))
+            # #macro NAME value
+            defined.update(re.findall(r"#[ \t]*macro\s+([A-Za-z_]\w*)", source))
+            # a local or static that HOLDS a callable:
+            # `var _fn = script_name; ... _fn();`.  This is the author's
+            # promise - calling a non-callable throws on its own, and this test
+            # is about names that were never defined anywhere at all.
+            defined.update(re.findall(r"\bvar\s+([A-Za-z_]\w*)", source))
+            defined.update(re.findall(r"\bstatic\s+([A-Za-z_]\w*)", source))
+        return defined
+
+    def test_every_called_name_exists(self):
+        fnames = runtime_fnames()
+        if fnames is None:
+            self.skipTest("no GameMaker runtime fnames on this machine")
+
+        raw = self._files()
+        sources = {relative: strip_gml(source) for relative, source in raw.items()}
+        known = runtime_identifiers(fnames) | self._defined(sources)
+
+        unknown = []
+        for relative in sorted(sources):
+            for name in sorted(self._called(sources[relative])):
+                if name not in known and name not in self.KEYWORDS:
+                    unknown.append(f"{name}() in {relative}")
+        self.assertEqual(
+            unknown, [],
+            "called, but defined neither by the runtime nor by this project - "
+            "GameMaker compiles an unknown call as a variable read and fails "
+            "only when that line runs",
+        )
+
+    def test_the_extractor_ignores_comments_and_strings(self):
+        """The check above is only as good as this: a `(` in a doc comment or a
+        label is not a call, and a `//` inside a string is not a comment."""
+        code = strip_gml(
+            "/// ui_doc_comment()\n"
+            'var _label = "ui_string()";   // ui_trailing_comment()\n'
+            "ui_real(1);\n"
+        )
+        self.assertEqual(self._called(code), {"ui_real"})
 
 
 if __name__ == "__main__":
