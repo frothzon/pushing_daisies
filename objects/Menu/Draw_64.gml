@@ -54,10 +54,24 @@ draw_set_font(fnt_size16);
 /// The click handling lives in the Step event: a helper that both drew
 /// and tested would see the same mouse press twice in one frame, once in
 /// Step and once in Draw, and every click would fire twice.
-if(menu_state == MENU_STATE.WORLD_MAP) meta_draw_worldmap();
-if(menu_state == MENU_STATE.DEPLOY)    meta_draw_deploy();
-if(menu_state == MENU_STATE.GARDEN)    meta_draw_garden();
-if(menu_state == MENU_STATE.RESULTS)   meta_draw_results();
+///
+/// ui_check_begin/end wrap each screen: while a capture is open, the draw
+/// helpers register the rectangles they paint, and ui_check_end() prints them
+/// once per screen per canvas size (scr_ui_check, gm layout check).  The calls
+/// are paired INSIDE each branch so a screen that is not drawing can never
+/// dump the previous screen's items.
+if(menu_state == MENU_STATE.WORLD_MAP){
+    ui_check_begin("worldmap");  meta_draw_worldmap();  ui_check_end();
+}
+if(menu_state == MENU_STATE.DEPLOY){
+    ui_check_begin("deploy");    meta_draw_deploy();    ui_check_end();
+}
+if(menu_state == MENU_STATE.GARDEN){
+    ui_check_begin("garden");    meta_draw_garden();    ui_check_end();
+}
+if(menu_state == MENU_STATE.RESULTS){
+    ui_check_begin("results");   meta_draw_results();   ui_check_end();
+}
 
 /// the state readout is a DEVELOPER overlay, not UI - with devMode off
 /// it must not sit on the title screen or over a meta screen.

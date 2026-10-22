@@ -13,6 +13,7 @@ from typing import Any, List, Optional, Tuple
 
 from . import events as events_mod
 from . import gml as gml_mod
+from . import layout as layout_mod
 from . import progress as progress_mod
 from . import project as project_mod
 from . import save as save_mod
@@ -649,6 +650,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("action", nargs="?", default="inspect", choices=["inspect"])
     p.add_argument("--file", help="a specific garden_meta.dat")
     p.set_defaults(func=save_mod.cmd_save)
+
+    p = sub.add_parser("layout", help="the headless layout checker (text metrics, overlaps)")
+    p.add_argument("action", nargs="?", default="metrics", choices=["metrics", "check"])
+    p.add_argument("paths", nargs="*", help="check: the log files to read (the game's [GEOM] dumps)")
+    p.add_argument("--root", help="metrics: the project root (default: found from this repo)")
+    p.add_argument("--log", help="metrics: a game log whose FONT lines to check against")
+    p.add_argument("--tol", type=float, default=0.5,
+                   help="check: ignore overlaps narrower than this many GUI units (default 0.5)")
+    p.add_argument("--min-area", type=float, default=0.0,
+                   help="check: only report findings at least this many px2")
+    p.add_argument("--items", action="store_true",
+                   help="check: list every registered rectangle, not just the findings")
+    p.set_defaults(func=layout_mod.cmd_layout)
 
     p = sub.add_parser("roundtrip", help="verify .yy files round-trip byte-for-byte")
     p.add_argument("paths", nargs="*")

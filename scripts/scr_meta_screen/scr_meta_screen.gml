@@ -34,6 +34,10 @@ function meta_panel(_x, _y, _w, _h, _col, _border) {
 	draw_set_alpha(1);
 	draw_set_colour(_border);
 	draw_rectangle(_x, _y, _x + _w, _y + _h, true);
+
+	/// every panel on every meta screen passes through here, so this one line
+	/// is what puts the boxes in the layout dump (scr_ui_check)
+	ui_reg_box("panel", "panel", _x, _y, _x + _w, _y + _h);
 }
 
 /// A screen title, centred at the top.
@@ -42,6 +46,11 @@ function meta_title(_text) {
 	draw_set_halign(fa_center);
 	draw_set_valign(fa_top);
 	draw_text_outline(display_get_gui_width()*0.5, 20, _text, c_white, c_black, 2);
+
+	/// measured with the font the line above draws with, so the dump and the
+	/// paint agree to the pixel
+	ui_reg_text("title", display_get_gui_width()*0.5, 20, _text, fa_center, fa_top);
+
 	draw_set_halign(fa_left);
 	draw_set_font(fnt_size16);
 }
@@ -52,6 +61,9 @@ function meta_text(_x, _y, _text, _col, _align) {
 	draw_set_colour(_col);
 	draw_set_halign(_align);
 	draw_text(_x, _y, _text);
+
+	ui_reg_text("text", _x, _y, _text, _align, fa_top);
+
 	draw_set_halign(fa_left);
 }
 
@@ -71,6 +83,11 @@ function meta_icon_value(_x, _y, _spr, _text, _col, _size) {
 	draw_set_colour(_col);
 	draw_set_halign(fa_left);
 	draw_text(_x + _w, _y, _text);
+
+	/// the value half of the item; the icon is not text, but a value that
+	/// runs into the next icon is exactly the overlap this is looking for
+	ui_reg_text("cur", _x + _w, _y, _text, fa_left, fa_top);
+
 	return _x + _w + string_width(_text) + 20;
 }
 
@@ -189,6 +206,13 @@ function meta_button_draw(_r, _text, _enabled) {
 	draw_set_valign(fa_middle);
 	draw_set_colour(_enabled ? (_hov ? c_white : c_ltgray) : c_dkgray);
 	draw_text((_r[0] + _r[2])*0.5, (_r[1] + _r[3])*0.5, _text);
+
+	/// name it after the label, so the report can say "Deploy" instead of
+	/// "a button"
+	ui_reg_box("button", _text, _r[0], _r[1], _r[2], _r[3]);
+	ui_reg_text("button_label", (_r[0] + _r[2])*0.5, (_r[1] + _r[3])*0.5,
+	            _text, fa_center, fa_middle);
+
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 	draw_set_font(fnt_size16);
@@ -281,8 +305,10 @@ function meta_draw_worldmap() {
 		draw_set_font(fnt_size16);
 		draw_set_halign(fa_right);
 		draw_set_colour(region_cleared(_r) ? c_lime : c_silver);
-		draw_text(_g.x0 - 12, _g.y0 + (_r-1)*_g.ch + _g.ch*0.5 - 8,
-		          "Region " + string(_r));
+		var _label = "Region " + string(_r),
+		    _label_y = _g.y0 + (_r-1)*_g.ch + _g.ch*0.5 - 8;
+		draw_text(_g.x0 - 12, _label_y, _label);
+		ui_reg_text("region", _g.x0 - 12, _label_y, _label, fa_right, fa_top);
 		draw_set_halign(fa_left);
 
 		for(var _s = 1; _s <= 10; _s++){
@@ -314,8 +340,11 @@ function meta_draw_worldmap() {
 			draw_set_colour(_open ? c_white : c_dkgray);
 			/// a node with no level shows a dash, not a stage number: the
 			/// number would promise a stage that does not exist
-			draw_text((_rect[0]+_rect[2])*0.5, (_rect[1]+_rect[3])*0.5 - 8,
-			          _has ? string(_s) : "-");
+			var _num = _has ? string(_s) : "-",
+			    _num_y = (_rect[1]+_rect[3])*0.5 - 8;
+			draw_text((_rect[0]+_rect[2])*0.5, _num_y, _num);
+			ui_reg_text("node", (_rect[0]+_rect[2])*0.5, _num_y, _num,
+			            fa_center, fa_top);
 			draw_set_halign(fa_left);
 
 			/// a cleared node shows the medals it earned, so the map doubles
@@ -411,9 +440,11 @@ function meta_draw_deploy() {
 		draw_set_font(fnt_size16);
 		draw_set_colour(c_white);
 		draw_set_halign(fa_left);
-		draw_text(80, 64, "Region " + string(_row.region) +
+		var _stage_txt = "Region " + string(_row.region) +
 		                 "   Stage " + string(_row.stage) +
-		                 "   " + string(_row.waves) + " waves");
+		                 "   " + string(_row.waves) + " waves";
+		draw_text(80, 64, _stage_txt);
+		ui_reg_text("stage", 80, 64, _stage_txt, fa_left, fa_top);
 	}
 
 	/// ---- the difficulty picker
@@ -429,8 +460,10 @@ function meta_draw_deploy() {
 		draw_set_font(fnt_size16);
 		draw_set_halign(fa_left);
 		draw_set_colour(_sel ? c_white : c_ltgray);
-		draw_text(_rect[0] + 10, _rect[1] + 12,
-		          _diffs[_d].name + "     x" + string(_diffs[_d].seeds) + " seeds");
+		var _diff_txt = _diffs[_d].name + "     x" + string(_diffs[_d].seeds) + " seeds";
+		draw_text(_rect[0] + 10, _rect[1] + 12, _diff_txt);
+		ui_reg_text("difficulty", _rect[0] + 10, _rect[1] + 12, _diff_txt,
+		            fa_left, fa_top);
 	}
 
 	/// ---- the tower wall.  Locked towers drawn greyed, with the reason.
@@ -549,6 +582,7 @@ function meta_draw_garden() {
 	icon_draw(icon_branch(BRANCH.OFFENSE), _g.node_x - 38,
 	          (_g.node_y - 30) + string_height("Offense")*0.5, 36);
 	draw_text(_g.node_x, _g.node_y - 30, "Offense");
+	ui_reg_text("heading", _g.node_x, _g.node_y - 30, "Offense", fa_left, fa_top);
 	draw_set_font(fnt_size12);
 
 	for(var _i = 0; _i < array_length(_nodes); _i++){
@@ -575,24 +609,28 @@ function meta_draw_garden() {
 		draw_set_font(fnt_size16);
 		draw_set_colour(c_white);
 		draw_text(_rc[0] + 54, _rc[1] + 10, _n.label);
+		ui_reg_text("label", _rc[0] + 54, _rc[1] + 10, _n.label, fa_left, fa_top);
 
 		/// the rank shares the LABEL's row, so it is drawn at the label's
 		/// size; the cost shares the DESCRIPTION's row, at its size.  One
 		/// font per row is what keeps two columns on the same baseline.
 		draw_set_halign(fa_right);
 		draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
-		draw_text(_rc[2] - 10, _rc[1] + 10,
-		          "rank " + string(_rank) + "/" + string(_n.ranks));
+		var _rank_txt = "rank " + string(_rank) + "/" + string(_n.ranks);
+		draw_text(_rc[2] - 10, _rc[1] + 10, _rank_txt);
+		ui_reg_text("rank", _rc[2] - 10, _rc[1] + 10, _rank_txt, fa_right, fa_top);
 		draw_set_halign(fa_left);
 
 		draw_set_font(fnt_size12);
 		draw_set_colour(c_silver);
 		draw_text(_rc[0] + 54, _rc[1] + 32, _n.desc);
+		ui_reg_text("desc", _rc[0] + 54, _rc[1] + 32, _n.desc, fa_left, fa_top);
 
 		draw_set_halign(fa_right);
 		draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
-		draw_text(_rc[2] - 10, _rc[1] + 32,
-		          _max ? "maxed" : (string(_cost) + " clovers"));
+		var _cost_txt = _max ? "maxed" : (string(_cost) + " clovers");
+		draw_text(_rc[2] - 10, _rc[1] + 32, _cost_txt);
+		ui_reg_text("cost", _rc[2] - 10, _rc[1] + 32, _cost_txt, fa_right, fa_top);
 		draw_set_halign(fa_left);
 	}
 
@@ -600,6 +638,7 @@ function meta_draw_garden() {
 	draw_set_font(fnt_size16);
 	draw_set_colour(c_white);
 	draw_text(_g.wall_x, _g.wall_y - 30, "Seed Shop");
+	ui_reg_text("heading", _g.wall_x, _g.wall_y - 30, "Seed Shop", fa_left, fa_top);
 	draw_set_font(fnt_size12);
 
 	meta_draw_tower_wall(_g.wall_x, _g.wall_y, _g.wall_cell, _g.wall_cols);
@@ -658,6 +697,13 @@ function meta_sprite_fit(_spr, _cx, _cy, _maxw, _maxh, _blend, _alpha) {
 	    _sc = min(_maxw / _sw, _maxh / _sh);
 
 	draw_sprite_ext(_spr, 0, _cx, _cy, _sc, _sc, 0, _blend, _alpha);
+
+	/// the picture's own rectangle - art that outgrows its cell is a layout
+	/// bug the text alone would never show
+	ui_reg_box("image", "sprite",
+	           _cx - _sw*_sc*0.5, _cy - _sh*_sc*0.5,
+	           _cx + _sw*_sc*0.5, _cy + _sh*_sc*0.5);
+
 	return _sc;
 }
 
@@ -724,6 +770,7 @@ function meta_text_fit(_x, _y, _text, _col, _align, _maxw, _linegap) {
 	var _lines = meta_wrap(_text, _maxw, 2);
 	for(var _i = 0; _i < array_length(_lines); _i++){
 		draw_text(_x, _y + _i * _linegap, _lines[_i]);
+		ui_reg_text("line", _x, _y + _i * _linegap, _lines[_i], _align, fa_top);
 	}
 
 	draw_set_halign(fa_left);
@@ -804,12 +851,16 @@ function meta_draw_results() {
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 	draw_set_colour(c_white);
-	draw_text(_x, _y, "Region " + string(_res.region) +
-	                  "   Stage " + string(_res.stage));
+	var _res_head = "Region " + string(_res.region) +
+	                "   Stage " + string(_res.stage);
+	draw_text(_x, _y, _res_head);
+	ui_reg_text("heading", _x, _y, _res_head, fa_left, fa_top);
 
 	draw_set_font(fnt_size16);
 	draw_set_colour(_win ? c_lime : c_red);
-	draw_text(_x, _y + 46, _win ? "CLEARED" : "FAILED");
+	var _res_word = _win ? "CLEARED" : "FAILED";
+	draw_text(_x, _y + 46, _res_word);
+	ui_reg_text("outcome", _x, _y + 46, _res_word, fa_left, fa_top);
 
 	/// the numbers.  A loss shows what it did NOT pay, because "nothing" is
 	/// the design decision a player should be able to read (goal.md 27.3).

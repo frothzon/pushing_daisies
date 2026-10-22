@@ -17,6 +17,14 @@ if(keyboard_check_pressed(vk_f11)){
 	ui_screen_toggle_fullscreen();
 }
 
+/// F12 re-arms the layout dump: the meta screens dump once per canvas size, so
+/// this is how a developer asks for the same screen's geometry again after
+/// changing something it reads (a save, a roster entry) - scr_ui_check.
+if(keyboard_check_pressed(vk_f12)){
+	ui_check_forget();
+	ui_log("GEOM", "F12 - layout dumps re-armed");
+}
+
 if(ui_screen_poll()){
 	/// The canvas changed.  Recalculate every tree, print the canary, and
 	/// dump the menu's rectangles - a resize that goes wrong is then a log
