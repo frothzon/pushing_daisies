@@ -17,7 +17,27 @@ it says so.
 selects is not a biome (LL-023, and the Belladonna card that claimed "NOTHING"
 while a week-old trio sat in the repo). §5 is the checklist that catches that.
 
+## What has landed since these briefs were written
+
+**2026-10-21 — 75 sprites, 142 frames.** The drawing half of §4.3 (props),
+§4.4 (every icon), §4.5 (the banner) and §4.9 (four trios and their effect
+sprites) is now IN the project, and four of those uses are wired. Read a brief
+below as *what the art is for*, not as *work to do*, unless it says otherwise:
+
+| Brief | State on 2026-10-21 |
+| --- | --- |
+| §4.5 level-complete banner | **delivered and drawn**: `bck_level_complete_banner`, 680×360, art 647×323, one sprite pixel to one screen pixel at 16:9 |
+| §4.3 biome atlases + props | **props delivered** (18 sprites), **atlas still missing** — there is no `spr_graveyard_128x`, so region 5's ground is unchanged |
+| §4.4 meta icons | **delivered** (36 icons); the currency line, the Offense heading, the node pips and the headstones draw them — the rest wait on their screens |
+| §4.9 tower trios + effects | **delivered** (Tulip, Meat Bulb, Kaboom, Marigold, and the eight shot effects); Tulip and Meat Bulb are in the roster and now throw a muzzle puff and an impact, Kaboom and Marigold have no tower yet |
+| §4.1 bosses, §4.2 zombies | **not in this drop** — still owed |
+
+The banner's `bck_` name (against §3.7's `spr_` convention), the two blood icons
+whose origin is `(0,0)`, and the four sprite sets this drop made unreferenced
+are all on the board (`art-cleanup-unreferenced`), not in a comment.
+
 ---
+
 
 ## 0. The open art jobs, and what is actually missing
 
@@ -25,20 +45,21 @@ while a week-old trio sat in the repo). §5 is the checklist that catches that.
 | --- | --- | --- | --- |
 | `region-bosses` | backlog | **4 new boss rigs** + 4 portraits. Region 2 reuses an existing boss. | yes — the biggest job |
 | `region-zombies` | backlog | **6 walk cycles** + 6 portraits; state sheets optional (see §4.2) | yes |
-| `tower-slice-trios` | backlog | **2 tower trios** for towers already in the game on borrowed art: Cannon Tulip and Meat Bulb (§4.9) | yes |
-| `art-biome-tiles` | backlog | **only the Graveyard atlas** and props; the other four biomes already have greyscale atlases (§4.3) | small |
-| `art-garden-book` | backlog | **every icon in the meta layer** — none exist today | yes, many small pieces |
-| `art-level-complete` | backlog | one banner to replace a 200×100 placeholder | yes, one piece |
+| `tower-slice-trios` | **done 2026-10-21** | all four trios arrived; Tulip and Meat Bulb draw theirs, Kaboom and Marigold wait for their towers (§4.9) | — |
+| `art-biome-tiles` | backlog | **only the Graveyard atlas** — the 18 props arrived 2026-10-21; the other four biomes already have greyscale atlases (§4.3) | small |
+| `art-garden-book` | **done 2026-10-21** | every icon arrived (36); the screens that show the rest are their own cards | — |
+| `art-level-complete` | **done 2026-10-21** | the banner arrived and is drawn at 1:1 (§4.5) | — |
 | `art-state-origins` | next | **no drawing** — per-state y-origins (§4.8) | no |
 | `portrait-draw-fit` | backlog | **no drawing** unless frameless busts are chosen (§4.6) | optional |
 | `legacy-boss-art-cleanup` | backlog | **no drawing** — five unused sprites to delete (§4.7) | no |
 | `tower-belladonna` | backlog | **no drawing** — the trio exists, the code does not (§4.9) | no |
 
 Not on an art card yet: **Kaboom Kalanchoe** and **Money Marigold** (roadmap 5.5)
-have neither art nor a final design — §4.9 describes them provisionally so the
-design cards have something to agree with. Two more towers, **Cannon Tulip** and
-**Meat Bulb**, are in the game *right now* on borrowed art (roadmap 1.11 marked
-"NOT done"); they are on the board as `tower-slice-trios`.
+have their art since 2026-10-21 but no final design — §4.9 describes them
+provisionally so the design cards have something to agree with, and their trios
+and effect sprites sit in the project unused until those towers exist.
+**Cannon Tulip** and **Meat Bulb** were on borrowed art until the same drop;
+they now draw their own (§4.9).
 
 ---
 

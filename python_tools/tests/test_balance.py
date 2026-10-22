@@ -920,6 +920,51 @@ class TowerTraitTests(unittest.TestCase):
             self.assertIsNotNone(secs, f"{name}: a trait with no duration")
             self.assertGreater(float(secs.group(1)), 0.0, name)
 
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class FxTableTests(unittest.TestCase):
+    """The shot effects are keyed by TOWER NAME, so a typo there is silent.
+
+    fx_table() in scr_fx.gml is looked up by name at the shot: a row naming a
+    tower that is not in the roster is not an error, it is a tower that never
+    sparkles - and the same is true of a misspelled sprite in the row, except
+    that one is a compile error waiting to happen.  Both are read out of the
+    source here, the way the balance tables are, because the failure mode is
+    "nothing happened" rather than "something broke" (LL-002).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = (PROJECT_ROOT / "scripts/scr_fx/scr_fx.gml").read_text()
+        cls.roster = (PROJECT_ROOT /
+                      "scripts/scr_tower_roster/scr_tower_roster.gml").read_text()
+        body = cls.src[cls.src.index("function fx_table()"):]
+        cls.body = body[:body.index("\n}")]
+
+    def test_every_row_names_a_real_roster_tower(self):
+        towers = re.findall(r'tower\s*:\s*"([^"]+)"', self.body)
+        self.assertTrue(towers, "no fx rows were found at all")
+        for name in towers:
+            self.assertIn(f'tower_entry("{name}"', self.roster,
+                          f"fx row '{name}' names no tower in tower_roster()")
+
+    def test_every_row_names_a_sprite_that_exists(self):
+        for key in ("muzzle", "impact"):
+            sprites = re.findall(key + r"\s*:\s*(\w+)", self.body)
+            self.assertTrue(sprites, f"no {key} sprite in fx_table()")
+            for sprite in sprites:
+                self.assertTrue((PROJECT_ROOT / "sprites" / sprite).is_dir(),
+                                f"{key} '{sprite}' is not a sprite in this project")
+
+    def test_the_shot_calls_both_ends(self):
+        shoot = (PROJECT_ROOT /
+                 "scripts/scr_tower_shoot/scr_tower_shoot.gml").read_text()
+        self.assertIn("fx_strike(", shoot,
+                      "the shot no longer draws its muzzle")
+        self.assertIn("fx_impact(", shoot,
+                      "the strike no longer draws an impact")
+
+
+
 
 @unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
 class StatusWiringTests(unittest.TestCase):

@@ -58,6 +58,13 @@ function scr_tower_shoot() {
 	    fire_frame   = max(1, floor(swing_frame - time_offset));
 	    part_frame   = max(0, floor(swing_frame - time_offset - 10));
 
+	    /// ---- the muzzle picture, if this tower has one (scr_fx) ---------
+	    /// At the SHOT, not at the strike: the puff is the tower firing, so it
+	    /// has to happen when the swing starts - a slow tower's flash arriving
+	    /// at the strike would be a puff after the monster is already dead.
+	    /// fx_strike() does nothing for a tower with no row in fx_table().
+	    fx_strike(name, x, y);
+
 	    /// one line per tower, the first time it shoots.  A slow tower that
 	    /// never prints this is not attacking at all (LL-011).
 	    if(!shot_reported){
@@ -126,6 +133,21 @@ function scr_tower_shoot() {
 	        for(var _s = 0; _s < array_length(target); _s++){
 	            status_apply(target[_s], shot_status, shot_status_mult,
 	                         shot_status_frames);
+	        }
+	    }
+
+	    /// ---- the impact picture, on each target (scr_fx) ----------------
+	    /// With the damage, so every monster that was actually hit flashes
+	    /// where it stands.  The tower's name is copied to a local FIRST: this
+	    /// is the tower's scope, and inside with() `name` would be the
+	    /// monster's - the scope bug of LL-003, which reads as "one tower has
+	    /// no effects" rather than as an error.
+	    var _fx_tower = name;
+	    for(var _f = 0; _f < array_length(target); _f++){
+	        if(scr_isValidInstance(target[_f])){
+	            with(target[_f]){
+	                fx_impact(_fx_tower, x, y);
+	            }
 	        }
 	    }
 	}

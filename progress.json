@@ -20,16 +20,15 @@
   },
   "focus": {
     "now": [
-      "art-tower-fx",
       "biome-props"
     ],
     "next": [
+      "biome-tileset-wiring",
       "combat-gate-two-loadouts",
       "combat-status-burn",
-      "tower-card-status-line",
-      "biome-tileset-wiring"
+      "tower-card-status-line"
     ],
-    "note": "2026-10-21 (art drop): the 75 sprites are in and their first uses are wired - the level-complete banner, the last two tower trios, the icon table and the headstones. What is left of the drop needs a system rather than a slot: eight tower effect sprites (art-tower-fx) and eighteen biome props (biome-props). One thing to know before a run: reload the project (GameMaker was holding the files while the sprites were imported), and expect one 'TOWER' line per armed tower naming its sprite."
+    "note": "2026-10-21 (art drop, second half): the banner, the last two tower trios, the whole icon vocabulary, the headstones and a new sprite-effect system are in - a tower now throws a muzzle puff and an impact, and the log says so once per sprite. What is left of the drop is the eighteen props, which need a scenery system rather than a slot (biome-props). Reload the project before testing: GameMaker was holding the files while the sprites were imported, and it will not see scr_fx or obj_fx until it does."
   },
   "tasks": [
     {
@@ -131,7 +130,7 @@
     {
       "id": "art-garden-book",
       "title": "Art for the Garden Book and meta screens",
-      "status": "backlog",
+      "status": "done",
       "owner": "rayu",
       "awaiting": "none",
       "area": "art",
@@ -144,13 +143,13 @@
         "roadmap.md"
       ],
       "created": "2026-10-05",
-      "updated": "2026-10-05",
-      "done": null
+      "updated": "2026-10-21",
+      "done": "2026-10-21"
     },
     {
       "id": "art-level-complete",
       "title": "Art: replace the spr_level_complete placeholder",
-      "status": "backlog",
+      "status": "done",
       "owner": "rayu",
       "awaiting": "none",
       "area": "art",
@@ -163,8 +162,8 @@
         "sprites/spr_level_complete/spr_level_complete.yy"
       ],
       "created": "2026-10-18",
-      "updated": "2026-10-18",
-      "done": null
+      "updated": "2026-10-21",
+      "done": "2026-10-21"
     },
     {
       "id": "art-new-zombies",
@@ -234,9 +233,9 @@
     {
       "id": "art-tower-fx",
       "title": "Tower shot FX: eight effect sprites and no system to draw them",
-      "status": "next",
+      "status": "done",
       "owner": "cline",
-      "awaiting": "cline",
+      "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "M",
@@ -248,7 +247,7 @@
       ],
       "created": "2026-10-21",
       "updated": "2026-10-21",
-      "done": null
+      "done": "2026-10-21"
     },
     {
       "id": "art-tower-trios",
@@ -3080,7 +3079,7 @@
     {
       "id": "tower-slice-trios",
       "title": "Art: the two Phase 1 unlockable tower trios (placeholders today)",
-      "status": "backlog",
+      "status": "done",
       "owner": "rayu",
       "awaiting": "none",
       "area": "art",
@@ -3095,8 +3094,8 @@
         "art_descriptions.md"
       ],
       "created": "2026-10-19",
-      "updated": "2026-10-19",
-      "done": null
+      "updated": "2026-10-21",
+      "done": "2026-10-21"
     },
     {
       "id": "tower-thornamental",
@@ -3955,6 +3954,30 @@
       "who": "rayu",
       "task": "art-tower-trios",
       "what": "Four trios arrived (12 sprites, 48 frames, 192x192). Tulip and Meat Bulb are in the roster; Kaboom and Marigold have no tower yet and their eight effect sprites are art-tower-fx's job."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "cline",
+      "task": "art-tower-fx",
+      "what": "Sprite effects are a system now. New obj_fx (no sprite, three events) plays a frame range once and deletes itself, and new scr_fx owns the table and every guarded entry point: fx_play(sprite, x, y, scale, fps, fade) refuses a missing sprite and a non-number, caps the live effects at 64 with ONE warning per session, sorts with scr_depth_band(y)-1 so a puff is not hidden behind the tower that fired it, and ages on delta_time so fast-forward does not play it three times too fast. fx_table() keys muzzle/impact art by TOWER NAME: Cannon Tulip gets spr_tulip_muzzle_puff then spr_tulip_bud_shell, Meat Bulb gets spr_meat_spit_projectile then spr_meat_saliva_burst. Kaboom and Marigold are deliberately absent - no tower to place them yet. Hooked in scr_tower_shoot: the muzzle at state_time==0 (when the swing starts, not at the strike) and the impact at the strike inside with(target) because a burst on the ground reads as a miss. Proof in the log: one 'FX    first <sprite> at x,y  frames=N' line per sprite, so a tower that fires and prints none has no table row. New FxTableTests (3 tests) read the table out of the GML and fail if a row names a tower not in the roster, a sprite that is not in the project, or if the strike stops calling fx_strike/fx_impact; verified by mutating a sprite name and watching it fail. roundtrip 764 files 0 differ, 181 tests OK."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "cline",
+      "task": "art-level-complete",
+      "what": "Closed by the 2026-10-21 drop: bck_level_complete_banner (680x360, art 647x323) replaces the 200x100 placeholder and scr_level_complete_draw draws it through level_complete_banner_sprite() at one sprite pixel to one screen pixel at 16:9. what_still_wrong: nothing known; the sprite is named bck_ against 3.7 and that is on art-cleanup-unreferenced."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "cline",
+      "task": "art-garden-book",
+      "what": "Closed as a DRAWING job: 36 icons arrived - four currencies, four clover branches, two node pips, mastery I-V, five blood tiers, eight candy, seven medals plus a locked plate. Four are on screen today (two currencies, the Offense branch icon, the node pips); everything else is reachable through scr_ui_icons and waits on its own screen, which is why blood-tree, candy-recipes, garden-mastery-panel and region-badges each now carry an ART IS IN note."
+    },
+    {
+      "date": "2026-10-21",
+      "who": "cline",
+      "task": "tower-slice-trios",
+      "what": "Closed by the 2026-10-21 drop: all four trios (Tulip, Meat Bulb, Kaboom, Marigold; 12 sprites, 48 frames, 192x192, origin 96,136). Tulip and Meat Bulb are in the roster, so the half-size placeholder era is over; Kaboom and Marigold have no tower and their sprites wait on the design cards (roadmap 5.5). what_still_wrong: none - the eight effect sprites are wired through scr_fx."
     }
   ]
 }
