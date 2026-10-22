@@ -967,6 +967,8 @@
     {"id":{"name":"bck_house_tileset","path":"tilesets/bck_house_tileset/bck_house_tileset.yy",},},
     {"id":{"name":"bck_tile_dirt_tileset","path":"tilesets/bck_tile_dirt_tileset/bck_tile_dirt_tileset.yy",},},
     {"id":{"name":"scr_ui_check","path":"scripts/scr_ui_check/scr_ui_check.yy",},},
+    {"id":{"name":"scr_ui_text","path":"scripts/scr_ui_text/scr_ui_text.yy",},},
+    {"id":{"name":"scr_ui_layout_meta","path":"scripts/scr_ui_layout_meta/scr_ui_layout_meta.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",

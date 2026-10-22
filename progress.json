@@ -20,15 +20,15 @@
   },
   "focus": {
     "now": [
-      "biome-props"
+      "ui-meta-flex"
     ],
     "next": [
+      "biome-props",
       "biome-tileset-wiring",
       "combat-gate-two-loadouts",
-      "combat-status-burn",
-      "tower-card-status-line"
+      "ui-flex-other-screens"
     ],
-    "note": "2026-10-21 (art drop, second half): the banner, the last two tower trios, the whole icon vocabulary, the headstones and a new sprite-effect system are in - a tower now throws a muzzle puff and an impact, and the log says so once per sprite. What is left of the drop is the eighteen props, which need a scenery system rather than a slot (biome-props). Reload the project before testing: GameMaker was holding the files while the sprites were imported, and it will not see scr_fx or obj_fx until it does."
+    "note": "2026-10-21 (layout): the meta screens are flex trees now, and the geometry is read back by name, so the hand-placed numbers that made the World Map title run through the Garden Book button and Deploy's wall run under its slots are gone. The gate is the point: scr_ui_check dumps every painted rectangle, gm layout check rules on it, and ui_meta_check logs one line per screen at build time. Reload the project before testing - GameMaker held the files while scr_ui_layout_meta and scr_ui_text were created."
   },
   "tasks": [
     {
@@ -2007,6 +2007,49 @@
       "done": "2026-10-13"
     },
     {
+      "id": "layout-check-tool",
+      "title": "gm layout check: overlap, spill and off-canvas from a dump",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "tools",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "",
+      "notes": "`gm layout check <log>...` parses the [GEOM] blocks (dump.py), applies rules.py - overlap, spill, off-canvas, and never nesting - and prints a report with an exit code of 1, so a shell or CI can gate on it. Tolerance is 0.5 GUI units, chosen so it cannot mask a 1px break; nesting (a box in a box, text in its own box, an image in its cell) is never a finding, because that is what containment IS. 27 tests cover the parser, every rule and the CLI's exit codes, including a truncated dump.",
+      "refs": [
+        "python_tools/gm/layout/dump.py",
+        "python_tools/gm/layout/rules.py",
+        "python_tools/gm/layout/cli.py",
+        "python_tools/tests/test_layout.py"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "layout-metrics",
+      "title": "The font model: glyph ink widths measured from the PNGs",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "tools",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "",
+      "notes": "The model is the font itself: metrics.py reads every glyph's ink box out of the font PNGs behind global.font_list (p12/p16/p20/p32) and takes the separator width from initialize_game.gml, so a string's width is the sum of its glyphs - not an average. `gm layout metrics` prints the table and, with --log, diffs it against the `p16 i=6 W=16 space=4 line=16` line the game logs at boot; a mismatch exits 1. 31 tests (test_layout.py) cover the PNG scan, the table, the log comparison and its failure modes. The verification is the point: a metric nobody checks is a metric that is wrong.",
+      "refs": [
+        "python_tools/gm/layout/metrics.py",
+        "python_tools/tests/test_layout.py",
+        "scripts/initialize_game/initialize_game.gml"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": "2026-10-21"
+    },
+    {
       "id": "leak-income-spiral",
       "title": "A leak should not starve the next wave",
       "status": "done",
@@ -3182,19 +3225,45 @@
     {
       "id": "ui-meta-flex",
       "title": "Move the meta screens (map, deploy, garden, results) onto flex nodes",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "3",
       "size": "L",
       "prio": 2,
-      "needs": "",
-      "notes": "",
-      "refs": [],
+      "needs": "Reload the project (GameMaker held the files this session), run with global.devMode = true, then open World Map, Deploy and the Garden Book at 675x540, 960x540 and 1260x540 and send the log. The two lines to look for per screen are UI    [meta]  <screen>  canvas WxH  nodes N  missing 0  off-canvas 0  ok, then the [GEOM] blocks; a FAIL there or a finding from gm layout check means this card is not done.",
+      "notes": "Four trees in scr_ui_layout_meta - worldmap, deploy, garden, results - and meta_*_geom() now READS them back by name, returning the same struct shape it always did, so objects/Menu/Step_0's hit tests were not touched. What actually changed: the top band is [currency 240 | title flexGrow | actions 240], so the title sits between the two fixed columns instead of under one; Deploy's slots are a row at the top and its wall is 4x2 of 112 cells beside a 160-wide difficulty column; the Garden's shop is a 4x2 wall sized by SUBTRACTION (the left column keeps 260, the cells get the rest), so it cannot hang off a 675 canvas; Results gets a band for its title. Cell size is recovered as node width / ui_meta_wall_cols(), never remembered. scr_ui_text adds ui_fit_font/ui_clip_text so the title, the currency line and the results rows SHRINK or clip instead of spilling, and ui_meta_check() logs one line per screen (missing 0, off-canvas 0) at build time.",
+      "refs": [
+        "scripts/scr_ui_layout_meta/scr_ui_layout_meta.gml",
+        "scripts/scr_ui_text/scr_ui_text.gml",
+        "scripts/scr_meta_screen/scr_meta_screen.gml",
+        "objects/Menu/Step_0.gml"
+      ],
       "created": "2026-10-21",
       "updated": "2026-10-21",
       "done": null
+    },
+    {
+      "id": "ui-overlap-check",
+      "title": "The game reports its own geometry: the [GEOM] registry",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "tools",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "",
+      "notes": "Registration happens IN the draw helpers (meta_panel, meta_text, meta_title, meta_button_draw, meta_text_fit, meta_sprite_fit), at the point where the number is already known - so a rectangle in the dump is a rectangle on the screen, by construction, and there is no second 'what the layout would be' calculation to drift. One [GEOM] dump per screen per canvas size (global.ui_check_seen), F12 re-arms (obj_ui/Step_0), and every ui_reg_* starts with ui_reg_on() so a release build pays a branch (LL-002).",
+      "refs": [
+        "scripts/scr_ui_check/scr_ui_check.gml",
+        "objects/Menu/Draw_64.gml",
+        "objects/obj_ui/Step_0.gml"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": "2026-10-21"
     },
     {
       "id": "unlock-prices",
@@ -3281,6 +3350,46 @@
       "created": "2026-10-05",
       "updated": "2026-10-05",
       "done": "2026-10-05"
+    },
+    {
+      "id": "ui-flex-other-screens",
+      "title": "The other screens are still hand-placed: Options, Level Complete, HUD",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "3",
+      "size": "M",
+      "prio": 3,
+      "needs": "Port one screen per session onto scr_ui_layout_* the way the menu and the meta screens now are, starting with whichever reports a finding first.",
+      "notes": "The meta screens are the model. These four still place themselves by hand and none of them is dumped by the layout gate, so a finding there would be found by a player rather than by gm layout check.",
+      "refs": [
+        "objects/obj_ui/Step_0.gml",
+        "scripts/scr_ui_flex/scr_ui_flex.gml"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": null
+    },
+    {
+      "id": "ui-palette-adopt",
+      "title": "ui_palette() exists; the colour literals are still spread over six files",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "3",
+      "size": "M",
+      "prio": 3,
+      "needs": "Replace the remaining make_colour_rgb literals with ui_palette() keys, one screen at a time.",
+      "notes": "Cosmetic and independent of the layout work, which is why it was NOT folded into ui-meta-flex: a restyle mixed into a reflow is two changes that cannot be told apart when one of them looks wrong.",
+      "refs": [
+        "scripts/scr_ui_text/scr_ui_text.gml",
+        "scripts/scr_meta_screen/scr_meta_screen.gml"
+      ],
+      "created": "2026-10-21",
+      "updated": "2026-10-21",
+      "done": null
     }
   ],
   "log": [

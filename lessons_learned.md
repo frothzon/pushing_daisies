@@ -89,6 +89,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-066](#ll-066) | A font **installed for the user works everywhere except GameMaker** - `fc-list` finds it, KDE renders it, the font picker does not list it | The Linux IDE discovers fonts by **walking `/usr/share/fonts`**, never fontconfig, so `~/.local/share/fonts` does not exist as far as it is concerned - and a font resource keeps drawing text without any TTF, because its glyphs are **baked** into a PNG atlas | **FIXED** |
 | [LL-067](#ll-067) | A sprite font puts an **em-wide gap between every word**, and **half the UI still draws in the old font** | The string map is **positional** and the sheets are `"!"`..`"~"` with **no space**, so the documented fallback is the **widest glyph's** width; and `draw_reset()`'s font is *ambient*, so any draw path that never calls `draw_set_font` keeps the old face | **FIXED** |
 | [LL-068](#ll-068) | "**The buttons do not work**" on a 16:10 or 21:9 window - the highlight follows the pointer onto the wrong button, and a click opens the wrong screen | `points_to_gui()` divides **GUI by view** on each axis, so the two must share an **aspect**; the GUI was pinned to 960x540 while the window was sized from the **display** aspect (960x600 on 16:10), which is a 60px vertical error at the bottom of the screen | **FIXED** |
+| [LL-069](#ll-069) | The **World Map title runs through the Garden Book button**, Deploy's **wall sits under its own slots**, the Garden Book's shop **hangs off the right edge** - and every locked tower's **name touches its reason** | Every one of those numbers was placed by hand in 960x540, so the layout could say "at x=600" but not "under that" - and the title was centred on the **canvas** while the button was measured from the **right edge**. Three of the four screens were already wrong at 16:9 | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
@@ -5020,6 +5021,104 @@ view gets the design aspect on every entry), `scripts/scr_main_cutscene/scr_main
 
 ---
 
+
+<a name="ll-069"></a>
+## LL-069 — A hand-placed layout can say "at x=600", not "under that", so three of four screens were already wrong at 16:9
+
+**Symptom.** Nothing in the log, and nothing in a 960x540 screenshot. What a
+player sees, measured from the rectangles the game itself paints:
+
+* **World Map at 675 wide:** the 32pt title is centred on the **canvas**
+  (337 ± 65 = 262..412) and "Garden Book" is placed from the **right edge**
+  (`[gw-300, 24, gw-200, 64]` = 375..475). 37 units of the title run through
+  the button. At 960 the same two numbers do not touch, so the bug only exists
+  at a width nobody had tried.
+* **Deploy, at every size:** the tower wall is 3 columns of 124 from y=160, so
+  its rows are 160, 284 and 408 - down to 532. The loadout slots start at
+  `gh-156` = 384, so the wall's **third row is underneath the slots**. The
+  difficulty picker (`[gw-320, 160, gw-80, 316]`) is drawn straight over the
+  wall's right-hand column. 7 towers in 3 columns is 3 rows; 3 rows is 532;
+  the slots are at 384. The arithmetic was never done in one place.
+* **Every locked tower, at every size:** the name is drawn at `+64` with a
+  15px line gap, so a wrapped name occupies 64..79 and 79..94; the reason is
+  at `+92`. The reason starts 2 units before the name's second line ends.
+* **Garden Book at 675:** the shop column starts at x=600 and is 372 wide, so
+  297 units of it are off the right of the canvas - as is the 380-wide info
+  bar under it.
+
+**Root cause.** Four `meta_*_geom()` functions, each returning numbers measured
+from whichever edge was convenient (canvas centre, right edge, bottom edge),
+with nothing recording which rectangle was supposed to follow which. The code
+could express *"put this at x=600"*; it could not express *"put this under
+that"*, so every relationship between two boxes was an arithmetic coincidence
+that a different aspect breaks. And nothing measured a **string**, so a name
+that wrapped into the next line was discovered by a player rather than by the
+code.
+
+The gap that hid it: `global.devMode` prints a lot, but it never printed a
+**rectangle**. There was no way for the game to state what it had drawn, so
+"the layout is fine" was a claim made from screenshots at one aspect.
+
+**Fix.** Three parts, each of which is only useful with the others - the trees
+stop the overlap, the fitting stops the spill, and the dump proves both.
+
+1. **`scr_ui_layout_meta`** - one flex tree per screen. Every screen is now
+   `band 56 / body / foot 60`, and the band is
+   `[currency 240 | title flexGrow | actions 240]`, so the title is centred in
+   the space *between* the two fixed columns and cannot be underneath either.
+   Deploy is slots-row-on-top (4 x 96), then a 4x2 wall of 112 cells beside a
+   160-wide difficulty column. The Garden's shop is sized by **subtraction** -
+   the card column keeps 260 and the cells get the rest - so it cannot be
+   wider than the room it was given. `ui_meta_ensure()` re-authors a tree when
+   the canvas **width** changes, because the cell size is derived from it.
+2. **`scr_ui_text`** - `ui_fit_font()` picks the largest of `[32,20,16]` that
+   fits (so "Garden Book" drops to 20pt at 675 rather than running into the
+   button), `ui_clip_text()` truncates with `".."` and not an ellipsis, because
+   the string map is `"!"`..`"~"` and U+2026 is not in it (LL-067).
+   `ui_palette()` is the same idea for colour.
+3. **`scr_ui_check` + `gm layout check`** (already in place from this session's
+   earlier cards) - and `ui_meta_check()`, which logs one line per screen at
+   build time:
+
+   ```
+   UI    [meta]  deploy  canvas 675x540  nodes 19  missing 0  off-canvas 0  ok
+   ```
+
+   A `FAIL` there means a node name the draw code reads does not exist, or a
+   node is outside the canvas. Neither is visible in a screenshot.
+
+`meta_*_geom()` still returns the same struct shape it always did, now read from
+`ui_meta_rect("deploy", "deploy.wall")` - so every hit test in
+`objects/Menu/Step_0` is untouched. That is the point of doing it this way: the
+screen's geometry moved from a hand-placement to a declaration, and nothing that
+consumed it had to change.
+
+**Guard rails.**
+
+* **A screen's geometry is DECLARED and read BY NAME.** If you are writing
+  `_gw - 300`, you are writing a band by hand.
+* **Two things that share a band are siblings of a flex row**, in draw order.
+  Overlap between siblings is then not a bug you can introduce - it is a shape
+  the layout cannot express.
+* **A cell size is derived, never remembered**: `(rect[2]-rect[0]) /
+  ui_meta_wall_cols()`. A second copy of "4 columns" is a wall drawn at 4 and
+  hit-tested at 3, silently.
+* **Text that must fit is fitted or clipped at the call site.** A fixed font
+  size next to a variable string is a bug that waits for a longer name.
+* **The gate is a run, not a screenshot**: `global.devMode = true`, open the
+  screen at 675/960/1260, then `gm layout check <log>` must print `ok`.
+
+**Status.** FIXED 2026-10-21 - code and gate; the confirmation is a run with
+`global.devMode = true` showing `missing 0  off-canvas 0` per screen and `0`
+findings from `gm layout check`.
+
+**Files.** `scripts/scr_ui_layout_meta/scr_ui_layout_meta.gml`,
+`scripts/scr_ui_text/scr_ui_text.gml`,
+`scripts/scr_meta_screen/scr_meta_screen.gml`,
+`scripts/scr_ui_check/scr_ui_check.gml`, `objects/Menu/Draw_64.gml`,
+`python_tools/gm/layout/` (`metrics.py`, `dump.py`, `rules.py`, `report.py`).
+
+---
 
 ## Adding an entry
 
