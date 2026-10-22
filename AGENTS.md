@@ -104,6 +104,10 @@ GameMaker copes with both, but ~90 files' bytes change. Read/write GML through
 
 ```bash
 grep -cF '\r' <file.gml>     # fixed-string count of literal backslash-r: must be 0
+
+# and the ratio, which grep cannot see: a CRLF-only file must print the SAME
+# number twice. One short means an editor added a bare LF (LL-006).
+t=$(wc -l < <file.gml>); c=$(grep -c $'\r$' <file.gml>); echo "$t lines, $c crlf"
 ```
 
 Full EOL census commands: [LL-006](./lessons_learned.md#ll-006).

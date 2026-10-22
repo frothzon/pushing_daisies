@@ -499,6 +499,22 @@ grep -cF '\r' objects/Menu/Step_0.gml     # fixed-string: must print 0
   GameMaker will actually read - not by letting git store a normalised copy
   the IDE then disagrees with.
 
+* **The EOF newline is where an "EOL-preserving" editor still leaks**
+  (2026-10-21). Editing `objects/obj_spawn/Draw_0.gml` - a CRLF-only event -
+  kept every *replaced* line CRLF but left the file ending `}\r\n\n`: one bare
+  LF, because the tool appended its own newline. `grep -cF '\r'` says 0
+  (nothing literal), and `wc -l` looks right, so the two checks this file
+  recommends both pass. The check that catches it is the *ratio*:
+
+  ```bash
+  t=$(wc -l < file); c=$(grep -c $'\r$' file); echo "$t lines, $c crlf"
+  # a CRLF-only file must print the same number twice; one short = one LF line
+  ```
+
+  Fix: rewrite the tail (`b[:-1] + b'\r\n'`), then re-run the ratio. Do this for
+  every edited `objects/**` event, not just the ones git warned about - git only
+  warns when the *whole* file's normalisation changes.
+
 
 ---
 
