@@ -149,6 +149,11 @@ PYTHONPATH=python_tools python3 -m gm balance check
 # 6. the tracker still describes reality (section 6)
 #    expect: "progress.json, PROGRESS.md and progress.html agree"
 PYTHONPATH=python_tools python3 -m gm progress check
+
+# 7. the layout gate - only after a run with global.devMode = true that has
+#    opened the meta screens (the F12/GUI dump lives in the log, not on disk)
+#    expect: "ok  ..." and exit 0; a finding is a rectangle in the wrong place
+PYTHONPATH=python_tools python3 -m gm layout check <the run's log>
 ```
 
 **Green tooling is not a fix.** The real gate is a run with
@@ -174,6 +179,9 @@ the exact log lines to look for, and name what would falsify your fix.
 | **Statuses** (slow now; stun/burn/poison/root/bleed/vuln are declared) | `scripts/scr_status/scr_status.gml` — `STATUS`, `status_apply`, `status_tick`, `status_speed_mult`, `status_tint`, `status_summary`. One instance per kind per monster; the monster owns `statuses` + `status_count` (obj_mon/Create_0) and ticks it LAST in obj_mon/Step_0; the speed multiply is in `scr_zomb_pathSpeed` |
 | **Tower traits** (a status on hit, a crit chance) | `scripts/scr_tower_roster/scr_tower_roster.gml` — `tower_trait_table()`, `tower_trait_find`, `tower_trait_get`. Keyed by tower NAME, kept out of `scr_towerData` so the balance tester's 5-argument contract cannot drift (LL-038). Applied in `scr_tower_shoot` at the strike |
 | **Progress tracker** | `progress.json` (source) → `PROGRESS.md`, `progress.html` (generated) — §6 |
+| **Meta screens** (World Map, Deploy, Garden Book, Results) | `scripts/scr_meta_screen/scr_meta_screen.gml` — drawing and hit testing. **Their geometry is a flex tree**, read back by name (`meta_*_geom()`), never a hand-placed number: `scripts/scr_ui_layout_meta` ([LL-069](./lessons_learned.md#ll-069)) |
+| **Layout trees** | `scripts/scr_ui_flex` (state, trees, `ui_rect`/`ui_place`/`ui_dump`) → `scripts/scr_ui_layout_{menu,meta}` (one function per screen) → `scripts/scr_ui_text` (`ui_fit_font`, `ui_clip_text`, `ui_palette`) |
+| **Layout gate** | `scripts/scr_ui_check` dumps every painted rectangle once per screen per canvas size (F12 re-arms); `gm layout check <log>` rules on it (overlap / spill / off-canvas, exit 1); `gm layout metrics --log <log>` proves the font model matches the game |
 | **Art briefs** (what to draw, canvas/origin/frames, what already exists) | `art_descriptions.md` — §3 the technical contract, §4 card by card |
 | **Balance tester** | `python_tools/gm/balance/` — `gm balance {tables,route,towers,afford,sim,project,check,fit}`; reads the tables (and the shot cycle) out of GML, so it cannot drift ([LL-038](./lessons_learned.md#ll-038), [LL-040](./lessons_learned.md#ll-040)). `project` is the closed form (a ratio); `sim` time-steps the stage at 60fps and is the arbiter on outcomes ([LL-042](./lessons_learned.md#ll-042)) |
 | Python toolkit | `python_tools/` — read `python_tools/README.md` first |
