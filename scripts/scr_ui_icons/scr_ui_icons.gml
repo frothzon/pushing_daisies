@@ -17,10 +17,10 @@
 ///
 /// THE CANVASES ARE THE SIZE THE JOB NEEDS: 24 for the currency line, 48 for a
 /// node row or a growth panel, 64 for a candy or a medal.  icon_draw() is told
-/// the size it wants on SCREEN and works the scale out from the canvas, then
-/// subtracts the origin - so the two blood-tree icons whose origin is (0,0)
-/// instead of the centre land exactly where every other icon does instead of
-/// half a tile up and left.
+/// the size it wants on SCREEN and fits the ART to it (scr_ui_image), so the
+/// canvas only has to be big enough to hold the art: empty padding does not
+/// shrink the picture, and an origin at (0,0) or at the centre makes no
+/// difference to where it lands.
 
 enum CURRENCY { SEEDS = 0, CLOVERS, SHARDS, CANDY };
 enum BRANCH   { VITALITY = 0, OFFENSE, GROWTH, HARVEST };
@@ -120,25 +120,28 @@ function icon_badge(_badge) {
 	return spr_badge_locked;
 }
 
-/// Draw one icon with its CANVAS CENTRE at (_x,_y) and its longest side
+/// Draw one icon with its ART centred at (_x,_y) and its longest side at most
 /// `_size` pixels on screen.  Returns false when there is no art, which is the
 /// signal a caller needs to not leave a gap for a picture that is not there.
 ///
-/// The origin is subtracted rather than assumed: draw_sprite_ext scales around
-/// the origin, so a 48x48 icon whose origin is (0,0) would otherwise hang half
-/// a tile up and left of every other icon in the same row.
+/// PLACED BY ITS ART, NOT ITS ORIGIN (2026-10-22, LL-071).  The old body
+/// subtracted the origin, which draw_sprite_ext has already honoured, so an
+/// icon with a centred origin - every icon in the drop - was painted half an
+/// icon UP AND LEFT of the point the caller passed.  The Garden Book's branch
+/// icon landed at x 1..31 while its box claimed 16..50, and each currency icon
+/// hung off the left of the margin before its own number.  It also scaled the
+/// CANVAS, so two icons in one row came out different sizes.
+///
+/// `_name` is what the layout dump calls the rect; pass one per site so a
+/// finding says which icon moved.
 ///
 /// Alpha is inherited from the draw state, so an icon inside a fade fades with
-/// it; the colour is not, because a tinted icon is not what any caller wants.
-function icon_draw(_spr, _x, _y, _size) {
-	if(!sprite_exists(_spr)) return false;                /// LL-012
-	var _w = sprite_get_width(_spr),
-	    _h = sprite_get_height(_spr);
-	if(_w <= 0 || _h <= 0) return false;
-	var _s = ((_size > 0) ? _size : max(_w, _h)) / max(_w, _h);
-	draw_sprite_ext(_spr, 0,
-	                _x - sprite_get_xoffset(_spr) * _s,
-	                _y - sprite_get_yoffset(_spr) * _s,
-	                _s, _s, 0, c_white, draw_get_alpha());
+/// it; the tint is white, because a tinted icon is not what any caller wants.
+function icon_draw(_spr, _x, _y, _size, _name = "icon") {
+	var _b = ui_art_bbox(_spr);
+	if(_b[4] <= 0 || _b[5] <= 0) return false;            /// no art, LL-012
+	var _s = (_size > 0) ? ui_art_scale(_spr, _size, _size) : 1;
+	if(_s <= 0) return false;
+	ui_art_draw(_spr, _x, _y, _s, c_white, draw_get_alpha(), _name);
 	return true;
 }

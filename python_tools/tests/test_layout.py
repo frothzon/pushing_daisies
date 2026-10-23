@@ -520,10 +520,44 @@ class RuleTests(unittest.TestCase):
                  make_item("panel", "b", 10, 0, 20, 10)]
         self.assertEqual([], rules.check([make_frame(items)]))
 
-    def test_an_image_inside_its_cell_is_not_a_rule_yet(self):
-        items = [make_item("panel", "panel", 0, 0, 100, 100),
-                 make_item("image", "sprite", 10, 10, 90, 90)]
+    def test_an_image_inside_its_cell_is_fine(self):
+        items = [make_item("panel", "cell", 0, 0, 100, 100),
+                 make_item("image", "spr_pina_idle_192x", 10, 10, 90, 90)]
         self.assertEqual([], rules.check([make_frame(items)]))
+
+    def test_an_image_over_a_label_is_an_image_finding(self):
+        # the Garden Book's branch icon, as it was drawn: x 1..31, while the
+        # heading starts at 38 - except here it lands ON the heading
+        items = [make_item("text", "heading", 10, 10, 60, 26, "Offense"),
+                 make_item("image", "branch_icon", 1, 10, 31, 42)]
+        found = rules.check([make_frame(items)])
+        self.assertEqual(["image"], [f.rule for f in found])
+        self.assertEqual("branch_icon", found[0].a.name)
+        self.assertEqual("heading", found[0].b.name)
+        self.assertEqual(21 * 16, found[0].area)
+
+    def test_an_image_that_crosses_its_cell_is_an_image_finding(self):
+        # Cannon Tulip in the Garden Book's shop cell: 8px of art above the
+        # cell's top edge, which every dump called clean (LL-071)
+        items = [make_item("panel", "shop_cell", 496, 100, 602, 206),
+                 make_item("image", "spr_cannon_tulip_idle_192x", 521, 92, 576, 146)]
+        found = rules.check([make_frame(items, width=960, height=540)])
+        self.assertEqual(["image"], [f.rule for f in found])
+        self.assertEqual("shop_cell", found[0].b.name)
+        self.assertEqual(55 * 46, found[0].area)
+
+    def test_an_image_big_enough_to_be_a_backdrop_is_not_a_finding(self):
+        items = [make_item("image", "backdrop", 0, 0, 100, 100),
+                 make_item("panel", "cell", 10, 10, 90, 90),
+                 make_item("text", "label", 10, 10, 60, 26, "on top")]
+        self.assertEqual([], rules.check([make_frame(items)]))
+
+    def test_two_images_on_the_same_pixels_is_an_image_finding(self):
+        items = [make_item("image", "a", 10, 10, 60, 60),
+                 make_item("image", "b", 40, 40, 90, 90)]
+        found = rules.check([make_frame(items)])
+        self.assertEqual(["image"], [f.rule for f in found])
+        self.assertEqual(20 * 20, found[0].area)
 
     def test_the_worst_finding_comes_first(self):
         items = [make_item("text", "small", 10, 10, 20, 20),

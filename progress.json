@@ -20,7 +20,8 @@
   },
   "focus": {
     "now": [
-      "ui-meta-flex"
+      "ui-meta-flex",
+      "ui-icon-origins"
     ],
     "next": [
       "biome-props",
@@ -28,7 +29,7 @@
       "combat-gate-two-loadouts",
       "ui-flex-other-screens"
     ],
-    "note": "2026-10-21 (layout): the meta screens are flex trees now, and the geometry is read back by name, so the hand-placed numbers that made the World Map title run through the Garden Book button and Deploy's wall run under its slots are gone. The gate is the point: scr_ui_check dumps every painted rectangle, gm layout check rules on it, and ui_meta_check logs one line per screen at build time. Reload the project before testing - GameMaker held the files while scr_ui_layout_meta and scr_ui_text were created."
+    "note": "2026-10-21 (layout): the meta screens are flex trees now, and the geometry is read back by name, so the hand-placed numbers that made the World Map title run through the Garden Book button and Deploy's wall run under its slots are gone. The gate is the point: scr_ui_check dumps every painted rectangle, gm layout check rules on it, and ui_meta_check logs one line per screen at build time. Reload the project before testing - GameMaker held the files while scr_ui_layout_meta and scr_ui_text were created. 2026-10-22 (art placement): every UI picture is now fitted by its ART bounding box, not its canvas and not its origin (LL-071, scr_ui_image), so icons and tower thumbnails all MOVE - reload and re-dump before trusting any finding from an older run."
   },
   "tasks": [
     {
@@ -3243,6 +3244,29 @@
       "done": null
     },
     {
+      "id": "ui-icon-origins",
+      "title": "UI art: place a picture by its ART rect, not its origin",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "3",
+      "size": "M",
+      "prio": 1,
+      "needs": "Reload the project, then open Deploy and the Garden Book at 675x540, 960x540 and 1260x540 and press F12. Every tower thumbnail should now be the same height, filling its cell top to bottom, and no image should cross a cell edge; the branch icon and the currency icons should sit centred in the gap before their text. Send the log: a finding from gm layout check, or a UI [check] art-fit ... OVERFLOWS line, or a thumbnail shorter than its band means this is not done.",
+      "notes": "Three defects, one fix. (1) icon_draw subtracted the origin that draw_sprite_ext had already honoured, so every centred-origin icon drew half an icon up and left - spr_offense (48 canvas, 44x41 art, origin 24,24) painted at x 1.3..30.7 when the caller asked to centre it on x 32. The docblock defending the subtraction had been generalised from the two blood-tree icons whose origin is (0,0), which are the only sprites it was right for. (2) meta_sprite_fit scaled the 192x192 CANVAS: a thumbnail came out at 46-75% of its cell, a different size per tower, sitting low because the art centre is 25-40px below the canvas centre - and Cannon Tulip and Meat Bulb poked out of the top of the shop cell. (3) it registered the CANVAS rect as kind image while rules.py had no image rule at all (images and anything else: not a rule yet), and the branch icon registered a hand-typed 16..50 box while its art was painted at 1..31 - so the gate was judging rectangles nobody had drawn, and said every screen was clean. Fix: new scr_ui_image places the ART rect. ui_art_bbox (sprite_get_bbox_*, +1 because the far edge is inclusive; a no-art sprite falls back to its canvas; nothing throws), ui_art_scale (min fit, capped at 1 - the clamp meta_sprite_fit had documented and never enforced), ui_art_rect, ui_art_draw (the origin is read ONCE, to convert canvas coords into a draw position, and the rect it painted is what gets registered) and ui_art_fit (one overflow line that reads only its own arguments). icon_draw and meta_sprite_fit kept their signatures and became thin callers, so all five call sites were untouched. rules.py gained a fifth rule: an image inside its cell is fine, an image big enough to be a backdrop behind a label is fine, art over text / art crossing its cell edge / two pictures on the same pixels are findings. Checked against the sprite .yy files rather than by eye: all 12 tower sheets land y 100..176 (one height, inside the cell - Pina 519..579, Daisy 516..582, Cannon Tulip 510..588), and every icon centres +0.0,+0.0 on the point passed, including the (0,0)-origin spr_blood_magnet and spr_blood_moon. So normalising those two origins is no longer needed anywhere and the .yy files were left alone. roundtrip 768 files 0 differ; 247 tests OK (+3: four new image tests replacing the not-a-rule-yet one).",
+      "refs": [
+        "scripts/scr_ui_image/scr_ui_image.gml",
+        "scripts/scr_ui_icons/scr_ui_icons.gml",
+        "scripts/scr_meta_screen/scr_meta_screen.gml",
+        "python_tools/gm/layout/rules.py",
+        "lessons_learned.md#ll-071"
+      ],
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": null
+    },
+    {
       "id": "ui-meta-flex",
       "title": "Move the meta screens (map, deploy, garden, results) onto flex nodes",
       "status": "doing",
@@ -4093,6 +4117,12 @@
       "who": "cline",
       "task": "ui-meta-flex",
       "what": "The first real run of the layout gate got as far as the World Map screen and died inside its own dump: Variable Menu.json_string(...) not set before reading it - json_string is not a GameMaker function, and an unknown call compiles as a VARIABLE READ, so it failed only when the line ran (LL-070). scr_ui_check now calls json_stringify and guards every field it reads, and the [meta] line says 'checked' rather than 'nodes' because it checks a subset of the tree's nodes. A new test, CalledFunctionTests.test_every_called_name_exists, matches every name( in every .gml against the runtime fnames file plus the project's own definitions; it was falsified by putting json_string back, which it named exactly. Still open on this card: the reload and the three-aspect run."
+    },
+    {
+      "date": "2026-10-22",
+      "who": "cline",
+      "task": "ui-icon-origins",
+      "what": "Every UI picture was placed by its ORIGIN and scaled by its CANVAS, and the layout gate could not see any of it (LL-071). icon_draw subtracted the origin that draw_sprite_ext had already honoured, so a centred-origin icon drew half an icon up and left (spr_offense painted at x 1.3..30.7 when the caller asked to centre it on 32); meta_sprite_fit scaled the 192x192 canvas, so a tower thumbnail was 46-75% of its cell, a different size per tower, sitting low, with Cannon Tulip and Meat Bulb out of the top of the shop cell; and both registered rectangles nobody had painted - a canvas box, and a hand-typed 16..50 - while rules.py had no image rule at all, so every screen passed. New scr_ui_image fits the ART rect: ui_art_bbox/scale/rect/draw/fit, with the origin read once to convert canvas coords into a draw position and the scale capped at 1. icon_draw and meta_sprite_fit kept their signatures and delegate, so the five call sites were untouched, and rules.py gained the image rule (contained = fine, backdrop behind a label = fine, over text / across a cell edge / two pictures = finding). Checked against the sprite .yy files rather than by eye: all 12 tower sheets land y 100..176 and every icon centres +0.0,+0.0 on the point passed, including the (0,0)-origin spr_blood_magnet and spr_blood_moon - so those origins need no normalising anywhere. 768 files roundtrip 0 differ, 247 tests OK. Still open: the reload and the three-aspect F12 run."
     }
   ]
 }

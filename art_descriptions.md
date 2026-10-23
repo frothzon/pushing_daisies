@@ -220,11 +220,21 @@ system to fit into, so the contract is simply:
   **24 px**;
 * distinguishable **by silhouette**, because colour is the only other channel
   and the UI is text-heavy;
-* drawn at 1× or 2× only — no half-pixel sizes;
+* **pad generously and centre the subject**: the code fits the ART (its bounding
+  box) to the space available and scales it fractionally, so a 24×24 canvas
+  holding 18×20 of art draws an 18×20 icon and a larger canvas is free room, not
+  a larger icon ([LL-071](./lessons_learned.md#ll-071));
 * no text and no numbers in the art (the code draws the numbers).
 
 Recommended sizes: **24×24** currency icons, **64×64** candy and badge icons,
 **48×48** tree / mastery / blood nodes.
+
+**Where a sprite lands is decided by its art, not by its canvas or its origin.**
+`icon_draw()` and `meta_sprite_fit()` measure `sprite_get_bbox_*` and centre that
+rectangle, so an icon with a `(0,0)` origin and one with a centred origin land in
+exactly the same place. Keep the origin sensible anyway — the *world* still uses
+it (feet for a tower sheet) — but it is no longer a UI-position decision, and a
+new icon does not need its origin negotiated before it can be used.
 
 ### 3.6 The level-complete banner — measured, not guessed
 

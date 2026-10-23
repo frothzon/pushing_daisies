@@ -1,6 +1,6 @@
 """The rules: which pairs of rectangles are a bug.
 
-Four rules, each of which maps to something a player can see:
+Five rules, each of which maps to something a player can see:
 
 ``canvas``  something is partly off the screen.  The Garden Book's shop column
             at 5:4 is this: it does not overlap anything, it is simply not
@@ -15,6 +15,14 @@ Four rules, each of which maps to something a player can see:
             runs out of its own panel, and the reason the Deploy header lands in
             wall cells 4-6 - the text is wider than the cell it belongs to, so
             it crosses its neighbour.
+``image``   a picture intersects a label, or crosses the edge of the cell it
+            sits in.  This is the rule that was missing while every screen read
+            clean and the art was visibly wrong: ``meta_sprite_fit`` registered
+            the CANVAS rectangle while the pixels landed somewhere else, so the
+            checker was handed a fiction, and the thumbnails it described were
+            46-75% of their cells with two of them poking out (LL-071).  A
+            picture inside its own cell - or big enough to be the backdrop
+            behind a label - is fine, which is the same shape as ``spill``.
 
 Tolerance, and why it is not zero.  Rects reach here from a flex solver that
 lays out in floats, so a shared edge can read 0.0001 apart.  ``tol`` (0.5 GUI
@@ -32,6 +40,14 @@ from .dump import Frame, Item, Rect
 #: Kinds that are "a box drawn behind something".  Everything else is measured
 #: as content.
 BOX_KINDS = ("panel", "button")
+
+#: Kinds a picture is allowed to sit inside.  ``area`` is registered once, for a
+#: whole body region, and is a container by the same logic.
+CONTAINER_KINDS = BOX_KINDS + ("area",)
+
+#: Kinds that are "a picture".  Content, like a label: it may sit inside a box,
+#: it may not cross one.
+IMAGE_KINDS = ("image",)
 
 #: A pair closer than this is a shared edge, not an overlap.
 TOLERANCE = 0.5
@@ -141,6 +157,25 @@ def _pair(frame: Frame, a: Item, b: Item, tol: float) -> List[Finding]:
             return []
         return [Finding("collide", frame.screen, frame.size, shared, a, b)]
 
+    a_image, b_image = a.kind in IMAGE_KINDS, b.kind in IMAGE_KINDS
+
+    if a_image or b_image:
+        # A picture is CONTENT, so it follows the label's rule: inside its own
+        # cell is the layout, over a label is a misread, and hanging out of the
+        # cell is the bug the tower thumbnails had while every dump read clean.
+        if a_image and b_image:
+            return [Finding("image", frame.screen, frame.size, shared, a, b)]
+        picture, other = (a, b) if a_image else (b, a)
+        if contains(picture.rect, other.rect, tol):
+            return []  # a backdrop behind a panel or a label
+        if other.kind == "text":
+            return [Finding("image", frame.screen, frame.size, shared, picture, other)]
+        if other.kind in CONTAINER_KINDS:
+            if contains(other.rect, picture.rect, tol):
+                return []  # inside the cell it belongs to
+            return [Finding("image", frame.screen, frame.size, shared, picture, other)]
+        return []
+
     if a_text and b_text:
         return [Finding("text", frame.screen, frame.size, shared, a, b)]
 
@@ -153,12 +188,14 @@ def _pair(frame: Frame, a: Item, b: Item, tol: float) -> List[Finding]:
                        # finding at worst, not a pair bug
         return [Finding("spill", frame.screen, frame.size, shared, text, box)]
 
-    return []  # images and anything else: not a rule yet
+    return []  # anything else: not a rule yet
 
 
 __all__ = [
     "BOX_KINDS",
+    "CONTAINER_KINDS",
     "Finding",
+    "IMAGE_KINDS",
     "TOLERANCE",
     "area",
     "check",

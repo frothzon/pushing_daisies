@@ -108,7 +108,7 @@ function meta_icon_value(_x, _y, _spr, _text, _col, _size) {
 	var _w = 0;
 	if(_size <= 0) _size = 20;
 	/// the band the text occupies, so an icon and a value share a centre line
-	if(icon_draw(_spr, _x + _size*0.5, _y + string_height("Ag")*0.5, _size)){
+	if(icon_draw(_spr, _x + _size*0.5, _y + string_height("Ag")*0.5, _size, "cur_icon")){
 		_w = _size + 6;
 	}
 	draw_set_colour(_col);
@@ -132,14 +132,18 @@ function meta_icon_value(_x, _y, _spr, _text, _col, _size) {
 /// the previous value ended - the same spacing either way.
 /// The width meta_icon_value() will use for `_spr`, without drawing it.
 ///
-/// The same three tests icon_draw() makes (sprite_exists, then two non-zero
-/// dimensions - LL-012), so a measured line and a painted line cannot disagree
-/// about whether an icon is there.  `ui_text_width` does the text half.
+/// The ART's width at the scale icon_draw() will draw it (scr_ui_image), not
+/// `_size`: an icon is fitted by its art, so a 24px canvas holding 18px of art
+/// takes 18px of the line and the 6px gap after it stays 6px, instead of
+/// drifting by whatever padding the canvas happens to have.  A sprite with no
+/// art measures 0 - the same signal icon_draw() returns - so a measured line
+/// and a painted line cannot disagree about whether an icon is there (LL-012).
 function meta_icon_w(_spr, _size) {
-	if(!sprite_exists(_spr)) return 0;
-	if(sprite_get_width(_spr) <= 0) return 0;
-	if(sprite_get_height(_spr) <= 0) return 0;
-	return ((_size > 0) ? _size : 20) + 6;
+	var _b = ui_art_bbox(_spr);
+	if(_b[4] <= 0 || _b[5] <= 0) return 0;
+	var _s = (_size > 0) ? ui_art_scale(_spr, _size, _size) : 1;
+	if(_s <= 0) return 0;
+	return _b[4] * _s + 6;
 }
 
 /// The four currency items as [sprite, text] pairs - ONE list, measured to
@@ -863,8 +867,12 @@ function meta_draw_garden() {
 	draw_set_valign(fa_top);
 
 	var _bh = string_height("Ag");
-	icon_draw(icon_branch(BRANCH.OFFENSE), _br[0] + 16, (_br[1] + _br[3])*0.5, 32);
-	ui_reg_box("image", "branch_icon", _br[0], _br[1], _br[0] + 34, _br[3]);
+	/// the icon is CENTRED at _br[0]+16, and it registers the rect it actually
+	/// drew: the hand-typed box that used to sit here claimed 16..50 while the
+	/// icon was painted at 1..31, so the gate was judging a rectangle that
+	/// existed nowhere on screen (LL-071)
+	icon_draw(icon_branch(BRANCH.OFFENSE), _br[0] + 16, (_br[1] + _br[3])*0.5, 32,
+	          "branch_icon");
 
 	draw_text(_br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5, "Offense");
 	ui_reg_text("heading", _br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5,
@@ -893,7 +901,7 @@ function meta_draw_garden() {
 		/// maxed (scr_ui_icons) - then the text 54px in, clear of it.  Both
 		/// text rows move together: a label indented and a description not
 		/// would put the pip through the description.
-		icon_draw(icon_node(_max), _rc[0] + 26, _rc[1] + 28, 40);
+		icon_draw(icon_node(_max), _rc[0] + 26, _rc[1] + 28, 40, "node_icon");
 
 		draw_set_font(fnt_size16);
 		draw_set_colour(c_white);
@@ -995,34 +1003,36 @@ function meta_draw_garden() {
 // different name lengths.  Measuring, rather than guessing a scale and hoping,
 // is the difference between a grid that reads and one that clips.
 
-/// Draw a sprite scaled to fit a box, centred, KEEPING ITS ASPECT RATIO.
+/// Draw a sprite scaled to fit a box, centred on its ART, KEEPING ITS ASPECT.
 ///
 /// A tower stretched to fill a wide slot reads as a DIFFERENT tower - the
-/// silhouette is half of how a tower is recognised - so the scale is uniform:
-/// the smaller of the two ratios, never more than 1, so a small sprite is not
-/// blown up into a blur.
+/// silhouette is half of how a tower is recognised - so the scale is uniform.
+///
+/// THE ART, NOT THE CANVAS (2026-10-22, LL-071).  These are the 192x192 world
+/// sheets: feet on a ground line at y~180, empty sky above, so the art centre
+/// sits 25-40px BELOW the canvas centre and most of the canvas is padding.
+/// Fitting the canvas drew each thumbnail at 46-75% of its cell and at a
+/// different size per tower, and the two whose art reaches highest (Cannon
+/// Tulip, Meat Bulb) poked out of the shop cell.  scr_ui_image fits the art
+/// rect instead, and never blows a sprite up past 1 (a small sprite in a big
+/// box must not go soft).
+///
+/// It also means the origin - feet here, centre for an icon - cannot move the
+/// picture again: the origin is read once, inside ui_art_draw, only to convert
+/// canvas coordinates into a draw position.
 ///
 /// `sprite_exists` is not decoration.  A sprite that is not there makes a raw
 /// draw_sprite_ext fatal (LL-012), and a future roster entry can land before
 /// its art does.
 ///
+/// The rect is registered under the sprite's own name, so a finding in the dump
+/// says WHICH tower moved.
+///
 /// Returns the scale used, or 0 when it drew nothing.
 function meta_sprite_fit(_spr, _cx, _cy, _maxw, _maxh, _blend, _alpha) {
 	if(!sprite_exists(_spr)) return 0;
-
-	var _sw = max(sprite_get_width(_spr), 1),
-	    _sh = max(sprite_get_height(_spr), 1),
-	    _sc = min(_maxw / _sw, _maxh / _sh);
-
-	draw_sprite_ext(_spr, 0, _cx, _cy, _sc, _sc, 0, _blend, _alpha);
-
-	/// the picture's own rectangle - art that outgrows its cell is a layout
-	/// bug the text alone would never show
-	ui_reg_box("image", "sprite",
-	           _cx - _sw*_sc*0.5, _cy - _sh*_sc*0.5,
-	           _cx + _sw*_sc*0.5, _cy + _sh*_sc*0.5);
-
-	return _sc;
+	return ui_art_fit(_spr, _cx, _cy, _maxw, _maxh, _blend, _alpha,
+	                  sprite_get_name(_spr));
 }
 
 /// Break `_text` into at most `_max_lines` pieces, each of which fits `_maxw`

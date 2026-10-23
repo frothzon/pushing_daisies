@@ -90,7 +90,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-067](#ll-067) | A sprite font puts an **em-wide gap between every word**, and **half the UI still draws in the old font** | The string map is **positional** and the sheets are `"!"`..`"~"` with **no space**, so the documented fallback is the **widest glyph's** width; and `draw_reset()`'s font is *ambient*, so any draw path that never calls `draw_set_font` keeps the old face | **FIXED** |
 | [LL-068](#ll-068) | "**The buttons do not work**" on a 16:10 or 21:9 window - the highlight follows the pointer onto the wrong button, and a click opens the wrong screen | `points_to_gui()` divides **GUI by view** on each axis, so the two must share an **aspect**; the GUI was pinned to 960x540 while the window was sized from the **display** aspect (960x600 on 16:10), which is a 60px vertical error at the bottom of the screen | **FIXED** |
 | [LL-069](#ll-069) | The **World Map title runs through the Garden Book button**, Deploy's **wall sits under its own slots**, the Garden Book's shop **hangs off the right edge** - and every locked tower's **name touches its reason** | Every one of those numbers was placed by hand in 960x540, so the layout could say "at x=600" but not "under that" - and the title was centred on the **canvas** while the button was measured from the **right edge**. Three of the four screens were already wrong at 16:9 | **FIXED** |
-| [LL-070](#ll-070) | The game **dies inside a Draw event** naming a variable nobody ever assigned: `Variable Menu.json_string(…) not set before reading it` - and the build was clean | **`json_string` is not a GameMaker function** (`json_stringify` is), and GML compiles an **unknown call as a variable read**, so a misspelt function is a runtime crash that blames a variable | **FIXED** |
+| [LL-071](#ll-071) | Icons sit **half an icon up and left** of where the layout put them, tower thumbnails are a **different size each** and two **poke out of their cell** - and `gm layout check` calls every one of those screens **clean** | A picture is placed by its **art rectangle**, not its origin: the origin was subtracted **twice** (`draw_sprite_ext` had already honoured it), the **canvas** was scaled instead of the art, and the dump registered a rectangle **nobody had drawn** | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
@@ -5242,6 +5242,115 @@ above; the *layout* confirmation is still the run described in LL-069
 `python_tools/tests/test_gm.py`, `python_tools/tests/test_layout.py`,
 `python_tools/gm/layout/report.py`, `python_tools/gm/layout/cli.py`,
 `scripts/scr_ui_layout_meta/scr_ui_layout_meta.gml`.
+
+---
+
+## LL-071 — A picture is placed by its ART RECTANGLE, not by its origin, and the dump was registering a rectangle nobody drew
+
+**Symptom.** Every icon and thumbnail on the meta screens was visibly in the
+wrong place, and no two of them were wrong in the same way:
+
+* the Garden Book's Offense **branch icon sat against the left edge**, its leaf
+  half under the panel border, leaving a 27-unit hole before the word
+  "Offense" it was supposed to sit beside;
+* each **currency icon hung up and left of its own number** - the first one
+  started ~7 units *left* of the item's own x, inside the margin, and the gap
+  it drew to the number was 18 units where 6 was intended;
+* **tower thumbnails were a different size each** (Ivy nearly filled its cell,
+  Pina took two thirds of it), all sat low in their cells, and **Cannon Tulip
+  and Meat Bulb poked out of the top** of the Garden Book's shop cell;
+* and `gm layout check` reported every one of those screens **clean**.
+
+Three defects, two in the drawing and one in the gate, and the third is what
+made the other two take a session to see.
+
+**Root cause.**
+
+1. **The origin was subtracted twice.** `draw_sprite_ext(spr, 0, dx, dy, …)`
+   already puts the sprite's *origin* at `(dx, dy)`: canvas pixel `p` lands at
+   `dx + (p - xoffset)*s`. `icon_draw` passed `dx = _x - xoffset*_s`, so pixel
+   `p` landed at `_x + (p - 2*xoffset)*s` - for the centred origin every icon in
+   the drop has, exactly **half a canvas up and left** of the point the caller
+   gave it. `spr_offense` (48 canvas, 44x41 art, origin 24,24) drawn at x 32 was
+   painted at **x 1.3..30.7**.
+   The old docblock argued the opposite, and it was not stupid: it had been
+   written from the **two blood-tree icons whose origin is (0,0)**
+   (`spr_blood_magnet`, `spr_blood_moon`), which are exactly the two sprites for
+   which `p - 2*0` is right. A rule generalised from its two exceptions.
+
+2. **The canvas was scaled, not the art.** The 192x192 tower sheets are authored
+   for the **world**: feet on a ground line at y~180, empty sky above, so the art
+   centre sits **25-40 px below the canvas centre** and the canvas is mostly
+   padding. `meta_sprite_fit` scaled `max(w, h)` and drew at the canvas centre,
+   so the thumbnail was 46-75% of its cell, a different fraction per tower, and
+   the two whose art reaches highest (Cannon Tulip, Meat Bulb) left the cell.
+
+3. **The dump registered a fiction.** `meta_sprite_fit` registered
+   `_cx ± canvas*_s/2` - the *canvas* rectangle, which is not where the pixels
+   were - and the Garden Book's branch icon registered a **hand-typed** box
+   (`_br[0] .. _br[0]+34`) while its icon was painted at 1..31. On top of that
+   `rules.py` had no rule for `image` at all (`return []  # images and anything
+   else: not a rule yet`), so a picture could not fail the gate even with a
+   correct rectangle. Green gate, wrong screen: the checker was judging the
+   intention, not the paint.
+
+**Fix.** One idea, in a new script `scr_ui_image`: **place the art rectangle**.
+
+| Call | What it does |
+| --- | --- |
+| `ui_art_bbox` | the art box in canvas space, `[l, t, r, b, w, h]`, from `sprite_get_bbox_*` (canvas-relative - LL-047); no-art falls back to the canvas, nothing throws (LL-012) |
+| `ui_art_scale` | `min(maxw/aw, maxh/ah, 1)` - fits the ART, never blows it up |
+| `ui_art_rect` | the screen rect the art will occupy, from the art centre |
+| `ui_art_draw` | draws with `dx = _cx - (art_centre_x - xoffset)*_s`, registers that rect as `image` |
+| `ui_art_fit` | fit + draw + one overflow line that reads only its own arguments |
+
+`icon_draw` and `meta_sprite_fit` both became thin callers, keeping their
+signatures, so all five call sites were untouched. Then the gate learned the
+rule: an `image` may sit inside its cell or be a backdrop behind a label (the
+same shape as `spill`), and anything else - art over text, art crossing its
+cell's edge, two pictures on the same pixels - is a finding.
+
+The origin did not need to be fixed anywhere, only *read once, inside the draw*.
+That is why `spr_blood_magnet` and `spr_blood_moon` still have `(0,0)` origins
+and land exactly like every other icon, and why the 12 tower sheets all land on
+`y 100..176` - the full band, one height, inside the cell.
+
+---
+
+**Guard rails.**
+
+* **Never subtract an origin from a centre.** If you have a point you want the
+  *picture* centred on, compute where the picture is and move the draw to match.
+  `draw_sprite_ext` has already honoured the origin; subtracting it is doing it
+  twice.
+* **Measure the art, not the canvas.** `sprite_get_bbox_*` is canvas-relative and
+  **inclusive** at the far edge, so width is `bbox_right - bbox_left + 1` and the
+  art centre is `(bbox_left + bbox_right + 1)/2`. A canvas is a working size; it
+  is not the picture.
+* **Register what you drew, from the draw call's own numbers.** A hand-typed rect
+  is a rect nobody painted. If the geometry is worth checking, it is worth
+  computing.
+* **Every content kind needs a rule, or the gate is blind to it.** `rules.py`
+  named `panel`/`button`/`text` and silently passed everything else; a kind with
+  no rule is a kind no finding can name.
+* **A docblock that promises a clamp is not a clamp.** `meta_sprite_fit` said
+  "never more than 1" and had no `min(…, 1)`; the cap is now in `ui_art_scale`,
+  where every caller gets it.
+* **Generalising from the exception is how the doc became wrong.** Two sprites
+  with a `(0,0)` origin made the subtraction look correct for a year.
+
+**Status.** FIXED 2026-10-22. `roundtrip` 768 files 0 differ; **247 tests** `OK`
+(four new: image over text, image crossing its cell, image as a backdrop, two
+images overlapping - and the old "images are not a rule yet" test replaced,
+hence +3); the arithmetic checked against the sprite `.yy` files for all 12 tower
+sheets and 8 icons (every icon centres `+0.0,+0.0` on the point passed, including
+the `(0,0)`-origin pair). The *visual* confirmation is the run: reload, open
+Deploy and the Garden Book at 675/960/1260, F12, `gm layout check <log>`.
+
+**Files.** `scripts/scr_ui_image/scr_ui_image.gml` (new),
+`scripts/scr_ui_icons/scr_ui_icons.gml`,
+`scripts/scr_meta_screen/scr_meta_screen.gml`,
+`python_tools/gm/layout/rules.py`, `python_tools/tests/test_layout.py`.
 
 ---
 

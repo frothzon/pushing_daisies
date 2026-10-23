@@ -127,7 +127,8 @@ PYTHONPATH=python_tools python3 -m gm roundtrip
 
 # 2. toolkit test suite
 #    expect: `Ran N tests ... OK`, and N must NOT DROP
-#    (243 on 2026-10-22; it was 101 when this file was written, and a number
+#    (247 on 2026-10-22 - it was 244 at 8a8ece9, and 101 when this file was
+#     written, and a number
 #     here goes stale every session - the signal is a drop, and after adding
 #     *n* tests the count must rise by *n*: a suite that cannot notice a
 #     missing test has a hole in it, LL-041)
@@ -183,7 +184,8 @@ the exact log lines to look for, and name what would falsify your fix.
 | **Progress tracker** | `progress.json` (source) → `PROGRESS.md`, `progress.html` (generated) — §6 |
 | **Meta screens** (World Map, Deploy, Garden Book, Results) | `scripts/scr_meta_screen/scr_meta_screen.gml` — drawing and hit testing. **Their geometry is a flex tree**, read back by name (`meta_*_geom()`), never a hand-placed number: `scripts/scr_ui_layout_meta` ([LL-069](./lessons_learned.md#ll-069)) |
 | **Layout trees** | `scripts/scr_ui_flex` (state, trees, `ui_rect`/`ui_place`/`ui_dump`) → `scripts/scr_ui_layout_{menu,meta}` (one function per screen) → `scripts/scr_ui_text` (`ui_fit_font`, `ui_clip_text`, `ui_palette`) |
-| **Layout gate** | `scripts/scr_ui_check` dumps every painted rectangle once per screen per canvas size (F12 re-arms); `gm layout check <log>` rules on it (overlap / spill / off-canvas, exit 1); `gm layout metrics --log <log>` proves the font model matches the game |
+| **Layout gate** | `scripts/scr_ui_check` dumps every painted rectangle once per screen per canvas size (F12 re-arms); `gm layout check <log>` rules on it (overlap / spill / image / off-canvas, exit 1); `gm layout metrics --log <log>` proves the font model matches the game |
+| **Picture placement** (a sprite is placed by its ART rect, never its origin) | `scripts/scr_ui_image` — `ui_art_bbox`, `ui_art_scale` (fits the art, capped at 1), `ui_art_rect`, `ui_art_draw` (registers the rect it painted), `ui_art_fit`. `icon_draw` and `meta_sprite_fit` are both thin callers of it; the origin is read **once**, inside the draw, and never subtracted from a centre ([LL-071](./lessons_learned.md#ll-071)) |
 | **Art briefs** (what to draw, canvas/origin/frames, what already exists) | `art_descriptions.md` — §3 the technical contract, §4 card by card |
 | **Balance tester** | `python_tools/gm/balance/` — `gm balance {tables,route,towers,afford,sim,project,check,fit}`; reads the tables (and the shot cycle) out of GML, so it cannot drift ([LL-038](./lessons_learned.md#ll-038), [LL-040](./lessons_learned.md#ll-040)). `project` is the closed form (a ratio); `sim` time-steps the stage at 60fps and is the arbiter on outcomes ([LL-042](./lessons_learned.md#ll-042)) |
 | Python toolkit | `python_tools/` — read `python_tools/README.md` first |
