@@ -90,7 +90,9 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-067](#ll-067) | A sprite font puts an **em-wide gap between every word**, and **half the UI still draws in the old font** | The string map is **positional** and the sheets are `"!"`..`"~"` with **no space**, so the documented fallback is the **widest glyph's** width; and `draw_reset()`'s font is *ambient*, so any draw path that never calls `draw_set_font` keeps the old face | **FIXED** |
 | [LL-068](#ll-068) | "**The buttons do not work**" on a 16:10 or 21:9 window - the highlight follows the pointer onto the wrong button, and a click opens the wrong screen | `points_to_gui()` divides **GUI by view** on each axis, so the two must share an **aspect**; the GUI was pinned to 960x540 while the window was sized from the **display** aspect (960x600 on 16:10), which is a 60px vertical error at the bottom of the screen | **FIXED** |
 | [LL-069](#ll-069) | The **World Map title runs through the Garden Book button**, Deploy's **wall sits under its own slots**, the Garden Book's shop **hangs off the right edge** - and every locked tower's **name touches its reason** | Every one of those numbers was placed by hand in 960x540, so the layout could say "at x=600" but not "under that" - and the title was centred on the **canvas** while the button was measured from the **right edge**. Three of the four screens were already wrong at 16:9 | **FIXED** |
+| [LL-070](#ll-070) | The layout gate's **first real run** died inside the Draw event, two lines after `UI    [GEOM] begin worldmap 960x540 items 140`: `Variable Menu.json_string(101726, -2147483648) not set before reading it.` | `json_string` **is not a GameMaker function** (the pair is `json_parse` / `json_stringify`). GML compiles an unknown name followed by `(` as a **variable READ**, so there is no compile error, the build succeeds, and the failure waits until the line runs - naming a variable nobody ever assigned. A diagnostic that can throw breaks working rule 5 | **FIXED** |
 | [LL-071](#ll-071) | Icons sit **half an icon up and left** of where the layout put them, tower thumbnails are a **different size each** and two **poke out of their cell** - and `gm layout check` calls every one of those screens **clean** | A picture is placed by its **art rectangle**, not its origin: the origin was subtracted **twice** (`draw_sprite_ext` had already honoured it), the **canvas** was scaled instead of the art, and the dump registered a rectangle **nobody had drawn** | **FIXED** |
+| [LL-072](#ll-072) | The title-screen zombie's **idle loop plays twice as fast** as in the original build - same art, no error, and the walk and grab look right | The state asked for **60 STEPS**, and a step is not a unit of time: 60 steps was 2 s in the 30 fps build and is 1 s at 60 fps, exactly the factor reported. [LL-030](#ll-030) made animations duration-based but converted **at each call site**, so the unit stayed steps and the frame rate moved | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
@@ -5351,6 +5353,117 @@ Deploy and the Garden Book at 675/960/1260, F12, `gm layout check <log>`.
 `scripts/scr_ui_icons/scr_ui_icons.gml`,
 `scripts/scr_meta_screen/scr_meta_screen.gml`,
 `python_tools/gm/layout/rules.py`, `python_tools/tests/test_layout.py`.
+
+---
+
+<a name="ll-072"></a>
+## LL-072 — A step is not a unit of time: an animation timed in STEPS changes duration when the frame rate does, and nothing in the code looks wrong
+
+**Symptom.** The zombie standing on the title screen breathes **twice as fast**
+as it did in the GameMaker 8 build: the same 16-frame loop, the same sprite,
+no error, and no changed line of drawing code. The walk cycle and the grab look
+right — which is the clue that it is neither the art nor the sprite's declared
+speed.
+
+**Root cause.** `obj_titleZomb` case 0 asked for the idle loop in **steps**:
+
+```gml
+image_speed = scr_animSpeedForSteps(sprite_index, 60);   /// 60 steps
+```
+
+`scr_animSpeedForSteps` means exactly what it says — one pass of the sprite
+spans `_steps` **game steps**. And a step is not a unit of time: it is
+`1 / game_get_speed(gamespeed_fps)` of a second, and that denominator went from
+**30 to 60** when the project was converted. So 60 steps was **2 s** in the
+original build and is **1 s** here — exactly the factor of two that was
+reported.
+
+[LL-030](#ll-030) had already taught the project to time an animation by its
+DURATION rather than by a speed, and it created `scr_animSpeedForSteps`. But it
+did the seconds-to-steps conversion **at the call sites**:
+
+```gml
+anim_steps = anim_seconds[TOWER_ANIM.return] * fps        // scr_tower_return
+```
+
+so the argument is still a step count, and the fact that a step is `1/fps` of a
+second lives in each caller's head. The towers were converted; the title zombie
+was not. Nothing looks wrong in the code, because the sprite, the frame count
+and the speed all agree with each other — they just agree on the wrong unit.
+
+This is the **vertical** half of LL-030: LL-030 fixed the axis "speed vs
+duration" (fewer frames made the loop shorter), this fixes the axis "steps vs
+seconds" (more frames per second make the same step count shorter). Both
+produce *the same symptom* — a loop that plays at the wrong rate with no code
+change to blame.
+
+**Fix.** Give the period to one function, in the same file, so the arithmetic
+exists once and delegates instead of being re-derived:
+
+```gml
+/// The title zombie's idle loop, in SECONDS.
+#macro ANIM_SECONDS_ZOMBIE_IDLE 2.0
+
+function scr_animSpeedForSeconds(_sprite, _seconds, _tag) {
+if(!sprite_exists(_sprite)) return 0;
+if(!is_real(_seconds) || _seconds <= 0) return 0;
+
+var _fps   = max(game_get_speed(gamespeed_fps), 1),
+    _steps = round(_seconds * _fps),
+    _speed = scr_animSpeedForSteps(_sprite, _steps);
+...
+return _speed;
+}
+```
+
+and the call site says what it means:
+
+```gml
+image_speed = scr_animSpeedForSeconds(sprite_index,
+                                      ANIM_SECONDS_ZOMBIE_IDLE,
+                                      "title idle");
+```
+
+The diagnostic prints once per tag per run (`global.anim_reported`), and it is
+guarded so it cannot throw ([LL-002](#ll-002)) — `print()` reads
+`global.devMode`, so the global is checked first:
+
+```
+ANIM  title idle  frames=16  seconds=2.00  steps=120  fps=60  image_speed=0.2667
+```
+
+`steps=120` at `fps=60` **is** the arithmetic in one line: if that says `60`, a
+caller is still counting steps.
+
+**Guard rails.**
+
+* **If the period matters, write it in seconds** and convert at **one** owner
+  site. A bare step count in a state machine is the bug.
+* The frame rate is a **global** that can move under you
+  (`game_get_speed(gamespeed_fps)`; `room_speed` in GMS1). Grep the literal:
+  `grep -rn 'animSpeedForSteps(.*, 60)'` lists every remaining step-timed call
+  site. Backlog card `anim-step-counts-since-30fps` tracks the ones left.
+* A sprite declares its speed in **frames per second or frames per game frame**
+  (`sprite_get_speed_type`), so the conversion must normalise that first — which
+  is why the seconds function **delegates** to `scr_animSpeedForSteps` (line 45)
+  instead of repeating the maths.
+* **A deliberate exception is written down.** `obj_titleZomb` cases 1 and 2 keep
+  60 steps on purpose — the walk and the grab are meant to read faster — and the
+  comment says so, or the next reader "fixes" them.
+* When *one* loop is reported as "too fast" and its neighbours look fine, do not
+  look at the art: check the unit of the number that was asked for.
+
+**Status.** FIXED 2026-10-22 for the title idle. **WATCH** for
+`scr_zombie_emerge` and `scr_zombie_path`, which still count steps and are not
+obviously wrong (see the backlog card). Honest caveat: the recovered GameMaker 8
+source says `image_speed = 0.5`, which for this 16-frame art at 30 fps is 32
+steps ≈ 1.07 s, not 2 s — so if 2.0 s reads sluggish in the run, the number to
+retune is `ANIM_SECONDS_ZOMBIE_IDLE`, not the mechanism.
+
+**Files.** `scripts/scr_animSpeedForSteps/scr_animSpeedForSteps.gml`,
+`objects/obj_titleZomb/Step_0.gml`, `objects/obj_tower/Create_0.gml` (the
+`anim_seconds` precedent), `scripts/scr_zombie_emerge/scr_zombie_emerge.gml`,
+`scripts/scr_zombie_path/scr_zombie_path.gml`.
 
 ---
 

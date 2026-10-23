@@ -51,3 +51,51 @@ function scr_animSpeedForSteps(_sprite, _steps) {
 	/// the multiplier that makes it span _steps instead
 	return (_frames / _steps) / _base;
 }
+
+/// The title zombie's idle loop, in SECONDS.
+///
+/// It was 60 STEPS.  60 steps was 2 s in the GameMaker 8 build, which ran at
+/// 30 fps, and it became 1 s when the game moved to 60 fps - a step is not a
+/// unit of time, it is a unit of "however long a step happens to be" (LL-072,
+/// the vertical half of LL-030's lesson).  The zombie's idle loop was drawn to
+/// take two seconds, so two seconds is what it says here, and this is the one
+/// place to retune it.
+#macro ANIM_SECONDS_ZOMBIE_IDLE 2.0
+
+/// scr_animSpeedForSeconds(sprite, seconds, tag)
+///
+/// scr_animSpeedForSteps() with the period given in SECONDS rather than steps,
+/// so the caller never has to know the game's frame rate, plus the one log line
+/// that proves which speed it chose.
+///
+/// `tag` names the loop in that line ("title idle"), and each tag reports ONCE
+/// per run - the idle state re-initialises on every state change, and a line
+/// per entry would bury the rest of the log (LL-011).
+function scr_animSpeedForSeconds(_sprite, _seconds, _tag) {
+	if(!sprite_exists(_sprite)) return 0;
+	if(!is_real(_seconds) || _seconds <= 0) return 0;
+
+	var _fps   = max(game_get_speed(gamespeed_fps), 1),
+	    _steps = round(_seconds * _fps),
+	    _speed = scr_animSpeedForSteps(_sprite, _steps);
+
+	/// The diagnostic must not be able to throw (LL-002): print() reads
+	/// global.devMode, so the global is checked before it, and every value it
+	/// prints here has already been guarded above.
+	if(variable_global_exists("devMode") && global.devMode){
+		if(!variable_global_exists("anim_reported")) global.anim_reported = {};
+
+		var _key = is_undefined(_tag) ? string(_sprite) : string(_tag);
+		if(!variable_struct_exists(global.anim_reported, _key)){
+			global.anim_reported[$ _key] = true;
+			print("ANIM  ", _key,
+			      "  frames=", sprite_get_number(_sprite),
+			      "  seconds=", string_format(_seconds, 1, 2),
+			      "  steps=", _steps,
+			      "  fps=", _fps,
+			      "  image_speed=", string_format(_speed, 1, 4));
+		}
+	}
+
+	return _speed;
+}

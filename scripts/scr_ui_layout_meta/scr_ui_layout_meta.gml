@@ -25,14 +25,23 @@
 ///
 /// THE SHAPE OF EVERY SCREEN
 /// -------------------------
-///   band   56px   [ currency | title (flexGrow) | actions ]
+///   band   56px   [ info | title (flexGrow) | actions ]
 ///   body          screen-specific, flexGrow 1
 ///   foot   60px   the primary action(s), right aligned
+///   cur           the currency line: full width, centred, 1.5 text heights up
 ///
 /// Three children in a row cannot overlap: each is given its own slice of the
 /// band, and the title takes what is left.  That one sentence is the fix for
 /// the top band on all four screens, and it is why the band is a function
 /// (ui_meta_band) rather than four copies of the same struct.
+///
+/// THE CURRENCY LINE IS NOT IN THE BAND ANY MORE (2026-10-22).  It was drawn in
+/// a 240-wide column while measuring ~370 at 12pt, so it was painted straight
+/// over the page title on every meta screen; at 675 wide there is no column
+/// beside the title that could hold it at all.  It has the bottom of the screen
+/// to itself instead - full width, centred, one line up - which is where a
+/// persistent counter belongs anyway.  `cur` is a ROW of the root, so it cannot
+/// creep up into the footer the way a computed y always eventually does.
 ///
 /// READ BY NAME, NEVER BY POSITION
 /// -------------------------------
@@ -45,47 +54,180 @@
 /// width divided by its column count (see meta_deploy_wall).  The tree decides,
 /// the reader recovers, and there is no second copy of the number to disagree.
 
-#macro UI_META_BAND     56          /// the header row: currency, title, actions
+#macro UI_META_BAND     56          /// the header row: info, title, actions
 #macro UI_META_FOOT     60          /// the action row: Deploy/Back, Return, ...
 #macro UI_META_CELL     112         /// the largest tower cell the game has room for
 #macro UI_META_CELL_MIN 64          /// below this a cell cannot hold a sprite and a name
+#macro UI_META_ACTS     240         /// the NARROWEST the band's two end columns get
+#macro UI_META_BTN_PAD  24          /// a button's side padding - the same +24 scr_scaleButton uses
+#macro UI_META_BTN_MIN  64          /// narrower than this a label has no room at all
 
 /// ---- the trees ----------------------------------------------------------
 
 /// The tree for one screen, or undefined for a name that has none.
+///
+/// Every meta screen ends with the same row: the currency line, full width,
+/// pinned to the bottom of the canvas (ui_meta_cur_strip).  It is appended HERE
+/// rather than written into four trees because "every meta screen shows the
+/// counters, at the bottom" is one fact about the screens, and four copies of a
+/// fact are four places to forget it.
 function ui_meta_tree(_screen) {
-	switch(string(_screen)){
-		case "worldmap": return ui_meta_worldmap_tree();
-		case "deploy":   return ui_meta_deploy_tree();
-		case "garden":   return ui_meta_garden_tree();
-		case "results":  return ui_meta_results_tree();
+	var _key  = string(_screen),
+	    _tree = undefined;
+
+	switch(_key){
+		case "worldmap": _tree = ui_meta_worldmap_tree(); break;
+		case "deploy":   _tree = ui_meta_deploy_tree();   break;
+		case "garden":   _tree = ui_meta_garden_tree();   break;
+		case "results":  _tree = ui_meta_results_tree();  break;
 	}
-	return undefined;
+	if(is_undefined(_tree)) return undefined;
+
+	/// The explicit index-and-write-back, not array_push on the member: this
+	/// runs once per tree build and cannot depend on whether this GameMaker's
+	/// arrays are references (a silently dropped strip is a screen with no
+	/// counters that ui_meta_check would only catch by name).
+	var _nodes = _tree[$ "nodes"];
+	if(is_array(_nodes)){
+		_nodes[array_length(_nodes)] = ui_meta_cur_strip(_key);
+		_tree[$ "nodes"] = _nodes;
+	}
+
+	return _tree;
 }
 
-/// The header band every meta screen shares: currency on the left, the screen's
+/// The header band every meta screen shares: the screen's left-hand note, the
 /// title using whatever is left over, and the screen's exits on the right.
 ///
 /// `_actions` is a list of child nodes for the right-hand column.  An empty
 /// list is fine (Deploy and the Garden Book keep their exits in the footer) and
 /// costs nothing: the column is still there, so the title's slice is the same
-/// on every screen and the three screens read as one interface.
+/// on every screen and the screens read as one interface.
+///
+/// THE ACTION COLUMN IS AS WIDE AS THE BUTTONS IN IT (LL-072).  It used to be a
+/// fixed 240 holding fixed 100-wide buttons, so "Garden Book" - 107 wide at
+/// 16pt - was painted 7 units past its own button and 7 past the column, into
+/// the title.  Two fixed numbers cannot both be right about a label whose width
+/// is a property of the FONT.  The column now asks the buttons what they need
+/// (ui_meta_btn_w), and the left column is given the same width, so the title
+/// stays centred on the canvas however wide the exits turn out to be.
 function ui_meta_band(_screen, _actions) {
-	var _t = ui_theme();
+	var _t     = ui_theme(),
+	    _btns  = is_array(_actions) ? _actions : [],
+	    _n     = array_length(_btns),
+	    _gap   = _t.gap*2,
+	    _avail = global.ui.w - 2*_t.margin,
+	    /// the widest it may get: half the band, or the title would be left
+	    /// the space of a postage stamp between two columns of buttons
+	    _cap   = max(floor(_avail*0.5), UI_META_ACTS),
+	    _need  = 0;
+
+	for(var _i = 0; _i < _n; _i++){
+		/// a child with no numeric width is not this function's business to
+		/// crash over (LL-002) - it contributes nothing and flex sizes it
+		var _w = _btns[_i][$ "width"];
+		if(is_real(_w)) _need += _w;
+	}
+	if(_n > 1) _need += _gap*(_n - 1);
+
+	var _wide = clamp(_need, UI_META_ACTS, _cap);
+	if(_need > _cap){
+		ui_log("meta", "  ", _screen, " band actions need ", round(_need),
+		       " - capped at ", round(_wide),
+		       ": a label that wide is a design bug, not a layout one");
+	}
 
 	return { name: _screen + ".head", width: "100%", height: UI_META_BAND,
 	         flexDirection: "row", alignItems: "center", gapColumn: _t.gap,
 	         nodes: [
-	         	/// 240 is the widest the currency line gets at 16pt
-	         	{ name: _screen + ".head.cal", width: 240, height: 40 },
+	         	/// the screen's own note (Deploy's Region/Stage line) - the
+	         	/// same width as the exits, so the title is centred between
+	         	/// two equal columns
+	         	{ name: _screen + ".head.info", width: _wide, height: 40 },
 	         	/// the title takes the middle - so it is centred in the space
-	         	/// BETWEEN the two fixed columns, never under one of them
+	         	/// BETWEEN the two end columns, never under one of them
 	         	{ name: _screen + ".head.title", flexGrow: 1, height: 40 },
-	         	{ name: _screen + ".head.acts", width: 240, height: 44,
+	         	{ name: _screen + ".head.acts", width: _wide, height: 44,
 	         	  flexDirection: "row", alignItems: "center",
-	         	  justifyContent: "flex-end", gapColumn: _t.gap*2,
-	         	  nodes: is_array(_actions) ? _actions : [] }
+	         	  justifyContent: "flex-end", gapColumn: _gap,
+	         	  nodes: _btns }
 	         ]};
+}
+
+/// The width of one button in a row of them, so the row reads as a row.
+///
+/// `_labels` is every label that row will draw.  The width is the WIDEST label
+/// at 16pt plus UI_META_BTN_PAD - the same string_width(text)+24 that
+/// scr_scaleButton gives a menu button, because to the player they are the same
+/// object.  One width for the whole row rather than one per label: buttons that
+/// differ by six units look like a mistake, and "Back" beside "Deploy" is the
+/// pair that makes it obvious.
+///
+/// A font that is not loaded yet makes ui_text_width return -1, and -1 is not a
+/// width (LL-002).  The row falls back to UI_META_BTN_MIN and logs it, instead
+/// of handing flex a negative it would lay out with.
+function ui_meta_btn_w(_labels) {
+	var _widest = -1;
+
+	if(is_array(_labels)){
+		for(var _i = 0; _i < array_length(_labels); _i++){
+			var _w = ui_text_width(_labels[_i], 16);
+			if(_w > _widest) _widest = _w;
+		}
+	}
+
+	if(_widest < 0){
+		ui_log("meta", "  button width: no 16pt font to measure with - using ",
+		       UI_META_BTN_MIN, " (meta_button_draw will fit the label)");
+		return UI_META_BTN_MIN;
+	}
+
+	return max(ceil(_widest) + UI_META_BTN_PAD, UI_META_BTN_MIN);
+}
+
+/// The height of the currency strip: one measured line of 16pt text, or the
+/// 20 units the currency icons are drawn at, whichever is taller.
+///
+/// MEASURED, not assumed to be 16: the strip exists so that the line sits
+/// `cur_h/2` above the bottom of the canvas, and "a text height" has to be the
+/// same number the draw call uses.  The ICONS are the taller of the two -
+/// meta_icon_value centres a 20-unit icon on `string_height("Ag")/2` - so a box
+/// measured from the text alone would clip them top and bottom.  The font
+/// state is saved and restored the way ui_text_width does it, so building a
+/// tree cannot change what the next draw call paints with.
+function ui_meta_cur_h() {
+	var _f = ui_font_for(16);
+	if(_f == -1) return 20;
+
+	var _old = draw_get_font();
+	draw_set_font(_f);
+	var _h = string_height("Ag");
+	draw_set_font(_old);
+	return max(_h, 20);
+}
+
+/// What the band, the footer and the currency strip leave for the body.
+///
+/// ONE definition, because Deploy and the Garden Book were each subtracting
+/// their own copy of the same sum, and each would have had to remember the
+/// strip on its own.  A body 16 units too tall is not an error anyone sees: it
+/// is a wall whose last row is under the footer.
+function ui_meta_body_h() {
+	var _t = ui_theme();
+	return global.ui.h - 2*_t.margin - UI_META_BAND - UI_META_FOOT - ui_meta_cur_h();
+}
+
+/// The currency line's own row: full width, the LAST child of the root, so it
+/// owns the bottom of the canvas and nothing can be placed under it.
+///
+/// Its height is one measured line (ui_meta_cur_h - the text height or the
+/// 20-unit icons, whichever is taller) and the root pads by `margin` below it,
+/// so the line's box is [h-margin-cur_h .. h-margin] and its CENTRE sits
+/// `margin + cur_h/2` - 26 units when the line is 20 tall - above the bottom
+/// edge.  That is a relationship, not a number: change the margin or the font
+/// and the line still sits where it was asked to.
+function ui_meta_cur_strip(_screen) {
+	return { name: _screen + ".cur", width: "100%", height: ui_meta_cur_h() };
 }
 
 /// How many rows a wall of `_n` cells needs at `_cols` across.
@@ -130,7 +272,9 @@ function ui_meta_worldmap_tree() {
 	    _cell  = clamp(floor((_avail - 96 - 3*_t.gap) / 10), 30, 62),
 	    _ch    = round(_cell*50/62),      /// the 62x50 cell the map shipped with
 	    _gw    = _cell*10,
-	    _gh    = _ch*6;
+	    _gh    = _ch*6,
+	    /// one width for both exits, from the widest label in the row
+	    _bw    = ui_meta_btn_w(["Garden Book", "Title"]);
 
 	return { name: "worldmap", width: "100%", height: "100%",
 	         flexDirection: "column",
@@ -139,8 +283,8 @@ function ui_meta_worldmap_tree() {
 
 	         nodes: [
 	         	ui_meta_band("worldmap", [
-	         		{ name: "worldmap.btn.garden", width: 100, height: 40 },
-	         		{ name: "worldmap.btn.title",  width: 100, height: 40 }
+	         		{ name: "worldmap.btn.garden", width: _bw, height: 40 },
+	         		{ name: "worldmap.btn.title",  width: _bw, height: 40 }
 	         	]),
 	         	{ name: "worldmap.body", width: "100%", flexGrow: 1,
 	         	  flexDirection: "column", justifyContent: "center",
@@ -174,11 +318,16 @@ function ui_meta_deploy_tree() {
 	    _cols  = ui_meta_wall_cols(),
 	    _rows  = ui_meta_rows(_n, _cols),
 	    _diffw = 160,
-	    /// what is left for the wall row: canvas - padding - band - foot -
-	    /// the 96px slot row - the body's own gap
-	    _rowh  = global.ui.h - 2*_t.margin - UI_META_BAND - UI_META_FOOT - 96 - 12,
+	    /// what is left for the wall row is what the body has, minus the slot
+	    /// row and the body's own gap.  The band, the footer and the currency
+	    /// strip are already taken out by ui_meta_body_h() - the old line
+	    /// subtracted its own copy of that sum and would have gone 16 units
+	    /// too tall the moment the strip was added under it.
+	    _rowh  = ui_meta_body_h() - 96 - 12,
 	    _cell  = ui_meta_cell(_rows, _cols, _rowh - 24 - 4,
 	                          _avail - _diffw - 3*_t.gap),
+	    /// Deploy and Back share one width, taken from the wider label
+	    _fw    = ui_meta_btn_w(["Deploy", "Back"]),
 	    _slots = [],
 	    _diffs = [];
 
@@ -228,8 +377,8 @@ function ui_meta_deploy_tree() {
 	         	  flexDirection: "row", alignItems: "center",
 	         	  justifyContent: "flex-end", gapColumn: 20,
 	         	  nodes: [
-	         	  	{ name: "deploy.btn.deploy", width: 240, height: 52 },
-	         	  	{ name: "deploy.btn.back",   width: 240, height: 52 }
+	         	  	{ name: "deploy.btn.deploy", width: _fw, height: 52 },
+	         	  	{ name: "deploy.btn.back",   width: _fw, height: 52 }
 	         	  ]}
 	         ]};
 }
@@ -250,8 +399,12 @@ function ui_meta_garden_tree() {
 	    _cols    = ui_meta_wall_cols(),
 	    _rows    = ui_meta_rows(_n, _cols),
 	    _nodes   = clover_nodes(),
-	    _nh      = global.ui.h - 2*_t.margin - UI_META_BAND - UI_META_FOOT,
+	    /// the body's height, already net of the band, the footer and the
+	    /// currency strip (ui_meta_body_h)
+	    _nh      = ui_meta_body_h(),
 	    _leftmin = 260,
+	    /// the Return button's width, from its own label
+	    _fw      = ui_meta_btn_w(["Return"]),
 	    _cell    = ui_meta_cell(_rows, _cols, _nh - 62,
 	                            _avail - 20 - _leftmin),
 	    _cards   = [];
@@ -291,7 +444,7 @@ function ui_meta_garden_tree() {
 	         	  flexDirection: "row", alignItems: "center",
 	         	  justifyContent: "flex-end",
 	         	  nodes: [
-	         	  	{ name: "garden.btn.back", width: 240, height: 52 }
+	         	  	{ name: "garden.btn.back", width: _fw, height: 52 }
 	         	  ]}
 	         ]};
 }
@@ -308,7 +461,11 @@ function ui_meta_results_tree() {
 	var _t     = ui_theme(),
 	    _avail = global.ui.w - 2*_t.margin,
 	    _pw    = min(620, _avail),
-	    _ph    = 360;
+	    _ph    = 360,
+	    /// one width for the three actions, from the widest label.  At 16pt
+	    /// that is "World Map" (89) -> 113 each, 379 for the row inside a
+	    /// panel that is 540 wide inside, so the row cannot overflow it.
+	    _rw    = ui_meta_btn_w(["Retry", "Next", "World Map"]);
 
 	return { name: "results", width: "100%", height: "100%",
 	         flexDirection: "column",
@@ -333,9 +490,9 @@ function ui_meta_results_tree() {
 	         	  	  	  flexDirection: "row", alignItems: "center",
 	         	  	  	  gapColumn: 20,
 	         	  	  	  nodes: [
-	         	  	  	  	{ name: "results.btn.retry", width: 160, height: 48 },
-	         	  	  	  	{ name: "results.btn.next",  width: 140, height: 48 },
-	         	  	  	  	{ name: "results.btn.map",   width: 190, height: 48 }
+	         	  	  	  	{ name: "results.btn.retry", width: _rw, height: 48 },
+	         	  	  	  	{ name: "results.btn.next",  width: _rw, height: 48 },
+	         	  	  	  	{ name: "results.btn.map",   width: _rw, height: 48 }
 	         	  	  	  ]}
 	         	  	  ]}
 	         	  ]}
@@ -395,17 +552,18 @@ function ui_meta_rect(_screen, _name) {
 /// allowed to exist (it is what gives the others their space), and a name a
 /// reader asks for that does not exist is the bug this gate is for.
 function ui_meta_names(_screen) {
-	var _out = [];
+	var _out = [],
+	    _key = string(_screen);
 
-	switch(string(_screen)){
+	switch(_key){
 		case "worldmap":
-			_out = ["worldmap.head.cal", "worldmap.head.title", "worldmap.head.acts",
+			_out = ["worldmap.head.info", "worldmap.head.title", "worldmap.head.acts",
 			        "worldmap.btn.garden", "worldmap.btn.title",
 			        "worldmap.labels", "worldmap.grid", "worldmap.info"];
 			break;
 
 		case "deploy":
-			_out = ["deploy.head.cal", "deploy.head.title", "deploy.head.acts",
+			_out = ["deploy.head.info", "deploy.head.title", "deploy.head.acts",
 			        "deploy.wallhdr", "deploy.wall",
 			        "deploy.diffhdr", "deploy.btn.deploy", "deploy.btn.back"];
 			for(var _s = 0; _s < loadout_size(); _s++){
@@ -418,7 +576,7 @@ function ui_meta_names(_screen) {
 			break;
 
 		case "garden":
-			_out = ["garden.head.cal", "garden.head.title", "garden.head.acts",
+			_out = ["garden.head.info", "garden.head.title", "garden.head.acts",
 			        "garden.wall", "garden.shopinfo", "garden.btn.back"];
 			var _nd = clover_nodes();
 			for(var _c = 0; _c < array_length(_nd); _c++){
@@ -427,12 +585,17 @@ function ui_meta_names(_screen) {
 			break;
 
 		case "results":
-			_out = ["results.head.cal", "results.head.title", "results.head.acts",
+			_out = ["results.head.info", "results.head.title", "results.head.acts",
 			        "results.panel", "results.heading", "results.outcome",
 			        "results.rows", "results.acts",
 			        "results.btn.retry", "results.btn.next", "results.btn.map"];
 			break;
 	}
+
+	/// the currency strip is on EVERY screen - ui_meta_tree appends the node
+	/// and this is the name the draw code reads it back by, so a tree that
+	/// lost it is a "missing" in ui_meta_check instead of a silent blank
+	_out[array_length(_out)] = _key + ".cur";
 
 	return _out;
 }

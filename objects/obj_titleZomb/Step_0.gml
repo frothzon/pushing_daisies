@@ -11,9 +11,13 @@ switch(state){
         if(state_timer == 0){
             sprite_index = spr_grumble_idle;
             image_index = 0;
-            /// a DURATION, not a speed: 60 steps is 1 s at 60 fps, and
-            /// re-drawing the zombie cannot change it (LL-030)
-            image_speed = scr_animSpeedForSteps(sprite_index, 60);
+            /// a DURATION in SECONDS, not in steps: 60 steps was 2 s in the
+            /// GameMaker 8 build (30 fps) and became 1 s here (60 fps) - a
+            /// step is not a unit of time (LL-072).  The walk and the grab
+            /// below keep their 60 steps: they are meant to read faster.
+            image_speed = scr_animSpeedForSeconds(sprite_index,
+                                                  ANIM_SECONDS_ZOMBIE_IDLE,
+                                                  "title idle");
         }
         /// if range too great, change to walk state
         if(abs(mouse_x-x) > 16){

@@ -171,24 +171,30 @@ function meta_currency_width(_items, _size) {
 	return _w;
 }
 
-/// Draw the currency line and return the y the NEXT line should start at.
+/// The size the line will be drawn at inside `_maxw`.
 ///
-/// The size is FITTED to `_maxw` (the band gives it 240 units).  At 960 the
-/// four items measure ~300 at 16pt, so the old fixed 16pt line was already
-/// 60 units wider than its column and ran into the title on every screen -
-/// before any aspect change at all.
+/// ONE chooser: the draw below and the centring maths in meta_currency_draw
+/// both ask it, so a line can never be measured as if it were 16pt and then
+/// painted at 12.  At 960 the four items measure ~482 at 16pt and ~373 at
+/// 12pt, so the bottom strip - which now has the full canvas width - gets
+/// 16pt; a narrow window drops to 12 rather than running off the edge.
+function meta_currency_size(_items, _maxw) {
+	var _lim = is_undefined(_maxw) ? 10000 : _maxw;
+	if(meta_currency_width(_items, 16) <= _lim) return 16;
+	return 12;
+}
+
+/// Draw the currency line at `_x` and return the y the NEXT line starts at.
+///
+/// The size is FITTED to `_maxw` (the band used to give it 240 units, and at
+/// 960 the four items measured ~300 at 12pt - the fixed 16pt line was already
+/// 60 units wider than its column and ran into the title on every screen,
+/// before any aspect change at all).  Since 2026-10-22 it is drawn by
+/// meta_currency_draw() into the full-width strip at the bottom instead, and
+/// this is the half that paints.
 function meta_currency_line(_x, _y, _maxw) {
 	var _items = meta_currency_items(),
-	    _lim   = is_undefined(_maxw) ? 10000 : _maxw,
-	    _sizes = [16, 12],
-	    _size  = _sizes[array_length(_sizes) - 1];
-
-	for(var _i = 0; _i < array_length(_sizes); _i++){
-		if(meta_currency_width(_items, _sizes[_i]) <= _lim){
-			_size = _sizes[_i];
-			break;
-		}
-	}
+	    _size  = meta_currency_size(_items, _maxw);
 
 	var _f = ui_font_for(_size);
 	draw_set_font(_f == -1 ? fnt_size16 : _f);
@@ -202,6 +208,30 @@ function meta_currency_line(_x, _y, _maxw) {
 	}
 
 	return _y + string_height("Ag");
+}
+
+/// Draw the currency line CENTRED in `_r` - the bottom strip - and return the
+/// y that follows it.
+///
+/// The strip is the full canvas width, so the line is centred on the CANVAS
+/// rather than on some column that happens to be near the middle.  The trailing
+/// 20 units that meta_currency_width counts are slack (the gap after the last
+/// value), not ink, so they come off before the centring - centre the ink, or
+/// the line sits 10 units left of where the eye expects it.
+///
+/// A missing rectangle draws nothing rather than dividing by a nil width: the
+/// tree has already said which name is missing (ui_meta_check), and a
+/// diagnostic must not become a crash (LL-002).
+function meta_currency_draw(_r) {
+	if(!is_array(_r) || array_length(_r) < 4) return 0;
+
+	var _items = meta_currency_items(),
+	    _w     = _r[2] - _r[0],
+	    _size  = meta_currency_size(_items, _w),
+	    _ink   = max(meta_currency_width(_items, _size) - 20, 0),
+	    _x     = _r[0] + max((_w - _ink)*0.5, 0);
+
+	return meta_currency_line(_x, _r[1], _w);
 }
 
 /// Draw the tower wall and return the rectangle of every cell, in roster
@@ -318,10 +348,16 @@ function meta_button_draw(_r, _text, _enabled) {
 	meta_panel(_r[0], _r[1], _r[2] - _r[0], _r[3] - _r[1], _bg,
 	           _enabled ? c_silver : c_black);
 
-	draw_set_font(fnt_size16);
+	/// The label is FITTED to its box rather than assumed to fit it (LL-072).
+	/// The box already comes from ui_meta_btn_w, which measures the same label
+	/// with the same font - but a rect that arrives from anywhere else must
+	/// shrink instead of painting over its neighbour, because a label 7 units
+	/// too wide does not error, it lands in the title.  12 units of side
+	/// padding: a label that touches its own border reads as clipped.
 	draw_set_halign(fa_center);
 	draw_set_valign(fa_middle);
 	draw_set_colour(_enabled ? (_hov ? c_white : c_ltgray) : c_dkgray);
+	ui_fit_font(_text, (_r[2] - _r[0]) - 12, [16, 12]);
 	draw_text((_r[0] + _r[2])*0.5, (_r[1] + _r[3])*0.5, _text);
 
 	/// name it after the label, so the report can say "Deploy" instead of
@@ -394,10 +430,11 @@ function meta_worldmap_geom() {
 	         cols: 10, grid: _g,
 	         labels:   ui_meta_rect("worldmap", "worldmap.labels"),
 	         info:     ui_meta_rect("worldmap", "worldmap.info"),
-	         head_cal: ui_meta_rect("worldmap", "worldmap.head.cal"),
+	         head_info: ui_meta_rect("worldmap", "worldmap.head.info"),
 	         head_mid: ui_meta_rect("worldmap", "worldmap.head.title"),
 	         garden:   ui_meta_rect("worldmap", "worldmap.btn.garden"),
-	         title:    ui_meta_rect("worldmap", "worldmap.btn.title") };
+	         title:    ui_meta_rect("worldmap", "worldmap.btn.title"),
+	         cur:      ui_meta_rect("worldmap", "worldmap.cur") };
 }
 
 /// The rectangle of every stage node.  Index = (region-1)*10 + (stage-1),
@@ -431,8 +468,7 @@ function meta_draw_worldmap() {
 	    _m  = points_to_gui(mouse_x, mouse_y, 0);
 
 	meta_title("World Map", _g.head_mid);
-	meta_currency_line(_g.head_cal[0], _g.head_cal[1] + 2,
-	                   _g.head_cal[2] - _g.head_cal[0]);
+	meta_currency_draw(_g.cur);
 	meta_button_draw(_g.garden, "Garden Book", true);
 	meta_button_draw(_g.title,  "Title",       true);
 
@@ -587,11 +623,12 @@ function meta_deploy_geom() {
 		deploy : ui_meta_rect("deploy", "deploy.btn.deploy"),
 		back   : ui_meta_rect("deploy", "deploy.btn.back"),
 		diffs  : _diffs,
-		head_cal : ui_meta_rect("deploy", "deploy.head.cal"),
+		head_info : ui_meta_rect("deploy", "deploy.head.info"),
 		head_mid : ui_meta_rect("deploy", "deploy.head.title"),
 		head_acts: ui_meta_rect("deploy", "deploy.head.acts"),
 		wallhdr  : ui_meta_rect("deploy", "deploy.wallhdr"),
-		diffhdr  : ui_meta_rect("deploy", "deploy.diffhdr")
+		diffhdr  : ui_meta_rect("deploy", "deploy.diffhdr"),
+		cur      : ui_meta_rect("deploy", "deploy.cur")
 	};
 }
 
@@ -621,16 +658,16 @@ function meta_draw_deploy() {
 	    _pal   = ui_palette();
 
 	meta_title("Deploy", _g.head_mid);
+	meta_currency_draw(_g.cur);
 
-	/// ---- the band's left column: currencies, then the stage being deployed
-	/// to.  Both lines are 12pt because four currency items measure ~300 at
-	/// 16pt and this column is 240 - the old fixed 16pt line ran under the
-	/// title on every screen, at every size.
-	var _cal = _g.head_cal;
-	if(array_length(_cal) < 4) _cal = meta_canvas_rect();
+	/// ---- the band's left column: the stage being deployed to.  The four
+	/// counters used to share this column and are on the bottom strip now
+	/// (meta_currency_draw), which is what gives this line the whole column
+	/// at 12pt instead of half of it.
+	var _info = _g.head_info;
+	if(array_length(_info) < 4) _info = meta_canvas_rect();
 
-	var _cal_w = _cal[2] - _cal[0],
-	    _cy    = meta_currency_line(_cal[0], _cal[1] + 2, _cal_w);
+	var _info_w = _info[2] - _info[0];
 
 	if(!is_undefined(_row)){
 		draw_set_font(fnt_size12);
@@ -640,9 +677,9 @@ function meta_draw_deploy() {
 		var _stage_txt = ui_clip_text("Region " + string(_row.region) +
 		                              "   Stage " + string(_row.stage) +
 		                              "   " + string(_row.waves) + " waves",
-		                              _cal_w);
-		draw_text(_cal[0], _cy + 2, _stage_txt);
-		ui_reg_text("stage", _cal[0], _cy + 2, _stage_txt, fa_left, fa_top);
+		                              _info_w);
+		draw_text(_info[0], _info[1] + 2, _stage_txt);
+		ui_reg_text("stage", _info[0], _info[1] + 2, _stage_txt, fa_left, fa_top);
 	}
 
 	/// ---- the band's right column: what the loadout row means, or why the
@@ -650,7 +687,7 @@ function meta_draw_deploy() {
 	/// so this is the one place left that is about the SCREEN rather than
 	/// about a choice on it.
 	var _acts = _g.head_acts;
-	if(array_length(_acts) < 4) _acts = [_cal[2], _cal[1], _cal[2] + 240, _cal[3]];
+	if(array_length(_acts) < 4) _acts = [_info[2], _info[1], _info[2] + UI_META_ACTS, _info[3]];
 	var _actx = _acts[2] - 4;
 
 	draw_set_font(fnt_size12);
@@ -803,8 +840,9 @@ function meta_garden_geom() {
 		branch   : ui_meta_rect("garden", "garden.branch"),
 		shopinfo : ui_meta_rect("garden", "garden.shopinfo"),
 		shophdr  : ui_meta_rect("garden", "garden.shophdr"),
-		head_cal : ui_meta_rect("garden", "garden.head.cal"),
-		head_mid : ui_meta_rect("garden", "garden.head.title")
+		head_info: ui_meta_rect("garden", "garden.head.info"),
+		head_mid : ui_meta_rect("garden", "garden.head.title"),
+		cur      : ui_meta_rect("garden", "garden.cur")
 	};
 }
 
@@ -847,10 +885,7 @@ function meta_draw_garden() {
 	    _pal   = ui_palette();
 
 	meta_title("Garden Book", _g.head_mid);
-
-	var _cal = _g.head_cal;
-	if(array_length(_cal) < 4) _cal = meta_canvas_rect();
-	meta_currency_line(_cal[0], _cal[1] + 2, _cal[2] - _cal[0]);
+	meta_currency_draw(_g.cur);
 
 	/// ---- the Offense branch.  The heading and its icon share the column's
 	/// first row: the old heading sat 30 units ABOVE node 0 in a 56px gutter
@@ -1140,7 +1175,8 @@ function meta_results_geom() {
 		acts    : ui_meta_rect("results", "results.acts"),
 		retry   : ui_meta_rect("results", "results.btn.retry"),
 		next    : ui_meta_rect("results", "results.btn.next"),
-		map     : ui_meta_rect("results", "results.btn.map")
+		map     : ui_meta_rect("results", "results.btn.map"),
+		cur     : ui_meta_rect("results", "results.cur")
 	};
 }
 
@@ -1171,6 +1207,7 @@ function meta_draw_results() {
 
 	meta_title(_win ? "Stage Clear" : "Stage Lost",
 	           ui_meta_rect("results", "results.head.title"));
+	meta_currency_draw(_g.cur);
 
 	meta_panel(_g.panel[0], _g.panel[1],
 	           _g.panel[2] - _g.panel[0], _g.panel[3] - _g.panel[1],
