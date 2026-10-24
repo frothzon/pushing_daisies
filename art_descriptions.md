@@ -140,6 +140,46 @@ asset. The project's rules apply throughout: sprites are imported **in the
 GameMaker IDE** (never by hand-editing `.yy`, LL-009), `bboxMode` stays
 **automatic** unless stated, and a missing sprite is a fatal draw (LL-012).
 
+### 3.0 Pixels — hard alpha, one rim, no halos (`gm art`)
+
+New art arrives from the drawing tool **anti-aliased**: a 1 px ramp of fractional
+alpha round the silhouette, often with an `alpha 1–8` halo a row or two outside
+it. At 1:1 that reads as a drawing; at `base_scale 0.25` — the scale the game
+actually draws at (§2) — a 50 %-covered pixel becomes 12 %-covered and the whole
+sprite reads as a grey smudge with no edge. It cannot be fixed by scaling or by
+a filter, because the problem is in the file's alpha values.
+
+```bash
+# the gate (decodes every frame; exit 1 on any finding)
+PYTHONPATH=python_tools python3 -m gm art check --folder "Zombie Sprites/restyled"
+# the pass, after copying the originals somewhere
+PYTHONPATH=python_tools python3 -m gm art clean --backup /tmp/art_before --sprite 'spr_shroud_*'
+# a before/after sheet, because "does the rim read right?" is an eye question
+PYTHONPATH=python_tools python3 -m gm art preview --backup /tmp/art_before \
+    --folder "Zombie Sprites/restyled" --state idle
+```
+
+`clean` snaps every alpha to 0 or 255 at the 50 % coverage contour, zeroes the
+colour of the pixels it clears (or bilinear sampling drags the halo back in),
+and strokes the contour **inside** the silhouette: a 1 px rim whose outer edge
+*is* the silhouette, i.e. inset by half a pixel. Nothing outside the silhouette
+moves, so the canvas, the origin and the bounding box stay as imported and **no
+`.yy` is touched** (`gm roundtrip` stays at 0 differ). Both copies of every
+frame are written from one buffer — `sprites/<spr>/<guid>.png` and
+`sprites/<spr>/layers/<guid>/<layer>.png` — because the IDE shows the first and
+the game samples the second (LL-073).
+
+`check` fails on a partial alpha, a colour left in a cleared pixel, a contour
+that is not `(0,0,0,255)`, or a layer copy that disagrees with its root. Run it
+on every drop: it is the answer to "is this art ready to look right in game?",
+and it costs a second per sprite.
+
+The one judgement call the report hands back: an **isolated 1 px speck** (a
+single opaque pixel that touches nothing, not even diagonally) becomes a black
+dot, because the stroke inks it entirely. `clean` says how many it found; if the
+preview shows one of them was meant to be visible, the fix is to drop specks in
+`binarize`, not to widen the stroke.
+
 ### 3.1 Towers — one canvas, one origin, three states
 
 | Field | Value |
@@ -834,6 +874,9 @@ design cards have something concrete to accept or change:
 
 - [ ] The sprite is imported **in the IDE** (never by editing `.yy`), with the
       canvas, origin and `bboxMode` from §3.
+- [ ] `gm art check` passes on it (§3.0) — hard alpha, a black rim, and a layer
+      copy that matches its root. A drop that fails this looks soft in game even
+      though it looks fine in the sprite editor.
 - [ ] A `.gml` **names it** — roster, spawn table, atlas mapping, UI draw call.
       A sprite nothing references is not content (LL-023).
 - [ ] It is visible in the game at the scale in §2, not only in the IDE preview.

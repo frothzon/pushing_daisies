@@ -93,6 +93,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-070](#ll-070) | The layout gate's **first real run** died inside the Draw event, two lines after `UI    [GEOM] begin worldmap 960x540 items 140`: `Variable Menu.json_string(101726, -2147483648) not set before reading it.` | `json_string` **is not a GameMaker function** (the pair is `json_parse` / `json_stringify`). GML compiles an unknown name followed by `(` as a **variable READ**, so there is no compile error, the build succeeds, and the failure waits until the line runs - naming a variable nobody ever assigned. A diagnostic that can throw breaks working rule 5 | **FIXED** |
 | [LL-071](#ll-071) | Icons sit **half an icon up and left** of where the layout put them, tower thumbnails are a **different size each** and two **poke out of their cell** - and `gm layout check` calls every one of those screens **clean** | A picture is placed by its **art rectangle**, not its origin: the origin was subtracted **twice** (`draw_sprite_ext` had already honoured it), the **canvas** was scaled instead of the art, and the dump registered a rectangle **nobody had drawn** | **FIXED** |
 | [LL-072](#ll-072) | The title-screen zombie's **idle loop plays twice as fast** as in the original build - same art, no error, and the walk and grab look right | The state asked for **60 STEPS**, and a step is not a unit of time: 60 steps was 2 s in the 30 fps build and is 1 s at 60 fps, exactly the factor reported. [LL-030](#ll-030) made animations duration-based but converted **at each call site**, so the unit stayed steps and the frame rate moved | **FIXED** |
+| [LL-073](#ll-073) | A sprite looks sharp in the **sprite editor** and soft/fringed **in game**; or a "cleaned" sprite comes back unchanged after a reload | A frame is **two PNGs** (`<frame>.png` *and* `layers/<frame>/<layer>.png`) - write one and the editor and the game disagree. And anti-aliased alpha is a **file** problem: at `base_scale 0.25` a 50 %-covered pixel is 12 %-covered, which no filter or scaling can undo | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
@@ -5464,6 +5465,89 @@ retune is `ANIM_SECONDS_ZOMBIE_IDLE`, not the mechanism.
 `objects/obj_titleZomb/Step_0.gml`, `objects/obj_tower/Create_0.gml` (the
 `anim_seconds` precedent), `scripts/scr_zombie_emerge/scr_zombie_emerge.gml`,
 `scripts/scr_zombie_path/scr_zombie_path.gml`.
+
+---
+
+<a name="ll-073"></a>
+## LL-073 — A frame is TWO PNGs, and anti-aliased alpha is a file problem: the sprite looks sharp in the editor and soft in game
+
+**Symptom.** The forty restyled zombie state sets (10 characters × `idle`/`walk`/
+`attack`/`die` × 16 frames) look like drawings at 1:1 in the sprite editor and
+like a grey smudge in game: no edge, no rim, a pale halo round every silhouette.
+Nothing errors, the `.yy` is correct, the origin is correct, and the frames are
+the ones that were drawn. A first attempt that rewrote only
+`sprites/<spr>/<frame>.png` changed **nothing at all** after the project was
+reloaded - which is the second half of this entry.
+
+**Root cause.** Two separate things, both invisible in the sprite editor.
+
+1. **A frame is two files.** `sprites/<spr>/<frame guid>.png` is what the frame
+   strip shows; `sprites/<spr>/layers/<frame guid>/<layer guid>.png` is the
+   texture the game samples. They normally hold the same pixels (in different
+   PNG encodings). Rewrite one and the editor and the game disagree - and the
+   copy you did **not** rewrite is the one that still looks wrong.
+
+2. **Anti-aliasing lives in the alpha channel.** Measured on these sets: 7 000 to
+   14 500 pixels per 16-frame set (500-900 a frame) were `0 < alpha < 255` - a
+   1 px coverage ramp round the contour, plus an `alpha 1-8` halo a row or two
+   *outside* it. At 1:1 the ramp reads as a soft edge; the game draws these at
+   `base_scale 0.25`, where a 50 %-covered edge pixel covers 12 % of a drawn
+   pixel, so the rim dissolves into the background. No sampler setting, filter
+   or scale factor can undo that: the coverage fraction is baked into the file.
+
+**Fix.** `python_tools/gm/art/` - read both copies, do the arithmetic, write one
+buffer to both. The arithmetic is three lines of intent:
+
+```python
+a = rgba[i + 3]
+if a >= threshold:          # 128 = the 50 % coverage contour
+    ... alpha = 255          # keep the colour, it is part of the silhouette
+else:
+    ... (0, 0, 0, 0)         # colour ZEROED, or bilinear sampling drags the halo back
+```
+
+```python
+ring = boundary(mask, width, height)   # opaque pixels with a 4-transparent neighbour
+for p in ring:
+    out[p * 4:p * 4 + 4] = bytes((0, 0, 0, 255))
+    mask[p] = 0                        # already inked: a wider stroke goes behind
+```
+
+The stroke is **inside** the silhouette, so the opaque mask never changes - which
+is why no `.yy` has to be edited, and why `gm roundtrip` stays at `0 differ` and
+`git diff` shows nothing but `.png` files.
+
+**Guard rails.**
+
+* **After any pixel edit, write both copies and then compare them.** `gm art
+  check` does exactly that: it decodes every frame, and fails on a partial alpha,
+  a colour left in a cleared pixel, a contour that is not `(0,0,0,255)`, or a
+  layer copy that does not match its root. Exit 0 or it is not done.
+* **Read the frame and layer GUIDs out of the `.yy`** (`frames[].name`,
+  `layers[].name`); never glob the folder. Note the layer *file* is named for the
+  layer and its *folder* for the frame, which is one swap away from a silent
+  mismatch.
+* **An inside stroke cannot move the bbox; an outside one can.** If the rim ever
+  has to grow the sprite, the `.yy` (`width`/`height`/`bbox_*`) must be re-imported
+  through the IDE, never hand-edited ([LL-009](#ll-009)).
+* **Do not "fix" soft art by scaling or filtering.** Measure the alpha
+  histogram first (`pixels.alpha_histogram`); if there are fractional pixels, the
+  file is the problem.
+* **Idempotent or it is not a pass.** The next art drop will run this again over
+  the same files; `inner_outline` only counts pixels it actually changed, so a
+  second run reports `stroke 0 px`.
+* **The report is allowed to warn.** 18 of the 40 sets contain 2-26 isolated
+  1 px specks, which a 1 px stroke turns into black dots (the gardener's daisy
+  stem is the clearest case). That is surfaced, not silently decided.
+
+**Status.** FIXED 2026-10-23 for the 40 sets: 640 frames, 1 280 files, 328 419
+partial pixels snapped, 364 984 contour pixels inked, `gm art check` green on all
+640 frames. The art itself is awaiting rayu's eye in the sprite editor (card
+`art-zombie-alpha-outline`).
+
+**Files.** `python_tools/gm/art/{png,pixels,sprites,clean,report,cli}.py`,
+`python_tools/gm/cli.py`, `python_tools/tests/test_art.py`,
+`art_descriptions.md` §3.0.
 
 ---
 

@@ -18,6 +18,7 @@ from . import progress as progress_mod
 from . import project as project_mod
 from . import save as save_mod
 from . import yy
+from .art import add_parser as add_art_parser
 
 
 def _load_project(args: argparse.Namespace) -> "project_mod.Project":
@@ -663,6 +664,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--items", action="store_true",
                    help="check: list every registered rectangle, not just the findings")
     p.set_defaults(func=layout_mod.cmd_layout)
+
+    add_art_parser(sub)
 
     p = sub.add_parser("roundtrip", help="verify .yy files round-trip byte-for-byte")
     p.add_argument("paths", nargs="*")

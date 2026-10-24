@@ -84,7 +84,21 @@ python -m gm balance check       # every table still parses (the fast gate)
 # fit a knob from outcomes: which curve_end puts these stages in band?
 python -m gm balance fit --stages 1 2 3 --from 10 --to 20 --step 5
 python -m gm balance fit --stages 1 2 3 --from 10 --to 20 --step 5 --sim
+
+# The art pass - hard alpha + a 1 px black rim, inside the silhouette (LL-073)
+python -m gm art check --folder "Zombie Sprites/restyled"   # the gate: exit 1 on any finding
+python -m gm art clean --dry-run --sprite 'spr_shroud_*'    # measure, write nothing
+python -m gm art clean --backup /tmp/art_before --sprite 'spr_shroud_*'
+python -m gm art preview --backup /tmp/art_before \
+    --folder "Zombie Sprites/restyled" --state idle  # before/after sheet
 ```
+
+`art check` decodes the pixels of both copies of every frame (the root PNG and
+`layers/<frame>/<layer>.png`), so it fails on the thing the sprite editor hides:
+a partially transparent pixel, a colour left in a cleared pixel, a contour that
+is not black, or a layer copy that disagrees with its root. `art clean` writes
+both copies from one buffer; the stroke is *inside* the silhouette, so no `.yy`
+changes and `roundtrip` stays at `0 differ`.
 
 `balance towers` prints four dps figures per tower and it matters which is
 which: **card** (`damage x rate x targets`, the shop's claim), **x1** (one

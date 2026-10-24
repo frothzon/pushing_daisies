@@ -20,6 +20,7 @@
   },
   "focus": {
     "now": [
+      "art-zombie-alpha-outline",
       "ui-meta-button-w",
       "ui-meta-currency-foot",
       "title-zomb-idle-seconds"
@@ -32,7 +33,7 @@
       "biome-tileset-wiring",
       "combat-gate-two-loadouts"
     ],
-    "note": "2026-10-22 (meta UI + title zombie): three defects, three single owners. (1) A meta button is as wide as its label now - ui_meta_btn_w in scr_ui_layout_meta measures the widest label at 16pt plus 24, one width per row - so Garden Book stopped painting 7 units into the title, and the band's action column is derived from its buttons instead of being a fixed 240. (2) The four counters left the top band for a full-width strip at the bottom of every meta screen, centred, one icon line above the bottom margin, measured rather than assumed; Deploy keeps only its Region/Stage line in the band, and Results shows the counters for the first time. (3) The title zombie's idle loop is timed in SECONDS now (ANIM_SECONDS_ZOMBIE_IDLE 2.0) through scr_animSpeedForSeconds, because 60 steps was 2 s at 30 fps and 1 s at 60 fps (LL-072). The walk and grab keep their 60 steps on purpose; a backlog card decides the remaining step-based call sites. Reload the project before testing (it was closed, so these files are safe) and re-dump with F12: the acceptance lines are ANIM title idle ... steps=120 ... image_speed=0.2667, a Garden Book label inside a 131-wide button, a .cur strip at h-32..h-16, and 0 findings from gm layout check."
+    "note": "2026-10-23 (zombie art): the forty restyled zombie state sets arrived anti-aliased - a 1 px ramp of fractional alpha, plus an alpha 1-8 halo a row or two outside the rim - which reads as a grey smudge at base_scale 0.25, not as a drawing. gm art clean has run over them: 328 419 partial pixels snapped to 0/255 (alpha >= 128 up, everything below down, colour zeroed so bilinear sampling cannot drag a discarded halo back in) and a 1 px black contour inked INSIDE the silhouette, so the canvas, origin and bbox are untouched and no .yy was edited - roundtrip stays 0 differ and git diff shows only PNGs. The pass writes both copies of every frame from one buffer, sprites/<spr>/<guid>.png and layers/<guid>/<layer>.png, because the IDE shows one and the game samples the other. gm art check is the gate from now on; it decodes the pixels instead of trusting that a pass ran, and it passes on all 640 frames. Suite 247 -> 293. Acceptance: reload GameMaker, open spr_bell_ringer_idle and spr_shroud_idle in the sprite editor - hard edges, a black rim, no grey fringe - and compare /tmp/zombie_cleanup_preview2.png. What would prove it wrong: a frame still showing a fringe in the editor, or a rim missing on one side (the layer copy was not rewritten)."
   },
   "tasks": [
     {
@@ -313,6 +314,32 @@
       ],
       "created": "2026-10-19",
       "updated": "2026-10-19",
+      "done": null
+    },
+    {
+      "id": "art-zombie-alpha-outline",
+      "title": "The 40 restyled zombie state sets are anti-aliased: snap the alpha and ink a 1 px inner outline",
+      "status": "review",
+      "owner": "both",
+      "awaiting": "rayu",
+      "area": "art",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "Reload the project in GameMaker, then open spr_bell_ringer_idle and spr_shroud_idle in the sprite editor: frames must have hard edges and a 1 px black rim with no grey fringe. The before/after sheet is /tmp/zombie_cleanup_preview2.png (rows: before, after, before zoomed, after zoomed, columns in the order the command printed).",
+      "notes": "All 40 sets x 16 frames were cleaned by gm art clean: 328 419 partially transparent pixels snapped to 0/255, 364 984 contour pixels inked, 1 280 files written (root PNG + layer PNG from one buffer). Nothing to do with .yy: the stroke is inside the silhouette, so canvas, origin and bbox are unchanged and gm roundtrip stays at 0 differ. gm art check now passes on all 640 frames. The warning to look at: 18 of the 40 sets contain 2-26 isolated 1 px specks (single pixels that touch nothing even diagonally - the gardener daisy stem is the clearest case), and a 1 px stroke turns each into a black dot. That is 0.2 px of a drawn pixel at base_scale 0.25, so it is reported rather than fixed; if the preview shows a dot as wrong, the next step is to drop specks below 2 px in binarize, not to widen the stroke.",
+      "refs": [
+        "python_tools/gm/art/png.py",
+        "python_tools/gm/art/pixels.py",
+        "python_tools/gm/art/sprites.py",
+        "python_tools/gm/art/clean.py",
+        "python_tools/gm/art/report.py",
+        "python_tools/gm/art/cli.py",
+        "python_tools/tests/test_art.py",
+        "art_descriptions.md"
+      ],
+      "created": "2026-10-23",
+      "updated": "2026-10-23",
       "done": null
     },
     {
