@@ -14,7 +14,7 @@ if(menu_state == MENU_STATE.START){
         _w = string_width(string_hash_to_newline(_txt)),
         _h = string_height_spr(string_hash_to_newline(_txt)),
         _xmid = title_text_pos[0]-_w*0.5,
-        _ypos = title_text_pos[2]-_h*0.5;
+        _ypos = title_text_pos[2]-_h*0.5 + wave(-8, 8, 10, 0);
         
     var _padx = 40;
     var _pady = 60;
