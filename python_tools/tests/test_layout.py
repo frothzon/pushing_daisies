@@ -10,6 +10,7 @@ with them, which is the point.
 
 import contextlib
 import io
+import re
 import struct
 import sys
 import tempfile
@@ -680,3 +681,139 @@ class CheckCliTests(unittest.TestCase):
         code, out = self._run(self._log("deploy.log", BAD_LOG), items=True)
         self.assertEqual(1, code, out)
         self.assertIn("text stage", out)
+
+
+# ---------------------------------------------------------------------------
+# The Garden Book's plant card: one fact, three files
+# ---------------------------------------------------------------------------
+#
+# The card reads four rectangles from the flex tree (scr_ui_layout_meta), the
+# tree builds them, and ui_meta_names() has to declare them or ui_meta_check
+# reports a reader asking for a name nobody built.  Three lists describing one
+# fact is three places to forget it, so they are compared here rather than kept
+# in step by hand.
+
+META_LAYOUT_REL = "scripts/scr_ui_layout_meta/scr_ui_layout_meta.gml"
+META_SCREEN_REL = "scripts/scr_meta_screen/scr_meta_screen.gml"
+TOWER_STATS_REL = "scripts/scr_tower_stats/scr_tower_stats.gml"
+
+CARD_NAMES = frozenset(["garden.stats", "garden.stats.head",
+                        "garden.stats.grid", "garden.stats.note"])
+
+# FONT p12 ... line=16 - the 12pt line height the game logs at boot, and the
+# number every row of the card's grid is spaced by.
+LINE_12PT = 16
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class GardenCardTests(unittest.TestCase):
+    """The plant card: built, declared and read, all by the same names."""
+
+    def read(self, rel):
+        return (PROJECT_ROOT / rel).read_text(encoding="utf-8")
+
+    def tree(self):
+        """The garden tree's node names, and its body (for the arithmetic)."""
+        text = self.read(META_LAYOUT_REL)
+        fn = re.search(r"function ui_meta_garden_tree\(\)\s*\{(.*?)\n\}", text, re.S)
+        self.assertIsNotNone(fn, "ui_meta_garden_tree() is gone")
+        body = fn.group(1)
+        self.assertIn('"garden.node." + string(', body,
+                      "the node cards are no longer a loop")
+        return set(re.findall(r'name: "(garden\.[A-Za-z0-9_.]+)"', body)), body
+
+    def declared(self):
+        text = self.read(META_LAYOUT_REL)
+        fn = re.search(r"function ui_meta_names\(_screen\)\s*\{(.*?)\n\}", text, re.S)
+        self.assertIsNotNone(fn, "ui_meta_names() is gone")
+        case = re.search(r'case "garden":(.*?)break;', fn.group(1), re.S)
+        self.assertIsNotNone(case, 'ui_meta_names() has no "garden" case')
+        body = case.group(1)
+        self.assertIn('"garden.node." + string(', body,
+                      "the node cards are no longer declared by a loop")
+        # the loop's prefix ("garden.node.") is not a name on its own
+        return {n for n in re.findall(r'"(garden\.[A-Za-z0-9_.]+)"', body)
+                if not n.endswith(".")}
+
+    def drawn(self):
+        text = self.read(META_SCREEN_REL)
+        return set(re.findall(r'ui_meta_rect\(\s*"garden",\s*"([A-Za-z0-9_.]+)"', text))
+
+    def test_every_garden_rect_the_screen_reads_is_declared(self):
+        """A name read but not declared is exactly what ui_meta_check calls a
+        typo - and it fails in the log, on the user's machine, not here."""
+        drawn, declared = self.drawn(), self.declared()
+        self.assertTrue(drawn)
+
+        # the node cards are both read and declared by a loop, so their
+        # literals are covered by the prefix (asserted in declared())
+        nodes = {n for n in drawn if re.match(r"garden\.node\.\d+$", n)}
+        self.assertTrue(nodes, "meta_garden_geom no longer reads a node")
+        drawn = drawn - nodes
+
+        self.assertEqual(set(), declared - drawn - {"garden.head.acts"},
+                         "declared but nothing reads it (or the reader was renamed)")
+        self.assertEqual(set(), drawn - declared, "read but not in ui_meta_names")
+
+
+
+    def test_the_card_is_built_declared_and_read(self):
+        built, _ = self.tree()
+        self.assertEqual(set(), CARD_NAMES - built, "not built by the tree")
+        self.assertEqual(set(), CARD_NAMES - self.declared(), "not declared")
+        self.assertEqual(set(), CARD_NAMES - self.drawn(), "not read")
+
+    def test_the_info_bar_it_replaced_is_gone(self):
+        """The old 30-unit bar and its `garden.shopinfo` node: a leftover would
+        be a rectangle nobody reads, sitting where the card now is."""
+        built, _ = self.tree()
+        self.assertNotIn("garden.shopinfo", built)
+        self.assertNotIn("garden.shopinfo", self.declared())
+        self.assertNotIn("shopinfo", self.read(META_SCREEN_REL))
+
+    def test_the_grid_holds_six_numbers_in_two_columns_of_three(self):
+        stats = self.read(TOWER_STATS_REL)
+        labels = re.findall(r'label\s*:\s*"([A-Z]+)"', stats)
+        self.assertEqual(["DAMAGE", "RATE", "DPS", "RANGE", "TARGETS", "PRICE"],
+                         labels)
+
+        screen = self.read(META_SCREEN_REL)
+        self.assertIn("(_i mod 2)", screen, "the grid is no longer two columns")
+        rows = re.search(r"_colh\s*=\s*\(_gr\[3\] - _gr\[1\]\) / (\d+)", screen)
+        self.assertIsNotNone(rows, "the grid no longer divides its height into rows")
+        self.assertEqual((len(labels) + 1) // 2, int(rows.group(1)),
+                         "a seventh stat needs a taller card, not a fourth row")
+
+    def test_the_card_leaves_three_full_rows_for_the_grid(self):
+        """The card's FIXED parts, parsed from the tree, must leave the grid
+        three 12pt rows: 24 + 4 + 132 + 4 is what the wall gives up, so the card
+        cannot quietly spend it on padding and touch its own rows (LL-069)."""
+        _, body = self.tree()
+        card = re.search(r'name: "garden.stats".*?nodes: \[(.*?)\]\}', body, re.S)
+        self.assertIsNotNone(card, "the garden.stats node is gone")
+        node = card.group(0)
+
+        def num(field):
+            m = re.search(field + r":\s*(\d+)", node)
+            self.assertIsNotNone(m, field + " is gone from the card")
+            return int(m.group(1))
+
+        fixed = (num("paddingTop") + num("paddingBottom") + 2*num("gapRow")
+                 + num(r'name: "garden.stats.head".*?height')
+                 + num(r'name: "garden.stats.note".*?height'))
+
+        macros = dict(re.findall(r"#macro (UI_GARDEN_\w+)\s+(\d+)",
+                                 self.read(META_LAYOUT_REL)))
+        self.assertIn("UI_GARDEN_STATS_H", macros)
+        grid = int(macros["UI_GARDEN_STATS_H"]) - fixed
+        self.assertGreaterEqual(grid, 3*LINE_12PT,
+                                "the card's grid gets %d units, three rows need %d"
+                                % (grid, 3*LINE_12PT))
+
+    def test_the_card_formats_the_one_definition_of_a_towers_numbers(self):
+        """LL-038: the tables are the source.  A scr_towerData(...) call in the
+        card would be a rival definition of range/damage/rate, and the card
+        would go on quoting numbers the game had already stopped using."""
+        stats = self.read(TOWER_STATS_REL)
+        self.assertIn("tower_data_at_level(", stats)
+        self.assertNotIn("scr_towerData(", stats)

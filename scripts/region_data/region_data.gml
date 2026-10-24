@@ -27,10 +27,11 @@
 ///
 /// so m(1) is 1.00 in every biome, and m(waves) is curve_end.
 ///
-/// ONLY REGION 1 HAS STAGES TODAY (see stage_data).  The other five rows are
-/// the curve targets of record: they start being read the moment a region-2
-/// stage row is authored, which is the roadmap 5.6 promise - content is
-/// table-filling, not code.
+/// ALL SIX REGIONS HAVE STAGES NOW (stage_data, 2026-10-24), so every row
+/// here is read: `wave_first`/`wave_step` set each stage's wave count and
+/// `curve_end` bends its HP ramp.  Regions 2..6 were authored by copying
+/// region 1's stage shape, which means these five curves are the numbers
+/// their stages were built against from the first play - not a promise.
 ///
 /// These curve values are FIRST PASS and are meant to move from play logs.
 /// economy.md 10 deliberately puts difficulty multipliers LAST in the tuning
@@ -59,8 +60,10 @@
 ///
 /// CONFIRMED IN PLAY 2026-10-13.  The retuned ceilings were run and kept, so
 /// 13 / 19 / 26 / 34 / 42 / 52 are the values of record: region 1 is verified
-/// (on Normal) and no longer a first pass.  The other five stay the stated
-/// assumption above until their own stages exist and are played.
+/// (on Normal) and no longer a first pass.  The other five are LIVE now that
+/// their stages exist, but UNPLAYED: still the stated assumption scaled from
+/// region 1's factor, and the first person to reach region 2 is the
+/// measurement that confirms or moves them (roadmap 5.6).
 
 /// One biome.
 function region_row(_region, _name, _biome, _seeds,

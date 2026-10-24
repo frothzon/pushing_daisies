@@ -1,5 +1,11 @@
 /// @description  show title name
 
+/// THE BLURRED BACKDROP GOES FIRST, and only on the screens that sit over the
+/// world (scr_menu_blur).  Every panel below is drawn on top of it, and the
+/// fade (objects/_fadeout/Draw_75) paints over the lot.  In the log this shows
+/// as `MENU  blur bake 683x384 ...` ONCE per run, on the first meta frame -
+/// twice means the cache is not being read.
+if(menu_blur_wanted(menu_state)) menu_blur_draw();
 
 if(menu_state == MENU_STATE.START){
     draw_set_font(fnt_size32);

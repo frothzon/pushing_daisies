@@ -3,6 +3,12 @@ function scr_zomb_updatePosition() {
 
 	/// update object
 
+	/// A CORPSE IS NOT WALKING, NOT LEAKING AND NOT STUCK (scr_zomb_death).
+	/// The dying branch in scr_zombie_path returns before this is reached,
+	/// and this guard is what keeps a future caller from letting a monster
+	/// that was already killed cost the player a life.
+	if(dying) return;
+
 	/// ---- progress watch (LL-031).  The path FOLLOWER's own position is the
 	/// right thing for the safety valve to ask about - "is anything advancing
 	/// this monster along its route?" - and it is a better signal than x/y,

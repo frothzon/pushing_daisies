@@ -43,8 +43,8 @@ are all on the board (`art-cleanup-unreferenced`), not in a comment.
 
 | Card | Status | What is genuinely missing | Drawing? |
 | --- | --- | --- | --- |
-| `region-bosses` | backlog | **4 new boss rigs** + 4 portraits. Region 2 reuses an existing boss. | yes — the biggest job |
-| `region-zombies` | backlog | **6 walk cycles** + 6 portraits; state sheets optional (see §4.2) | yes |
+| `region-bosses` | **code done 2026-10-24** | the **4 new boss rigs** and their 4 portraits arrived and are wired (a row carries `array(walk, idle, attack, die)`, `scr_zomb_art` plays it); region 2 reuses an existing boss | — |
+| `region-zombies` | **code done 2026-10-24**, one art job left | the **6 rigs** arrived (walk + idle + attack + die each); **two portraits are still missing** - Sandblasted and Shroud (`art-sandblasted-portrait`). `attack` is drawn but never played: the gate is a place, not an enemy (`zomb-attack-at-gate`, §3.2) | two portraits |
 | `tower-slice-trios` | **done 2026-10-21** | all four trios arrived; Tulip and Meat Bulb draw theirs, Kaboom and Marigold wait for their towers (§4.9) | — |
 | `art-biome-tiles` | backlog | **only the Graveyard atlas** — the 18 props arrived 2026-10-21; the other four biomes already have greyscale atlases (§4.3) | small |
 | `art-garden-book` | **done 2026-10-21** | every icon arrived (36); the screens that show the rest are their own cards | — |
@@ -209,11 +209,14 @@ The current rigs break this rule, which is why the art jumps between states
 | Facing | right; the game mirrors with `image_xscale < 0` |
 | Margins | 10 px minimum around the silhouette, so the black outline is never clipped |
 
-**What the game currently uses** matters for sequencing: in a level `obj_mon`
-plays **only `sprite_array[0]` — the walk cycle**. `idle`, `attack` and `die`
-exist for the title screen (`obj_titleZomb`) and the portrait popup, and are not
-switched to in play yet. So a walk cycle is the *only* mandatory state; see
-§4.2 for the honest frame budget.
+**What the game currently uses** matters for sequencing: `obj_mon` plays
+**`sprite_array[0]`, `[1]` and `[3]`** — `walk` while it is moving, `idle` while
+it is blocked, and `die` when it is killed (`scr_zomb_art`: it switches only when
+the state changes, so a one-sprite rig still works). **`attack` — slot 2 — is
+never played**: a monster in this game does not fight, it walks to the gate and
+takes a life, so that slot is drawn and unused until the gate grows a real
+engage step (`zomb-attack-at-gate`). Dedicated `idle`/`die` sheets are therefore
+worth drawing for a new rig; the walk cycle stays the one mandatory state (§4.2).
 
 ### 3.3 Portraits — 314×314, gold frame, painterly
 
@@ -439,13 +442,14 @@ feet on one screen row (§4.8's test, applied to the new rigs).
 | **Dome-Alone** | 0.5 / 12 | 138×160 | the tank: oversized teal head, orange shirt, red tie, one tooth |
 | **Professor-Cerebrisk** | 1.5 / 5 | 147×170 | the fast one: exposed pink brain, round glasses, lab coat |
 
-**The honest budget.** `goal.md` §28.1 budgets "30 frames each", and that is
-right for the game as it is built: the level plays the **walk cycle only**, and
-the portrait popup needs a **portrait**. `idle`, `attack` and `die` are drawn
-but unused in play (`obj_titleZomb` uses them, for one creature). So each new
-zombie is **16 walk frames + one portrait**, with state sheets deferred until
-`obj_mon` grows a state machine — drawing them now is the kind of "finished"
-asset that is invisible in the game.
+**The honest budget.** `goal.md` §28.1 budgets "30 frames each", and that was
+right for the game as it was built: the level used to play the **walk cycle
+only**. Since 2026-10-24 it also plays **`idle`** (while blocked) and **`die`**
+(on the kill), so a new rig is worth **walk + idle + die = 48 frames + one
+portrait**; `attack` remains drawn-but-unplayed until the gate grows a real
+engage step (`zomb-attack-at-gate`, §3.2). The ten rigs that landed with
+`region-zombies` / `region-bosses` all carry the full four slots, so the art is
+ahead of the code in exactly one place, on purpose.
 
 **Per-zombie frame plan:** walk 16 frames on a **240×200 canvas, origin
 (120,190)**; portrait 314×314. If a state sheet is drawn, it stays on the same

@@ -94,6 +94,8 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-071](#ll-071) | Icons sit **half an icon up and left** of where the layout put them, tower thumbnails are a **different size each** and two **poke out of their cell** - and `gm layout check` calls every one of those screens **clean** | A picture is placed by its **art rectangle**, not its origin: the origin was subtracted **twice** (`draw_sprite_ext` had already honoured it), the **canvas** was scaled instead of the art, and the dump registered a rectangle **nobody had drawn** | **FIXED** |
 | [LL-072](#ll-072) | The title-screen zombie's **idle loop plays twice as fast** as in the original build - same art, no error, and the walk and grab look right | The state asked for **60 STEPS**, and a step is not a unit of time: 60 steps was 2 s in the 30 fps build and is 1 s at 60 fps, exactly the factor reported. [LL-030](#ll-030) made animations duration-based but converted **at each call site**, so the unit stayed steps and the frame rate moved | **FIXED** |
 | [LL-073](#ll-073) | A sprite looks sharp in the **sprite editor** and soft/fringed **in game**; or a "cleaned" sprite comes back unchanged after a reload | A frame is **two PNGs** (`<frame>.png` *and* `layers/<frame>/<layer>.png`) - write one and the editor and the game disagree. And anti-aliased alpha is a **file** problem: at `base_scale 0.25` a 50 %-covered pixel is 12 %-covered, which no filter or scaling can undo | **FIXED** |
+| [LL-074](#ll-074) | A one-off surface bake written with `matrix_set(matrix_projection, matrix_build_orthographic(...))` - **no compile error, no warning**, and the first meta screen dies on `Variable Menu.matrix_build_orthographic(…)` | That function **does not exist** (the pair is `matrix_build_projection_ortho` + `matrix_set`), and GML reads an unknown name before `(` as a **variable** ([LL-070](#ll-070)). You need neither: `surface_set_target` does **not** change the projection, so a bake under Draw GUI fills a half-size surface at half resolution and the two scalings cancel by construction | **FIXED** |
+| [LL-075](#ll-075) | **No GML changed** - only the creature table grew from 2 bosses to 6 - and `gm balance`'s numbers for **stage 1-1** moved while a long-green test went red; the projection and the sim still agreed with each other | `model.demand` priced a boss wave from the **whole bank** (`t.bosses`) and took its mean: invisible at two bosses, a **2.5× error at six** (210 life instead of the row's 82). `sim.wave_spec` read the same table, so the two tools shared the mistake. A bank is a **catalogue**; a stage is **what arrives** | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine`
@@ -5548,6 +5550,149 @@ partial pixels snapped, 364 984 contour pixels inked, `gm art check` green on al
 **Files.** `python_tools/gm/art/{png,pixels,sprites,clean,report,cli}.py`,
 `python_tools/gm/cli.py`, `python_tools/tests/test_art.py`,
 `art_descriptions.md` §3.0.
+
+---
+
+<a name="ll-074"></a>
+## LL-074 — A surface bake inherits the projection that is already set, and `matrix_build_orthographic` is not a function
+
+**Symptom.** Writing the menu-backdrop blur, the bake looked like it had to
+"set up a camera" first, so the first draft did what a renderer normally does:
+
+```gml
+surface_set_target(_surf);
+  matrix_set(matrix_projection,
+             matrix_build_orthographic(0, _w, _h, 0, -1, 1));   // <-- does not exist
+  draw_sprite_stretched(spr_title_background_sidewalk, 0, 0, 0, _w, _h);
+surface_reset_target();
+```
+
+There is no compile error and no warning. `matrix_build_orthographic(` is
+*parsed as a variable read* ([LL-070](#ll-070)), so the build succeeds and the
+first meta screen dies on `Variable Menu.matrix_build_orthographic(…) not set
+before reading it` - one frame into a Draw event, i.e. exactly where
+[LL-002](#ll-002) says nothing may throw. The real GameMaker pair is
+`matrix_build_projection_ortho` + `matrix_set`; the name that reads most like
+the C#/Unity call is the one that does not exist.
+
+**Root cause.** Two things, and the second is the useful one.
+
+1. **An unknown name followed by `(` is not an error in GML.** Nothing in the
+   toolchain checks a function name that is new to it, so a plausible spelling
+   survives to run time ([LL-070](#ll-070)).
+2. **You do not need a projection to bake into a surface.**
+   `surface_set_target()` changes the *target*, not the matrices. In a Draw GUI
+   event the ambient projection maps `gui.w x gui.h` onto **whatever the target
+   is**, so a sprite stretched across the GUI fills a half-size surface at half
+   resolution, at any window aspect, with no setup at all. The baked sprite is
+   then drawn back stretched across the GUI, so the `1/scale` of the bake and the
+   `scale` of the draw cancel *by construction* - the blurred copy lands exactly
+   where the sharp art would have been, even if the canvas is resized between the
+   bake and the draw.
+
+**Fix.** Trust the ambient matrices (`scripts/scr_menu_blur/scr_menu_blur.gml`):
+
+```gml
+/// surface_set_target does NOT change the projection, and in Draw GUI that
+/// projection maps gui.w x gui.h onto the whole target - so a sprite
+/// stretched across the GUI FILLS a 683x384 surface, at half resolution,
+/// whatever the window's aspect.
+surface_set_target(_surf);
+  draw_clear_alpha(c_black, 1);
+  shader_set(shd_blur);
+  draw_sprite_stretched(spr_title_background_sidewalk, 0, 0, 0, global.ui.w, global.ui.h);
+  shader_reset();
+surface_reset_target();
+```
+
+**Guard rails.**
+
+* **Check that a function EXISTS before you write it.** `gm gml-functions` on
+  the script you are editing tells you what really resolves; the same trap is
+  `matrix_build_projection_ortho` vs `matrix_build_orthographic`, `json_string`
+  vs `json_stringify` ([LL-070](#ll-070)), and every other name that feels like
+  it should exist.
+* **Prefer the projection you were given to one you set.** A hand-set projection
+  is global state that has to be restored, and GameMaker replaces all three
+  matrices at the start of the next event anyway - so "save, set, draw, restore"
+  is three chances to get it wrong in exchange for nothing.
+* **The bake is drawn at GUI scale, so it must be drawn back at GUI scale.**
+  `surface_create(w * 0.5, h * 0.5)` is a resolution decision, not a layout one;
+  the moment either draw stops going "across `global.ui`", the blur shifts or
+  crops instead of scaling.
+* **A bake belongs in a sprite, not a surface.** Sprites survive a surface being
+  lost (minimise, resolution change), and the cache is the feature -
+  `MENU  blur bake 683x384 …` must appear **once per run**; twice means the cache
+  is not being read.
+
+**Status.** FIXED 2026-10-24 - caught by checking the name before the first run,
+so it never died in game. Awaits rayu's eye (card `menu-backdrop-blur`).
+
+**Files.** `scripts/scr_menu_blur/scr_menu_blur.gml`,
+`shaders/shd_blur/shd_blur.fsh`, `objects/Menu/Draw_64.gml`,
+`scripts/scr_drawBlurScreen/scr_drawBlurScreen.gml`.
+
+---
+
+<a name="ll-075"></a>
+## LL-075 — A bank is a catalogue, not a scene: six bosses made stage 1-1's boss wave 2.5× harder on paper
+
+**Symptom.** No GML changed - only the creature table grew from 2 bosses to 6
+(and from 3 walkers to 9) - and `gm balance` started reporting different numbers
+for **stage 1-1**, while a test that had been green for weeks
+(`test_the_ceiling_policy_holds_stage_1_1`) went red. The projection and the sim
+still agreed with each other, which is the tell: they shared the mistake.
+
+**Root cause.** `model.demand` priced a boss wave from `t.bosses` - **every boss
+in the game** - and took the mean of it. While the bank held two bosses (one per
+early region) that mean happened to be close to what 1-1 spawns; at six it is a
+**2.5× error**: 210 life instead of the 82 of the two bosses the stage row
+actually names. `sim.wave_spec` had the same shape
+(`self.scene.tables.bosses`), so the sim inherited the number from the closed
+form and the two tools could never disagree. A bank is *what exists*; a stage is
+*what arrives*.
+
+**Fix.** `python_tools/gm/balance/model.py`:
+
+```python
+if boss:
+    # THE STAGE'S OWN BOSSES, not the whole bank (2026-10-24).  This read
+    # `t.bosses` - every boss in the game - which was invisible while the
+    # bank held two and is a 2.5x error once it holds six.
+    bank = list(scene.bosses) or list(t.bosses)
+    pool = list(range(len(bank)))
+    count = 1
+else:
+    bank, pool = scene.monsters, list(range(len(scene.monsters)))
+```
+
+and `sim.wave_spec` reads `self.scene.bosses if d.boss else
+self.scene.monsters`, falling back to the full bank **only** when the row names
+none - the same fallback, in one place, documented. `Scene.monsters` and
+`Scene.bosses` are built from the stage row.
+
+**Guard rails.**
+
+* **Demand, speed and payout come from the row, never from the bank.** If a
+  number describes "what this wave sends", its source is `scene.*`; `tables.*`
+  is the catalogue behind it.
+* **A mean over a list that just grew is a silent balance change.** Adding rows
+  is not a data-only edit for anything that averages the table. After a roster
+  change run `gm balance` on 1-1 and `gm balance check` before believing any
+  other number.
+* **A test that goes red on a data-only change is doing its job.** Read it as
+  "the model moved", not "the test is stale" - here the test was right, and
+  stage 1-1 was being modelled as if it fought the mean of every boss in the
+  game.
+* **Two tools that share a formula agree for free** ([LL-038](#ll-038)). When
+  both move together, look at what they *both* read, not at either one.
+
+**Status.** FIXED 2026-10-24. `gm balance check` → every row's creatures exist;
+`gm balance sim --region 1 --stage 1` returns to its pre-roster numbers.
+
+**Files.** `python_tools/gm/balance/model.py`, `python_tools/gm/balance/sim.py`,
+`python_tools/tests/test_balance.py`, `scripts/stage_data/stage_data.gml`,
+`scripts/scr_setupSpawning/scr_setupSpawning.gml`.
 
 ---
 

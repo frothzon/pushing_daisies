@@ -68,3 +68,12 @@ water_reported = false;
 statuses     = {};
 status_count = 0;
 
+/// ---- the death beat (scr_zomb_death) -------------------------------
+/// `dying` is what stops a corpse from being paid for twice, targeted
+/// again or leaked: the monster plays its die animation for ZOMB_DIE_SECS
+/// and is destroyed by the clock that started it.  Declared HERE because
+/// every reader (find_all_range, scr_zomb_updatePosition, the path state)
+/// asks before the first death in the room has happened.
+dying      = false;
+dying_time = 0;
+

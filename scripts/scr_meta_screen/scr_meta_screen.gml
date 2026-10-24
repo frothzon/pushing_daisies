@@ -838,7 +838,10 @@ function meta_garden_geom() {
 		wall     : _w,
 		back     : ui_meta_rect("garden", "garden.btn.back"),
 		branch   : ui_meta_rect("garden", "garden.branch"),
-		shopinfo : ui_meta_rect("garden", "garden.shopinfo"),
+		stats     : ui_meta_rect("garden", "garden.stats"),
+		stats_head: ui_meta_rect("garden", "garden.stats.head"),
+		stats_grid: ui_meta_rect("garden", "garden.stats.grid"),
+		stats_note: ui_meta_rect("garden", "garden.stats.note"),
 		shophdr  : ui_meta_rect("garden", "garden.shophdr"),
 		head_info: ui_meta_rect("garden", "garden.head.info"),
 		head_mid : ui_meta_rect("garden", "garden.head.title"),
@@ -877,6 +880,104 @@ function meta_garden_shop_hit() {
 	return -1;
 }
 
+/// The plant card under the shop wall: what the highlighted cell does.
+///
+/// STICKY, NOT HOVERED.  The card sits BELOW the wall, so reading it takes
+/// the pointer off the cell that filled it - a live hover would blank the
+/// card at the exact moment the player moved down to read it.  Menu/Step_0
+/// keeps `garden_focus` on the last cell the pointer touched and this reads
+/// it, falling back to the live hover when the variable is not there (a
+/// different caller, or a Create that has not run yet) - LL-002 in the draw
+/// path, where an error would take the whole screen with it.
+///
+/// Nothing here measures a number of its own: the numbers are
+/// scr_tower_stats' lines, the colours are ui_palette's, and the rectangles
+/// are the tree's (garden.stats/head/grid/note), read by name.
+function meta_garden_stats_draw(_g) {
+	/// the fallback is the live hover only when the sticky variable is absent,
+	/// so a screen that has no focus yet still shows something on hover
+	var _idx = meta_garden_shop_hit();
+	if(variable_instance_exists(id, "garden_focus")) _idx = garden_focus;
+
+	var _all = tower_roster(),
+	    _it  = undefined;
+	if(_idx >= 0 && _idx < array_length(_all)) _it = _all[_idx];
+
+	/// ---- the card's own rectangles.  The fallback card is the old info bar's
+	/// place and width but the card's own height, so a tree that failed to
+	/// build still shows a readable card in the right column (ui_meta_check
+	/// has already logged why).
+	var _ph = UI_GARDEN_STATS_H,
+	    _s  = _g.stats,
+	    _hd = _g.stats_head,
+	    _gr = _g.stats_grid,
+	    _nt = _g.stats_note;
+
+	if(array_length(_s) < 4){
+		_s = [_g.wall_x, _g.wall_y + 2*_g.wall_cell + 8,
+		      _g.wall_x + 336, _g.wall_y + 2*_g.wall_cell + 8 + _ph];
+	}
+	if(array_length(_hd) < 4) _hd = [_s[0] + 8, _s[1] + 8,  _s[2] - 8, _s[1] + 32];
+	if(array_length(_gr) < 4) _gr = [_s[0] + 8, _hd[3] + 4,  _s[2] - 8, _hd[3] + 72];
+	if(array_length(_nt) < 4) _nt = [_s[0] + 8, _gr[3] + 4,  _s[2] - 8, _gr[3] + 20];
+
+	var _pal = ui_palette();
+	meta_panel(_s[0], _s[1], _s[2] - _s[0], _s[3] - _s[1],
+	           make_colour_rgb(20, 20, 24), c_black);
+
+	if(!is_struct(_it)){
+		draw_set_font(fnt_size12);
+		meta_text(_hd[0], _hd[1] + 6, "pick a plant to see its numbers",
+		          _pal.ink_soft, fa_left);
+		draw_set_font(fnt_size16);
+		return;
+	}
+
+	/// ---- the name and the buy line share ONE row.  The buy line is measured
+	/// first: it is right-aligned and must not be fitted away, so the name is
+	/// clipped to whatever is left of the row after it.
+	var _state = tower_stat_state(_it.name),
+	    _ok    = tower_stat_state_ok(_it.name);
+
+	draw_set_font(fnt_size12);
+	var _sw = string_width(_state);
+
+	draw_set_font(fnt_size16);
+	var _namew = max((_hd[2] - _hd[0]) - _sw - 12, 24),
+	    _name  = ui_clip_text(_it.name, _namew);
+	meta_text(_hd[0], _hd[1] + 2, _name, _pal.ink, fa_left);
+
+	draw_set_font(fnt_size12);
+	meta_text(_hd[2], _hd[1] + 6, _state, _ok ? _pal.accent : _pal.ink_soft, fa_right);
+
+	/// ---- the numbers: two columns of three, LABEL left and VALUE right in
+	/// each cell.  Rows are spaced by the grid's own height divided by three,
+	/// so a taller card gets taller rows rather than a gap at the bottom.
+	draw_set_font(fnt_size12);
+	var _lines = tower_stat_lines(_it.name),
+	    _n     = array_length(_lines),
+	    _colw  = (_gr[2] - _gr[0]) * 0.5,
+	    _colh  = (_gr[3] - _gr[1]) / 3,
+	    _lh    = string_height("Ag");
+
+	for(var _i = 0; _i < _n; _i++){
+		var _l  = _lines[_i],
+		    _x1 = _gr[0] + (_i mod 2)*_colw,
+		    _x2 = _x1 + _colw - 8,
+		    _y  = _gr[1] + (_i div 2)*_colh + (_colh - _lh)*0.5;
+		meta_text(_x1, _y, _l.label, _pal.ink_soft, fa_left);
+		meta_text(_x2, _y, _l.value, _pal.ink,      fa_right);
+	}
+
+	/// ---- the trait line, or nothing at all for a tower without one
+	var _note = tower_stat_note(_it.name);
+	if(_note != ""){
+		meta_text(_nt[0], _nt[1] + 2, ui_clip_text(_note, _nt[2] - _nt[0]),
+		          _pal.gold, fa_left);
+	}
+
+	draw_set_font(fnt_size16);
+}
 function meta_draw_garden() {
 	var _g     = meta_garden_geom(),
 	    _nodes = clover_nodes(),
@@ -983,48 +1084,17 @@ function meta_draw_garden() {
 	draw_set_colour(c_white);
 	meta_text(_shh[0], _shh[1] + 3, "Seed Shop", c_white, fa_left);
 
-	/// no reason line in a shop cell: the info bar under the wall says what
-	/// the selected tower costs, and at 90 units a cell cannot hold a sprite,
-	/// a two-line name and a third line without the three of them touching
+	/// no reason line in a shop cell: the plant card under the wall says what
+	/// the selected tower does AND what it costs, and at 90 units a cell
+	/// cannot hold a sprite, a two-line name and a third line without the
+	/// three of them touching
 	meta_draw_tower_wall(_g.wall_x, _g.wall_y, _g.wall_cell, _g.wall_cols, false);
 
-	var _shop = meta_garden_shop_hit(),
-	    _bar  = _g.shopinfo;
-
-	if(array_length(_bar) < 4){
-		_bar = [_g.wall_x, _g.wall_y + 2*_g.wall_cell + 8,
-		        _g.wall_x + 336, _g.wall_y + 2*_g.wall_cell + 38];
-	}
-
-	if(_shop >= 0){
-		var _all = tower_roster();
-		if(_shop < array_length(_all)){
-			var _it  = _all[_shop],
-			    _bw  = _bar[2] - _bar[0],
-			    _msg;
-
-			if(tower_owned(_it.name)){
-				_msg = _it.name + " - owned";
-			} else if(!tower_gate_met(_it.name)){
-				_msg = "Locked - clear region " + string(tower_unlock_gate(_it.name));
-			} else {
-				_msg = _it.name + " - " + string(_it.unlock) + " seeds (" +
-				       (tower_can_unlock(_it.name) ? "click to buy" : "not enough seeds") + ")";
-			}
-
-			meta_panel(_bar[0], _bar[1], _bw, _bar[3] - _bar[1],
-			           make_colour_rgb(20, 20, 24), c_black);
-
-			/// the bar is 336 wide and the longest of these messages is
-			/// ~250 at 16pt, so the size is fitted rather than assumed
-			ui_fit_font(_msg, _bw - 16, [16, 12]);
-			meta_text(_bar[0] + 8, _bar[1] + ((_bar[3] - _bar[1]) -
-			                                  string_height("Ag"))*0.5,
-			          ui_clip_text(_msg, _bw - 16),
-			          tower_owned(_it.name) ? c_lime :
-			          (tower_can_unlock(_it.name) ? c_lime : c_silver), fa_left);
-		}
-	}
+	/// ---- the plant card: the highlighted cell's numbers, its trait and
+	/// its buy line.  It reads `garden_focus` (Menu/Create_0), which is
+	/// STICKY, so the card does not blank out while the player moves the
+	/// pointer down to read it.
+	meta_garden_stats_draw(_g);
 
 	meta_button_draw(_g.back, "Return", true);
 }

@@ -209,7 +209,13 @@ def demand(scene: Scene, wave: int, ter: Optional[terrain.Terrain] = None,
     boss = t.is_boss_wave(scene.stage.region, scene.stage.stage, wave)
 
     if boss:
-        bank = t.bosses
+        # THE STAGE'S OWN BOSSES, not the whole bank (2026-10-24).  This read
+        # `t.bosses` - every boss in the game - which was invisible while the
+        # bank held two and is a 2.5x error once it holds six: stage 1-1's boss
+        # waves were modelled on the mean of ALL six (210 life) instead of the
+        # two the row names (Tusk-A-Lot and Sub-Zero, 82 life).  A bank's mean
+        # is not a stage's demand; `scene.bosses` is built from the row.
+        bank = list(scene.bosses) or list(t.bosses)
         pool = list(range(len(bank)))
         count = 1
     else:

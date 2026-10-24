@@ -61,6 +61,9 @@
 #macro UI_META_ACTS     240         /// the NARROWEST the band's two end columns get
 #macro UI_META_BTN_PAD  24          /// a button's side padding - the same +24 scr_scaleButton uses
 #macro UI_META_BTN_MIN  64          /// narrower than this a label has no room at all
+#macro UI_GARDEN_SHOPHDR_H 24      /// the "Seed Shop" heading row
+#macro UI_GARDEN_STATS_H   132     /// the plant card: 8 + 24 + 4 + 68 + 4 + 16 + 8
+
 
 /// ---- the trees ----------------------------------------------------------
 
@@ -403,9 +406,15 @@ function ui_meta_garden_tree() {
 	    /// currency strip (ui_meta_body_h)
 	    _nh      = ui_meta_body_h(),
 	    _leftmin = 260,
+	    /// everything in the right column that is NOT the wall: the
+	    /// seed-shop heading, the plant card under the wall, and the two
+	    /// row gaps between them.  Written as the SUM OF THE NODES it
+	    /// accounts for, so making the card taller takes room off the
+	    /// WALL instead of pushing the card out of the body.
+	    _rfixed  = UI_GARDEN_SHOPHDR_H + 4 + UI_GARDEN_STATS_H + 4,
 	    /// the Return button's width, from its own label
 	    _fw      = ui_meta_btn_w(["Return"]),
-	    _cell    = ui_meta_cell(_rows, _cols, _nh - 62,
+	    _cell    = ui_meta_cell(_rows, _cols, _nh - _rfixed,
 	                            _avail - 20 - _leftmin),
 	    _cards   = [];
 
@@ -434,10 +443,18 @@ function ui_meta_garden_tree() {
 	         	  	{ name: "garden.right", width: _cell*_cols,
 	         	  	  flexDirection: "column", gapRow: 4,
 	         	  	  nodes: [
-	         	  	  	{ name: "garden.shophdr", width: "100%", height: 24 },
+	         	  	  	{ name: "garden.shophdr", width: "100%", height: UI_GARDEN_SHOPHDR_H },
 	         	  	  	{ name: "garden.wall", width: _cell*_cols,
 	         	  	  	  height: _cell*_rows },
-	         	  	  	{ name: "garden.shopinfo", width: "100%", height: 30 }
+	         	  	  	{ name: "garden.stats", width: "100%", height: UI_GARDEN_STATS_H,
+	         	  	  	  flexDirection: "column", gapRow: 4,
+	         	  	  	  paddingLeft: 8, paddingRight: 8,
+	         	  	  	  paddingTop: 8,  paddingBottom: 8,
+	         	  	  	  nodes: [
+	         	  	  	  	{ name: "garden.stats.head", width: "100%", height: 24 },
+	         	  	  	  	{ name: "garden.stats.grid", width: "100%", flexGrow: 1 },
+	         	  	  	  	{ name: "garden.stats.note", width: "100%", height: 16 }
+	         	  	  	  ]}
 	         	  	  ]}
 	         	  ]},
 	         	{ name: "garden.foot", width: "100%", height: UI_META_FOOT,
@@ -576,8 +593,16 @@ function ui_meta_names(_screen) {
 			break;
 
 		case "garden":
+			/// branch and shophdr are ROWS the reader reads back (the branch
+			/// heading's own rect and the "Seed Shop" heading); cur is the
+			/// currency strip every meta screen appends.  All three were READ
+			/// and not declared, so renaming one was invisible to this check -
+			/// which is the one thing it exists to catch.
 			_out = ["garden.head.info", "garden.head.title", "garden.head.acts",
-			        "garden.wall", "garden.shopinfo", "garden.btn.back"];
+			        "garden.wall", "garden.branch", "garden.shophdr",
+			        "garden.cur", "garden.btn.back",
+			        "garden.stats", "garden.stats.head",
+			        "garden.stats.grid", "garden.stats.note"];
 			var _nd = clover_nodes();
 			for(var _c = 0; _c < array_length(_nd); _c++){
 				_out[array_length(_out)] = "garden.node." + string(_c);

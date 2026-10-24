@@ -58,13 +58,25 @@ PORTRAIT_REL = "scripts/show_portrait_box/show_portrait_box.gml"
 BOX_DRAW_REL = "objects/obj_textbox/Draw_64.gml"
 
 # `spawn_mon[0] = scr_makeMonster("Grumble-Mulch",1,7,array(spr_grumble_walk),...`
+#
+# The fourth argument is a RIG since 2026-10-24: `array(walk, idle, attack, die)`
+# for the ten restyled creatures, and still a one-element `array(spr_x)` for the
+# three originals.  So the pattern captures the WHOLE argument list and the
+# reader decides - a pattern that insisted on one sprite would have stopped
+# matching ten rows and gone on passing the checks below with them missing
+# (LL-041: a suite that cannot notice a missing row has a hole in it).
 ROW_RE = re.compile(
     r'spawn_(mon|boss)\s*\[\s*(\d+)\s*\]\s*=\s*scr_makeMonster\(\s*"([^"]+)"'
-    r'[^;]*?array\(\s*(spr_\w+)\s*\)',
+    r'[^;]*?array\(([^)]*)\)',
     re.S)
-# `spawn_boss[0][MON.portrait] = spr_tusk_portrait;`
+# `spawn_boss[0][MON.portrait] = spr_tusk_portrait;` and the documented
+# `= -1;` for a creature whose portrait art has not been drawn yet.
 PORTRAIT_RE = re.compile(
-    r'spawn_(mon|boss)\s*\[\s*(\d+)\s*\]\s*\[\s*MON\.portrait\s*\]\s*=\s*(spr_\w+)\s*;')
+    r'spawn_(mon|boss)\s*\[\s*(\d+)\s*\]\s*\[\s*MON\.portrait\s*\]\s*=\s*'
+    r'(-1|spr_\w+)\s*;')
+
+# The slots of a rig, in the order ZOMB_ANIM names them (scr_zomb_art).
+RIG_SLOTS = ("walk", "idle", "attack", "die")
 
 
 def _code_only(src):
@@ -77,13 +89,16 @@ def _code_only(src):
 
 
 def _rows(src):
-    """{(bank, index): (name, walk_sprite)} from the spawn table."""
-    return {(m.group(1), int(m.group(2))): (m.group(3), m.group(4))
-            for m in ROW_RE.finditer(src)}
+    """{(bank, index): (name, [rig sprites])} from the spawn table."""
+    out = {}
+    for m in ROW_RE.finditer(src):
+        sprites = [s.strip() for s in m.group(4).split(",") if s.strip()]
+        out[(m.group(1), int(m.group(2)))] = (m.group(3), sprites)
+    return out
 
 
 def _portraits(src):
-    """{(bank, index): portrait_sprite} from the portrait assignments."""
+    """{(bank, index): portrait_sprite_or_-1} from the portrait assignments."""
     out = {}
     for m in PORTRAIT_RE.finditer(src):
         key = (m.group(1), int(m.group(2)))
@@ -126,6 +141,10 @@ class SpawnRosterTests(unittest.TestCase):
         seen = {}
         dupes = []
         for key, spr in sorted(self.portraits.items()):
+            if spr == "-1":
+                # two creatures with NO portrait art do not share a portrait:
+                # that is the documented gap, pinned by its own test
+                continue
             if spr in seen:
                 dupes.append("%s used by %s and %s" % (spr, seen[spr], key))
             seen[spr] = key
@@ -133,18 +152,32 @@ class SpawnRosterTests(unittest.TestCase):
                          % dupes)
 
     def test_the_portrait_is_not_the_walk_sprite(self):
-        for key, (name, walk) in sorted(self.rows.items()):
-            self.assertNotEqual(walk, self.portraits.get(key),
+        for key, (name, sprites) in sorted(self.rows.items()):
+            self.assertNotEqual(sprites[0], self.portraits.get(key),
                                 "%s uses its walk sprite as its portrait" % name)
 
     def test_every_named_sprite_exists(self):
-        for key, (name, walk) in sorted(self.rows.items()):
-            for spr in (walk, self.portraits.get(key)):
-                if spr is None:
+        for key, (name, sprites) in sorted(self.rows.items()):
+            for spr in [sprites[0], self.portraits.get(key)]:
+                if spr is None or spr == "-1":
                     continue
                 yy = PROJECT_ROOT / "sprites" / spr / (spr + ".yy")
                 self.assertTrue(yy.exists(), "%s: %s is not a sprite in the "
                                 "project (%s)" % (name, spr, yy))
+
+    def test_only_the_two_documented_creatures_have_no_portrait(self):
+        """`-1` is legal, but only for a creature whose art has not landed.
+
+        Pinned as EQUALITY, not as "at most two": a third creature quietly
+        joining the list is exactly how a missing portrait ships, and a name
+        staying on it after its art arrives is the same bug the other way.
+        The art card is `art-sandblasted-portrait` (it covers both).
+        """
+        missing = sorted(name for (bank, idx), (name, _) in self.rows.items()
+                         if self.portraits.get((bank, idx)) == "-1")
+        self.assertEqual(["Sandblasted", "Shroud"], missing,
+                         "the creature(s) with no portrait art changed - "
+                         "update art-sandblasted-portrait on the board")
 
 
 @unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
@@ -394,3 +427,133 @@ class DamagePipelineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# The rigs, and the stages that actually send them
+# ---------------------------------------------------------------------------
+#
+# Four animations per creature is a promise the game makes to the art, and an
+# authored stage table is a promise it makes to the player.  Neither can be
+# checked from inside GML: a rig in the wrong slot order draws the idle as the
+# walk, and a creature no stage names is art the player never sees.
+
+# `stage_row(1,  1,  3, [0],           [0,1],     40,  90),`
+STAGE_RE = re.compile(
+    r"stage_row\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,"
+    r"\s*\[([^\]]*)\]\s*,\s*\[([^\]]*)\]\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
+
+# creature name -> the prefix its four sprites share.  The two do NOT always
+# agree with the creature's name (Orchid-Widow's rig is spr_orchid_*), which is
+# why the pairing is written down here instead of guessed from the string.
+RIGGED = {
+    "Newly-Turned":     "spr_newly_turned",
+    "Bog-Wader":        "spr_bog_wader",
+    "Sandblasted":      "spr_sand_blasted",
+    "Root-Bound":       "spr_root_bound",
+    "Shroud":           "spr_shroud",
+    "Harvester":        "spr_harvester",
+    "Foreman-Rustlung": "spr_foreman_rustlung",
+    "Orchid-Widow":     "spr_orchid",
+    "Bell-Ringer":      "spr_bell_ringer",
+    "Gardener":         "spr_gardener",
+}
+
+# The three creatures that shipped before rigs: one sprite, and it is the walk.
+SINGLE_SPRITE = ("Grumble-Mulch", "Dome-Alone", "Professor-Cerebrisk")
+
+
+def _stages(src):
+    """The authored stage rows, as dicts of ints and index lists."""
+    out = []
+    for m in STAGE_RE.finditer(src):
+        out.append({
+            "region": int(m.group(1)),
+            "stage":  int(m.group(2)),
+            "seeds":  int(m.group(3)),
+            "spawns": [int(x) for x in m.group(4).split(",") if x.strip()],
+            "bosses": [int(x) for x in m.group(5).split(",") if x.strip()],
+        })
+    return out
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class ZombieRigTests(unittest.TestCase):
+    """A rig is four sprites, in ZOMB_ANIM's order, named after its creature."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rows = _rows((PROJECT_ROOT / SPAWN_REL).read_text(encoding="utf-8-sig"))
+
+    def row(self, name):
+        for (bank, idx), (n, sprites) in self.rows.items():
+            if n == name:
+                return sprites
+        self.fail("%s is not a creature row in %s" % (name, SPAWN_REL))
+
+    def test_every_rigged_creature_carries_its_own_four_slots(self):
+        for name, prefix in sorted(RIGGED.items()):
+            expected = ["%s_%s" % (prefix, slot) for slot in RIG_SLOTS]
+            self.assertEqual(expected, self.row(name),
+                             "%s's rig is not %s - a slot out of order draws "
+                             "the idle as the walk" % (name, expected))
+
+    def test_the_originals_keep_a_single_walk_sprite(self):
+        for name in SINGLE_SPRITE:
+            sprites = self.row(name)
+            self.assertEqual(1, len(sprites),
+                             "%s grew a rig without art for it" % name)
+            self.assertTrue(sprites[0].endswith("_walk"),
+                            "%s's only sprite is not its walk art" % name)
+
+    def test_every_rig_sprite_is_a_sprite_in_the_project(self):
+        for (bank, idx), (name, sprites) in sorted(self.rows.items()):
+            for spr in sprites:
+                yy = PROJECT_ROOT / "sprites" / spr / (spr + ".yy")
+                self.assertTrue(yy.exists(), "%s: %s is missing from the "
+                                "project (%s)" % (name, spr, yy))
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class StageCoverageTests(unittest.TestCase):
+    """Every creature is sent somewhere, and every index a stage names exists."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rows = _rows((PROJECT_ROOT / SPAWN_REL).read_text(encoding="utf-8-sig"))
+        cls.stages = _stages((PROJECT_ROOT / STAGE_DATA_REL).read_text(encoding="utf-8-sig"))
+
+    def bank_size(self, bank):
+        return max([idx for (b, idx) in self.rows if b == bank] or [-1]) + 1
+
+    def test_the_table_is_six_regions_of_ten(self):
+        self.assertEqual(60, len(self.stages),
+                         "the stage table is not six regions of ten - the world "
+                         "map draws a 6x10 grid and offers what exists")
+        keys = {(r["region"], r["stage"]) for r in self.stages}
+        self.assertEqual(60, len(keys), "a region+stage appears twice")
+
+    def test_every_stage_names_a_creature_that_exists(self):
+        for r in self.stages:
+            for idx in r["spawns"]:
+                self.assertLess(idx, self.bank_size("mon"),
+                                "%d-%d sends spawn_mon[%d], which does not exist"
+                                % (r["region"], r["stage"], idx))
+            for idx in r["bosses"]:
+                self.assertLess(idx, self.bank_size("boss"),
+                                "%d-%d names boss %d, which does not exist"
+                                % (r["region"], r["stage"], idx))
+
+    def test_every_creature_is_sent_by_at_least_one_stage(self):
+        sent = {"mon": set(), "boss": set()}
+        for r in self.stages:
+            sent["mon"].update(r["spawns"])
+            sent["boss"].update(r["bosses"])
+
+        unused = sorted("%s[%d] %s" % (bank, idx, self.rows[(bank, idx)][0])
+                        for (bank, idx) in self.rows
+                        if idx not in sent[bank])
+        self.assertEqual([], unused,
+                         "these creatures have art and numbers and no stage "
+                         "sends them: %s" % unused)
+

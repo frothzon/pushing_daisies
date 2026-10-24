@@ -8,6 +8,19 @@
 /// colour to merge with somebody else's.
 image_blend = status_tint();
 
+/// ---- THE GROUND LINE -----------------------------------------------
+/// The die art does not reach the bottom of its canvas (the corpse is
+/// lying down in the standing creature's frame), so a corpse drawn
+/// exactly where the monster stood would pop UP by that gap.  The gap is
+/// MEASURED from the art (zomb_ground_offset), scaled by the monster's
+/// own size, and applied by moving the instance for the length of the
+/// draw - the only way it reaches draw_self_part without changing its
+/// seven arguments.  y is restored on the same line, and depth was
+/// already derived from the feet in obj_mon/Step_0, so nothing else on
+/// this frame sees the shift.  Walk and idle art returns 0.
+var _off = zomb_ground_offset(sprite_index) * abs(image_yscale);
+y += _off;
+
 if(inWater){
     /// The crop is DERIVED from the origin rather than being 0.75 of the
     /// canvas, so a monster meets the water at the same world depth a tower
@@ -24,4 +37,6 @@ if(inWater){
 } else {
     draw_self();
 }
+
+y -= _off;
 

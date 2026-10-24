@@ -413,7 +413,12 @@ class Sim:
         form uses for that kind of wave.
         """
         d = model.demand(self.scene, wave, self.ter)
-        bank = list(self.scene.tables.bosses if d.boss else self.scene.monsters)
+        # the STAGE's own creatures (scene.monsters / scene.bosses are built
+        # from the row), falling back to the whole bank only if a row names
+        # none - a bank mean is not a stage's demand (see model.demand)
+        own = self.scene.bosses if d.boss else self.scene.monsters
+        every = self.scene.tables.bosses if d.boss else self.scene.tables.monsters
+        bank = list(own) or list(every)
         pool = list(range(len(bank)))
         speed = model.mean_field(bank, pool, "speed", 1)
         if d.boss:

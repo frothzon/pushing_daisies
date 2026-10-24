@@ -2,7 +2,7 @@
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-23",
+    "updated": "2026-10-24",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set <id> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -20,20 +20,16 @@
   },
   "focus": {
     "now": [
-      "art-zombie-alpha-outline",
-      "ui-meta-button-w",
-      "ui-meta-currency-foot",
-      "title-zomb-idle-seconds"
+      "garden-plant-stats",
+      "menu-backdrop-blur"
     ],
     "next": [
-      "ui-icon-origins",
+      "art-sandblasted-portrait",
+      "region-4-6-difficulty",
       "ui-meta-flex",
-      "ui-flex-other-screens",
-      "biome-props",
-      "biome-tileset-wiring",
-      "combat-gate-two-loadouts"
+      "ui-flex-other-screens"
     ],
-    "note": "2026-10-23 (zombie art): the forty restyled zombie state sets arrived anti-aliased - a 1 px ramp of fractional alpha, plus an alpha 1-8 halo a row or two outside the rim - which reads as a grey smudge at base_scale 0.25, not as a drawing. gm art clean has run over them: 328 419 partial pixels snapped to 0/255 (alpha >= 128 up, everything below down, colour zeroed so bilinear sampling cannot drag a discarded halo back in) and a 1 px black contour inked INSIDE the silhouette, so the canvas, origin and bbox are untouched and no .yy was edited - roundtrip stays 0 differ and git diff shows only PNGs. The pass writes both copies of every frame from one buffer, sprites/<spr>/<guid>.png and layers/<guid>/<layer>.png, because the IDE shows one and the game samples the other. gm art check is the gate from now on; it decodes the pixels instead of trusting that a pass ran, and it passes on all 640 frames. Suite 247 -> 293. Acceptance: reload GameMaker, open spr_bell_ringer_idle and spr_shroud_idle in the sprite editor - hard edges, a black rim, no grey fringe - and compare /tmp/zombie_cleanup_preview2.png. What would prove it wrong: a frame still showing a fringe in the editor, or a rim missing on one side (the layer copy was not rewritten)."
+    "note": "2026-10-24 (three features): (1) the Garden Book's old garden.shopinfo bar - one line of numbers, never declared in the flex tree - is now a plant card: four nodes (garden.stats/.head/.grid/.note) read back by meta_garden_geom() and drawn by meta_garden_stats_draw() from tower_stat_lines / tower_stat_note / tower_stat_state in the new scripts/scr_tower_stats, which read tower_data_at_level() so the card cannot show a rung the tower is not on; the card is STICKY (garden_focus keeps the last plant touched). (2) The four meta screens sit over a blurred backdrop baked ONCE into a 683x384 sprite cached in global.menu_blur (scr_menu_blur, MENU_BLUR_SCALE 0.5); under Draw GUI the two scalings cancel, so there is no projection to set (LL-074 - the matrix_build_orthographic call that was there does not exist). (3) The ten new rigs are in play: scr_zomb_art plays walk/idle/die, zomb_ground_offset puts each rig's feet on its path, scr_zomb_death pays once behind `dying`, ends the path FIRST and plays the die art, and stage_data is 60 rows with regions 2-6 authored. Suite 293 -> 306, roundtrip 0 differ, balance check ok; LL-074 and LL-075 added. ACCEPTANCE: reload GameMaker, set global.devMode = true, and (a) open the Garden Book at 675, 960 and 1260 wide - one card, six labelled rows, the last plant stays picked, F12 dump clean; (b) open World Map, Deploy, Garden Book and Results - each sits over the blur and the log holds exactly ONE 'MENU  blur bake 683x384' line, while title and Options stay sharp; (c) play region 3 stage 1 - the Sandblasted and its neighbours walk, idle when blocked, and fall to the die art with their feet on the path, and the boot log's walker/boss bank report names all ten rigs with four slots each. What would prove it wrong: a blank or wrong card, a stretched blur or two bake lines, a corpse that slides, or a rig whose feet float or sink."
   },
   "tasks": [
     {
@@ -236,6 +232,27 @@
       "created": "2026-10-11",
       "updated": "2026-10-13",
       "done": "2026-10-13"
+    },
+    {
+      "id": "art-sandblasted-portrait",
+      "title": "Two rigs have no portrait: Sandblasted and Shroud",
+      "status": "next",
+      "owner": "rayu",
+      "awaiting": "rayu",
+      "area": "art",
+      "phase": "5",
+      "size": "S",
+      "prio": 2,
+      "needs": "Draw two 314x314 one-frame portraits in the same contract as the four that already exist (spr_newly_turned_portrait is the reference): Sandblasted - art_descriptions.md section 4, Region 3, a tall thin dried-out worker with sand pouring from a torn side and rebar through one shoulder - and Shroud - section 4, Region 5, a body still wrapped in a burial shroud dragging a collapsed headstone. Name them spr_sandblasted_portrait and spr_shroud_portrait; with the files in place the two -1s in scr_setupSpawning become sprite names and test_only_the_two_documented_creatures_have_no_portrait is the test that has to be updated with them.",
+      "notes": "Both rows carry MON.portrait = -1 with a comment naming this card, the Up Next popup guards on -1, and test_content pins the missing set to EXACTLY these two names - so a third creature cannot quietly join them, and neither can one of these quietly stay -1 after its art lands. The portrait contract is art_descriptions.md section 3.3: 314x314, one frame, head-and-shoulders bust slightly turned, dark vignetted background (not transparent), rusted-gold inset frame about 14 px, warm rim from the upper left and cool shadow on the right.",
+      "refs": [
+        "art_descriptions.md",
+        "scripts/scr_setupSpawning/scr_setupSpawning.gml",
+        "python_tools/tests/test_content.py"
+      ],
+      "created": "2026-10-24",
+      "updated": "2026-10-24",
+      "done": null
     },
     {
       "id": "art-state-origins",
@@ -1856,6 +1873,28 @@
       "updated": "2026-10-15"
     },
     {
+      "id": "garden-plant-stats",
+      "title": "Garden Book: a plant card replaces the old shopinfo bar",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "3",
+      "size": "M",
+      "prio": 2,
+      "needs": "Reload the project, then open the Garden Book at 675x540, 960x540 and 1260x540 with global.devMode = true and press F12. The card must show six labelled rows in two columns of three, a note line under them, and it must KEEP the last plant you touched when the pointer leaves the grid (garden_focus is sticky). Send the log: a UI [check] finding that names garden.stats, a blank card, or a card that changes to a different plant when the pointer leaves means this is not done.",
+      "notes": "The old bar printed garden.shopinfo - one line of numbers with no labels and no context, and it was never declared in the flex tree, so a rename was invisible to ui_meta_check. The card is now four flex nodes (garden.stats / .head / .grid / .note, UI_GARDEN_STATS_H tall with at least 3 x 16pt grid rows), read back by meta_garden_geom() and drawn by meta_garden_stats_draw(); the numbers come from torch_stat_lines/tower_stat_note/tower_stat_state in the new scripts/scr_tower_stats, which read tower_data_at_level() instead of scr_towerData(), so the card cannot show a rung the tower is not on. GardenCardTests in test_layout.py is the gate: it asserts the nodes are built, declared AND read, that garden.shopinfo is gone, that the six labels sit in two columns of three, and that the source is tower_data_at_level.",
+      "refs": [
+        "scripts/scr_tower_stats/scr_tower_stats.gml",
+        "scripts/scr_ui_layout_meta/scr_ui_layout_meta.gml",
+        "scripts/scr_meta_screen/scr_meta_screen.gml",
+        "objects/Menu/Step_0.gml"
+      ],
+      "created": "2026-10-24",
+      "updated": "2026-10-24",
+      "done": null
+    },
+    {
       "id": "garden-respec",
       "title": "Respec: specializations for seeds, trees for clovers",
       "status": "backlog",
@@ -2273,6 +2312,27 @@
       "done": "2026-10-19"
     },
     {
+      "id": "menu-backdrop-blur",
+      "title": "The four meta screens sit over a blurred backdrop, baked once",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "3",
+      "size": "S",
+      "prio": 2,
+      "needs": "Reload the project, run with global.devMode = true, open World Map, Deploy, the Garden Book and Results. Each must sit over a blurred copy of the sidewalk art, and the log must contain exactly ONE line 'MENU  blur bake 683x384  from 1365x768  scale 0.5' for the whole run - a second line means the cache is not being read. The title screen and Options must keep the SHARP backdrop. What would prove it wrong: a stretched or cropped blur, a sharp backdrop on a meta screen, or two bake lines.",
+      "notes": "shd_blur is a 160-tap shader (16 directions x 10 samples), so blurring 960x540 every frame costs about 83 M texture reads - which is why scr_drawBlurScreen blurs ONCE into a sprite. scr_menu_blur does the same for the backdrop: MENU_BLUR_SCALE 0.5 bakes into a 683x384 surface and sprite once, the sprite is cached in global.menu_blur and drawn stretched across global.ui, and the two scalings cancel (LL-074). menu_blur_wanted() names the four meta states, so the title and Options keep the sharp art; menu_blur_sprite() answers -1 instead of throwing, and the caller then leaves the sharp backdrop alone (LL-002). menu_blur_free() exists and is deliberately never called: one bake per run, and the cache outlives a Menu re-creation.",
+      "refs": [
+        "scripts/scr_menu_blur/scr_menu_blur.gml",
+        "objects/Menu/Draw_64.gml",
+        "shaders/shd_blur/shd_blur.fsh"
+      ],
+      "created": "2026-10-24",
+      "updated": "2026-10-24",
+      "done": null
+    },
+    {
       "id": "meta-merge-drops-maps",
       "title": "The save resets every time: the merge read the default, not the file",
       "status": "done",
@@ -2500,6 +2560,27 @@
       "done": "2026-10-13"
     },
     {
+      "id": "region-4-6-difficulty",
+      "title": "Regions 4-6 leak under the tester's ceiling policy, and region 6 runs out of life",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "data",
+      "phase": "5",
+      "size": "M",
+      "prio": 2,
+      "needs": "",
+      "notes": "Measured 2026-10-24 on the authored 60 rows, gm balance sim --region R --stage 1 --spend ceiling: region 1 no leaks, region 2 no leaks, region 3 no leaks, region 4 2 leaks from wave 14 with 18 of 20 lives left, region 5 10 leaks from wave 11 with 10 lives left, region 6 20 leaks from wave 9 and 0 lives (a game over, waves scaling to 12143hp by wave 14). The rows follow region 1's shape and region_data's existing curve, so the lever is the curve_end and the new creatures' life, not the authoring. The tester's greedy is weaker than a player, so a few leaks is a warning rather than a verdict - but a stage that empties the life counter is worth a look before regions 4-6 are called finished.",
+      "refs": [
+        "scripts/stage_data/stage_data.gml",
+        "scripts/region_data/region_data.gml",
+        "python_tools/gm/balance/model.py"
+      ],
+      "created": "2026-10-24",
+      "updated": "2026-10-24",
+      "done": null
+    },
+    {
       "id": "region-badges",
       "title": "All seven badge types across all 60 stages",
       "status": "backlog",
@@ -2522,7 +2603,7 @@
     {
       "id": "region-bosses",
       "title": "Five bosses: four new rigs plus one reuse",
-      "status": "backlog",
+      "status": "done",
       "owner": "cline",
       "awaiting": "none",
       "area": "art",
@@ -2530,12 +2611,13 @@
       "size": "L",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.3. 4 x 2 sprites x 15 frames, and boss art is the most expensive in the game (goal.md 28.1). Region 2 reuses the second existing boss.",
+      "notes": "roadmap 5.3. 4 x 2 sprites x 15 frames, and boss art is the most expensive in the game (goal.md 28.1). DONE 2026-10-24: the four boss rigs (Foreman-Rustlung, Orchid-Widow, Bell-Ringer, Gardener) arrived as full four-slot arrays with all four portraits, and each closes its region's stage 10 (regions 3-6); region 2 still reuses an existing boss. Busy and trap now skip a monster that is dying, so a corpse cannot soak a shot, and scr_zomb_death pays once and then plays the die art.",
       "refs": [
         "goal.md"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-24",
+      "done": "2026-10-24"
     },
     {
       "id": "region-mechanics",
@@ -2558,7 +2640,7 @@
     {
       "id": "region-zombies",
       "title": "Six new zombies, plus variants from the existing rigs",
-      "status": "backlog",
+      "status": "done",
       "owner": "cline",
       "awaiting": "none",
       "area": "art",
@@ -2566,13 +2648,14 @@
       "size": "L",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.4. 6 x 2 sprites x 15 frames; the variants cost data, not art, which is the saving that makes goal.md 28.1's 1,800 -> 850 frames claim true.",
+      "notes": "roadmap 5.4. 6 x 2 sprites x 15 frames; the variants cost data, not art, which is the saving that makes goal.md 28.1's 1,800 -> 850 frames claim true. DONE 2026-10-24: the six rigs arrived as full arrays (walk, idle, attack, die), 16 frames each, all on the 240x200 canvas at origin (120,190) except the Shroud, and scr_zomb_art plays walk/idle/die with zomb_ground_offset putting each rig's feet on its path. Four portraits landed (Newly-Turned, Bog-Wader, Rootbound, Harvester); TWO ARE STILL MISSING - Sandblasted and Shroud - and that is the open card art-sandblasted-portrait, not this one. The attack slot is drawn but never played; that is zomb-attack-at-gate.",
       "refs": [
         "scripts/scr_setupSpawning/scr_setupSpawning.gml",
         "goal.md"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-24",
+      "done": "2026-10-24"
     },
     {
       "id": "repo-checkpoint",
@@ -2823,7 +2906,7 @@
     {
       "id": "stages-region-6",
       "title": "Author region 6: ten stage rows",
-      "status": "backlog",
+      "status": "done",
       "owner": "cline",
       "awaiting": "none",
       "area": "data",
@@ -2831,12 +2914,13 @@
       "size": "M",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.6, one region per card because the falsifier is per-stage: 'if authoring one stage takes more than ~30 minutes the DATA SCHEMA is wrong - fix the schema, not the stages'. Region rows need only what stage_data authors (spawn mix, bosses, par_spend, par_time); the wave count and the curve come from region_data.",
+      "notes": "roadmap 5.6, one region per card because the falsifier is per-stage. DONE 2026-10-24: stage_data is now 60 rows - ten per region - with regions 2-6 authored on region 1's shape (same spawner count, migrating walkers, each region's own boss in its finale) and region 1's stages 6-10 given their third spawner. Region 6's own creatures are the Harvester and the Gardener. StageCoverageTests asserts every region has ten rows, every row's creatures exist in the bank, and no row names a boss the bank does not hold. Difficulty is the next question, not coverage: see region-4-6-difficulty.",
       "refs": [
         "scripts/stage_data/stage_data.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-24",
+      "done": "2026-10-24"
     },
     {
       "id": "targets-cap-fix",
@@ -3531,6 +3615,28 @@
       "created": "2026-10-05",
       "updated": "2026-10-05",
       "done": "2026-10-05"
+    },
+    {
+      "id": "zomb-attack-at-gate",
+      "title": "Every rig carries an attack slot nobody plays: the gate is a place, not an enemy",
+      "status": "backlog",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "design",
+      "phase": "5",
+      "size": "M",
+      "prio": 3,
+      "needs": "",
+      "notes": "The ten rigs arrived with walk/idle/attack/die, and scr_zomb_art plays three of them: walk while path_free, idle while blocked, die in scr_zomb_death. Slot 2 is never played, because a monster here does not fight - it walks to the gate and takes a life, and scr_zomb_updatePosition returns once dying. So either the slot stays decorative (art_descriptions.md section 3.2 now says so in as many words) or the gate grows a real engage step: stop on arrival, attack for N seconds, then lose the life. That is a design decision plus scr_level_wait/scr_zomb_death work, not a drawing job - and it moves the leak clock, so run gm balance sim on stage 1-1 before and after.",
+      "refs": [
+        "scripts/scr_zomb_art/scr_zomb_art.gml",
+        "scripts/scr_zombie_path/scr_zombie_path.gml",
+        "scripts/scr_zomb_death/scr_zomb_death.gml",
+        "art_descriptions.md"
+      ],
+      "created": "2026-10-24",
+      "updated": "2026-10-24",
+      "done": null
     }
   ],
   "log": [
@@ -4240,6 +4346,24 @@
       "who": "cline",
       "task": "ui-icon-origins",
       "what": "Every UI picture was placed by its ORIGIN and scaled by its CANVAS, and the layout gate could not see any of it (LL-071). icon_draw subtracted the origin that draw_sprite_ext had already honoured, so a centred-origin icon drew half an icon up and left (spr_offense painted at x 1.3..30.7 when the caller asked to centre it on 32); meta_sprite_fit scaled the 192x192 canvas, so a tower thumbnail was 46-75% of its cell, a different size per tower, sitting low, with Cannon Tulip and Meat Bulb out of the top of the shop cell; and both registered rectangles nobody had painted - a canvas box, and a hand-typed 16..50 - while rules.py had no image rule at all, so every screen passed. New scr_ui_image fits the ART rect: ui_art_bbox/scale/rect/draw/fit, with the origin read once to convert canvas coords into a draw position and the scale capped at 1. icon_draw and meta_sprite_fit kept their signatures and delegate, so the five call sites were untouched, and rules.py gained the image rule (contained = fine, backdrop behind a label = fine, over text / across a cell edge / two pictures = finding). Checked against the sprite .yy files rather than by eye: all 12 tower sheets land y 100..176 and every icon centres +0.0,+0.0 on the point passed, including the (0,0)-origin spr_blood_magnet and spr_blood_moon - so those origins need no normalising anywhere. 768 files roundtrip 0 differ, 247 tests OK. Still open: the reload and the three-aspect F12 run."
+    },
+    {
+      "date": "2026-10-24",
+      "who": "cline",
+      "task": "garden-plant-stats",
+      "what": "The Garden Book's shopinfo bar is a plant card. The old line was a string of numbers with no labels, and because it was never declared in the flex tree no gate could see it; the card is four nodes (garden.stats/.head/.grid/.note) that are built, declared and read back by name, and its six rows come from scr_tower_stats reading tower_data_at_level(). The hover is sticky (garden_focus), so the card keeps the last plant the pointer touched instead of emptying."
+    },
+    {
+      "date": "2026-10-24",
+      "who": "cline",
+      "task": "menu-backdrop-blur",
+      "what": "The four meta screens now sit over a blurred copy of the sidewalk backdrop, baked once at half resolution (683x384) into a sprite cached in global.menu_blur; the title and Options keep the sharp art. The bake uses the ambient Draw-GUI projection - a hand-set one would have needed matrix_build_orthographic, which does not exist (LL-074)."
+    },
+    {
+      "date": "2026-10-24",
+      "who": "cline",
+      "task": "region-zombies",
+      "what": "The ten arrived rigs went into play: scr_zomb_art switches walk/idle/die only when the state changes, zomb_ground_offset aligns each rig's feet to its path, scr_zomb_death pays once behind `dying`, ends the path BEFORE it plays the die art (Alarm_0 can otherwise restart a path on a corpse and the engine would slide it), and stage_data grew to 60 rows with regions 2-6 authored. The new roster exposed two balance-tool bugs: model.demand priced boss waves from the whole bank (2.5x at six bosses) and now reads the stage's own row, and the sim's wave_spec follows it (LL-075)."
     }
   ]
 }

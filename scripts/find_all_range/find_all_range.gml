@@ -48,6 +48,11 @@ function find_all_range(argument0, argument1, argument2, argument3, argument4) {
 	    /// a monster can die mid-scan - another tower's volley lands first - so
 	    /// its x/y must not be read before this (LL-012)
 	    if(!scr_isValidInstance(_them)) continue;
+	    /// a CORPSE is still in the room for the length of its die
+	    /// animation (scr_zomb_death), but its life is already 0 - a shot
+	    /// at it is damage thrown away, and the tower would swing at a
+	    /// body instead of at the monster behind it
+	    if(zomb_is_dying(_them)) continue;
 
 	    /// x/y are built-ins, so reading them from here is safe (LL-003 is about
 	    /// an instance's OWN variables)

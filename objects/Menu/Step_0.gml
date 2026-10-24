@@ -313,6 +313,12 @@ switch(menu_state){
             var _ggeom  = meta_garden_geom(),
                 _gclick = mouse_check_button_pressed(mb_left);
 
+            /// the plant card is STICKY (meta_garden_stats_draw): a hover
+            /// over the wall sets the focus and nothing else clears it, so
+            /// the card stays readable while the pointer is down on it
+            var _ghov = meta_garden_shop_hit();
+            if(_ghov >= 0) garden_focus = _ghov;
+
             if(_gclick){
                 var _gnode = meta_garden_hit();
                 if(_gnode >= 0){
@@ -332,7 +338,7 @@ switch(menu_state){
                         }
                     }
                 } else {
-                    var _shop = meta_garden_shop_hit(),
+                    var _shop = _ghov,
                         _all  = tower_roster();
                     if(_shop >= 0 && _shop < array_length(_all)){
                         var _sname = _all[_shop].name;

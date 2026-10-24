@@ -25,6 +25,13 @@ slider_tick_at = 0;
 /// every ENTRY to the screen, never on exit - the flag outlives the state.
 results_leaving = false;
 
+/// The Garden Book's plant card follows the LAST shop cell the pointer
+/// touched, not the cell under the pointer: the card sits below the wall,
+/// so reading it moves the pointer off the cell - a live hover would blank
+/// the card at the moment the player tried to read it.  Only hovering a
+/// different cell moves it; leaving the screen does not clear it.
+garden_focus = -1;
+
 /// state machine (plain switch - see the Step event)
 menu_state      = -1;                    /// set on the first step
 /// Open on whichever screen sent us here - the title screen normally,

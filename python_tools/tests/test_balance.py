@@ -94,12 +94,20 @@ class TableTests(unittest.TestCase):
                           brutal.life))
 
     def test_creatures_and_bosses(self):
-        self.assertEqual(["Grumble-Mulch", "Dome-Alone", "Professor-Cerebrisk"],
+        # The bank, in table order - it is content, and the ORDER is the index
+        # every stage row uses (spawn_mon[3] is Newly-Turned, spawn_boss[2] is
+        # Foreman-Rustlung), so a reordering here is a content bug everywhere.
+        self.assertEqual(["Grumble-Mulch", "Dome-Alone", "Professor-Cerebrisk",
+                          "Newly-Turned", "Bog-Wader", "Sandblasted",
+                          "Root-Bound", "Shroud", "Harvester"],
                          [m.name for m in self.t.monsters])
-        self.assertEqual([7, 12, 5], [m.life for m in self.t.monsters])
-        self.assertEqual(["Tusk-A-Lot", "Sub-Zero"],
+        self.assertEqual([7, 12, 5, 5, 20, 9, 34, 14, 45],
+                         [m.life for m in self.t.monsters])
+        self.assertEqual(["Tusk-A-Lot", "Sub-Zero", "Foreman-Rustlung",
+                          "Orchid-Widow", "Bell-Ringer", "Gardener"],
                          [m.name for m in self.t.bosses])
-        self.assertEqual([55, 110], [m.life for m in self.t.bosses])
+        self.assertEqual([55, 110, 160, 220, 300, 420],
+                         [m.life for m in self.t.bosses])
 
     def test_towers_carry_price_and_stats(self):
         self.assertEqual(7, len(self.t.towers))
