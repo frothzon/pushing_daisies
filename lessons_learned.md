@@ -98,6 +98,8 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-075](#ll-075) | **No GML changed** - only the creature table grew from 2 bosses to 6 - and `gm balance`'s numbers for **stage 1-1** moved while a long-green test went red; the projection and the sim still agreed with each other | `model.demand` priced a boss wave from the **whole bank** (`t.bosses`) and took its mean: invisible at two bosses, a **2.5× error at six** (210 life instead of the row's 82). `sim.wave_spec` read the same table, so the two tools shared the mistake. A bank is a **catalogue**; a stage is **what arrives** | **FIXED** |
 | [LL-076](#ll-076) | The four meta screens are **sharp** while the log says `MENU  blur on`, and no flag or depth changes it - it looks like a GPU/display bug | The room editor had converted the FX layer into a **`GMRBackgroundLayer`** that kept the same name, the same `effectType` and `effectEnabled: true`; a background layer draws a sprite and never filters, so both flags the code checked genuinely read "on". `effectType` is dead data unless `resourceType` is `GMREffectLayer`. The blur is a shader pass over `application_surface` in `Draw GUI` now, and the log reports the EFFECT it drew, not the intent | **FIXED** |
 | [LL-077](#ll-077) | Nothing at all - the suite, the brace count, `gm gml-functions`, `roundtrip` and a diff are all green, and the file still is not what it reads like | A function TAIL appended at **EOF**: the braces still balance (14 and 14) while every later function is nested inside an unclosed `if`, so GML compiles a program nobody intended. Count the DEPTH at each `function`, not the total in the file | **FIXED** |
+| [LL-078](#ll-078) | Corpses settle **below the path** they died on - 6.6 px on the Bell-Ringer, 28 on the Shroud - and the Gardener walks 2 px into the ground all game; no error, nothing in the log | `obj_mon/Draw_0` moved `y` by `(sprite_get_height-1) - sprite_get_bbox_bottom`: the **empty canvas rows under the art** - room kept for the body to lie down, 22 of the Bell-Ringer's 175 px sheet - which says nothing about where the feet are, and one bbox serves all sixteen frames besides. The art was already on the walk's origin (within 5 px on all fifteen rigs) | **FIXED** |
+
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine` `blur` `layer` `fx` `layer_enable_fx`
@@ -5871,6 +5873,122 @@ the LL-076 rewrite. Pinned by
 
 **Files.** `scripts/scr_menu_blur/scr_menu_blur.gml`,
 `python_tools/tests/test_content.py`.
+
+---
+
+<a name="ll-078"></a>
+## LL-078 — A sprite's ground is its ORIGIN: a "ground offset" measured the empty canvas under the art, and the bbox it read was the envelope of all sixteen frames
+
+**Symptom.** Corpses do not lie on the path they died on. They **sink below**
+it, by an amount that depends on the creature, and the log says nothing at
+all: no error, no warning, `gm layout check` clean (monsters are not in the UI
+dump), and the fall itself plays and looks like a fall. Screen px, measured on
+2026-10-24 as each rig's die offset x its row's `base_scale`, for the ten
+creatures whose row really plays a die sheet: **Shroud 28**, Newly-Turned 10,
+Sandblasted 7, Bog-Wader 6.8, Bell-Ringer 6.6, Gardener 2.6, Root-Bound 1.5,
+Foreman-Rustlung 0.8, Harvester 0.6, Orchid-Widow 0.35. It read as "the bosses
+sink worst" - the Bell-Ringer (0.3) and the Gardener (0.2) are bosses, and being
+drawn small is what kept their 13-22 px canvas error down to 2.6-6.6 px - but
+the worst was an ordinary mon, the Shroud, drawn at 2.0, where 14 px of canvas
+error becomes 28 px on screen.
+
+And it was never only corpses: the same shift applied to the **walk** art, so
+every creature stood a pixel or two inside the path it walked
+(Grumble-Mulch 2.0, Newly-Turned 2.5, Gardener 2.0, Sandblasted 1.75,
+Professor-Cerebrisk 1.5, Harvester 0.6). Nobody reported that either.
+
+(Five creatures - Grumble-Mulch, Dome-Alone, Professor-Cerebrisk, Tusk-A-Lot,
+Sub-Zero - have a full 16-frame `_die` sheet on disk that their spawn row never
+plays, so their die offsets never applied at all. That is
+`zomb-five-rigs-have-die-art-unplayed`, not this entry.)
+
+**Root cause.** `objects/obj_mon/Draw_0.gml` shifted the instance before the
+draw and put it back afterwards:
+
+```gml
+var _off = zomb_ground_offset(sprite_index) * abs(image_yscale);
+y += _off;
+...
+y -= _off;
+```
+
+and `scr_zomb_art.gml`'s `zomb_ground_offset()` answered:
+
+```gml
+var _gap = (sprite_get_height(_spr) - 1) - sprite_get_bbox_bottom(_spr);
+```
+
+Two independent mistakes, both invisible in the number itself.
+
+1. **Canvas padding is not misalignment.** Where the art's feet appear is
+   `y + (bbox_bottom - yorigin)`. The canvas **height never enters it**: empty
+   rows below the art are empty rows - they neither lift nor sink anything. And
+   those rows are there on purpose: the Bell-Ringer's die canvas is 175 px tall
+   for art that ends at row 152, because fifteen of its frames are a body lying
+   down. So the shift applied was *the room the fall needs*, in pixels. The
+   origin *is* the ground contact (all fifteen rigs stand on it, die frame 0
+   within 5 px of the walk), and the correction moved the whole sheet - the
+   standing frame included - down by the room reserved for lying down.
+2. **And the number was the SHEET's, not the frame's.** `sprite_get_bbox_bottom`
+   is one box per sprite - the envelope of all sixteen frames, which is also what
+   the `.yy` stores as `bbox_bottom` - so "the padding below the art" runs to the
+   lowest pixel of *any* frame. On these sheets that is the lying body, 1-2 px
+   under frame 0's own feet (Sandblasted die: envelope 146, frame 0 at 145), so
+   the envelope is not where the damage came from; it is why the number could
+   not be reconciled with the frame on screen. The deeper the fall, the more
+   canvas the sheet needs, so the sink tracked the art: 22 empty rows on the
+   Bell-Ringer, 17 on the Bog-Wader, 14 on the Shroud, 13 on the Gardener, and
+   1-8 on the six whose falls barely leave their feet.
+
+The art was already right. Measured from the PNGs, die frame 0's lowest
+painted row is within **5 px** of walk frame 0's on all fifteen rigs, read
+against each sheet's own `yorigin` (worst: Bog-Wader -2/+7, Zero +7/+2, Grumble
+-4/+3). The last die frame lies 23 px *below* the feet on Tusk and Zero - that
+is the pose, pivoting on the origin, not an error to remove. So the fix was to
+delete the correction, **not** to re-origin fifteen die sheets - which is what
+`art-state-origins` had been asking for, from numbers that were **canvas**
+origins: the Grumble's walk is 140x160 at `yorigin 150` and its attack 232x195
+at `yorigin 170`, which reads as "20 px lower" and is the same feet on a bigger
+canvas.
+
+**Fix.** `obj_mon/Draw_0.gml` keeps only the comment (the ground line is the
+origin, LL-078), and `zomb_ground_offset()` is deleted from `scr_zomb_art.gml`;
+it had exactly one caller.
+
+**Guard rails.**
+
+* **A monster's ground contact is its sprite origin.** If a pose does not meet
+  its neighbours, re-cut the art onto that origin. Never compute a shift at
+  draw time and hope: the number will be derived from something that is only
+  *correlated* with the mistake.
+* **`sprite_get_bbox_*` (and the `.yy`'s `bbox_*`) is a union over frames.** Fine
+  for a hit box, wrong for "where is this frame". To measure one frame, decode
+  its PNG - `gm.art.png.read_png`, then the lowest row with any alpha. Frame 0's
+  file is `<frames[0].name>.png`, in `.yy` frame order (the PNGs on disk are not
+  in frame order - `ls` sorts by GUID).
+* **Compare art-relative, never canvas coordinates across sheets.** Two sheets
+  can show the same feet with origins 20 px apart, because their canvases
+  differ in size. The only number that means anything is
+  `lowest painted row - yorigin`.
+* **When an error is proportional to something in the art, suspect a quantity
+  that is not the one you meant.** Here: "distance from the art to the bottom
+  of the canvas", which grows exactly with how far the pose reaches down.
+* **`y +=` in a Draw event is a smell.** It mutates the instance for one frame,
+  so anything that reads `y` later in the step - depth, targeting, the water
+  crop, a second draw - sees the shifted or unshifted value depending on event
+  order. The water branch's `draw_self_part(0,0,...)` crop is derived from the
+  origin, so the shift never applied there anyway.
+
+**Status.** FIXED 2026-10-24. Pinned by
+`ZombieRigTests.test_the_die_frame_stands_where_the_walk_frame_stands` (decodes
+frame 0 of every rig's walk and die sheet, asserts the ground contact agrees
+within 6 canvas px) and
+`ZombieRigTests.test_nothing_moves_a_monster_off_its_origin_to_reach_the_ground`
+(no `y +=`/`y -=` in the monster Draw, no `zomb_ground_offset` in the art
+script; re-adding either turns it red - verified by mutation).
+
+**Files.** `objects/obj_mon/Draw_0.gml`,
+`scripts/scr_zomb_art/scr_zomb_art.gml`, `python_tools/tests/test_content.py`.
 
 ---
 

@@ -23,6 +23,7 @@ REPO_ROOT = TOOLS_DIR.parent
 sys.path.insert(0, str(TOOLS_DIR))
 
 from gm import yy  # noqa: E402
+from gm.art import png as art_png  # noqa: E402
 
 
 def find_project_root():
@@ -464,6 +465,20 @@ RIGGED = {
 # The three creatures that shipped before rigs: one sprite, and it is the walk.
 SINGLE_SPRITE = ("Grumble-Mulch", "Dome-Alone", "Professor-Cerebrisk")
 
+# The Draw that places a monster on screen, and the script that plays its art -
+# the only two places that could put a body off its own origin (LL-078).
+MON_DRAW_REL = "objects/obj_mon/Draw_0.gml"
+ZOMB_ART_REL = "scripts/scr_zomb_art/scr_zomb_art.gml"
+
+# How far frame 0 of a die sheet may meet the ground from where frame 0 of the
+# walk sheet does, in canvas px.  Measured 2026-10-24 on all fifteen rigs on
+# disk: the worst is 5 px either way (Bog-Wader -2/+7, Zero +7/+2, Grumble
+# -4/+3).  Six means "the same origin, not the same art": re-cutting a rig is
+# allowed, re-origining it is the bug.  Monsters are drawn at their row's scale
+# (Tusk 0.5, Grumble 1.0), so a pass is a few screen px - while the bug this
+# guards against moved the Bell-Ringer 22 canvas px, 6.6 on screen at 0.3.
+ART_GROUND_TOLERANCE = 6
+
 
 def _stages(src):
     """The authored stage rows, as dicts of ints and index lists."""
@@ -477,6 +492,33 @@ def _stages(src):
             "bosses": [int(x) for x in m.group(5).split(",") if x.strip()],
         })
     return out
+
+
+def _art_bottom(spr):
+    """Frame 0's lowest painted row, as px BELOW the sprite's own origin.
+
+    Read from the PNG, not from the .yy, because ``bbox_bottom`` in the .yy is
+    one box for the whole sprite: the envelope of all sixteen frames. On a die
+    sheet its lowest pixel belongs to the body lying on the ground, not to the
+    frame that stands, so it is not the number a pose's contact point can be
+    read from (LL-078).
+
+    Alpha > 0 counts as painted - an anti-aliased foot is still the foot.
+    """
+    folder = PROJECT_ROOT / "sprites" / spr
+    data = yy.load(folder / (spr + ".yy"))
+    frames = data.get("frames") or []
+    if not frames:
+        raise AssertionError("%s: the .yy declares no frames" % spr)
+    frame = folder / (frames[0]["name"] + ".png")
+    if not frame.exists():
+        raise AssertionError("%s: frame 0 is not on disk (%s)" % (spr, frame))
+    width, height, rgba = art_png.read_png(frame)
+    for y in range(height - 1, -1, -1):
+        row = rgba[y * width * 4:(y + 1) * width * 4]
+        if any(row[i] for i in range(3, len(row), 4)):
+            return y - int(data["sequence"]["yorigin"])
+    raise AssertionError("%s: frame 0 is fully transparent" % spr)
 
 
 @unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
@@ -514,6 +556,55 @@ class ZombieRigTests(unittest.TestCase):
                 yy = PROJECT_ROOT / "sprites" / spr / (spr + ".yy")
                 self.assertTrue(yy.exists(), "%s: %s is missing from the "
                                 "project (%s)" % (name, spr, yy))
+
+    def test_the_die_frame_stands_where_the_walk_frame_stands(self):
+        """Dying needs no vertical correction, because the origin IS the ground.
+
+        The fall PIVOTS on the origin - which is why the LAST frame of a die
+        sheet lies 23 px below the feet on Tusk and Zero.  That is the pose.
+        Frame 0, though, must stand where the walk stands, and it does: within
+        5 px on every rig (measured 2026-10-24, all fifteen).  So anything that
+        "puts the corpse on the ground" takes it off the ground, which is what
+        the old correction did (LL-078).
+        """
+        for name, prefix in sorted(RIGGED.items()):
+            walk = _art_bottom(prefix + "_walk")
+            die = _art_bottom(prefix + "_die")
+            self.assertLessEqual(
+                abs(die - walk), ART_GROUND_TOLERANCE,
+                "%s: %s_die's frame 0 meets the ground at %+d px from its "
+                "origin, but %s_walk's does at %+d px - the body would %s %d px "
+                "the instant it dies.  Re-cut the die sheet onto the walk's "
+                "origin; do not correct it in code"
+                % (name, prefix, die, prefix, walk,
+                   "drop" if die > walk else "jump", abs(die - walk)))
+
+    def test_nothing_moves_a_monster_off_its_origin_to_reach_the_ground(self):
+        """No code shifts a monster vertically at draw time (LL-078).
+
+        The helper that did, zomb_ground_offset(), returned
+        ``(height - 1) - bbox_bottom``: the empty canvas rows below the art -
+        the room kept for the body to lie down, 22 rows of the Bell-Ringer's
+        175 px sheet - a number with nothing to do with where the feet are.
+        Every corpse sank by it (0.3 px on the Orchid-Widow, 28 on the Shroud)
+        and standing poses keep canvas too, so the Grumble-Mulch walked 2 px
+        inside the ground for the whole game. A vertical shift in the Draw is
+        that bug coming back.
+        """
+        draw = _code_only(
+            (PROJECT_ROOT / MON_DRAW_REL).read_text(encoding="utf-8-sig"))
+        self.assertNotRegex(
+            draw, r"(?m)^\s*y\s*[+-]=",
+            "%s shifts y at draw time - the sprite's origin is the ground, so "
+            "an offset moves the body off it (LL-078)" % MON_DRAW_REL)
+
+        art = _code_only(
+            (PROJECT_ROOT / ZOMB_ART_REL).read_text(encoding="utf-8-sig"))
+        self.assertNotIn(
+            "zomb_ground_offset", art,
+            "%s measures a monster's ground offset again: that number is the "
+            "empty canvas rows under the art, which says nothing about where "
+            "the feet are (LL-078)" % ZOMB_ART_REL)
 
 
 @unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")

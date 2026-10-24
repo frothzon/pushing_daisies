@@ -1,5 +1,6 @@
 /// @description  The monster RIG: which of a creature's four animations is
-///               playing, and how its art meets the ground.
+///               playing - and the ground is the sprite's ORIGIN, so nothing
+///               in this file moves the art (LL-078).
 ///
 /// WHY THIS FILE EXISTS
 /// --------------------
@@ -63,31 +64,6 @@ function zomb_art_play(_art, _slot, _secs) {
 	/// a name, so the ANIM line in the log says WHICH rig was timed
 	image_speed  = scr_animSpeedForSeconds(_spr, _secs, sprite_get_name(_spr));
 	return true;
-}
-
-/// How far the drawn art sits ABOVE the sprite's bottom edge, in canvas px.
-///
-/// WHY THIS IS DERIVED (LL-071's rule, for a monster instead of a thumbnail):
-/// the die art does not reach the bottom of its canvas - the corpse is lying
-/// down and the frame keeps the standing creature's footprint - so drawing it
-/// exactly where the living monster stood lifts it by that gap, and the
-/// monster visibly POPS UP as it dies.  The gap is a property of the ART, so
-/// it is measured, never authored: a re-cut rig re-derives it.
-///
-/// Walk and idle art reaches the bottom edge, so they return 0 and nothing
-/// moves for them.
-function zomb_ground_offset(_spr) {
-	if(!sprite_exists(_spr)) return 0;
-
-	var _h = sprite_get_height(_spr);
-	if(_h <= 0) return 0;
-
-	/// -1 is "no bbox" (fully transparent art) - not a distance to add
-	var _b = sprite_get_bbox_bottom(_spr);
-	if(_b < 0) return 0;
-
-	var _gap = (_h - 1) - _b;
-	return (_gap > 0) ? _gap : 0;
 }
 
 /// Is this instance a corpse that has not finished dying?  True for anything
