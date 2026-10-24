@@ -22,6 +22,8 @@ TOOLS_DIR = TESTS_DIR.parent
 REPO_ROOT = TOOLS_DIR.parent
 sys.path.insert(0, str(TOOLS_DIR))
 
+from gm import yy  # noqa: E402
+
 
 def find_project_root():
     for candidate in [REPO_ROOT, *REPO_ROOT.parents]:
@@ -557,3 +559,140 @@ class StageCoverageTests(unittest.TestCase):
                          "these creatures have art and numbers and no stage "
                          "sends them: %s" % unused)
 
+
+#--------------------------------------------------------------------------------
+# The menu backdrop blur: a filter layer in the ROOM, switched from the Step
+#--------------------------------------------------------------------------------
+# The four meta screens used to sit over a sprite baked through shd_blur once
+# per run (LL-074).  The blur is now a filter layer in rm_menu, which moves the
+# two ways it can break out of the GML entirely: the layer has to exist, sit at
+# the right DEPTH and start hidden - and the code has to switch the EFFECT, not
+# merely the layer's visibility.  None of that shows up in a passing build.
+ROOM_MENU_REL = "rooms/rm_menu/rm_menu.yy"
+MENU_BLUR_REL = "scripts/scr_menu_blur/scr_menu_blur.gml"
+MENU_STEP_REL = "objects/Menu/Step_0.gml"
+MENU_DRAW_REL = "objects/Menu/Draw_64.gml"
+
+BLUR_LAYER = "Blur_Effect"                 # the FX layer rm_menu carries
+BACKDROP_LAYER = "Compatibility_Colour"    # the sidewalk sprite the menu shows
+BLURRED_STATES = ("WORLD_MAP", "DEPLOY", "GARDEN", "RESULTS")
+SHARP_STATES = ("START", "NEW_GAME", "CONTINUE", "OPTIONS", "RETURN", "QUIT")
+
+
+def _flat_layers(layers):
+    """Every layer of a room, including the ones nested inside layer groups."""
+    out = []
+    for layer in layers:
+        out.append(layer)
+        out.extend(_flat_layers(layer.get("layers") or []))
+    return out
+
+
+def _body(src, name):
+    """One GML function's text, up to the next `function` - comments kept."""
+    after = src.split("function %s(" % name, 1)
+    if len(after) != 2:
+        raise AssertionError("no function %s() in the source" % name)
+    return after[1].split("\nfunction ", 1)[0]
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class MenuBackdropBlurTests(unittest.TestCase):
+    """The meta screens blur the room's own backdrop; the title stays sharp."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.layers = _flat_layers(yy.load(PROJECT_ROOT / ROOM_MENU_REL)["layers"])
+        cls.by_name = {layer["name"]: layer for layer in cls.layers}
+        cls.blur_src = (PROJECT_ROOT / MENU_BLUR_REL).read_text(encoding="utf-8-sig")
+        cls.step_src = (PROJECT_ROOT / MENU_STEP_REL).read_text(encoding="utf-8-sig")
+        cls.draw_src = (PROJECT_ROOT / MENU_DRAW_REL).read_text(encoding="utf-8-sig")
+
+    def test_the_room_carries_the_filter_and_starts_sharp(self):
+        layer = self.by_name.get(BLUR_LAYER)
+        self.assertIsNotNone(layer,
+                             "rm_menu has no '%s' layer, so no screen can blur "
+                             "(layers: %s)" % (BLUR_LAYER, sorted(self.by_name)))
+        self.assertEqual("GMREffectLayer", layer.get("resourceType"),
+                         "%s is not a filter/effect layer" % BLUR_LAYER)
+        self.assertEqual("_filter_large_blur", layer.get("effectType"),
+                         "%s carries a different filter than the backdrop blur "
+                         "was built with" % BLUR_LAYER)
+        self.assertFalse(layer.get("visible"),
+                         "%s must ship HIDDEN: the title screen is the first "
+                         "screen and it keeps the backdrop sharp" % BLUR_LAYER)
+
+    def test_the_filter_sits_between_the_art_and_the_ui(self):
+        """A filter applies to the layers BELOW it, and in GameMaker a lower
+        depth draws in front - so a layer below the filter has a higher depth."""
+        for name in (BLUR_LAYER, BACKDROP_LAYER):
+            self.assertIn(name, self.by_name, "rm_menu has no %s layer" % name)
+        blur = self.by_name[BLUR_LAYER]["depth"]
+        art = self.by_name[BACKDROP_LAYER]["depth"]
+        drawn_on = [l["depth"] for l in self.layers if l.get("instances")]
+        self.assertTrue(drawn_on,
+                        "rm_menu has no instance layer - where do the Menu and "
+                        "its buttons live?")
+        ui = max(drawn_on)
+        self.assertLess(ui, blur,
+                        "the filter is at or behind the instance layer, so the "
+                        "Menu's own panels and buttons would be blurred too")
+        self.assertLess(blur, art,
+                        "the backdrop is in front of the filter, so nothing "
+                        "would be blurred at all")
+
+    def test_the_switch_is_the_effect_and_the_layer_eye(self):
+        code = _code_only(self.blur_src)
+        self.assertIn("layer_enable_fx(", code,
+                      "a filter runs only while its FX is enabled, so the "
+                      "layer's visibility alone would leave it off")
+        self.assertIn("layer_set_visible(", code,
+                      "the layer ships hidden, so the eye has to be opened too")
+        self.assertIn("layer_fx_is_enabled(", code,
+                      "the state must be read back from the room, or a fresh "
+                      "entry to rm_menu is never noticed")
+        self.assertIn("layer_get_visible(", code)
+        self.assertIn(
+            "layer_enable_fx(_lyr, _want)", code,
+            "the filter must be switched in BOTH directions: the asset ships it "
+            "effectEnabled with the layer hidden, so whichever flag a runtime "
+            "honours, the off decision has to be applied too")
+        self.assertIn("layer_set_visible(_lyr, _want)", code)
+        self.assertNotIn("layer_visible_set(", code,
+                         "layer_visible_set is the pre-2023.11 name; the pair is "
+                         "layer_get_visible / layer_set_visible")
+
+    def test_the_bake_is_gone(self):
+        code = _code_only(self.blur_src)
+        for gone in ("surface_create(", "sprite_create_from_surface(",
+                     "shader_set(", "draw_sprite_stretched(", "menu_blur_draw("):
+            self.assertNotIn(gone, code,
+                             "%s is back in scr_menu_blur: the room's filter "
+                             "replaced the surface bake (LL-074)" % gone)
+        self.assertNotIn("global.menu_blur", code,
+                         "the baked sprite cache is still referenced")
+
+    def test_only_the_four_meta_screens_ask_for_the_blur(self):
+        body = _code_only(_body(self.blur_src, "menu_blur_wanted"))
+        for state in BLURRED_STATES:
+            self.assertIn("MENU_STATE.%s" % state, body,
+                          "%s does not ask for the blur" % state)
+        for state in SHARP_STATES:
+            self.assertNotIn("MENU_STATE.%s" % state, body,
+                             "%s asks for the blur but keeps the backdrop sharp"
+                             % state)
+
+    def test_the_switch_runs_in_the_step_not_the_draw(self):
+        self.assertIn("menu_blur_apply(", _code_only(self.step_src),
+                      "nothing switches the blur layer")
+        self.assertNotIn("menu_blur", _code_only(self.draw_src),
+                         "Draw GUI must not switch the room's layer: it runs "
+                         "after the room has been drawn")
+
+    def test_the_macro_names_the_layer_that_exists(self):
+        found = re.search(r'#macro\s+MENU_BLUR_LAYER\s+"([^"]+)"', self.blur_src)
+        self.assertIsNotNone(found, "scr_menu_blur has no MENU_BLUR_LAYER macro")
+        self.assertIn(found.group(1), self.by_name,
+                      "the code toggles '%s'; rm_menu's layers are %s - a rename "
+                      "in the room editor is a silent no-op at runtime"
+                      % (found.group(1), sorted(self.by_name)))

@@ -1,11 +1,10 @@
 /// @description  show title name
 
-/// THE BLURRED BACKDROP GOES FIRST, and only on the screens that sit over the
-/// world (scr_menu_blur).  Every panel below is drawn on top of it, and the
-/// fade (objects/_fadeout/Draw_75) paints over the lot.  In the log this shows
-/// as `MENU  blur bake 683x384 ...` ONCE per run, on the first meta frame -
-/// twice means the cache is not being read.
-if(menu_blur_wanted(menu_state)) menu_blur_draw();
+/// THE BLURRED BACKDROP IS NOT DRAWN HERE.  rm_menu carries the "Blur_Effect"
+/// filter layer, and Menu/Step_0 switches it on for the four meta screens
+/// before this event runs (scr_menu_blur, LL-076) - so everything below is
+/// painted on top of a backdrop the ROOM blurred, and the fade
+/// (objects/_fadeout/Draw_75) paints over the lot.
 
 if(menu_state == MENU_STATE.START){
     draw_set_font(fnt_size32);

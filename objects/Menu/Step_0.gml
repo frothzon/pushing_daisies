@@ -33,6 +33,12 @@ if(menu_state_next != -1){
 }
 
 //--------------------------------------------------------------
+// the backdrop: the four meta screens sit over a blurred room, the title and
+// Options keep it sharp.  Every frame, because the ROOM owns that layer - a
+// fresh entry to rm_menu starts with it hidden (scr_menu_blur, LL-076).
+menu_blur_apply(menu_state);
+
+//--------------------------------------------------------------
 // the canvas moved: re-place everything this screen takes from the tree.
 // global.ui.gen is bumped by ui_screen_refresh() (a resize, or a fullscreen
 // toggle), and comparing it here is what makes that ONE frame's work instead
