@@ -1,34 +1,43 @@
-/// @description  The blurred backdrop for the screens that sit OVER the world.
+/// @description  The blurred backdrop for the four screens that sit OVER the world.
 ///
-/// THE ROOM ALREADY CARRIES ONE
-/// ----------------------------
-/// rooms/rm_menu has a filter layer called "Blur_Effect" - an FX layer holding
-/// the built-in `_filter_large_blur` - placed directly ABOVE the sidewalk
-/// backdrop and BELOW the instance layer the Menu and its buttons sit on.  A
-/// filter applies to the layers below it, so that one layer blurs exactly the
-/// art and nothing else; the panels the meta screens draw in Draw GUI are
-/// painted after the room, so they stay sharp.  All GML has to do is switch it:
-/// the layer is added in the IDE with visible = false, so the title screen
-/// starts sharp and these functions turn it on for the four meta screens.
+/// WHY THIS IS A SHADER AND NOT A ROOM LAYER
+/// -----------------------------------------
+/// The previous version of this file switched a filter layer named "Blur_Effect"
+/// in rooms/rm_menu (an FX layer holding the built-in _filter_large_blur).  That
+/// is the cheapest way to do it and it does not survive the room editor: after an
+/// edit the same name came back on a GMRBackgroundLayer that still carried
+/// `effectType: "_filter_large_blur"` - and a background layer never runs an
+/// effectType, it draws a sprite.  So the backdrop stayed sharp, and no flag in
+/// GML could change that: the switch was working perfectly and there was nothing
+/// left for it to switch (LL-076).  Everything below is GML, which the room
+/// cannot take away.
 ///
-/// WHAT THIS REPLACED
-/// ------------------
-/// The first version baked a half-size copy of the backdrop through shd_blur
-/// into a sprite once per run and drew it stretched under the panels, because
-/// blurring every frame costs ~83 M texture reads.  LL-074 is that bake's
-/// post-mortem (it had to inherit the Draw GUI projection, and
-/// `matrix_build_orthographic` does not exist).  The room's own filter does the
-/// same job in one call, at full resolution, with no sprite to leak, no one-off
-/// hitch and no cache to keep in step - so the bake is gone.
+/// HOW IT WORKS - ONE SURFACE, ONE PASS
+/// ------------------------------------
+/// This is the pause screen's recipe (scr_drawBlurScreen): capture
+/// application_surface - the composed ROOM, not the GUI - draw that capture
+/// through shd_blur into a small surface, and stretch the result over the canvas.
+/// The pause path does it once; this does it every frame, because the room behind
+/// a meta screen is alive (particles, the title zombie) and a frozen backdrop
+/// reads as a bug.
 ///
-/// ON AND OFF ARE TWO FLAGS
-/// ------------------------
-/// layer_enable_fx() is what makes a filter run; the layer's own visibility is
-/// the eye in the room editor, and the layer ships with the eye closed.  This
-/// sets both, because a hidden FX layer draws nothing whatever its flag says -
-/// that is the shape of the "effect layer works in the room editor but not in
-/// the game" report on the GameMaker tracker, where the project had called
-/// layer_enable_fx(..., false) and never turned it back on.
+/// WHY AT A FRACTION OF THE CANVAS
+/// -------------------------------
+/// shd_blur is a 160-tap shader (16 directions x 10 samples).  At 960x540 that is
+/// ~83 M texture reads a frame - fine ONCE, ruinous sixty times a second.
+/// MENU_BLUR_SCALE 0.25 blurs 240x135 instead: 5.2 M reads, which integrated
+/// graphics can afford.  A lower scale also blurs FURTHER across the screen,
+/// because shd_blur samples in NORMALISED coordinates - its radius is a fraction
+/// of the texture, not a number of pixels - and each blurred pixel then covers
+/// more of the canvas.
+///
+/// WHERE IT IS CALLED FROM
+/// -----------------------
+/// The first statement of objects/Menu/Draw_64.gml.  Draw GUI is the first moment
+/// the application surface holds the whole room (Draw has finished, nothing has
+/// been painted over it), and the Menu draws before its own buttons because they
+/// are created after it in the same layer - so this sits under every panel and
+/// every button, and over everything the room drew.
 ///
 /// WHICH SCREENS GET IT
 /// --------------------
@@ -38,23 +47,11 @@
 /// SHARP - the title is the one screen that is a picture rather than a form, and
 /// Options is a stack of sliders over the same art the title shows.
 
-/// The room layer that carries the filter.  A NAME, not an id: the layer is a
-/// room asset, so its id does not exist until rm_menu is the current room.
-#macro MENU_BLUR_LAYER "Blur_Effect"
-
-/// The FX layer in the current room, or -1 when there is none.
-///
-/// The id is cached per instance: a layer name is a string search at run time
-/// and this is called every frame.  The cache is re-checked by name as well as
-/// by handle, because a layer id is only unique inside the room that made it -
-/// a stale handle could point at somebody else's layer after a room change.
-function menu_blur_layer() {
-	var _lyr = variable_instance_exists(id, "menu_blur_lyr") ? menu_blur_lyr : -1;
-	if(_lyr != -1 && layer_exists(_lyr) && layer_get_name(_lyr) == MENU_BLUR_LAYER) return _lyr;
-	if(!layer_exists(MENU_BLUR_LAYER)) return -1;
-	menu_blur_lyr = layer_get_id(MENU_BLUR_LAYER);
-	return menu_blur_lyr;
-}
+/// How much of the canvas the blur is computed at - see the header.  0 < x <= 1.
+/// 0.25 is a quarter of the width and height: 1/16 of the pixels, 5.2 M reads a
+/// frame.  Raising it sharpens the backdrop, and the cost is pixels squared -
+/// 0.5 is already 20.7 M reads a frame.
+#macro MENU_BLUR_SCALE 0.25
 
 /// Does the screen in `_state` draw over the world?  Guarded against a state
 /// that is not one of ours (a -1 on the first frame), which is every caller's
@@ -72,52 +69,114 @@ function menu_blur_wanted(_state) {
 	return false;
 }
 
-/// Is the backdrop blurred RIGHT NOW?  Both flags: the layer ships with
-/// visible = false and effectEnabled = true, so either one on its own would
-/// answer "on" for a title screen that is not blurred.
-function menu_blur_is_on() {
-	var _lyr = menu_blur_layer();
-	if(_lyr == -1) return false;
-	return layer_get_visible(_lyr) && layer_fx_is_enabled(_lyr);
+/// The surface the blurred backdrop is built in, at _w x _h - or -1 when the
+/// device will not give us one.
+///
+/// GLOBAL, not per instance: a surface outlives the instance that made it, and
+/// Menu has no Clean Up event to free one in, so an instance-owned surface would
+/// leak one per entry to rm_menu.  One shared surface is made on first use, freed
+/// and rebuilt when the canvas changes size, and reused across room changes -
+/// there is only ever one Menu.
+function menu_blur_surface(_w, _h) {
+	var _surf = variable_global_exists("menu_blur_surf") ? global.menu_blur_surf : -1;
+
+	/// surface_get_width() on a freed surface is a crash, so existence comes
+	/// first - and is asked again after the create, because surface_create() can
+	/// fail (LL-002)
+	if(surface_exists(_surf)){
+		if(surface_get_width(_surf) == _w && surface_get_height(_surf) == _h) return _surf;
+		surface_free(_surf);
+	}
+
+	global.menu_blur_surf = surface_create(_w, _h);
+	if(!surface_exists(global.menu_blur_surf)){
+		global.menu_blur_surf = -1;
+		return -1;
+	}
+
+	return global.menu_blur_surf;
 }
 
-/// Blur the backdrop on the screens that sit over the world, and clear it on
-/// the ones that do not.  Returns the state the layer is in afterwards - false
-/// also means "this room cannot blur" (rm_test has no such layer), which is the
-/// honest answer and leaves the sharp backdrop standing (LL-002: nothing on the
-/// draw path may throw).
+/// Say WHY the backdrop is not blurred, ONCE per reason.
 ///
-/// Call it with the Menu in scope, once per Step (objects/Menu/Step_0.gml).
-/// Every frame rather than only on a state change, because the ROOM owns the
-/// layer: a fresh entry to rm_menu starts from the asset, and only asking the
-/// layer what it is doing can notice that.
-function menu_blur_apply(_state) {
-	var _lyr = menu_blur_layer();
-	if(_lyr == -1) return false;
+/// This exists because the layer version logged the DECISION and not the effect,
+/// so a filter that never ran looked exactly like one that did: "MENU  blur on"
+/// in a log with a sharp screen behind it.  A blur that cannot be made now says
+/// so out loud and leaves the sharp backdrop standing.
+function menu_blur_fail(_why, _state) {
+	if(variable_instance_exists(id, "menu_blur_failed") && menu_blur_failed == _why) return;
+	menu_blur_failed = _why;
+	menu_blur_on     = 0;
+	print("MENU  blur FAILED  ", _why, "  [", scr_menu_state_name(_state), "]");
+}
 
-	var _want = menu_blur_wanted(_state);
+/// Draw the blurred backdrop, if this screen has one.  Returns whether it drew.
+///
+/// Call it FIRST in objects/Menu/Draw_64.gml, before the panels: this paints the
+/// whole canvas, so anything drawn earlier in Draw GUI would be covered.
+function menu_blur_draw() {
+	var _state = menu_state,
+	    _want  = menu_blur_wanted(_state),
+	    /// what this function last said it was doing; -1 = nothing said yet
+	    _on    = variable_instance_exists(id, "menu_blur_on") ? menu_blur_on : -1;
 
-	/// -1 means "this Menu instance has not decided yet", and that first
-	/// decision is applied EVEN WHEN IT IS OFF.  The asset ships the filter
-	/// ENABLED (effectEnabled) with the layer hidden (visible), so whichever of
-	/// the two flags a runtime actually honours, "off" has to be said out loud
-	/// once - assuming the room already has it right is how the title screen
-	/// ends up blurred.
-	var _applied = variable_instance_exists(id, "menu_blur_applied") ? menu_blur_applied : -1;
-	if(_applied == _want && menu_blur_is_on() == _want) return _want;
+	if(!_want){
+		/// the baseline (the session's first screen) is not a transition and
+		/// gets no line; leaving a meta screen is, and does
+		if(_on == 1) print("MENU  blur off  [", scr_menu_state_name(_state), "]");
+		if(_on != 0) menu_blur_on = 0;
+		return false;
+	}
 
-	menu_blur_applied = _want;
-	layer_enable_fx(_lyr, _want);
-	layer_set_visible(_lyr, _want);
+	/// every way this can fail keeps the SHARP backdrop.  A blur is a luxury; a
+	/// black screen or a half-painted frame is not (LL-002).
+	if(!variable_global_exists("menu_blur_shader_ok")){
+		global.menu_blur_shader_ok = shader_is_compiled(shd_blur);
+	}
+	if(!global.menu_blur_shader_ok){
+		menu_blur_fail("shd_blur is not compiled", _state);
+		return false;
+	}
+	if(!surface_exists(application_surface)){
+		menu_blur_fail("there is no application_surface", _state);
+		return false;
+	}
 
-	/// Log the DECISION once, not the attempt: if the filter never made it into
-	/// the build then menu_blur_is_on() stays false and a line here would print
-	/// every frame.  The baseline above is the room's opening state rather than
-	/// a transition, so it gets no line - what a run should show is one "on" on
-	/// the first meta screen and one "off" on the way back to a sharp screen.
-	if(_applied != -1 && _applied != _want){
-		print("MENU  blur ", _want ? "on" : "off", "  ", MENU_BLUR_LAYER,
+	var _gw = display_get_gui_width(),
+	    _gh = display_get_gui_height();
+	if(_gw <= 0 || _gh <= 0){
+		menu_blur_fail("the canvas has no size", _state);
+		return false;
+	}
+
+	var _w    = max(1, round(_gw * MENU_BLUR_SCALE)),
+	    _h    = max(1, round(_gh * MENU_BLUR_SCALE)),
+	    _surf = menu_blur_surface(_w, _h);
+	if(_surf == -1){
+		menu_blur_fail("surface_create returned no surface", _state);
+		return false;
+	}
+
+	/// the capture is the ROOM: at this point application_surface holds the
+	/// composed world and none of the panels, which is exactly the split the
+	/// room's filter would have made
+	surface_set_target(_surf);
+	draw_clear_alpha(c_black, 0);
+	shader_set(shd_blur);
+	draw_surface_stretched(application_surface, 0, 0, _w, _h);
+	shader_reset();
+	surface_reset_target();
+
+	/// a blurred image is exactly the kind that survives being scaled back up,
+	/// which is what lets MENU_BLUR_SCALE be a quarter
+	draw_set_colour(c_white);
+	draw_set_alpha(1);
+	draw_surface_stretched(_surf, 0, 0, _gw, _gh);
+
+	if(_on != 1){
+		menu_blur_on = 1;
+		print("MENU  blur on   shd_blur ", _w, "x", _h,
 		      "  [", scr_menu_state_name(_state), "]");
 	}
-	return _want;
+	return true;
 }

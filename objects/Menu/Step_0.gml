@@ -34,9 +34,11 @@ if(menu_state_next != -1){
 
 //--------------------------------------------------------------
 // the backdrop: the four meta screens sit over a blurred room, the title and
-// Options keep it sharp.  Every frame, because the ROOM owns that layer - a
-// fresh entry to rm_menu starts with it hidden (scr_menu_blur, LL-076).
-menu_blur_apply(menu_state);
+// Options keep it sharp.  There is nothing to do here - the blur is a DRAW, so
+// objects/Menu/Draw_64.gml calls menu_blur_draw() first, and it reads the state
+// itself (scr_menu_blur, LL-076).  Switching anything from the Step is what the
+// room layer version did, and it could not work once the layer stopped being an
+// effect layer.
 
 //--------------------------------------------------------------
 // the canvas moved: re-place everything this screen takes from the tree.

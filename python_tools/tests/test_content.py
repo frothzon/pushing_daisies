@@ -561,20 +561,25 @@ class StageCoverageTests(unittest.TestCase):
 
 
 #--------------------------------------------------------------------------------
-# The menu backdrop blur: a filter layer in the ROOM, switched from the Step
+# The menu backdrop blur: a shader pass over application_surface, in Draw GUI
 #--------------------------------------------------------------------------------
-# The four meta screens used to sit over a sprite baked through shd_blur once
-# per run (LL-074).  The blur is now a filter layer in rm_menu, which moves the
-# two ways it can break out of the GML entirely: the layer has to exist, sit at
-# the right DEPTH and start hidden - and the code has to switch the EFFECT, not
-# merely the layer's visibility.  None of that shows up in a passing build.
+# The four meta screens used to sit over a 683x384 sprite baked through shd_blur
+# once per run (LL-074), then over a filter layer in rm_menu, which died when the
+# room editor turned that layer into a background (LL-076).  The blur is a shader
+# pass again - but every frame, into a reused surface.  Each of the ways it can
+# break is invisible in a passing build: a shader used without checking that it
+# compiled, a capture taken in Draw (a half-composed frame), a render target that
+# is never released, a blur drawn AFTER the panels (which hides the buttons), or
+# GML that reads a room layer the IDE can take away.
 ROOM_MENU_REL = "rooms/rm_menu/rm_menu.yy"
 MENU_BLUR_REL = "scripts/scr_menu_blur/scr_menu_blur.gml"
 MENU_STEP_REL = "objects/Menu/Step_0.gml"
 MENU_DRAW_REL = "objects/Menu/Draw_64.gml"
+MENU_DRAW0_REL = "objects/Menu/Draw_0.gml"
+BLUR_SHADER = "shd_blur"
+BLUR_SHADER_FSH_REL = "shaders/shd_blur/shd_blur.fsh"
+BLUR_SHADER_YY_REL = "shaders/shd_blur/shd_blur.yy"
 
-BLUR_LAYER = "Blur_Effect"                 # the FX layer rm_menu carries
-BACKDROP_LAYER = "Compatibility_Colour"    # the sidewalk sprite the menu shows
 BLURRED_STATES = ("WORLD_MAP", "DEPLOY", "GARDEN", "RESULTS")
 SHARP_STATES = ("START", "NEW_GAME", "CONTINUE", "OPTIONS", "RETURN", "QUIT")
 
@@ -596,81 +601,121 @@ def _body(src, name):
     return after[1].split("\nfunction ", 1)[0]
 
 
+def _function_blocks(src):
+    """(name, brace depth where it starts) for every definition, plus the end depth.
+
+    Counting `{` against `}` proves only that a file CLOSES; it cannot show that
+    the blocks NEST where you meant them to.  A function tail that ends up at EOF -
+    which is what an edit that appends instead of inserts leaves behind - keeps the
+    counts equal and puts every following function inside an unclosed block.  The
+    file then looks fine to a brace count, to `gm gml-functions` (a regex) and to
+    every test that greps it, and GameMaker compiles a different program from the
+    one the file reads like (LL-077).
+    """
+    code = re.sub(r'"[^"]*"', '""', _code_only(src))
+    blocks, depth = [], 0
+    for line in code.splitlines():
+        found = re.match(r"function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", line)
+        if found:
+            blocks.append((found.group(1), depth))
+        depth += line.count("{") - line.count("}")
+    return blocks, depth
+
+
 @unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
 class MenuBackdropBlurTests(unittest.TestCase):
-    """The meta screens blur the room's own backdrop; the title stays sharp."""
+    """The meta screens sit over a shader-blurred backdrop; the title stays sharp."""
 
     @classmethod
     def setUpClass(cls):
         cls.layers = _flat_layers(yy.load(PROJECT_ROOT / ROOM_MENU_REL)["layers"])
-        cls.by_name = {layer["name"]: layer for layer in cls.layers}
         cls.blur_src = (PROJECT_ROOT / MENU_BLUR_REL).read_text(encoding="utf-8-sig")
-        cls.step_src = (PROJECT_ROOT / MENU_STEP_REL).read_text(encoding="utf-8-sig")
-        cls.draw_src = (PROJECT_ROOT / MENU_DRAW_REL).read_text(encoding="utf-8-sig")
+        cls.blur_code = _code_only(cls.blur_src)
+        cls.step_code = _code_only(
+            (PROJECT_ROOT / MENU_STEP_REL).read_text(encoding="utf-8-sig"))
+        cls.draw_code = _code_only(
+            (PROJECT_ROOT / MENU_DRAW_REL).read_text(encoding="utf-8-sig"))
+        cls.draw0_code = _code_only(
+            (PROJECT_ROOT / MENU_DRAW0_REL).read_text(encoding="utf-8-sig"))
 
-    def test_the_room_carries_the_filter_and_starts_sharp(self):
-        layer = self.by_name.get(BLUR_LAYER)
-        self.assertIsNotNone(layer,
-                             "rm_menu has no '%s' layer, so no screen can blur "
-                             "(layers: %s)" % (BLUR_LAYER, sorted(self.by_name)))
-        self.assertEqual("GMREffectLayer", layer.get("resourceType"),
-                         "%s is not a filter/effect layer" % BLUR_LAYER)
-        self.assertEqual("_filter_large_blur", layer.get("effectType"),
-                         "%s carries a different filter than the backdrop blur "
-                         "was built with" % BLUR_LAYER)
-        self.assertFalse(layer.get("visible"),
-                         "%s must ship HIDDEN: the title screen is the first "
-                         "screen and it keeps the backdrop sharp" % BLUR_LAYER)
+    def test_the_blur_is_a_shader_pass_not_a_room_layer(self):
+        for gone in ("layer_get_id(", "layer_enable_fx(", "layer_set_visible(",
+                     "layer_fx_is_enabled(", "layer_get_visible(", "layer_depth("):
+            self.assertNotIn(
+                gone, self.blur_code,
+                "%s is back in scr_menu_blur: a room layer is a switch the IDE can "
+                "turn into a background layer that draws a sprite and filters "
+                "nothing, and no flag in GML can tell (LL-076)" % gone)
+        self.assertIn("shader_set(%s)" % BLUR_SHADER, self.blur_code,
+                      "nothing draws the backdrop through the blur shader")
+        self.assertIn("shader_reset()", self.blur_code,
+                      "a shader left set would put every later draw in the frame "
+                      "through the blur")
 
-    def test_the_filter_sits_between_the_art_and_the_ui(self):
-        """A filter applies to the layers BELOW it, and in GameMaker a lower
-        depth draws in front - so a layer below the filter has a higher depth."""
-        for name in (BLUR_LAYER, BACKDROP_LAYER):
-            self.assertIn(name, self.by_name, "rm_menu has no %s layer" % name)
-        blur = self.by_name[BLUR_LAYER]["depth"]
-        art = self.by_name[BACKDROP_LAYER]["depth"]
-        drawn_on = [l["depth"] for l in self.layers if l.get("instances")]
-        self.assertTrue(drawn_on,
-                        "rm_menu has no instance layer - where do the Menu and "
-                        "its buttons live?")
-        ui = max(drawn_on)
-        self.assertLess(ui, blur,
-                        "the filter is at or behind the instance layer, so the "
-                        "Menu's own panels and buttons would be blurred too")
-        self.assertLess(blur, art,
-                        "the backdrop is in front of the filter, so nothing "
-                        "would be blurred at all")
+    def test_the_shader_must_have_compiled_before_it_is_used(self):
+        self.assertIn("shader_is_compiled(%s)" % BLUR_SHADER, self.blur_code,
+                      "nothing checks whether the blur shader compiled")
+        self.assertLess(
+            self.blur_code.index("shader_is_compiled("),
+            self.blur_code.index("shader_set("),
+            "shader_set() runs before anything asks whether the shader compiled, so "
+            "a failed compile draws the world through it")
 
-    def test_the_switch_is_the_effect_and_the_layer_eye(self):
-        code = _code_only(self.blur_src)
-        self.assertIn("layer_enable_fx(", code,
-                      "a filter runs only while its FX is enabled, so the "
-                      "layer's visibility alone would leave it off")
-        self.assertIn("layer_set_visible(", code,
-                      "the layer ships hidden, so the eye has to be opened too")
-        self.assertIn("layer_fx_is_enabled(", code,
-                      "the state must be read back from the room, or a fresh "
-                      "entry to rm_menu is never noticed")
-        self.assertIn("layer_get_visible(", code)
-        self.assertIn(
-            "layer_enable_fx(_lyr, _want)", code,
-            "the filter must be switched in BOTH directions: the asset ships it "
-            "effectEnabled with the layer hidden, so whichever flag a runtime "
-            "honours, the off decision has to be applied too")
-        self.assertIn("layer_set_visible(_lyr, _want)", code)
-        self.assertNotIn("layer_visible_set(", code,
-                         "layer_visible_set is the pre-2023.11 name; the pair is "
-                         "layer_get_visible / layer_set_visible")
+    def test_the_capture_is_the_room_at_a_fraction_of_the_canvas(self):
+        self.assertIn("draw_surface_stretched(application_surface", self.blur_code,
+                      "the blur does not capture application_surface, so it is not "
+                      "blurring the composed room")
+        self.assertIn("display_get_gui_width()", self.blur_code,
+                      "the destination size is guessed instead of read from the canvas")
+        self.assertIn("display_get_gui_height()", self.blur_code)
+        self.assertIn("* MENU_BLUR_SCALE", self.blur_code,
+                      "the size the blur is computed at must come from the macro")
 
-    def test_the_bake_is_gone(self):
-        code = _code_only(self.blur_src)
-        for gone in ("surface_create(", "sprite_create_from_surface(",
-                     "shader_set(", "draw_sprite_stretched(", "menu_blur_draw("):
-            self.assertNotIn(gone, code,
-                             "%s is back in scr_menu_blur: the room's filter "
-                             "replaced the surface bake (LL-074)" % gone)
-        self.assertNotIn("global.menu_blur", code,
-                         "the baked sprite cache is still referenced")
+    def test_the_scale_is_a_fraction_of_the_canvas(self):
+        found = re.search(r"#macro\s+MENU_BLUR_SCALE\s+([0-9.]+)", self.blur_src)
+        self.assertIsNotNone(found, "scr_menu_blur has no MENU_BLUR_SCALE macro")
+        scale = float(found.group(1))
+        self.assertGreater(scale, 0.0, "MENU_BLUR_SCALE is zero: nothing to blur")
+        self.assertLessEqual(
+            scale, 0.5,
+            "MENU_BLUR_SCALE %.2f is more than half the canvas - shd_blur is 160 taps "
+            "a pixel, so a full-size per-frame blur is ~83 M texture reads" % scale)
+
+    def test_the_render_target_is_always_released(self):
+        self.assertEqual(
+            self.blur_code.count("surface_set_target("),
+            self.blur_code.count("surface_reset_target("),
+            "surface_set_target() without a matching reset leaves the rest of the "
+            "frame painting into the blur surface")
+        self.assertLess(self.blur_code.index("surface_set_target("),
+                        self.blur_code.index("surface_reset_target("),
+                        "the reset comes before the set")
+
+    def test_the_surface_is_reused_and_guarded(self):
+        self.assertIn('variable_global_exists("menu_blur_surf")', self.blur_code,
+                      "the blur surface must live in a GLOBAL: a surface outlives the "
+                      "instance that made it and Menu has no Clean Up event to free "
+                      "one in, so a per-instance surface leaks one per room entry")
+        self.assertIn("surface_create(", self.blur_code)
+        self.assertIn("surface_free(", self.blur_code,
+                      "a canvas resize must release the old surface, not abandon it")
+        self.assertLess(
+            self.blur_code.index("surface_exists("),
+            self.blur_code.index("surface_get_width("),
+            "surface_get_width() on a surface that may have been freed is a crash; "
+            "existence has to be asked first (LL-002)")
+
+
+
+    def test_a_failure_is_said_once_and_names_the_reason(self):
+        body = _code_only(_body(self.blur_src, "menu_blur_fail"))
+        self.assertIn("menu_blur_failed == _why", body,
+                      "the failure line must be de-duplicated: a reason printed every "
+                      "frame is noise, not a diagnostic")
+        self.assertIn("print(", body)
+        self.assertIn("menu_blur_fail(", self.blur_code,
+                      "nothing reports a blur that could not be made - which is how "
+                      "the layer version could log 'on' over a sharp screen")
 
     def test_only_the_four_meta_screens_ask_for_the_blur(self):
         body = _code_only(_body(self.blur_src, "menu_blur_wanted"))
@@ -682,17 +727,78 @@ class MenuBackdropBlurTests(unittest.TestCase):
                              "%s asks for the blur but keeps the backdrop sharp"
                              % state)
 
-    def test_the_switch_runs_in_the_step_not_the_draw(self):
-        self.assertIn("menu_blur_apply(", _code_only(self.step_src),
-                      "nothing switches the blur layer")
-        self.assertNotIn("menu_blur", _code_only(self.draw_src),
-                         "Draw GUI must not switch the room's layer: it runs "
-                         "after the room has been drawn")
+    def test_nothing_outside_the_draw_can_switch_the_blur(self):
+        self.assertIn("menu_blur_draw();", self.draw_code,
+                      "Draw GUI never draws the blur")
+        self.assertNotIn("menu_blur", self.step_code,
+                         "the Step still calls a blur function: the blur is a DRAW, "
+                         "and a Step-owned switch is what let the layer version look "
+                         "alive while nothing happened")
+        self.assertNotIn("menu_blur", self.draw0_code,
+                         "Menu/Draw_0 is the room-space Draw, where application_surface "
+                         "holds only the layers drawn so far - the capture belongs in "
+                         "Draw GUI, after the room is composed")
 
-    def test_the_macro_names_the_layer_that_exists(self):
-        found = re.search(r'#macro\s+MENU_BLUR_LAYER\s+"([^"]+)"', self.blur_src)
-        self.assertIsNotNone(found, "scr_menu_blur has no MENU_BLUR_LAYER macro")
-        self.assertIn(found.group(1), self.by_name,
-                      "the code toggles '%s'; rm_menu's layers are %s - a rename "
-                      "in the room editor is a silent no-op at runtime"
-                      % (found.group(1), sorted(self.by_name)))
+    def test_the_blur_is_drawn_before_the_panels(self):
+        at = self.draw_code.index("menu_blur_draw();")
+        for panel in ("meta_draw_worldmap(", "meta_draw_deploy(",
+                      "meta_draw_garden(", "meta_draw_results("):
+            self.assertIn(panel, self.draw_code)
+            self.assertLess(at, self.draw_code.index(panel),
+                            "%s is painted before the blurred backdrop, so the blur "
+                            "covers it" % panel)
+
+    def test_the_shader_that_does_the_work_exists(self):
+        fsh = PROJECT_ROOT / BLUR_SHADER_FSH_REL
+        self.assertTrue(fsh.exists(), "there is no %s" % BLUR_SHADER_FSH_REL)
+        self.assertTrue((PROJECT_ROOT / BLUR_SHADER_YY_REL).exists(),
+                        "%s is not a project resource" % BLUR_SHADER)
+        text = fsh.read_text(encoding="utf-8-sig")
+        self.assertIn("gm_BaseTexture", text,
+                      "the blur shader samples no texture, so it blurs nothing")
+        self.assertIn("texture2D(", text)
+
+    def test_no_room_layer_is_named(self):
+        """The room may change under GML, so a layer is never the contract.
+
+        rm_menu currently carries a layer called Blur_Effect that has an
+        effectType and is NOT an effect layer - it draws a background.  If the
+        code ever names a layer again, this is the shape it must not be fooled
+        by (LL-076).
+        """
+        strays = [layer["name"] for layer in self.layers
+                  if layer.get("effectType")
+                  and layer.get("resourceType") != "GMREffectLayer"]
+        for name in strays:
+            self.assertNotIn(name, self.blur_code,
+                             "scr_menu_blur names the layer '%s', which carries an "
+                             "effectType on a background layer: it draws, it never "
+                             "filters" % name)
+
+    def test_every_function_is_closed_before_the_next_one_starts(self):
+        """The four definitions are four blocks, not one block and three guests.
+
+        This catches the shape a bad paste leaves behind: the tail of
+        menu_blur_surface() appended at the END of the file, so the braces still
+        count 14 and 14 while menu_blur_fail() and menu_blur_draw() sit inside an
+        `if` that never closed. Every other test here passed on that file, because
+        they all read text (LL-077).
+        """
+        blocks, end_depth = _function_blocks(self.blur_src)
+        self.assertEqual(
+            [name for name, _ in blocks],
+            ["menu_blur_wanted", "menu_blur_surface", "menu_blur_fail",
+             "menu_blur_draw"],
+            "scr_menu_blur no longer defines the four blur functions, in this order")
+        for name, depth in blocks:
+            self.assertEqual(
+                depth, 0,
+                "function %s() starts %d block(s) deep, so a brace in an earlier "
+                "function never closed and this one is nested inside it - GML will "
+                "not define it where the file reads like it does (LL-077)"
+                % (name, depth))
+        self.assertEqual(
+            end_depth, 0,
+            "scr_menu_blur closes with %d block(s) still open: the file does not "
+            "parse as the blocks it is written in (LL-077)" % end_depth)
+

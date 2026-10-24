@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Pushing Daisies — progress</title>
-<meta name="progress-sha" content="88ecbda077068eca">
+<meta name="progress-sha" content="82a5dd4ae2d089c9">
 <meta name="generator" content="python -m gm progress build">
 <style>
 :root{
@@ -2401,7 +2401,7 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
     },
     {
       "id": "menu-backdrop-blur",
-      "title": "The four meta screens sit over a blurred backdrop - the room Blur_Effect filter layer, switched from the Step",
+      "title": "The four meta screens sit over a blurred backdrop - a per-frame shd_blur pass over application_surface, drawn first in Draw GUI",
       "status": "review",
       "owner": "cline",
       "awaiting": "rayu",
@@ -2409,8 +2409,8 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "phase": "3",
       "size": "S",
       "prio": 2,
-      "needs": "Reload the project (the room .yy and the scripts were written outside the IDE), run with global.devMode = true, then open World Map, Deploy, the Garden Book and Results: each must sit over a BLURRED sidewalk backdrop, while the title screen and Options stay SHARP. In the log that is exactly one line MENU  blur on  Blur_Effect  [WORLD_MAP] (or whichever meta screen you opened first) and one MENU  blur off  Blur_Effect  [START] on the way back - a blur line every frame means the filter is not loading, and no line at all means menu_blur_apply is not running. What would prove it wrong: a sharp meta screen, a blurred title, blur that moves with the panels (the layer does not move), or a repeating blur line.",
-      "notes": "rooms/rm_menu carries a filter layer Blur_Effect (an FX layer: the built-in _filter_large_blur, radius 3) directly ABOVE the sidewalk backdrop (Compatibility_Colour, depth 2147483600) and BELOW the instance layer, added in the IDE with visible:false. A filter applies to the layers BELOW it, so it blurs exactly the backdrop; the meta panels draw in Draw GUI, which is painted after the room, so they stay sharp. Turning it on takes TWO flags - layer_enable_fx() and layer_set_visible() - because the asset ships hidden while effectEnabled is true, and a hidden FX layer renders nothing (LL-076). menu_blur_is_on() reads both back from the layer (a fresh entry to rm_menu resets them), menu_blur_wanted() names the four meta states so the title and Options stay sharp, and menu_blur_apply() runs from Menu/Step_0 every frame, applies its FIRST decision out loud even when that decision is off (the asset ships effectEnabled:true with visible:false, so neither flag on its own says whether the blur is on), and logs only when the decision changes afterwards. The 683x384 surface bake, its global.menu_blur sprite cache and the menu shader path are gone: no sprite to leak, no bake hitch, no cache to keep in step. MenuBackdropBlurTests pins the room (layer type, effect, hidden default, depth between art and UI) and the script (effect switched, bake gone, Step not Draw, macro name matches the layer).",
+      "needs": "Reload the project, run with global.devMode = true, then open World Map, Deploy, the Garden Book and Results: each must sit over a BLURRED sidewalk backdrop while the title screen and Options stay SHARP, with the panels and buttons legible on top, and the blur must track live room content (particles, the title zombie) rather than a frozen picture. The log must show exactly one MENU  blur on   shd_blur 240x135 [WORLD_MAP] on the first meta screen and one MENU  blur off  [START] on the way back - a blur line every frame, or a MENU  blur FAILED line, is the bug. What would prove it wrong: a sharp meta screen, a blurred title, blur painted over the buttons, or a frame-rate drop. For a coarser blur raise MENU_BLUR_SCALE toward 0.5. Also, in the IDE: rm_menu now holds only the instance layer and TWO background layers that both draw spr_title_background_sidewalk (Background 501, Blur_Effect 500) - delete Blur_Effect and keep Background, so the backdrop is drawn once; that layer is also the only reason the .yyp carries a io.gamemaker.gm_filter_large_blur-1.0.0 prefab reference, which the IDE should drop with it.",
+      "notes": "The blur is a per-frame shader pass over application_surface, drawn FIRST in Menu/Draw_64.gml so the four meta panels paint on top. No GML reads a room layer any more and no .yy/.yyp edit was needed: it reuses the existing shd_blur. Why the layer died - the room editor converted Blur_Effect from a GMREffectLayer into a GMRBackgroundLayer that still carried effectType _filter_large_blur and effectEnabled:true; a background layer draws its sprite and never filters, so both flags the old code read back said active while nothing blurred at all (LL-076). Capture: menu_blur_surface() holds ONE global surface sized MENU_BLUR_SCALE 0.25 of the GUI canvas, freed and rebuilt when the canvas size changes and guarded with surface_exists; the room in application_surface is drawn through shd_blur into it, then the result is stretched back over the canvas. 0.25 is deliberate: shd_blur is 160 taps a pixel, so 240x135 costs 5.2 M reads a frame against 83 M at full canvas, and because the shader samples normalised coords the lower scale blurs further. menu_blur_wanted() asks for exactly the four meta states, menu_blur_fail() prints once per reason and leaves the sharp backdrop (LL-002), and menu_blur_draw() guards shader_is_compiled and application_surface and returns false instead of throwing. The on/off line is printed by the path that actually drew, so it reports the effect rather than the intent. MenuBackdropBlurTests (12 tests, 13 with the brace-depth check added for LL-077) pins the shader path - a GUI-scaled capture of application_surface, balanced surface_set_target/reset, a global reused surface, a deduped failure, only four states asking, Draw GUI only, blur before all four panel calls, MENU_BLUR_SCALE in (0, 0.5], shader files present with gm_BaseTexture - and forbids the script naming any layer.",
       "refs": [
         "scripts/scr_menu_blur/scr_menu_blur.gml",
         "rooms/rm_menu/rm_menu.yy",
@@ -4502,6 +4502,12 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "who": "rayu",
       "task": "art-zombie-alpha-outline",
       "what": "The snapped alpha and 1 px ink outline on the restyled zombie sets were validated by rayu in the sprite editor."
+    },
+    {
+      "date": "2026-10-24",
+      "who": "cline",
+      "task": "menu-backdrop-blur",
+      "what": "Found why the backdrop blur stopped: the room editor had converted the Blur_Effect FX layer in rm_menu into a GMRBackgroundLayer that still carried effectType _filter_large_blur and effectEnabled true, so the old code switched flags nothing was listening to (the layer drew a second copy of the sidewalk instead). Replaced it with a per-frame shd_blur pass over application_surface: one global quarter-canvas surface, drawn first in Menu/Draw_64.gml, failure leaves the sharp backdrop. Twelve MenuBackdropBlurTests pin the path and were mutation-checked three ways; LL-076 rewritten around the converted layer. Awaits a run by rayu."
     }
   ]
 }

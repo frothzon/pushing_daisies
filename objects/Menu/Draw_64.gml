@@ -1,10 +1,12 @@
 /// @description  show title name
 
-/// THE BLURRED BACKDROP IS NOT DRAWN HERE.  rm_menu carries the "Blur_Effect"
-/// filter layer, and Menu/Step_0 switches it on for the four meta screens
-/// before this event runs (scr_menu_blur, LL-076) - so everything below is
-/// painted on top of a backdrop the ROOM blurred, and the fade
-/// (objects/_fadeout/Draw_75) paints over the lot.
+/// THE BLURRED BACKDROP IS THE FIRST THING DRAWN HERE.  menu_blur_draw() paints
+/// the room through shd_blur and covers the canvas (scr_menu_blur, LL-076), so it
+/// has to run BEFORE the panels below - and Draw GUI is the first moment the
+/// application surface holds the whole room.  The title and Options ask for no
+/// blur and keep the backdrop sharp; the fade (objects/_fadeout/Draw_75) paints
+/// over the lot afterwards.
+menu_blur_draw();
 
 if(menu_state == MENU_STATE.START){
     draw_set_font(fnt_size32);
@@ -53,6 +55,7 @@ if(menu_state == MENU_STATE.OPTIONS && menu_state_time > 5){
     };
     
 }
+
 draw_set_font(fnt_size16);
 
 /// ---- the meta screens (roadmap 1.1/1.2/1.7).  Each one draws itself.

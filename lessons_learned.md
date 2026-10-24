@@ -96,7 +96,8 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-073](#ll-073) | A sprite looks sharp in the **sprite editor** and soft/fringed **in game**; or a "cleaned" sprite comes back unchanged after a reload | A frame is **two PNGs** (`<frame>.png` *and* `layers/<frame>/<layer>.png`) - write one and the editor and the game disagree. And anti-aliased alpha is a **file** problem: at `base_scale 0.25` a 50 %-covered pixel is 12 %-covered, which no filter or scaling can undo | **FIXED** |
 | [LL-074](#ll-074) | A one-off surface bake written with `matrix_set(matrix_projection, matrix_build_orthographic(...))` - **no compile error, no warning**, and the first meta screen dies on `Variable Menu.matrix_build_orthographic(…)` | That function **does not exist** (the pair is `matrix_build_projection_ortho` + `matrix_set`), and GML reads an unknown name before `(` as a **variable** ([LL-070](#ll-070)). You need neither: `surface_set_target` does **not** change the projection, so a bake under Draw GUI fills a half-size surface at half resolution and the two scalings cancel by construction | **FIXED** |
 | [LL-075](#ll-075) | **No GML changed** - only the creature table grew from 2 bosses to 6 - and `gm balance`'s numbers for **stage 1-1** moved while a long-green test went red; the projection and the sim still agreed with each other | `model.demand` priced a boss wave from the **whole bank** (`t.bosses`) and took its mean: invisible at two bosses, a **2.5× error at six** (210 life instead of the row's 82). `sim.wave_spec` read the same table, so the two tools shared the mistake. A bank is a **catalogue**; a stage is **what arrives** | **FIXED** |
-| [LL-076](#ll-076) | An **FX layer** blurs in the Room Editor and renders nothing in game; or the four meta screens are sharp while the title is blurred | An FX layer has **two** switches (`layer_enable_fx` *and* the layer's visibility, which ships `false`), and it applies to the layers **below** it - so depth decides what is blurred, a `Draw GUI` panel is never in it, and the room resets both flags on every entry | **FIXED** |
+| [LL-076](#ll-076) | The four meta screens are **sharp** while the log says `MENU  blur on`, and no flag or depth changes it - it looks like a GPU/display bug | The room editor had converted the FX layer into a **`GMRBackgroundLayer`** that kept the same name, the same `effectType` and `effectEnabled: true`; a background layer draws a sprite and never filters, so both flags the code checked genuinely read "on". `effectType` is dead data unless `resourceType` is `GMREffectLayer`. The blur is a shader pass over `application_surface` in `Draw GUI` now, and the log reports the EFFECT it drew, not the intent | **FIXED** |
+| [LL-077](#ll-077) | Nothing at all - the suite, the brace count, `gm gml-functions`, `roundtrip` and a diff are all green, and the file still is not what it reads like | A function TAIL appended at **EOF**: the braces still balance (14 and 14) while every later function is nested inside an unclosed `if`, so GML compiles a program nobody intended. Count the DEPTH at each `function`, not the total in the file | **FIXED** |
 
 
 Tags for searching: `button` `menu` `array` `noone` `scope` `state machine` `blur` `layer` `fx` `layer_enable_fx`
@@ -5629,10 +5630,13 @@ surface_reset_target();
 **Status.** FIXED 2026-10-24 - caught by checking the name before the first run,
 so it never died in game. Awaits rayu's eye (card `menu-backdrop-blur`).
 
-**Superseded the same day.** The room can blur its own backdrop - a filter
-layer in `rm_menu` does this in one call, with no sprite, no bake and no cache:
-see [LL-076](#ll-076). The bake below is kept as the record of how it was done,
-not as code to restore.
+**Superseded the same day - twice.** A filter layer in `rm_menu` replaced the
+bake in one call (no sprite, no bake, no cache), and that layer then died in the
+room editor: it came back as a background layer, so nothing blurred at all. The
+current code is a shader pass again, every frame, into a quarter-size reused
+surface - see [LL-076](#ll-076). What this entry records (a surface bake inherits
+the projection that is already set, and `matrix_build_orthographic` does not
+exist) still stands. The bake is not code to restore, and neither is the layer.
 
 **Files.** `scripts/scr_menu_blur/scr_menu_blur.gml`,
 `shaders/shd_blur/shd_blur.fsh`, `objects/Menu/Draw_64.gml`,
@@ -5703,104 +5707,169 @@ none - the same fallback, in one place, documented. `Scene.monsters` and
 ---
 
 <a name="ll-076"></a>
-## LL-076 — A blur belongs to the room: an FX layer has TWO switches, and its depth decides what it blurs
+## LL-076 - A layer is not a contract: the room editor turned the FX layer into a background, and the switch went on switching nothing
 
-**Symptom.** For a while the menu backdrop blur was a 683×384 sprite baked
-through `shd_blur` once per run and drawn under the four meta screens
-([LL-074](#ll-074)). It worked, but it was a half-resolution copy of art the
-room was already drawing, a one-off hitch, a cache to keep in step and a global
-to own.
+**Symptom.** The four meta screens sat over a **sharp** sidewalk backdrop while
+ the log said, every time, `MENU  blur on  Blur_Effect  [WORLD_MAP]`. Toggling
+the layer, `layer_enable_fx`, `layer_set_visible`, forcing `layer_depth(_lay,
+500)` - nothing changed on any screen. It looked like a display bug ("the effect
+does not apply"), and the plan became "write a shader instead".
 
-The room can blur itself: `rooms/rm_menu` gained a filter layer `Blur_Effect`
-(effect type `_filter_large_blur`, radius 3) above the sidewalk backdrop - added
-in the IDE with **`visible: false`**, i.e. "not visible by default". Switching it
-from code is where the traps are:
+Same file, actually. `git diff rooms/rm_menu/rm_menu.yy`:
 
-* `layer_visible_set("Blur_Effect", true)` is not enough - and is not even the
-  function's current name (`layer_set_visible` since 2023.11). An FX layer has
-  **two** switches: the layer's visibility and `layer_enable_fx`.
-* The tracker's "effect layer works in the Room Editor but not in the game"
-  report (`YoYoGames/GameMaker-Bugs#11413`) resolved to *the project called
-  `layer_enable_fx("UnderwaterEffect", false)` and never turned it back on*. The
-  flag is what makes the filter run; the eye is a second, independent gate.
-* An FX layer applies to **every layer below it**, and below means a **higher
-  depth**. Put the filter under the UI layer and the panels blur too; put it
-  below the art and nothing blurs at all.
+```diff
+-    {"$GMREffectLayer":"", "%Name":"Blur_Effect", "depth":2147483550,
+-     "effectType":"_filter_large_blur", ..., "resourceType":"GMREffectLayer",
+-     "visible":false,},
++    {"$GMRBackgroundLayer":"", "%Name":"Blur_Effect", "depth":500,
++     "effectType":"_filter_large_blur",
++     "spriteId":{"name":"spr_title_background_sidewalk",...},
++     "resourceType":"GMRBackgroundLayer", "visible":true,},
+```
 
-**Root cause.** An FX layer is room *state*, not an object. It has a position in
-the depth stack (which decides what it affects), two independent switches, and
-it is rebuilt from the asset on **every entry to the room** - so whatever the
-code set last visit is gone. Nothing in the build checks any of that: a
-misnamed layer, or one parked on the wrong side of the art, fails silently. The
-screen is simply sharp.
+**Root cause.** "Editing the blur effect" in the room editor changed the layer's
+TYPE. The name survived, the `effectType` survived, `effectEnabled` survived -
+and none of it means anything on a `GMRBackgroundLayer`, which draws a sprite.
+The room was now drawing the sidewalk **twice** (depths 500 and 501) and
+filtering neither. Both flags the GML read back said "on"; there was simply no
+filter behind them.
 
-**Fix.** `scripts/scr_menu_blur/scr_menu_blur.gml` - no surface, no sprite, no
-shader, no cache:
+`effectType` is a field on **every** layer in a room `.yy`, not only effect
+layers - it is how the editor remembers which effect a layer *would* have. It is
+dead data
+unless `resourceType` is `GMREffectLayer`. `grep -n _filter_large_blur` said the
+filter was there; the TYPE said it was not, and the type is the only thing the
+runtime reads.
+
+**The real lesson: a switch that works is not evidence that the thing it
+switches exists.** The layer version logged its DECISION (`MENU  blur on`) and
+never its EFFECT, so the one line that would have caught this - "nothing
+blurred" - was the one line it did not print. Anything that can be silently
+detached (a layer, a room instance, a sprite asset) has to be reported by what it
+*does*, not by what the code asked for.
+
+**Fix.** The blur is a shader pass again, and no GML reads a room layer any more
+(`scripts/scr_menu_blur/scr_menu_blur.gml`):
 
 ```gml
-#macro MENU_BLUR_LAYER "Blur_Effect"
+#macro MENU_BLUR_SCALE 0.25           // 240x135 - 5.2 M texture reads a frame
 
-function menu_blur_apply(_state) {
-var _lyr = menu_blur_layer();          // id cached, re-resolved while -1
-if(_lyr == -1) return false;           // wrong room: sharp is the answer
-
-var _want = menu_blur_wanted(_state);  // the four meta screens only
-if(menu_blur_is_on() == _want) return _want;
-
-layer_enable_fx(_lyr, _want);
-layer_set_visible(_lyr, _want);
-...
+function menu_blur_draw() {           // called FIRST in Menu/Draw_64.gml
+    if(!shader_is_compiled(shd_blur)){ menu_blur_fail("shd_blur is not compiled", _state); return false; }
+    ...
+    surface_set_target(_surf);        // one GLOBAL surface, reused, rebuilt on resize
+    shader_set(shd_blur);
+    draw_surface_stretched(application_surface, 0, 0, _w, _h);  // the composed ROOM
+    shader_reset();
+    surface_reset_target();
+    draw_surface_stretched(_surf, 0, 0, _gw, _gh);              // scaled back up
+    ...print("MENU  blur on   shd_blur ", _w, "x", _h, ...)      // only when it DREW
 }
 ```
 
-`menu_blur_is_on()` reads **both** flags, because the asset ships
-`visible:false` with `effectEnabled:true` - either one alone would answer "on"
-for a title screen that is not blurred. It is called from
-`objects/Menu/Step_0.gml` every frame, which is what re-applies the switch after
-a fresh room entry. `objects/Menu/Draw_64.gml` draws nothing for the backdrop
-any more: a `Draw GUI` panel is painted *after* the room, so the room's filter
-can never touch it - which is why the panels stay sharp, and why the old bake
-had to be drawn in `Draw GUI` in the first place.
+This is the pause screen's recipe (`scr_drawBlurScreen`, working in game since
+4.4.2), applied every frame instead of once - the room behind a meta screen is
+alive (particles, the title zombie) and a frozen backdrop reads as a bug. At a
+quarter of the canvas `shd_blur`'s 160 taps cost 5.2 M reads a frame instead of
+83 M, and a lower scale blurs *further*, because the shader samples NORMALISED
+coordinates.
 
 **Guard rails.**
 
-* **Two switches, always together.** Enable the FX *and* the layer's visibility,
-  and read the state back from the layer - never from a variable you remember
-  setting. (`layer_fx_is_enabled` + `layer_get_visible`.)
-* **An asset can ship the two flags disagreeing.** This layer was saved with
-  `effectEnabled: true` and `visible: false`, so the file has no single truthful
-  answer to "is it on?". The code applies both flags **and applies its first
-  decision even when that decision is "off"** - short-circuiting on "the layer
-  already looks off" would leave the title screen blurred on any runtime where
-  visibility does not gate the filter.
-* **Depth is the effect's scope.** A filter hits every layer with a *higher*
-  depth than its own. Before trusting a blur / desaturate / shake layer, look at
-  what sits below it in the layer panel - and put a test on the two depths that
-  matter (art below the filter, UI above it).
-* **The room owns the layer, so re-assert.** Both flags reset to the asset on
-  room creation, so a state machine that flips them only on a *transition* is
-  wrong after any `room_goto`. Decide from `menu_state` every frame and let the
-  layer's own answer short-circuit the work.
-* **A room layer cannot blur `Draw GUI`.** All four meta screens, the buttons and
-  the fade are drawn there, after the room - so the backdrop blurs and the UI
-  does not. If the UI ever needs the blur, that has to be a draw, not a layer.
-* **A missing or misnamed layer fails silently.** `layer_exists` first, and `-1`
-  means "draw normally" ([LL-002](#ll-002)). The pinned test is
-  `MenuBackdropBlurTests` in `python_tools/tests/test_content.py`: it reads the
-  room's `.yy` (the layer exists, is `_filter_large_blur`, ships hidden, sits
-  between the art and the UI) **and** the GML (the effect is switched, the bake
-  is gone, only the four meta states ask for it, and the switch is in the Step
-  and not in the Draw). Mutating the macro or dropping `layer_enable_fx` turns
-  it red.
+* **Read the layer's TYPE before trusting its effect.** `GMREffectLayer` and
+  nothing else runs a filter; an `effectType` on a background/instance/tile layer
+  is dead data that will fool `grep`. (This is why the room's `Blur_Effect` layer
+  is now dead weight - delete it in the IDE: it draws a second copy of the
+  sidewalk.)
+* **Log the effect, never the intent.** `MENU  blur on   shd_blur 240x135` is
+  printed by the code path that actually drew a blurred frame; a failure prints
+  `MENU  blur FAILED  <reason>` **once per reason**. A diagnostic that reports
+  what was asked for is a diagnostic that cannot fail.
+* **A `.yy` in the repo is not a contract.** Room-owned state (layers, room
+  instances) is editable from outside your diff and the runtime reports none of
+  it. Keep visual MECHANISMS in GML; use the room for art.
+* **If you ever do go back to a layer:** an FX layer has TWO switches -
+  `layer_enable_fx` *and* the layer's visibility (the asset ships it hidden) - it
+  applies to the layers **below** it (a higher depth is "in front"), and the room
+  resets both flags on every entry.
+* **A per-frame blur has to be smaller than the canvas.** `MENU_BLUR_SCALE` is
+  the knob: 0.25 = 5.2 M reads, 0.5 = 20.7 M, 1.0 = 83 M a frame.
+* **Draw GUI, before the panels, and not from the Step.** `Draw GUI` is the first
+  moment `application_surface` holds the whole room; the Menu draws before its own
+  buttons because they are created after it in the same layer; and a blur drawn
+  after the panels covers them.
+* **The surface is global and guarded.** `surface_exists` before
+  `surface_get_width` (a freed surface is a crash), `surface_create` can fail, and
+  a per-instance surface would leak one per room entry - Menu has no Clean Up
+  event to free one in. Unlike the [LL-074](#ll-074) bake this is not a cache that
+  must survive anything: rebuilding it after a loss costs one frame.
+* **Nothing on the draw path may throw, and a failed blur keeps the sharp
+  backdrop** ([LL-002](#ll-002)): the worst case is "no blur", never a black or
+  half-painted frame.
 
-**Status.** FIXED 2026-10-24, replacing the bake from [LL-074](#ll-074). Awaits
-rayu's eye (card `menu-backdrop-blur`): one `MENU  blur on  Blur_Effect
-[WORLD_MAP]` entering the first meta screen, one `off` back at the title,
-nothing in between, and the title and Options still sharp.
+**Status.** FIXED 2026-10-24, replacing both the bake ([LL-074](#ll-074)) and the
+room filter. `MenuBackdropBlurTests` (12 tests) pins the shader path, the guards,
+the draw order and the scale, and fails if GML names a room layer again. Awaits
+rayu's eye (card `menu-backdrop-blur`): the four meta screens over a blurred
+backdrop, the title and Options sharp, one `MENU  blur on   shd_blur 240x135
+[WORLD_MAP]` and one `MENU  blur off  [START]`.
 
 **Files.** `scripts/scr_menu_blur/scr_menu_blur.gml`,
-`rooms/rm_menu/rm_menu.yy` (the `Blur_Effect` layer),
-`objects/Menu/Step_0.gml`, `objects/Menu/Draw_64.gml`,
+`objects/Menu/Draw_64.gml`, `objects/Menu/Step_0.gml`,
+`shaders/shd_blur/shd_blur.fsh`, `python_tools/tests/test_content.py`,
+`rooms/rm_menu/rm_menu.yy` (the converted layer, kept as the evidence).
+
+
+<a name="ll-077"></a>
+## LL-077 - Braces balance, code does not: a tail appended at EOF nests everything after it
+
+**Symptom.** None - that is the point. `scripts/scr_menu_blur/scr_menu_blur.gml`
+had been rewritten whole, `grep -c '{'` equalled `grep -c '}'` (14 and 14),
+`gm gml-functions scr_menu_blur` listed all four functions, all twelve
+`MenuBackdropBlurTests` passed, `gm roundtrip` said `0 differ` and the suite was
+318 OK. The file was not four functions. `menu_blur_surface()`'s closing `}` plus
+`return global.menu_blur_surf;` and its own `}` had been appended at the **END**
+of the file, so `menu_blur_fail()` and `menu_blur_draw()` were defined **two
+blocks deep**, inside its `if(!surface_exists(...))`. GameMaker would have
+compiled that happily: `Draw GUI` would call a `menu_blur_draw()` that was never
+defined where it looks defined, and the backdrop would have stayed sharp - the
+same silent screen as [LL-076](#ll-076), through a completely different bug.
+
+**Root cause.** Every gate in this project reads a file as TEXT. A brace count, a
+regex (`gm gml-functions`), `assertIn`, `git diff` and a human skimming the top of
+the file all agree that balanced braces mean a correct file. They do not: balance
+is a fact about the TOTAL, structure is a fact about WHERE each pair closes.
+
+**Fix.** `_function_blocks()` in `python_tools/tests/test_content.py` walks the
+code (comments and string literals removed first) and records the brace depth at
+every `function name(` line, plus the depth at EOF:
+
+```python
+blocks, end_depth = _function_blocks(self.blur_src)
+for name, depth in blocks:
+    self.assertEqual(depth, 0, "...")
+self.assertEqual(end_depth, 0, "...")
+```
+
+Broken file: `menu_blur_fail 2, menu_blur_draw 2`. Fixed file: `0, 0, 0, 0`. The
+test pins the four names in order as well, so a function that vanishes is red too.
+
+**Guard rails.**
+
+* **Read the whole file after a scripted whole-file rewrite** - or do not rewrite
+  a whole file with a tool that splices. Print it back with line numbers and look
+  at the last twenty lines: a stranded tail is always at EOF.
+* **Verify the FUNCTION, not the file.** When a structural edit touches one
+  function, `awk` out the definition and check that the next `function` starts at
+  column 0.
+* **A green suite is evidence about the assertions, not about the code.** Twelve
+  tests written for this exact script passed on the broken version of it.
+
+**Status.** FIXED 2026-10-24, found while re-reading the file before committing
+the LL-076 rewrite. Pinned by
+`MenuBackdropBlurTests.test_every_function_is_closed_before_the_next_one_starts`.
+
+**Files.** `scripts/scr_menu_blur/scr_menu_blur.gml`,
 `python_tools/tests/test_content.py`.
 
 ---
