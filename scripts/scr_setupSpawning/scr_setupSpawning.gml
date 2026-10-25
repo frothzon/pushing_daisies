@@ -13,22 +13,31 @@ function scr_setupSpawning() {
 	spawn_wait_time = game_get_speed(gamespeed_fps)*5.9;
 
 	//------------- creature list
-	/// monsters - the restyled roster.  One WALK sprite each: the crawl
-	/// animation that used to play on spawn is gone, and scr_zombie_emerge
-	/// grows the monster from nothing to its full size instead.
-	spawn_mon[0] = scr_makeMonster("Grumble-Mulch",1,7,array(spr_grumble_walk),10,1,5);
-	spawn_mon[1] = scr_makeMonster("Dome-Alone",0.5,12,array(spr_dome_alone_walk),10,2,3);
-	spawn_mon[2] = scr_makeMonster("Professor-Cerebrisk",1.5,5,array(spr_professor_walk),10,3,2);
+	/// monsters - the restyled roster.  The crawl animation that used to
+	/// play on spawn is gone, and scr_zombie_emerge grows the monster from
+	/// nothing to its full size instead.
+	///
+	/// EVERY ROW CARRIES ITS FOUR SLOTS, including the originals - they had
+	/// a one-element array long after their idle/attack/die art landed, and
+	/// the rig's fallback ("no slot -> keep the walk art") made that
+	/// invisible: a Grumble-Mulch played its WALK frames while it died and
+	/// then vanished, and region 1 sends nothing else until stage 6
+	/// (LL-079).  A missing slot is now caught by
+	/// test_every_rigged_creature_carries_its_own_four_slots rather than by a
+	/// playtest.
+	spawn_mon[0] = scr_makeMonster("Grumble-Mulch",1,7,array(spr_grumble_walk, spr_grumble_idle, spr_grumble_attack, spr_grumble_die),10,1,5);
+	spawn_mon[1] = scr_makeMonster("Dome-Alone",0.5,12,array(spr_dome_alone_walk, spr_dome_alone_idle, spr_dome_alone_attack, spr_dome_alone_die),10,2,3);
+	spawn_mon[2] = scr_makeMonster("Professor-Cerebrisk",1.5,5,array(spr_professor_walk, spr_professor_idle, spr_professor_attack, spr_professor_die),10,3,2);
 
 	/// bosses
-	spawn_boss[0] = scr_makeMonster("Tusk-A-Lot",0.5,55,array(spr_tusk_walk),100,50,1);
-	spawn_boss[1] = scr_makeMonster("Sub-Zero",0.25,110,array(spr_zero_walk),100,50,1);
+	spawn_boss[0] = scr_makeMonster("Tusk-A-Lot",0.5,55,array(spr_tusk_walk, spr_tusk_idle, spr_tusk_attack, spr_tusk_die),100,50,1);
+	spawn_boss[1] = scr_makeMonster("Sub-Zero",0.25,110,array(spr_zero_walk, spr_zero_idle, spr_zero_attack, spr_zero_die),100,50,1);
 
 	/// ---- THE TEN RESTYLED RIGS (region-zombies / region-bosses) ----------
-	/// A row now carries a RIG, not a sprite: array(walk, idle, attack, die),
-	/// in ZOMB_ANIM's order (scr_zomb_art), so slot 0 is still "the walking
-	/// art" for every existing reader.  The three rows above keep their
-	/// single-sprite array(...) - a rig is added, never required.
+	/// A row carries a RIG, not a sprite: array(walk, idle, attack, die), in
+	/// ZOMB_ANIM's order (scr_zomb_art), so slot 0 is still "the walking art"
+	/// for every existing reader.  The five rows above follow the same
+	/// contract, so every creature in both banks plays four animations.
 	///
 	/// EACH NEW CREATURE IS ITS REGION'S LETTER.  Read the row as "slower and
 	/// tougher the deeper in you go": Newly-Turned is quicker than anything in

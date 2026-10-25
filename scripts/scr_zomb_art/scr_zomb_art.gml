@@ -4,8 +4,8 @@
 ///
 /// WHY THIS FILE EXISTS
 /// --------------------
-/// Ten creatures now ship four animations each - walk, idle, attack, die - and
-/// a monster used to be a single sprite: scr_zombie_emerge and scr_zombie_path
+/// Every creature ships four animations - walk, idle, attack, die - and a
+/// monster used to be a single sprite: scr_zombie_emerge and scr_zombie_path
 /// both wrote `sprite_array[0]` and there was nothing else to play.  Four
 /// slots mean three new decisions (which slot, when to change it, how long a
 /// cycle lasts), and a decision in two places is two answers.
@@ -14,9 +14,14 @@
 /// scr_setupSpawning writes and what ZOMB_ANIM indexes, and walk is 0 so every
 /// existing reader of `sprite_array[0]` keeps meaning "the walking art".
 ///
-/// A ROW THAT HAS NO RIG STILL WORKS.  The three original creatures carry a
-/// one-element array, so idle/attack/die answer -1 and the monster simply
-/// keeps its walk art - the behaviour it had before any of this existed.
+/// A ROW THAT HAS NO RIG STILL WORKS - and that is exactly what hid a bug for
+/// weeks.  A slot that is missing answers -1, zomb_art_play changes nothing,
+/// and the monster simply keeps the art it had: five creatures whose die sheet
+/// was already on disk (the three originals and both region-1 bosses) went on
+/// playing their WALK frames while they died, then vanished, with no error
+/// anywhere (LL-079).  The fallback stays, because a one-slot row is legal for
+/// art that has not landed yet; what changed is that a row which HAS the art
+/// and does not pass it now fails a test instead of a playtest.
 
 /// The four slots of a rig, in the order scr_setupSpawning writes them.
 enum ZOMB_ANIM { walk, idle, attack, die }

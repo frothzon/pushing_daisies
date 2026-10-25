@@ -99,6 +99,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-076](#ll-076) | The four meta screens are **sharp** while the log says `MENU  blur on`, and no flag or depth changes it - it looks like a GPU/display bug | The room editor had converted the FX layer into a **`GMRBackgroundLayer`** that kept the same name, the same `effectType` and `effectEnabled: true`; a background layer draws a sprite and never filters, so both flags the code checked genuinely read "on". `effectType` is dead data unless `resourceType` is `GMREffectLayer`. The blur is a shader pass over `application_surface` in `Draw GUI` now, and the log reports the EFFECT it drew, not the intent | **FIXED** |
 | [LL-077](#ll-077) | Nothing at all - the suite, the brace count, `gm gml-functions`, `roundtrip` and a diff are all green, and the file still is not what it reads like | A function TAIL appended at **EOF**: the braces still balance (14 and 14) while every later function is nested inside an unclosed `if`, so GML compiles a program nobody intended. Count the DEPTH at each `function`, not the total in the file | **FIXED** |
 | [LL-078](#ll-078) | Corpses settle **below the path** they died on - 6.6 px on the Bell-Ringer, 28 on the Shroud - and the Gardener walks 2 px into the ground all game; no error, nothing in the log | `obj_mon/Draw_0` moved `y` by `(sprite_get_height-1) - sprite_get_bbox_bottom`: the **empty canvas rows under the art** - room kept for the body to lie down, 22 of the Bell-Ringer's 175 px sheet - which says nothing about where the feet are, and one bbox serves all sixteen frames besides. The art was already on the walk's origin (within 5 px on all fifteen rigs) | **FIXED** |
+| [LL-079](#ll-079) | **"The walk animation plays as the zombies die"** - the kill line prints, the money is paid, the body **strides in place** for 0.8 s, then gone. Every other part of the death beat behaves | Five spawn rows still carried the pre-rig `array(spr_x_walk)` while their `_idle`/`_attack`/`_die` sheets sat in the `.yyp`; `zomb_art_play` **answers false for an empty slot and leaves the previous animation running**, by design. Region 1 stages 1-5 spawn *only* those five, so the creature anyone tests first is always one of them | **FIXED** |
 
 
 
@@ -5898,9 +5899,10 @@ every creature stood a pixel or two inside the path it walked
 Professor-Cerebrisk 1.5, Harvester 0.6). Nobody reported that either.
 
 (Five creatures - Grumble-Mulch, Dome-Alone, Professor-Cerebrisk, Tusk-A-Lot,
-Sub-Zero - have a full 16-frame `_die` sheet on disk that their spawn row never
-plays, so their die offsets never applied at all. That is
-`zomb-five-rigs-have-die-art-unplayed`, not this entry.)
+Sub-Zero - had a full 16-frame `_die` sheet on disk that their spawn row never
+played, so their die offsets never applied at all. That was **LL-079**, not
+this entry; since 2026-10-24 their rows carry the whole rig, so every number
+above applies to all fifteen creatures.)
 
 **Root cause.** `objects/obj_mon/Draw_0.gml` shifted the instance before the
 draw and put it back afterwards:
@@ -5989,6 +5991,116 @@ script; re-adding either turns it red - verified by mutation).
 
 **Files.** `objects/obj_mon/Draw_0.gml`,
 `scripts/scr_zomb_art/scr_zomb_art.gml`, `python_tools/tests/test_content.py`.
+
+---
+
+<a name="ll-079"></a>
+## LL-079 — A missing slot is not an error, it is the PREVIOUS animation: death played the walk frames, and the stage you test first is the one creature that had no die art
+
+**Symptom.** *"The walk animation plays as the zombies die."* A monster is
+killed: the kill line prints, the money and points are paid, the corpse stops
+walking the path, is not shot at again and does not cost a life - every part of
+the death beat behaves - and yet the body **strides in place** for the 0.8 s of
+`ZOMB_DIE_SECS` and then vanishes. No error, no warning, nothing in the log.
+Every reading of that is wrong except one: it is not "the die art is broken",
+not "the fall is broken", and not "the corpse is sinking" - **the game never
+asked the die art to play.**
+
+**Root cause.** Two things that are each correct on their own.
+
+1. `zomb_art_play()` answers **false and changes nothing** when a slot is
+   empty, and that is deliberate: `zomb_art_sprite()` returns -1 for a slot
+   past the end of the array, and "no art here, keep what you have" is what
+   stops `sprite_index = -1` - a **fatal error** in a Draw event (LL-012) -
+   from ever happening. It also lets a one-slot row be legal for art that has
+   not landed yet. The fallback is not a bug.
+2. Five spawn rows still carried the shape from before rigs existed:
+   `array(spr_grumble_walk)`, one slot. Their `_idle`, `_attack` and `_die`
+   sheets had been on disk **and registered in the `.yyp`** for weeks. So
+   `scr_zombie_path` asked for slot 0 (walk - correct, and it played) and
+   `scr_zomb_death` asked for slot 3, got -1, was told "nothing to play", and
+   the walk went on cycling because nothing replaced it.
+
+And the reason no test caught it: **the rig table was the list of rows that
+have a rig, so the five rows that did not were simply not in it.** `RIGGED` in
+`test_content.py` held the ten restyled creatures, and every slot test iterated
+`RIGGED` - by construction it could only check rows that were already right
+(LL-041's shape again: a suite that cannot notice a missing row has a hole in
+it). A separate test *pinned the bug as correct*:
+`test_the_originals_keep_a_single_walk_sprite` asserted those three rows had
+exactly one sprite, so the missing art was not merely unexamined, it was
+defended.
+
+**Why it looked total.** Region 1 sends **nothing but those five until
+stage 6**: stage 1-2 spawn `[0]` = Grumble-Mulch, and every stage's boss pair
+is `[0,1]` = Tusk-A-Lot and Sub-Zero; stage 3 adds Dome-Alone, stage 5 adds
+Professor-Cerebrisk, and spawner 3 (Newly-Turned, the first *properly rigged*
+walker) only joins at stage 6. So the first stage anyone plays is **100%**
+affected, while the ten creatures whose rigs were wired are all behind five
+stages of play. A bug that is complete where you are looking and absent where
+the next check looks gets closed as "works for me".
+
+**And the art it was hiding is good.** All four sheets of all five creatures
+are on disk as 16 distinct frames, and their die sheets are real falls: the
+body's top row comes down 68-81 canvas px by the last frame from a standing
+height of 140-157 (Grumble -149 -> -68 relative to the origin, Dome -149 ->
+-69, Professor -157 -> -76, Tusk -146 -> -67, Zero -140 -> -63), and the
+lowest pixel passes the origin on the way down (+3 -> +17, +6 -> +23,
++5 -> +19, +6 -> +31, +2 -> +23) - the body topples forward and toward the
+viewer. Nothing needed re-drawing; it needed to be *named in the row*.
+
+**Fix.** Every row carries its four slots, in `ZOMB_ANIM`'s order:
+
+```gml
+spawn_mon[0]  = scr_makeMonster("Grumble-Mulch",1,7,array(spr_grumble_walk, spr_grumble_idle, spr_grumble_attack, spr_grumble_die),10,1,5);
+spawn_boss[0] = scr_makeMonster("Tusk-A-Lot",0.5,55,array(spr_tusk_walk, spr_tusk_idle, spr_tusk_attack, spr_tusk_die),100,50,1);
+```
+
+and the kill line now names the slot it is about to use, so the next report of
+"it walks into its grave" is answered by the log rather than by a playtest:
+
+```
+META  [LEVEL] kill Grumble-Mulch +money=4 +pts=3 die=spr_grumble_die (life 12 left)
+META  [LEVEL] kill Something-New +money=4 +pts=3 die=NONE (keeps the walk art) (life 12 left)
+```
+
+**Guard rails.**
+
+* **A fallback that "keeps what you had" must say so in the log.** The silent
+  version is indistinguishable, in a screenshot, from the animation being
+  broken - and the person best placed to notice is the one who has to grep the
+  log. `scr_zomb_death` prints `die=` (the sprite name, or `NONE ...`) on the
+  per-kill line it already printed, once per kill.
+* **Pin the TABLE, not the rows the table happens to contain.**
+  `test_every_creature_row_is_in_the_rig_table` asserts the rig table and the
+  spawn table name the **same creatures** (equality both ways), so a row cannot
+  exist without its slots being checked, and a renamed rig cannot hide behind a
+  name that no longer matches.
+* **Art is delivered with its row.** A sheet in the `.yyp` is not "in the
+  game": `gm list GMSprite` only says *registered*, and `zomb_bank_report`'s
+  boot line prints `rig=` per row - `rig=1` is the tell, `rig=4` is the fix.
+  When a card is titled "art: creature X, four states", the spawn row is part
+  of the delivery.
+* **Check which creatures a stage can even send before believing "the death
+  animation is broken".** `stage_data()` says region 1 stages 1-5 exercise five
+  rows; a report from stage 1 is a report about those five, nothing else.
+
+**Status.** FIXED 2026-10-24. Pinned by
+`ZombieRigTests.test_every_rigged_creature_carries_its_own_four_slots` (fifteen
+rows now, ten before), `test_every_creature_row_is_in_the_rig_table` (the table
+cannot be short a creature), `test_the_die_frame_stands_where_the_walk_frame_stands`
+(now measures fifteen rigs instead of ten), and
+`test_the_kill_line_names_the_slot_the_fall_uses` (the kill line must print
+`die=`, an empty slot must read `NONE (keeps the walk art)`, and the name must
+sit behind `sprite_exists`). All three new assertions were mutation-checked -
+reverting a row to one slot, dropping a creature from the table, and deleting
+the `die=` field each turn exactly one test red.
+
+**Files.** `scripts/scr_setupSpawning/scr_setupSpawning.gml`,
+`scripts/scr_zomb_death/scr_zomb_death.gml`,
+`scripts/scr_zomb_art/scr_zomb_art.gml`,
+`python_tools/tests/test_content.py`, `sprites/spr_grumble_die/`,
+`sprites/spr_tusk_die/`, `sprites/spr_zero_die/`.
 
 ---
 

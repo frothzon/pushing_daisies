@@ -61,9 +61,28 @@ function scr_zomb_death() {
 	/// answerable from the log instead of from an argument (LL-011).
 	/// the SAME number that was just paid, not a second opinion about it -
 	/// a log that re-derives a payout can disagree with the purse
+	///
+	/// `die=` is the slot the fall is about to use, decided HERE rather than
+	/// after the line that reports it.  A row without a die sprite keeps the
+	/// walk frames it died in (zomb_art_play answers false and changes
+	/// nothing), which in a screenshot is indistinguishable from "the death
+	/// animation is broken" - five creatures shipped that way (LL-079), so
+	/// the kill line names the art instead of leaving it to be noticed.
+	/// zomb_art_sprite answers -1 for a missing slot, which is what the guard
+	/// below exists for.
+	var _die_spr = zomb_art_sprite(sprite_array, ZOMB_ANIM.die),
+	    _die_txt = "NONE (keeps the walk art)";
+	/// sprite_get_name on a missing sprite is FATAL (LL-012), so the name is
+	/// only read behind the existence guard - and an empty slot must still
+	/// say something, because "no die art" and "the animation is broken" look
+	/// identical on screen.
+	if(sprite_exists(_die_spr)){
+	    _die_txt = sprite_get_name(_die_spr);
+	}
+
 	scr_meta_log("LEVEL", "kill ", data[MON.name], " +money=",
 	             _pay,
-	             " +pts=", _points, " (life ",
+	             " +pts=", _points, " die=", _die_txt, " (life ",
 	             get_item_value(STATINV.life), " left)");
 
 	///----------------- add debree to screen

@@ -62,11 +62,12 @@ BOX_DRAW_REL = "objects/obj_textbox/Draw_64.gml"
 
 # `spawn_mon[0] = scr_makeMonster("Grumble-Mulch",1,7,array(spr_grumble_walk),...`
 #
-# The fourth argument is a RIG since 2026-10-24: `array(walk, idle, attack, die)`
-# for the ten restyled creatures, and still a one-element `array(spr_x)` for the
-# three originals.  So the pattern captures the WHOLE argument list and the
-# reader decides - a pattern that insisted on one sprite would have stopped
-# matching ten rows and gone on passing the checks below with them missing
+# The fourth argument is a RIG: `array(walk, idle, attack, die)`.  It was a
+# one-element `array(spr_x)` for the three originals and the two region-1 bosses
+# long after their four sheets landed, and every check below passed anyway -
+# which is how a corpse came to play its walk frames (LL-079).  So the pattern
+# captures the WHOLE argument list and the reader decides: a pattern that
+# insisted on one sprite would stop matching a row instead of reporting it
 # (LL-041: a suite that cannot notice a missing row has a hole in it).
 ROW_RE = re.compile(
     r'spawn_(mon|boss)\s*\[\s*(\d+)\s*\]\s*=\s*scr_makeMonster\(\s*"([^"]+)"'
@@ -449,26 +450,36 @@ STAGE_RE = re.compile(
 # creature name -> the prefix its four sprites share.  The two do NOT always
 # agree with the creature's name (Orchid-Widow's rig is spr_orchid_*), which is
 # why the pairing is written down here instead of guessed from the string.
+#
+# EVERY creature in both banks is listed, in spawn-table order.  The three
+# originals and the two region-1 bosses were missing from this table for weeks
+# after their idle/attack/die sheets landed, so nothing looked at their slots
+# and a dying Grumble-Mulch played its walk frames (LL-079).  A creature that
+# is not here is a creature no check in this file covers, which is why
+# test_every_creature_row_is_in_the_rig_table pins the table to EQUALITY.
 RIGGED = {
-    "Newly-Turned":     "spr_newly_turned",
-    "Bog-Wader":        "spr_bog_wader",
-    "Sandblasted":      "spr_sand_blasted",
-    "Root-Bound":       "spr_root_bound",
-    "Shroud":           "spr_shroud",
-    "Harvester":        "spr_harvester",
-    "Foreman-Rustlung": "spr_foreman_rustlung",
-    "Orchid-Widow":     "spr_orchid",
-    "Bell-Ringer":      "spr_bell_ringer",
-    "Gardener":         "spr_gardener",
+    "Grumble-Mulch":       "spr_grumble",
+    "Dome-Alone":          "spr_dome_alone",
+    "Professor-Cerebrisk": "spr_professor",
+    "Newly-Turned":        "spr_newly_turned",
+    "Bog-Wader":           "spr_bog_wader",
+    "Sandblasted":         "spr_sand_blasted",
+    "Root-Bound":          "spr_root_bound",
+    "Shroud":              "spr_shroud",
+    "Harvester":           "spr_harvester",
+    "Tusk-A-Lot":          "spr_tusk",
+    "Sub-Zero":            "spr_zero",
+    "Foreman-Rustlung":    "spr_foreman_rustlung",
+    "Orchid-Widow":        "spr_orchid",
+    "Bell-Ringer":         "spr_bell_ringer",
+    "Gardener":            "spr_gardener",
 }
 
-# The three creatures that shipped before rigs: one sprite, and it is the walk.
-SINGLE_SPRITE = ("Grumble-Mulch", "Dome-Alone", "Professor-Cerebrisk")
-
-# The Draw that places a monster on screen, and the script that plays its art -
-# the only two places that could put a body off its own origin (LL-078).
+# The three places a monster's death touches its art: the Draw that places it,
+# the script that plays a slot, and the kill that asks for the die slot (LL-079).
 MON_DRAW_REL = "objects/obj_mon/Draw_0.gml"
 ZOMB_ART_REL = "scripts/scr_zomb_art/scr_zomb_art.gml"
+ZOMB_DEATH_REL = "scripts/scr_zomb_death/scr_zomb_death.gml"
 
 # How far frame 0 of a die sheet may meet the ground from where frame 0 of the
 # walk sheet does, in canvas px.  Measured 2026-10-24 on all fifteen rigs on
@@ -542,13 +553,21 @@ class ZombieRigTests(unittest.TestCase):
                              "%s's rig is not %s - a slot out of order draws "
                              "the idle as the walk" % (name, expected))
 
-    def test_the_originals_keep_a_single_walk_sprite(self):
-        for name in SINGLE_SPRITE:
-            sprites = self.row(name)
-            self.assertEqual(1, len(sprites),
-                             "%s grew a rig without art for it" % name)
-            self.assertTrue(sprites[0].endswith("_walk"),
-                            "%s's only sprite is not its walk art" % name)
+    def test_every_creature_row_is_in_the_rig_table(self):
+        """A row missing from RIGGED is a row nothing here looks at.
+
+        This is the hole five creatures fell through (LL-079): their rows were
+        legal - a one-slot `array(spr_x)` is a documented shape - and nothing
+        compared the table to the rig list, so their idle/attack/die sheets
+        were never mentioned again and a dying monster played its walk frames.
+        Equality in both directions, so a renamed rig or a deleted creature is
+        caught in the same breath.
+        """
+        rows = sorted(name for (name, _sprites) in self.rows.values())
+        self.assertEqual(sorted(RIGGED), rows,
+                         "the rig table and the spawn table name different "
+                         "creatures - every row needs a rig entry, or its "
+                         "slots go unchecked")
 
     def test_every_rig_sprite_is_a_sprite_in_the_project(self):
         for (bank, idx), (name, sprites) in sorted(self.rows.items()):
@@ -556,6 +575,26 @@ class ZombieRigTests(unittest.TestCase):
                 yy = PROJECT_ROOT / "sprites" / spr / (spr + ".yy")
                 self.assertTrue(yy.exists(), "%s: %s is missing from the "
                                 "project (%s)" % (name, spr, yy))
+
+    def test_the_kill_line_names_the_slot_the_fall_uses(self):
+        """A corpse with no die art must SAY so instead of looking broken.
+
+        The fallback that keeps the previous animation is correct (a one-slot
+        row is legal art-yet-to-land), but it is indistinguishable on screen
+        from a broken death animation - which is how five creatures' walk
+        frames played through their death (LL-079).  So the per-kill line
+        names the slot, and the name is only read behind an existence guard
+        (sprite_get_name on -1 is fatal, LL-012).
+        """
+        src = (PROJECT_ROOT / ZOMB_DEATH_REL).read_text(encoding="utf-8-sig")
+        self.assertIn('" die=", _die_txt', src,
+                      "the kill line no longer prints which sprite the corpse "
+                      "fell with - a missing die slot would be silent again")
+        self.assertIn("NONE (keeps the walk art)", src,
+                      "an empty die slot must be spelled out, not left blank")
+        self.assertRegex(src, r"if\s*\(\s*sprite_exists\(\s*_die_spr\s*\)\s*\)",
+                         "sprite_get_name is not behind an existence guard, so "
+                         "a row with no die art is a fatal error mid-kill")
 
     def test_the_die_frame_stands_where_the_walk_frame_stands(self):
         """Dying needs no vertical correction, because the origin IS the ground.
