@@ -57,6 +57,10 @@ if(_gen != ui_gen_seen){
 }
 
 //--------------------------------------------------------------
+
+var _back_id = layer_background_get_id("Background");
+var _back_img = (menu_state == MENU_STATE.START || menu_state == MENU_STATE.OPTIONS) ? spr_title_background_sidewalk : spr_title_background_sidewalk_blurry;
+layer_background_sprite(_back_id, _back_img);
 // states
 switch(menu_state){
 
@@ -91,6 +95,7 @@ switch(menu_state){
 
     //----------------------------------- start a new game
     case MENU_STATE.NEW_GAME:
+
         if(menu_state_time == 0){
             for_array(menu_button,scr_button_index_disable);
         }
@@ -102,6 +107,7 @@ switch(menu_state){
 
     //----------------------------------- load a saved game
     case MENU_STATE.CONTINUE:
+
         if(menu_state_time == 0){
             for_array(menu_button,scr_button_index_disable);
             /// THE RUN CURSOR is the whole point of Continue: it is where
@@ -126,6 +132,7 @@ switch(menu_state){
 
     //----------------------------------- options screen
     case MENU_STATE.OPTIONS:
+
         if(menu_state_time == 0){
             for_array(menu_button,scr_button_index_hide);
             for_array(menu_options,scr_button_index_enable);
@@ -138,6 +145,7 @@ switch(menu_state){
 
     //----------------------------------- leaving the options screen
     case MENU_STATE.RETURN:
+        
         if(menu_state_time == 0){
             for_array(menu_options,scr_button_index_hide);
             scr_resetSoundVolume();
