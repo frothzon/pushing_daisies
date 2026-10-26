@@ -3,10 +3,11 @@ function scr_zomb_updatePosition() {
 
 	/// update object
 
-	/// A CORPSE IS NOT WALKING, NOT LEAKING AND NOT STUCK (scr_zomb_death).
-	/// The dying branch in scr_zombie_path returns before this is reached,
-	/// and this guard is what keeps a future caller from letting a monster
-	/// that was already killed cost the player a life.
+	/// A CORPSE IS NOT WALKING, NOT LEAKING AND NOT STUCK (ZOMB_STATE.DIE).
+	/// scr_zombie_die never calls this, and the guard is what keeps a future
+	/// caller from letting a monster that was already killed cost the player
+	/// a life - the fall is one state's business now, not a flag polled in
+	/// the walking state's tail (LL-080).
 	if(dying) return;
 
 	/// ---- progress watch (LL-031).  The path FOLLOWER's own position is the

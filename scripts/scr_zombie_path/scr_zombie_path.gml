@@ -4,7 +4,7 @@ function scr_zombie_path() {
 	    start the zombie path
 	*/
 
-	if(state_time == 0){
+	if(zomb_state_time == 0){
 	    /// CAPTURE the return value, and only put the monster ON a path when
 	    /// one was actually found.  `path_start` on a path with no points
 	    /// leaves nothing rewriting x/y each step, which is how a failed FIRST
@@ -39,16 +39,13 @@ function scr_zombie_path() {
 	    z_climb = 10;
 	}
 
-	if(state_time > 0){
-	    /// ---- a CORPSE only finishes falling (scr_zomb_death) --------
-	    /// Its life is already 0 and it has already been paid for.  It
-	    /// must not walk (a corpse marching to the despawn would cost a
-	    /// life for a monster that was already killed) and it must not be
-	    /// shot at again, which find_all_range settles.
-	    if(dying){
-	        scr_zomb_death();
-	        return;
-	    }
+	if(zomb_state_time > 0){
+	    /// ---- NO CORPSE EVER REACHES HERE ----------------------------
+	    /// This block used to poll `dying` and call scr_zomb_death() to
+	    /// finish the fall, which made the fall exist only while the PATH
+	    /// state happened to be wearing the body (LL-080).  Death is a
+	    /// state now - ZOMB_STATE.DIE, scr_zombie_die - and it is entered
+	    /// from the life check in scr_zomb_step, before this is called.
 
 	    /// ---- the rig: walking, or standing still --------------------
 	    /// A monster with no route (path_free false) or a stun/root on it
@@ -69,7 +66,7 @@ function scr_zombie_path() {
 	    /// guessed (LL-011, LL-031).  path_exists first (LL-012), and the
 	    /// speed floored, because it is NEGATIVE whenever the monster is
 	    /// backing away from a blockage.
-	    if(state_time == 1 && path_exists(myPath)){
+	    if(zomb_state_time == 1 && path_exists(myPath)){
 	        var _len = path_get_length(myPath),
 	            _spd = max(path_speed, 0.001),
 	            _fps = max(game_get_speed(gamespeed_fps), 1);
@@ -78,9 +75,6 @@ function scr_zombie_path() {
 	                     round(_len/_spd), " steps (~",
 	                     round(_len/_spd/_fps), "s to the despawn)");
 	    }
-    
-	    /// death
-	    scr_zomb_death();
     
 	    /// update object
 	    scr_zomb_updatePosition();

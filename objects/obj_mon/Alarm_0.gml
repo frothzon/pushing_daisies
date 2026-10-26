@@ -11,6 +11,16 @@
 /// LL-025: an attempt that can fail must not be allowed to destroy the
 /// route the monster is already walking - see scr_path_replace().
 
+/// ---- A CORPSE IS NOT RE-PATHED --------------------------------------
+/// Collision_obj_tower arms this alarm whenever a monster is within 16 px
+/// of a tower - which is exactly where kills happen - so a monster killed
+/// inside the 15 steps that follow was handed a NEW route while it was
+/// toppling, and path_start moves x/y from the ENGINE: the body slid along
+/// the route it had already been paid for (LL-080).  scr_zombie_die
+/// disarms the alarm on entry; this is the second lock, because an alarm
+/// can be armed from anywhere.
+if(dying) exit;
+
 var _fps = game_get_speed(gamespeed_fps);
 
 /// Ask the grid - but do NOT throw away the route we are walking unless

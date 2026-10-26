@@ -1,5 +1,11 @@
 /// @description  run state
-scr_runState(scr_zombie_emerge);
+/// ONE call for all three states: scr_zomb_step() applies any pending
+/// change, checks for a death BEFORE it dispatches (so no state can miss
+/// one), then switches on the enum.  This used to be
+/// scr_runState(scr_zombie_emerge), which named the first state HERE - in
+/// the event - and dispatched through a script reference behind the magic
+/// value -1 (LL-004, LL-080).
+scr_zomb_step();
 
 /// DEPTH FROM THE FEET, EVERY STEP (LL-059).  A monster's y is where it
 /// meets the ground, and the plants are sorted by that same y - so this one
@@ -10,7 +16,7 @@ scr_runState(scr_zombie_emerge);
 depth = scr_depth_y(y);
 
 /// ---- and one step of every STATUS clock (scr_status) ---------------
-/// LAST, after scr_runState has moved the monster and derived its depth, and
+/// LAST, after scr_zomb_step has moved the monster and derived its depth, and
 /// after the emerge and dying states have run: "1.5 seconds" has to be 1.5
 /// seconds of play whatever the monster was doing.  It ticks here rather
 /// than inside scr_zombie_path because a monster that is still emerging is

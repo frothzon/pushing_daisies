@@ -13,11 +13,15 @@ y += z_climb*2-12;
 /// The fill is a CLAMPED ratio over a READ denominator (LL-056):
 ///
 ///   * `life` goes NEGATIVE.  scr_do_damage subtracts the whole hit, and
-///     scr_zomb_death only runs inside scr_zombie_path - so a monster
-///     killed by a tower that steps later in the same frame draws ONE
-///     frame below zero.  During EMERGE it is worse: scr_zombie_emerge
-///     restores life = maxLife at the END, so an overkill there shows a
-///     badly negative bar for up to 60 steps and then heals itself.
+///     scr_zomb_step notices the death on the NEXT step (the DIE entry code
+///     runs then), so a monster killed by a tower that steps later in the
+///     same frame draws ONE frame below zero.
+///
+///     This bullet used to add "and scr_zomb_death only runs inside
+///     scr_zombie_path, so a monster killed while EMERGING shows a badly
+///     negative bar for up to 60 steps and then HEALS ITSELF".  The heal
+///     went on 2026-10-18, and no state is exempt from the death check any
+///     more - the emerge cannot outlive a kill (LL-080).
 ///   * `maxLife` is data - a zero row divides by zero.
 ///
 /// An unclamped ratio makes lerp() EXTRAPOLATE: the fill was drawn to the

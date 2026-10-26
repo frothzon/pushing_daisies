@@ -4,7 +4,7 @@ function scr_zombie_emerge() {
 	/// The crawl sprite is gone.  Instead of playing a crawl animation,
 	/// the monster GROWS from nothing to its full size, so the emerge
 	/// reads as the creature rising out of the ground.
-	if(state_time == 0){
+	if(zomb_state_time == 0){
 	    sprite_index = sprite_array[0];
 	    image_index = 0;
 	    image_speed = scr_animSpeedForSteps(sprite_index, 60);
@@ -18,20 +18,25 @@ function scr_zombie_emerge() {
 	/// grow over the 60-step emerge.  The scale is clamped so the last
 	/// step lands on exactly 1.00 and never overshoots (LL-029: never
 	/// trust `==` against a derived quantity).
-	var _t = min(state_time / 60, 1),
+	var _t = min(zomb_state_time / 60, 1),
 	    _s = base_scale * _t;
 	/// keep the facing sign: image_xscale carries size AND facing (LL-012)
 	image_xscale = _s * (image_xscale < 0 ? -1 : 1);
 	image_yscale = _s;
 
-	if(state_time >= 60){
+	if(zomb_state_time >= 60){
 	    /// NO LIFE RESET HERE (decided 2026-10-18).  This line set life back
 	    /// to maxLife on the last frame of the emerge, so a monster shot while
 	    /// it was rising was HEALED by walking - which is the "HP bar goes
 	    /// back up" symptom, and it made the emerge a free full heal instead
 	    /// of a vulnerable second.  A monster is born at full life
 	    /// (scr_makeMonster); nothing has to restore it.
-	    scr_changeState(scr_zombie_path);
+	    ///
+	    /// AND NO DEATH CHECK EITHER: scr_zomb_step runs the life check
+	    /// before it dispatches, so a monster killed while it was rising
+	    /// never gets this far - it used to walk one step first, because
+	    /// only scr_zombie_path knew how to notice a death (LL-080).
+	    scr_zomb_request(ZOMB_STATE.PATH);
 	}
 
 	x = spawn_object.x;

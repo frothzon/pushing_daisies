@@ -100,6 +100,8 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-077](#ll-077) | Nothing at all - the suite, the brace count, `gm gml-functions`, `roundtrip` and a diff are all green, and the file still is not what it reads like | A function TAIL appended at **EOF**: the braces still balance (14 and 14) while every later function is nested inside an unclosed `if`, so GML compiles a program nobody intended. Count the DEPTH at each `function`, not the total in the file | **FIXED** |
 | [LL-078](#ll-078) | Corpses settle **below the path** they died on - 6.6 px on the Bell-Ringer, 28 on the Shroud - and the Gardener walks 2 px into the ground all game; no error, nothing in the log | `obj_mon/Draw_0` moved `y` by `(sprite_get_height-1) - sprite_get_bbox_bottom`: the **empty canvas rows under the art** - room kept for the body to lie down, 22 of the Bell-Ringer's 175 px sheet - which says nothing about where the feet are, and one bbox serves all sixteen frames besides. The art was already on the walk's origin (within 5 px on all fifteen rigs) | **FIXED** |
 | [LL-079](#ll-079) | **"The walk animation plays as the zombies die"** - the kill line prints, the money is paid, the body **strides in place** for 0.8 s, then gone. Every other part of the death beat behaves | Five spawn rows still carried the pre-rig `array(spr_x_walk)` while their `_idle`/`_attack`/`_die` sheets sat in the `.yyp`; `zomb_art_play` **answers false for an empty slot and leaves the previous animation running**, by design. Region 1 stages 1-5 spawn *only* those five, so the creature anyone tests first is always one of them | **FIXED** |
+| [LL-080](#ll-080) | **A zombie killed while it is still rising stands up and walks** - the kill line prints, the money is paid, and the body strolls off; other corpses get **dragged along their route** while they topple; some falls show a **one-frame "standing" flicker** just before the body vanishes | Death was a **flag polled at the top of the walking state**, not a state: `scr_zombie_path` checked `dying` and called `scr_zomb_death` again to finish the fall. A monster killed in EMERGE never reached that check (the emerge has no life test, and its last step requests the walk); the fall clock started one step after the kill, so the sheet wrapped to frame 0 and frame 0 was **drawn**; `Alarm_0`, armed by a tower brush - which is where kills happen - could `path_start` a corpse, and the follower moves x/y from the **engine**; and the destroy used `round(ZOMB_DIE_SECS*fps)` instead of watching the animation, so it agreed with the sprite only by coincidence | **FIXED** |
+
 
 
 
@@ -6101,6 +6103,184 @@ the `die=` field each turn exactly one test red.
 `scripts/scr_zomb_art/scr_zomb_art.gml`,
 `python_tools/tests/test_content.py`, `sprites/spr_grumble_die/`,
 `sprites/spr_tusk_die/`, `sprites/spr_zero_die/`.
+
+---
+
+<a name="ll-080"></a>
+## LL-080 — Death is a STATE, not a flag polled inside another state's tail: a zombie killed while it was rising stood up and walked
+
+**Symptom.** Three reports, all from the same defect:
+
+* **"A zombie I killed while it was coming out of the ground got up and
+  walked."** The kill line printed, the money and the points were paid, and the
+  body then strolled to the despawn. In the log that kill is followed by
+  `META  [PATH] monster … path … steps` - a *corpse* reporting its route.
+* **A corpse slides along the path while it topples**, usually near a tower.
+* **A one-frame flicker of the standing pose** at the end of some falls, just
+  before the body disappears - and only some.
+
+Nothing throws, nothing is missing, `gm balance check` is green, and every other
+part of the death beat (money, the kill line, the blood, the die sprite) is
+correct, which is why it read as an art problem for a while.
+
+**Root cause.** `obj_mon` was dispatched by `scr_runState(scr_zombie_emerge)` -
+the state held as a **script reference**, "no state" written as `-1`
+([LL-004](#ll-004)), the default state named in the *event* - and it had four
+behaviours and three states:
+
+1. **Death was not a state.** `dying` was a flag, and the only code that noticed
+   it was inside `scr_zombie_path`:
+
+   ```gml
+   if(dying){          /// ---- a CORPSE only finishes falling
+       scr_zomb_death();
+       return;
+   }
+   ```
+
+   A monster is spawned into **EMERGE**, and its last step is what starts the
+   walk. `scr_zombie_emerge` had no life test at all, so a monster killed during
+   the 60-step rise was never checked: the emerge finished, `scr_changeState`
+   handed the body to the walking state, and the first thing that state did was
+   play the **walk cycle**. On the following step the corpse branch finally ran
+   and the body fell over - from a standing pose, mid-stride.
+
+2. **The clock started a step late.** The kill set `dying_time = 0` inside
+   `scr_zombie_path`, at the *end* of the monster's step, so `if(state_time > 0)`
+   was already true on the next step and `dying_time` went 0 -> 1 without the
+   entry code ever running. `round(ZOMB_DIE_SECS * fps)` was therefore measured
+   from one frame late, the sheet wrapped to frame 0 one step before the
+   destroy, and **frame 0 (the standing pose) was drawn** - the flicker.
+
+3. **Two clocks, one animation.** The destroy was
+   `dying_time >= round(ZOMB_DIE_SECS*fps)` and the art was played at
+   `scr_animSpeedForSeconds(die, ZOMB_DIE_SECS)`. They agreed only because all
+   fifteen die sheets happen to be 30 fps with `playbackSpeedType 0`; change a
+   sheet's frame count and the corpse either froze on its last frame or vanished
+   mid-fall, with no error either way ([LL-040](#ll-040)'s shape: one number,
+   one reader - this had two).
+
+4. **An alarm could re-path a corpse.** `Collision_obj_tower` arms
+   `alarm[0] = fps*0.25` whenever a monster is within 16 px of a tower - i.e.
+   exactly where kills happen. `Alarm_0` found a route and called `path_start`,
+   and the **follower** then moved x/y from the engine, so the body was dragged
+   along the route it had already been paid for. No state did that; the engine
+   did.
+
+**Fix.** The flow is an `enum` + `switch` in `scr_zomb_state`, with the
+request/apply shape the Menu and `scr_level_state` use, and **death is one of the
+states**:
+
+```gml
+enum ZOMB_STATE { NONE, EMERGE, PATH, DIE };
+```
+
+`scr_zomb_step()` is the whole flow - called once, from `obj_mon/Step_0`:
+
+```gml
+function scr_zomb_step() {
+	scr_zomb_begin();      /// apply a pending request, or tick the state clock
+
+	/// DEATH IS A STATE, AND THIS IS ITS ONLY DOOR.  Checked BEFORE the
+	/// switch and `return`ed: no state body may run on the step a monster
+	/// dies - the PATH body would put its walk cycle straight back over the
+	/// die sprite the kill had just given it.
+	if(!dying && zomb_state != ZOMB_STATE.DIE && data[MON.life] <= 0){
+		scr_zomb_death();
+		return;
+	}
+
+	switch(zomb_state){
+		case ZOMB_STATE.EMERGE: scr_zombie_emerge(); break;
+		case ZOMB_STATE.PATH:   scr_zombie_path();   break;
+		case ZOMB_STATE.DIE:    scr_zombie_die();    break;
+	}
+}
+```
+
+The kill (`scr_zomb_death`) now pays and **requests** the fall, and owns no
+animation:
+
+```gml
+	path_end();          /// one step of follower is still to come
+	dying      = true;
+	dying_time = 0;
+	alarm[0] = -1;       /// Alarm_0 re-paths; a corpse is not re-pathed
+	scr_zomb_request(ZOMB_STATE.DIE);
+```
+
+and `scr_zombie_die` owns the fall and its own exit - it watches the **sheet**,
+not a duration derived beside it:
+
+```gml
+	if(zomb_state_time == 0){
+		path_end();
+		alarm[0] = -1;
+		zomb_die_steps = max(1, round(ZOMB_DIE_SECS * max(game_get_speed(gamespeed_fps), 1)));
+		var _played   = zomb_art_play(sprite_array, ZOMB_ANIM.die, ZOMB_DIE_SECS);
+		zomb_die_art  = (_played && image_number > 1 && image_speed > 0);
+		zomb_die_prev = image_index;
+	}
+
+	if(zomb_die_art){
+		if(image_index < zomb_die_prev) _gone = true;   /// the sheet wrapped
+	} else {
+		if(dying_time >= zomb_die_steps) _gone = true;  /// no sheet to watch
+	}
+```
+
+The wrap is detected on the step *after* the last pose was drawn, and the destroy
+happens **before Draw**, so every pose is drawn once and frame 0 never returns.
+`zomb_die_art` is the switch between the two clocks: a rig with no die slot keeps
+the walk art it died in ([LL-079](#ll-079)) and is removed by the step count, and
+a logged `dying_time > zomb_die_steps*2 + 2` backstop covers a sheet that cannot
+animate at all (a declared speed of 0) - otherwise a corpse that never leaves
+still counts in `instance_number(obj_mon)`, which is the number a wave waits on.
+
+**Guard rails.**
+
+* **A condition that can end another state is a state.** If something can stop a
+  state mid-way (`dying`, a stun, a leak), make it a state of its own and test for
+  it in the dispatcher - *before* the switch - so no state can be written that
+  forgets it. `return` after the check: the old body must not run on the step of
+  the transition.
+* **Never time an animation twice.** If the art was given a duration, ask the art
+  when it is done (`image_index` wrapped), and keep the step count only as the
+  fallback for "there is no art to watch", with a logged backstop.
+* **Anything that moves an instance from the engine** (`path_start`, a timeline, a
+  motion add) must be stopped in the **entry** code of the state that must not
+  move - and whatever could restart it (an alarm) needs its own guard.
+* **`state_time == 0` is only entry code if the dispatcher resets the clock.**
+  `scr_runState` incremented *after* the body, so a state entered from the middle
+  of another state's step lost its entry frame; request/apply (`= 0` on apply,
+  `++` while idle) is what makes "just entered" mean exactly one step.
+* **A transition you cannot see is a transition you cannot debug.**
+  `scr_meta_log` names every change (`META  [ZOMB] now DIE … life 0/7`) and the
+  entry decision (`META  [ZOMB] die <id> art=spr_x_die frames=16 image_speed=0.33 steps=48`).
+
+**Status.** FIXED, 2026-10-26. 331 tests (322 before), 9 of them in
+`MonsterStateMachineTests`, mutation-checked 7/7: deleting the Alarm guard,
+dropping the `return` after the kill, pointing the DIE case at the walk, timing
+the fall by steps again, removing a Create declaration, restoring `scr_runState`
+in Step_0, and letting the kill play the art each turn exactly one test red.
+
+**In the log** (`global.devMode = true`, a game run): a monster killed while
+EMERGing logs `META  [ZOMB] request EMERGE -> DIE`, then
+`META  [ZOMB] now DIE … life 0/7`, then
+`META  [ZOMB] die <id>  art=spr_…_die  frames=16  image_speed=0.33  steps=48`, and
+~48 steps later `META  [ZOMB] corpse gone <id> after N steps (the sheet wrapped)`.
+What proves it wrong: a `corpse gone … (the step clock)` line on a rig that *has*
+a die sheet, an `art=` naming a walk sprite, a `WARNING … die art did not advance`
+line, or a kill with no `die` line after it.
+
+**Files.** `scripts/scr_zomb_state/scr_zomb_state.gml` (new),
+`scripts/scr_zombie_die/scr_zombie_die.gml` (new),
+`scripts/scr_zomb_death/scr_zomb_death.gml`,
+`scripts/scr_zombie_path/scr_zombie_path.gml`,
+`scripts/scr_zombie_emerge/scr_zombie_emerge.gml`,
+`scripts/scr_zomb_updatePosition/scr_zomb_updatePosition.gml`,
+`objects/obj_mon/{Create_0,Step_0,Alarm_0,Draw_73}.gml`,
+`python_tools/tests/test_content.py`.
 
 ---
 

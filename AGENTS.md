@@ -172,6 +172,7 @@ the exact log lines to look for, and name what would falsify your fix.
 | Title menu (state machine = `enum` + `switch`) | `objects/Menu/{Create_0,Step_0,Draw_0,Draw_64}.gml` |
 | **Level boot** (the one place a stage begins) | `rooms/rm_test/RoomCreationCode.gml` → `scripts/scr_level_boot` - idempotent, runs on EVERY entry to the stage room, after every instance Create ([LL-049](./lessons_learned.md#ll-049)). Never boot a level from an instance Create |
 | Level flow (state machine = `enum` + `switch`) | `scripts/scr_level_state` → `scr_level_{start,spawn,wait,clear}`; `_mainControl` startup → cutscene → `_levelControl` |
+| **Monster flow** (state machine = `enum` + `switch`; **DEATH is a state**) | `scripts/scr_zomb_state` → `ZOMB_STATE {NONE,EMERGE,PATH,DIE}`, `scr_zomb_{state_name,request,begin,step}` (request/apply, like the Menu). States: `scr_zombie_emerge`, `scr_zombie_path`, `scr_zombie_die`; `scr_zomb_death` is the **kill only** and requests DIE. The life check lives in `scr_zomb_step`, **before** the switch, so no state can miss a death ([LL-080](./lessons_learned.md#ll-080)) |
 | Menu states, state-change, debug dump | `scripts/scr_menu_state/scr_menu_state.gml` — `MENU_STATE`, `scr_menu_state_name`, `scr_menu_changeState`, `scr_menu_debug`, `scr_menu_debug_buttons` |
 | Button object (all buttons are `_button`) | `objects/_button/{Create_0,Step_0,Draw_0,Draw_64}.gml` → `scr_iniButton()`, `scr_stpButton()` |
 | Button plumbing | `scripts/scr_setup_menuStates`, `scr_create_button`, `scr_button_index_{enable,disable,hide}`, `scr_button_greyout`, `scr_scaleButton` |
@@ -200,8 +201,11 @@ problems from [LL-004](./lessons_learned.md#ll-004)):
 | level flow | `_levelControl` | `scr_level_start`, `scr_level_spawn`, `scr_level_wait` |
 | camera | `_viewControl` | `scr_view_idle`, `scr_view_drag`, `scr_view_pause` |
 | towers | `obj_tower`, `obj_tower_edit` | `scr_tower_normal`, `scr_tower_shoot`, `scr_tower_return` |
-| monsters | `obj_mon` | `scr_zombie_emerge`, `scr_zombie_path` |
 | switches | (driven by scripts, no dedicated object) | `scr_updateSwitch`, `scr_setupSwitch`, `scr_set_switch`, `scr_switch_hold`, `scr_switch_timer`, `scr_switch_toggle`, `scr_switch_oneShot` |
+
+**Migrated so far:** the Menu (the reference implementation), the level flow
+(`scr_level_state`) and the **monsters** (`scr_zomb_state`, [LL-080](./lessons_learned.md#ll-080)) —
+all three are `enum` + `switch` with request/apply state changes.
 
 The Menu is the **reference implementation** for migrating them — copy its shape
 (enum + `switch` + request/apply state changes + debug dump).

@@ -4,7 +4,14 @@ sprite_array = array(spr_mon,spr_mon);
 /// the full size the emerge grows to (scr_zombie_emerge);
 /// scr_level_spawn overwrites this for each monster
 base_scale = 1;
-scr_setupState();
+/// ---- the monster's own STATE (scr_zomb_state) ----------------------
+/// An enum, not a script reference: scr_setupState's `state = -1` was the
+/// LL-004 sentinel, and "the first state" was named in obj_mon/Step_0.
+/// NONE is the "no request pending" sentinel; every monster is born
+/// EMERGing, and the emerge's 60-step grow is that state's entry clock.
+zomb_state      = ZOMB_STATE.NONE;
+zomb_state_next = ZOMB_STATE.EMERGE;
+zomb_state_time = 0;
 
 /// generate path
 /// mp_collider
@@ -68,12 +75,23 @@ water_reported = false;
 statuses     = {};
 status_count = 0;
 
-/// ---- the death beat (scr_zomb_death) -------------------------------
+/// ---- the death beat (scr_zomb_death -> ZOMB_STATE.DIE) -------------
 /// `dying` is what stops a corpse from being paid for twice, targeted
-/// again or leaked: the monster plays its die animation for ZOMB_DIE_SECS
-/// and is destroyed by the clock that started it.  Declared HERE because
-/// every reader (find_all_range, scr_zomb_updatePosition, the path state)
-/// asks before the first death in the room has happened.
+/// again or leaked.  Declared HERE because every reader (find_all_range,
+/// scr_zomb_updatePosition, Alarm_0) asks before the first death in the
+/// room has happened - a read must never be the first writer (LL-002).
 dying      = false;
 dying_time = 0;
+
+/// ---- and the fall's own state (scr_zombie_die) ---------------------
+/// zomb_die_art is the switch between the TWO clocks: TRUE when the kill
+/// really put a die sheet on this monster - one it can advance - so the
+/// animation itself says when the body is done.  FALSE when the rig has
+/// no die slot and the corpse keeps the art it died in (LL-079); then
+/// ZOMB_DIE_SECS in steps is the only clock there is.  Declared here for
+/// the same reason as `dying`: the DIE entry code is not the only reader.
+zomb_die_steps  = 0;     /// the duration the art was asked for, in steps
+zomb_die_art    = false; /// is there a sheet to watch?
+zomb_die_prev   = 0;     /// the frame drawn last, to see the sheet wrap
+zomb_die_warned = false; /// has the backstop already said its piece?
 

@@ -54,6 +54,10 @@ TOWER_CREATE_REL = "objects/obj_tower/Create_0.gml"
 TOWER_EDIT_STEP_REL = "objects/obj_tower_edit/Step_0.gml"
 EMERGE_REL = "scripts/scr_zombie_emerge/scr_zombie_emerge.gml"
 ZPATH_REL = "scripts/scr_zombie_path/scr_zombie_path.gml"
+ZSTATE_REL = "scripts/scr_zomb_state/scr_zomb_state.gml"
+ZDIE_REL = "scripts/scr_zombie_die/scr_zombie_die.gml"
+ZDEATH_REL = "scripts/scr_zomb_death/scr_zomb_death.gml"
+MON_ALARM_REL = "objects/obj_mon/Alarm_0.gml"
 
 PICK_REL = "scripts/scr_level_pick_spawn/scr_level_pick_spawn.gml"
 WAIT_REL = "scripts/scr_level_wait/scr_level_wait.gml"
@@ -386,7 +390,10 @@ class RepriceDecisionTests(unittest.TestCase):
     def test_the_emerge_does_not_heal(self):
         src = self.read(EMERGE_REL)
         self.assertNotIn("data[MON.life] =", src)
-        self.assertIn("scr_changeState(scr_zombie_path)", src)
+        # 2026-10-26 (LL-080): the walk is started by REQUESTING the state,
+        # not by swapping a script reference behind the scene.
+        self.assertIn("scr_zomb_request(ZOMB_STATE.PATH)", src)
+        self.assertNotIn("scr_changeState(", src)
 
     def test_a_leak_pays_half_through_the_carry(self):
         src = self.read(LEAK_REL)
@@ -932,3 +939,125 @@ class MenuBackdropBlurTests(unittest.TestCase):
             "scr_menu_blur closes with %d block(s) still open: the file does not "
             "parse as the blocks it is written in (LL-077)" % end_depth)
 
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class MonsterStateMachineTests(unittest.TestCase):
+    """The monster flow is an enum + switch, and DEATH is one of its states.
+
+    Before 2026-10-26 obj_mon was dispatched by  scr_runState(scr_zombie_emerge)
+    with the state held as a script reference and "no state" written as -1
+    (LL-004), and death was a flag polled inside scr_zombie_path.  Four
+    consequences, each pinned below (LL-080):
+
+    * a monster killed while EMERGING was never checked, because the emerge has
+      no life test - so a corpse could stand up and walk;
+    * the fall's destroy was a second clock derived from ZOMB_DIE_SECS, which
+      agreed with the sprite only by coincidence;
+    * Alarm_0 could hand a toppling corpse a new route, and path_start moves
+      x/y from the engine;
+    * nothing logged a transition, so "which state is that monster in?" had no
+      answer in the log at all.
+
+    These are text checks, which is the honest limit of a test that cannot run
+    GML: they pin the SHAPE (one switch, one life check, one exit) that made all
+    four possible.
+    """
+
+    def read(self, rel):
+        return _code_only((PROJECT_ROOT / rel).read_text(encoding="utf-8-sig"))
+
+    def test_the_state_machine_is_defined_exactly_once(self):
+        """One enum, one definition of each function - a copy is a second truth."""
+        enums = sum(1 for p in PROJECT_ROOT.rglob("*.gml")
+                    if "enum ZOMB_STATE" in p.read_text(encoding="utf-8-sig"))
+        self.assertEqual(1, enums, "enum ZOMB_STATE is defined %d times" % enums)
+        for name in ("scr_zomb_state_name", "scr_zomb_request", "scr_zomb_begin",
+                     "scr_zomb_step", "scr_zombie_die"):
+            defs = sum(len(re.findall(r"\bfunction\s+%s\s*\(" % name,
+                                      p.read_text(encoding="utf-8-sig")))
+                       for p in PROJECT_ROOT.rglob("*.gml"))
+            self.assertEqual(1, defs, "%s() is defined %d times" % (name, defs))
+        # and the enum is used by name, never by number
+        src = self.read(ZSTATE_REL)
+        for state in ("EMERGE", "PATH", "DIE"):
+            self.assertIn("ZOMB_STATE.%s" % state, src)
+
+    def test_the_legacy_runner_is_gone_from_the_monster(self):
+        """No script-reference dispatch, and no `state_time` left behind."""
+        step = self.read(MON_STEP_REL)
+        self.assertIn("scr_zomb_step();", step)
+        self.assertNotIn("scr_runState", step)
+        self.assertNotIn("scr_setupState", self.read(MON_CREATE_REL))
+        # `zomb_state_time` is the new name; a bare `state_time` is the runner's
+        for rel in (EMERGE_REL, ZPATH_REL, ZSTATE_REL, ZDIE_REL):
+            self.assertNotRegex(self.read(rel), r"(?<![\w.])state_time", rel)
+
+    def test_every_variable_a_state_reads_is_declared_in_create(self):
+        """LL-002: a read must never be the first writer."""
+        src = self.read(MON_CREATE_REL)
+        for var in ("zomb_state", "zomb_state_next", "zomb_state_time",
+                    "zomb_die_steps", "zomb_die_art", "zomb_die_prev",
+                    "zomb_die_warned", "dying", "dying_time"):
+            self.assertRegex(src, r"(?m)^%s\s*=" % var,
+                             "%s is read by a state but not declared in Create" % var)
+
+
+
+    def test_death_is_checked_before_the_dispatch(self):
+        """D1: no state can miss a death, because the check precedes the switch."""
+        src = self.read(ZSTATE_REL)
+        body = src[src.index("function scr_zomb_step()"):]
+        check = body.index("if(!dying && zomb_state != ZOMB_STATE.DIE")
+        check_block = body[check:body.index("switch(zomb_state)")]
+        self.assertIn("data[MON.life] <= 0", check_block)
+        self.assertRegex(check_block, r"scr_zomb_death\(\);")
+        self.assertRegex(check_block, r"return;",
+                         "the kill must not fall through into the old state's body")
+        # ... and the switch dispatches all three states, in one place
+        switch = body[body.index("switch(zomb_state)"):]
+        for state, fn in (("EMERGE", "scr_zombie_emerge"),
+                          ("PATH", "scr_zombie_path"),
+                          ("DIE", "scr_zombie_die")):
+            self.assertRegex(switch, r"case ZOMB_STATE\.%s:\s+%s\(" % (state, fn),
+                             "the switch does not dispatch %s" % state)
+
+    def test_the_walking_state_no_longer_finishes_a_fall(self):
+        """D1: the fall is a state, not a branch inside the walk."""
+        src = self.read(ZPATH_REL)
+        self.assertNotIn("scr_zomb_death", src)
+        self.assertNotIn("if(dying)", src)
+
+    def test_the_fall_ends_when_its_animation_ends(self):
+        """D3+D1: the destroy watches the sheet, so no frame 0 is drawn again."""
+        src = self.read(ZDIE_REL)
+        self.assertIn("image_index < zomb_die_prev", src)
+        self.assertIn("instance_destroy();", src)
+        self.assertLess(src.index("dying_time++;"), src.index("instance_destroy();"),
+                        "the exit is decided after this step's frame advance")
+        entry = src[src.index("if(zomb_state_time == 0)"):]
+        self.assertIn("path_end();", entry)
+        self.assertIn("alarm[0] = -1;", entry)
+        # the clocks are chosen, not assumed: a rig with no die slot falls back
+        self.assertIn("image_number > 1 && image_speed > 0", entry)
+        self.assertIn("dying_time >= zomb_die_steps", src)
+
+    def test_the_fallback_clock_is_logged_and_backstopped(self):
+        """A sheet that cannot animate must not leave an immortal corpse."""
+        src = self.read(ZDIE_REL)
+        self.assertIn("die art did not advance", src)
+        self.assertIn("corpse gone", src)
+        self.assertRegex(src, r"dying_time > zomb_die_steps")
+
+    def test_the_kill_only_kills(self):
+        """scr_zomb_death settles, requests the fall, and owns no animation."""
+        src = self.read(ZDEATH_REL)
+        self.assertIn("scr_zomb_request(ZOMB_STATE.DIE);", src)
+        self.assertIn("if(dying) return;", src)      # the payout stays guarded
+        self.assertNotIn("instance_destroy", src)    # the fall owns the exit
+        self.assertNotIn("zomb_art_play(", src)      # the DIE entry plays it
+        self.assertIn("path_end();", src)            # one step of follower left
+
+    def test_the_corpse_gets_no_new_route(self):
+        """D2: a tower brush arms Alarm_0; a corpse must refuse to be re-pathed."""
+        self.assertRegex(self.read(MON_ALARM_REL), r"(?m)^if\s*\(dying\)\s*exit;")
+        self.assertIn("alarm[0] = -1;", self.read(ZDEATH_REL))

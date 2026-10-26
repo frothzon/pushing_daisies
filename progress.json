@@ -2,7 +2,7 @@
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-24",
+    "updated": "2026-10-26",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set <id> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -20,14 +20,15 @@
   },
   "focus": {
     "now": [
-      "menu-backdrop-blur"
+      "menu-backdrop-blur",
+      "zomb-mon-fsm-switch"
     ],
     "next": [
       "art-sandblasted-portrait",
       "region-4-6-difficulty",
       "ui-flex-other-screens"
     ],
-    "note": "2026-10-24 (rayu validated the board, then reworked the blur). Seven cards were validated in game and closed: ui-meta-flex, title-zomb-idle-seconds, ui-icon-origins, ui-meta-button-w, ui-meta-currency-foot, garden-plant-stats and art-zombie-alpha-outline. The backdrop blur is no longer a bake: rm_menu carries a Blur_Effect filter layer (added in the IDE, visible:false) and Menu/Step_0 switches it with layer_enable_fx + layer_set_visible, reading both back with layer_fx_is_enabled + layer_get_visible so a fresh room entry re-applies it. The four meta screens blur, the title and Options stay sharp, and the Draw GUI panels are never touched because the room is drawn first (LL-076; LL-074 now points at it as superseded). The 683x384 bake, global.menu_blur and the menu shd_blur path are gone; 7 new tests, 306 -> 313. ACCEPTANCE: reload GameMaker, set global.devMode = true, open World Map, Deploy, the Garden Book and Results - each over a blurred backdrop with the title and Options sharp - and check the log for exactly one MENU  blur on  Blur_Effect  [WORLD_MAP] and one MENU  blur off  Blur_Effect  [START]. What would prove it wrong: a sharp meta screen, a blurred title, or a blur line repeating every frame."
+    "note": "2026-10-24 (rayu validated the board, then reworked the blur). Seven cards were validated in game and closed: ui-meta-flex, title-zomb-idle-seconds, ui-icon-origins, ui-meta-button-w, ui-meta-currency-foot, garden-plant-stats and art-zombie-alpha-outline. The backdrop blur is no longer a bake: rm_menu carries a Blur_Effect filter layer (added in the IDE, visible:false) and Menu/Step_0 switches it with layer_enable_fx + layer_set_visible, reading both back with layer_fx_is_enabled + layer_get_visible so a fresh room entry re-applies it. The four meta screens blur, the title and Options stay sharp, and the Draw GUI panels are never touched because the room is drawn first (LL-076; LL-074 now points at it as superseded). The 683x384 bake, global.menu_blur and the menu shd_blur path are gone; 7 new tests, 306 -> 313. ACCEPTANCE: reload GameMaker, set global.devMode = true, open World Map, Deploy, the Garden Book and Results - each over a blurred backdrop with the title and Options sharp - and check the log for exactly one MENU  blur on  Blur_Effect  [WORLD_MAP] and one MENU  blur off  Blur_Effect  [START]. What would prove it wrong: a sharp meta screen, a blurred title, or a blur line repeating every frame. --- 2026-10-26 (cline): the monster flow is migrated too, under zomb-mon-fsm-switch - enum ZOMB_STATE with request/apply, and DEATH is a state, so a monster killed while it is still rising can no longer stand up, a corpse is never re-pathed, and the fall ends when its animation ends (LL-080); 9 new tests, 322 -> 331."
   },
   "tasks": [
     {
@@ -3680,6 +3681,34 @@
       "created": "2026-10-24",
       "updated": "2026-10-24",
       "done": "2026-10-24"
+    },
+    {
+      "id": "zomb-mon-fsm-switch",
+      "title": "The monster flow is an enum + switch and DEATH is a state, not a flag polled inside the walk",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "Reload GameMaker with global.devMode = true and play a stage. Kill a monster WHILE IT IS RISING (every monster rises for 60 steps at the start of a wave): it must topple where it was killed and never stand up first. Then check any kill in the log: META  [ZOMB] die <id>  art=spr_..._die  frames=16  image_speed=0.33  steps=48 once, then about 0.8s later META  [ZOMB] corpse gone <id> after N steps (the sheet wrapped) with N between 46 and 50, and NO frame of the walk cycle between the last fall pose and the body vanishing. No corpse may slide along its path after the death line. What would prove it wrong: a META  [LEVEL] kill with no ZOMB die line after it, art= naming a walk sprite on a creature that has a die sheet, corpse gone saying (the step clock) on a normal rig, a zombie standing up after being killed mid-emerge, a WARNING die art did not advance line, or a wave that will not end because a corpse stayed.",
+      "notes": "Death used to be a flag polled at the top of scr_zombie_path, so (1) a monster killed during EMERGE was never checked - the emerge has no life test and its last step requested the walk - and could stand up and walk; (2) the fall clock started one step after the kill, so the sheet wrapped to frame 0 and frame 0 was DRAWN once (a one-frame standing blip); (3) Alarm_0, armed by Collision_obj_tower whenever a monster brushes a tower, which is where kills happen, could path_start a corpse and the follower dragged it; (4) the destroy used round(ZOMB_DIE_SECS*fps) instead of watching the animation, so it agreed with the sprite only by coincidence. Now scr_zomb_state owns the flow: enum ZOMB_STATE {NONE,EMERGE,PATH,DIE} with request/apply (scr_zomb_request / scr_zomb_begin) like scr_level_state, and scr_zomb_step checks the life BEFORE the switch and returns, so no state can miss a death. scr_zomb_death is the kill only (money, points, kill line, path_end, alarm[0] = -1, request DIE); scr_zombie_die owns the fall and destroys when image_index wraps - last pose drawn, frame 0 never - with the step count as the clock for a rig with no die slot, plus a logged 2x backstop. Alarm_0 exits on a dying monster. 9 new tests in MonsterStateMachineTests, all mutation-checked (7 of 7 mutations caught); 322 to 331. Recorded as LL-080.",
+      "refs": [
+        "objects/obj_mon/Create_0.gml",
+        "objects/obj_mon/Step_0.gml",
+        "objects/obj_mon/Alarm_0.gml",
+        "objects/obj_mon/Draw_73.gml",
+        "scripts/scr_zomb_state/scr_zomb_state.gml",
+        "scripts/scr_zombie_die/scr_zombie_die.gml",
+        "scripts/scr_zomb_death/scr_zomb_death.gml",
+        "scripts/scr_zombie_path/scr_zombie_path.gml",
+        "scripts/scr_zombie_emerge/scr_zombie_emerge.gml",
+        "python_tools/tests/test_content.py"
+      ],
+      "created": "2026-10-26",
+      "updated": "2026-10-26",
+      "done": null
     }
   ],
   "log": [

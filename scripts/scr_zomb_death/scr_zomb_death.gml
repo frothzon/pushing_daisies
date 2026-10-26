@@ -1,37 +1,32 @@
 /// @description  scr_zomb_death();
-/// The kill, ONCE - and the fall that follows it.
+/// The KILL - once - and nothing else.  The fall that follows it is a STATE
+/// (ZOMB_STATE.DIE, scr_zombie_die).
 ///
-/// A death used to be instant: `instance_destroy()` at the end of this file,
-/// which was invisible while a creature was a single sprite.  A rig has a die
-/// animation, so the monster now PLAYS it for ZOMB_DIE_SECS and is destroyed by
-/// the same clock that started it (scr_zomb_art plays the sprite at exactly that
-/// duration, so "how long the corpse lies there" and "how long the art takes"
-/// are one number).
+/// WHAT THIS FILE USED TO BE.  It paid the kill AND ran the fall, and it was
+/// called on every step of that fall - but only from inside scr_zombie_path,
+/// so a monster killed while it was EMERGING was not dying at all until the
+/// path state next ran, one step after the emerge had started the walk.  Its
+/// destroy was also a SECOND clock: a step count derived from ZOMB_DIE_SECS,
+/// which agreed with the sheet only while the sheet's frame count and declared
+/// playback speed happened to.  Both are gone: the kill requests the DIE
+/// state, and that state watches the animation to decide when the body is done
+/// (LL-080).
 ///
-/// THE PAYOUT IS BEHIND `dying`, and that is the whole reason this is a function
-/// that runs every step: life reaches 0 on one step, and the state keeps calling
-/// this until the body is gone.  Without the flag the money, the points and the
-/// kill line would be paid on EVERY one of those steps - a kill printed three
-/// times and paid three times, with the purse and the log both wrong.
+/// THE PAYOUT IS STILL BEHIND `dying`: life reaches 0 on one step, and a tower
+/// that steps later in the same frame can reach this again - without the flag
+/// the money, the points and the kill line would be paid twice.
 ///
 /// A CORPSE IS NOT A TARGET AND NOT A LEAK.  find_all_range skips it
-/// (zomb_is_dying), scr_zombie_path stops it walking, and
-/// scr_zomb_updatePosition returns before the despawn check - so a monster that
-/// dies on the doorstep cannot then cost the player a life.
+/// (zomb_is_dying), scr_zombie_die stops it walking, and scr_zomb_updatePosition
+/// returns before the despawn check - so a monster that dies on the doorstep
+/// cannot then cost the player a life.
 function scr_zomb_death() {
-	/// ---- already dying: finish the fall --------------------------------
-	if(dying){
-		dying_time++;
+	/// ---- already settled: the money, the points and the art were paid
+	/// on the step life reached 0, and an alarm that arrives late must not
+	/// pay them again ------------------------------------------------
+	if(dying) return;
 
-		/// the sprite cycles once in ZOMB_DIE_SECS, so the body is removed
-		/// when its animation ends rather than after a delay tuned beside it
-		var _steps = round(ZOMB_DIE_SECS * max(game_get_speed(gamespeed_fps), 1));
-		if(dying_time >= _steps){
-			instance_destroy();
-		}
-		return;
-	}
-
+	/// ---- and a monster that is not dead has nothing to settle --------
 	if(data[MON.life] > 0) return;
 
 	// add points and score
@@ -91,16 +86,23 @@ function scr_zomb_death() {
 	scr_addDebree(bck_debree_blood,32,32,irandom(8),0,_x,_y,clamp(depth+5,-49,1));
 	scr_burstPartSelf(ENGINE.pt_bloody,5,30);
 
-	/// ---- and it falls ---------------------------------------------------
-	/// A rig with no die slot keeps the pose it died in and is gone on the
-	/// same clock: zomb_art_play answers false and changes nothing.
+	/// ---- and the DIE state takes over ----------------------------------
+	/// The fall is not this function's job any more: it requests
+	/// ZOMB_STATE.DIE, and scr_zombie_die's entry code - next Step, once -
+	/// stops the follower, disarms the retry alarm and plays the die slot.
+	/// One place starts a fall, one place ends it (LL-080).
 	///
-	/// THE PATH FOLLOWER MUST STOP.  path_start moves x/y from the ENGINE,
-	/// not from scr_zombie_path, so a corpse left on a path would keep
-	/// sliding along it even though the state returns early every step -
-	/// and Alarm_0 can restart a path on a monster that is already dead.
+	/// path_end() stays HERE, and not only for tidiness: the kill can happen
+	/// on any step and the request is applied on the NEXT one, so for one
+	/// step the corpse is still on a path and the FOLLOWER - not any state -
+	/// would be moving it.
 	path_end();
 	dying      = true;
 	dying_time = 0;
-	zomb_art_play(sprite_array, ZOMB_ANIM.die, ZOMB_DIE_SECS);
+	/// Alarm_0 re-paths from wherever the monster stands (Collision_obj_tower
+	/// arms it next to towers, which is where kills happen).  Its own guard
+	/// refuses a dying monster; this disarms the one already pending.
+	alarm[0] = -1;
+
+	scr_zomb_request(ZOMB_STATE.DIE);
 }
