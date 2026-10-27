@@ -51,14 +51,31 @@ function scr_zombie_die() {
 		zomb_die_steps = max(1, round(ZOMB_DIE_SECS * max(game_get_speed(gamespeed_fps), 1)));
 
 		/// ---- the art takes over the clock ---------------------------
-		/// zomb_art_play answers TRUE only when it CHANGED the sprite, so a
-		/// row with no die slot - or one whose die sheet is the sheet it is
-		/// already on - answers false, and frame 0 was not re-started either:
-		/// watching image_index from there would "wrap" whenever the cycle it
-		/// was already in came round.
-		var _played   = zomb_art_play(sprite_array, ZOMB_ANIM.die, ZOMB_DIE_SECS);
-		zomb_die_art  = (_played && image_number > 1 && image_speed > 0);
+		/// The DIE slot is asked for BY NAME on this monster's rig
+		/// (scr_mon_roster) - not `sprite_array[3]`, a position that a short
+		/// or reordered row silently turns into -1 with no error anywhere
+		/// (LL-081).  A rig with no die sheet now SAYS so, once per creature.
+		///
+		/// mon_rig_play answers the sprite it put on this instance, or -1,
+		/// and it only changes the sprite when that is not the sheet already
+		/// playing.  So "changed" is the whole test: a corpse still wearing
+		/// the art it died in never restarted frame 0, and watching
+		/// image_index from there would "wrap" whenever the cycle it was
+		/// already in came round.
+		var _rig    = zomb_rig(),
+		    _was    = sprite_index,
+		    _dieSpr = mon_rig_play(_rig, ZOMB_ANIM.die, ZOMB_DIE_SECS);
+
+		zomb_die_art  = (sprite_exists(_dieSpr) && _dieSpr != _was
+		                 && image_number > 1 && image_speed > 0);
 		zomb_die_prev = image_index;
+
+		/// a rig with no die slot falls on the step clock - legal, but never
+		/// silent (LL-079)
+		if(_dieSpr == -1) mon_rig_warn_no_die(_rig);
+		/// and one ungated line per corpse: the rig, the sheet it died in,
+		/// the sheet it wears now, and whether that was a CHANGE
+		mon_rig_trace_die(_rig, _was);
 
 		/// one line per corpse, naming the art AND the two clocks: a fall that
 		/// is not playing its sheet says so here, instead of looking like any

@@ -20,7 +20,7 @@
   },
   "focus": {
     "now": [
-      "menu-backdrop-blur",
+      "zomb-rig-roster",
       "zomb-mon-fsm-switch"
     ],
     "next": [
@@ -3709,6 +3709,35 @@
       "created": "2026-10-26",
       "updated": "2026-10-26",
       "done": null
+    },
+    {
+      "id": "zomb-rig-roster",
+      "title": "Monster art is a named rig struct on a roster, not a positional array copied per instance",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "Reload GameMaker and play a stage. At boot the log must print one RIG   walker N <creature>  slots=4 walk=spr_<x>_walk idle=… attack=… die=spr_<x>_die line per creature (15 of them) and NO META  [ZOMB] WARNING … has NO die slot. On every kill the corpse must fall with its die sheet: RIG   die <id>  … die=spr_<x>_die  was=spr_<x>_walk  now=spr_<x>_die  changed=1, no frame of the walk cycle between the last fall pose and the body vanishing, body gone ~48 steps later. What would prove it wrong: die=none on any creature, a has NO die slot warning, changed=0 with now= a walk sprite, the same sprite name in was= and now=, or a wave that never ends.",
+      "notes": "LL-081: the rig was array(walk, idle, attack, die) written in scr_setupSpawning, copied onto every instance by scr_level_spawn and defaulted to two slots in obj_mon/Create_0, then read by POSITION from four scripts (emerge [0], walk/idle through zomb_art_play, die in the fall and the kill). A slot out of range answered -1 and every caller treats -1 as change nothing, so keep the walk art was a legal answer to play the die art - and the two lines that could have said which link broke (ZOMB die art=, the bank report rig=N) are gated on global.devMode, which is false. Now: scr_mon_roster builds one read-only struct per creature from both banks once in scr_setupSpawning (global.mon_roster), mon_rig_find hands one to each spawn, zomb_rig() is what the states ask, and mon_rig_slot/mon_rig_play read and play a slot BY NAME. A rig with no die sheet warns once per creature, and two ungated trace lines (RIG … at boot and RIG   die … per corpse, behind ZOMB_RIG_TRACE) answer which link failed. zomb_art_sprite/zomb_art_play deleted; zomb_bank_report prints all four slots; obj_mon/Draw_0 guards sprite_get_name. 10 new tests (9 for the roster, 1 repo-wide brace-depth guard), all mutation-checked; 331 to 341.",
+      "refs": [
+        "scripts/scr_mon_roster/scr_mon_roster.gml",
+        "scripts/scr_zomb_art/scr_zomb_art.gml",
+        "scripts/scr_zombie_die/scr_zombie_die.gml",
+        "scripts/scr_zombie_path/scr_zombie_path.gml",
+        "scripts/scr_zombie_emerge/scr_zombie_emerge.gml",
+        "scripts/scr_zomb_death/scr_zomb_death.gml",
+        "scripts/scr_level_spawn/scr_level_spawn.gml",
+        "scripts/scr_setupSpawning/scr_setupSpawning.gml",
+        "objects/obj_mon/Create_0.gml",
+        "objects/obj_mon/Draw_0.gml",
+        "python_tools/tests/test_content.py"
+      ],
+      "created": "2026-10-26",
+      "updated": "2026-10-26",
+      "done": null
     }
   ],
   "log": [
@@ -4502,6 +4531,12 @@
       "who": "cline",
       "task": "zomb-five-rigs-have-die-art-unplayed",
       "what": "rayu played the alignment fix and reported the real symptom: 'the walk animation plays as the zombies die'. The corpse was never playing its die sheet at all - five rows (Grumble-Mulch, Dome-Alone, Professor-Cerebrisk, Tusk-A-Lot, Sub-Zero) still passed a one-element array(spr_x_walk) while their four 16-frame sets sat in the .yyp registered and unplayed, and zomb_art_play answers false for an empty slot and leaves the previous animation cycling. Region 1 stages 1-5 spawn only those five, so every death in the first stage anyone plays was affected - the ten properly rigged creatures are all behind stage 5. Wired all four slots in all five rows; the kill line now prints die=<sprite> or die=NONE (keeps the walk art), so a silent fallback can never again pass for a broken animation; RIGGED grew from ten rows to fifteen and test_the_originals_keep_a_single_walk_sprite - which pinned the missing art as correct - is replaced by test_every_creature_row_is_in_the_rig_table, an equality between the rig table and the spawn table. LL-079 added. Awaits a run by rayu."
+    },
+    {
+      "date": "2026-10-26",
+      "who": "cline",
+      "task": "zomb-rig-roster",
+      "what": "The monster's art is a NAMED rig now, not a positional array. A corpse that played its walk sheet could not be diagnosed, because the rig was array(walk, idle, attack, die) copied onto every instance by scr_level_spawn (and defaulted to two slots in Create), then read by index from four scripts - and a slot out of range answers -1, which every caller treats as 'change nothing'. 'Keep the walk art' was a legal answer to 'play the die art', and the two lines that would have said which link broke (ZOMB die art=, the bank report rig=N) are gated on global.devMode, which is false. scr_mon_roster builds one read-only struct per creature from both banks once in scr_setupSpawning, mon_rig_find hands one to each spawn, zomb_rig() is what the states ask, and mon_rig_slot / mon_rig_play read and play a slot BY NAME; zomb_art_sprite and zomb_art_play are deleted. A rig with no die sheet warns once per creature, and two ungated trace lines (one per rig at boot, one per corpse, behind ZOMB_RIG_TRACE) name the rig, the sheet it died in, the sheet it wears now and whether that was a change. 9 new tests, all mutation-checked; 331 -> 340. Recorded as LL-081. NEXT: one run with ZOMB_RIG_TRACE on (card zomb-rig-roster) and, in the same session, the FSM card zomb-mon-fsm-switch still waiting on the same reload."
     }
   ]
 }

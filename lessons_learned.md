@@ -101,6 +101,7 @@ Studio 2 project imported from GameMaker 8 through the GMS2 project converter.
 | [LL-078](#ll-078) | Corpses settle **below the path** they died on - 6.6 px on the Bell-Ringer, 28 on the Shroud - and the Gardener walks 2 px into the ground all game; no error, nothing in the log | `obj_mon/Draw_0` moved `y` by `(sprite_get_height-1) - sprite_get_bbox_bottom`: the **empty canvas rows under the art** - room kept for the body to lie down, 22 of the Bell-Ringer's 175 px sheet - which says nothing about where the feet are, and one bbox serves all sixteen frames besides. The art was already on the walk's origin (within 5 px on all fifteen rigs) | **FIXED** |
 | [LL-079](#ll-079) | **"The walk animation plays as the zombies die"** - the kill line prints, the money is paid, the body **strides in place** for 0.8 s, then gone. Every other part of the death beat behaves | Five spawn rows still carried the pre-rig `array(spr_x_walk)` while their `_idle`/`_attack`/`_die` sheets sat in the `.yyp`; `zomb_art_play` **answers false for an empty slot and leaves the previous animation running**, by design. Region 1 stages 1-5 spawn *only* those five, so the creature anyone tests first is always one of them | **FIXED** |
 | [LL-080](#ll-080) | **A zombie killed while it is still rising stands up and walks** - the kill line prints, the money is paid, and the body strolls off; other corpses get **dragged along their route** while they topple; some falls show a **one-frame "standing" flicker** just before the body vanishes | Death was a **flag polled at the top of the walking state**, not a state: `scr_zombie_path` checked `dying` and called `scr_zomb_death` again to finish the fall. A monster killed in EMERGE never reached that check (the emerge has no life test, and its last step requests the walk); the fall clock started one step after the kill, so the sheet wrapped to frame 0 and frame 0 was **drawn**; `Alarm_0`, armed by a tower brush - which is where kills happen - could `path_start` a corpse, and the follower moves x/y from the **engine**; and the destroy used `round(ZOMB_DIE_SECS*fps)` instead of watching the animation, so it agreed with the sprite only by coincidence | **FIXED** |
+| [LL-081](#ll-081) | A dying monster still draws `spr_*_walk` - the Draw print says `state: DIE` and `Sprite-ind: spr_grumble_walk` - with **nothing in the log to say which link of the art chain is wrong**, and every fix attempt is a guess | The rig was a **bare array copied onto every instance** and read **by index** from four scripts; a slot that is missing answers **-1**, which every caller treats as "change nothing" - so *keep the walk art* is a legal answer to "play the die art". And the two lines that could have said which link broke (`ZOMB die … art=`, the bank report's `rig=N`) are gated on `global.devMode`, which is **false** in `initialize_game`: the run that showed the bug had no record at all | **FIXED** |
 
 
 
@@ -6280,6 +6281,187 @@ line, or a kill with no `die` line after it.
 `scripts/scr_zombie_emerge/scr_zombie_emerge.gml`,
 `scripts/scr_zomb_updatePosition/scr_zomb_updatePosition.gml`,
 `objects/obj_mon/{Create_0,Step_0,Alarm_0,Draw_73}.gml`,
+`python_tools/tests/test_content.py`.
+
+<a name="ll-081"></a>
+## LL-081 — A slot read by INDEX is one edit away from silent: name it, then make the miss loud
+
+**Symptom.** A dying monster still draws its **walk** sheet - this time with the
+FSM's own instrument saying so:
+
+```
+##########
+obj: 100135
+state: DIE
+Sprite-ind: spr_grumble_walk
+##########
+```
+
+The kill line prints, the money is paid, the corpse falls back to the step clock
+and is gone 48 steps later. Every guess about it is unanswerable from the log:
+the run has **no** `ZOMB`/`LEVEL` lines at all, because `scr_meta_log` and
+`print()` are gated on `global.devMode`, and `initialize_game` sets it to
+`false`. That is the real symptom: *the state says DIE and the art says WALK, and
+nothing says which of the five links broke.*
+
+**Root cause.** Not one bug - a shape that makes four bugs indistinguishable.
+The rig was a **bare array**, `array(walk, idle, attack, die)`, written once in
+`scr_setupSpawning`, copied onto every instance by `scr_level_spawn`
+(`_inst.sprite_array = _mon[MON.sprite_data]`) and defaulted to **two** slots in
+`obj_mon/Create_0` (`array(spr_mon,spr_mon)`). Four scripts then read it by
+**position**:
+
+```gml
+sprite_index = sprite_array[0];                                     // emerge
+zomb_art_play(sprite_array, _still ? ZOMB_ANIM.idle : ZOMB_ANIM.walk, …);
+var _played = zomb_art_play(sprite_array, ZOMB_ANIM.die, ZOMB_DIE_SECS);  // the fall
+var _die_spr = zomb_art_sprite(sprite_array, ZOMB_ANIM.die);        // the kill line
+```
+
+and the one function both of the last two went through answered **-1** for a
+slot that is out of range, then treated -1 as **"change nothing"**:
+
+```gml
+function zomb_art_play(_art, _slot, _secs) {
+	var _spr = zomb_art_sprite(_art, _slot);
+	if(_spr == -1) return false;            // <- "keep the walk art" is an ANSWER
+	if(sprite_index == _spr) return false;
+	…
+```
+
+So **"the die art did not apply"** and **"this creature has no die art"** were
+the same return value, and "the walk frames play" was a legal outcome of asking
+for the die frames. Add the two-slot default in Create, a row whose array is
+short, an index that is one out, and a build that predates all of it, and you
+have four causes with one symptom - which is why this was diagnosed as art
+(LL-078, the die sheets were re-cut) and as a short row (LL-079, five rows were
+fixed) and came back both times.
+
+The report that would have settled it existed - `zomb_bank_report` printed
+`rig=N` per row - and was itself behind `devMode`, so the evidence was never
+produced.
+
+**Fix.** The slots are **named**, once per creature, in a struct built from the
+same rows - `scripts/scr_mon_roster/scr_mon_roster.gml` (new):
+
+```gml
+function mon_rig_from(_name, _art, _tag) {
+	var _s = {};
+	_s.name   = string(_name);
+	_s.slots  = is_array(_art) ? array_length(_art) : 0;   // what the ROW had
+	_s.walk   = mon_rig_pick(_art, ZOMB_ANIM.walk);
+	_s.idle   = mon_rig_pick(_art, ZOMB_ANIM.idle);
+	_s.attack = mon_rig_pick(_art, ZOMB_ANIM.attack);
+	_s.die    = mon_rig_pick(_art, ZOMB_ANIM.die);
+	return _s;
+}
+
+function mon_rig_slot(_rig, _anim) {                       // by NAME, never index
+	var _key = mon_rig_key(_anim);
+	if(!is_struct(_rig) || _key == "") return -1;
+	if(!variable_struct_exists(_rig, _key)) return -1;
+	var _spr = variable_struct_get(_rig, _key);
+	if(!sprite_exists(_spr)) return -1;
+	return _spr;
+}
+
+function mon_rig_play(_rig, _anim, _secs) {                // returns the SPRITE
+	var _spr = mon_rig_slot(_rig, _anim);
+	if(_spr == -1) return -1;
+	if(sprite_index == _spr) return _spr;                  // already playing
+	sprite_index = _spr;
+	image_index  = 0;
+	image_speed  = scr_animSpeedForSeconds(_spr, _secs, sprite_get_name(_spr));
+	return _spr;
+}
+```
+
+* `mon_roster_build(spawn_mon, spawn_boss)` runs **once**, at the end of
+  `scr_setupSpawning` - the only scope where both banks exist - and caches the
+  array in `global.mon_roster`, so a monster never reaches into another
+  instance for its own art (rule 6).
+* `scr_level_spawn` hands each spawn `_inst.rig = mon_rig_find(_mon[MON.name])`,
+  so every monster of a creature shares **one** struct.
+* `zomb_rig()` is what the states call. It pulls by `data[MON.name]`, caches on
+  the instance, and **self-heals** from `sprite_array` when the roster has no
+  answer - an instance that predates this file still gets its art.
+* The fall compares the sprite it got back with the one it had
+  (`_dieSpr != _was`): that is the "changed" test LL-079 needed. A rig with
+  **no** die slot now says so **once per creature**:
+
+  ```
+  META  [ZOMB] WARNING Gardener has NO die slot - its corpse keeps the art it died in, removed by the step clock: Gardener slots=4 walk=… die=none
+  ```
+
+* And the trace this bug needed is behind **its own** switch, not `devMode`:
+
+  ```gml
+  #macro ZOMB_RIG_TRACE true
+  show_debug_message("RIG   die " + string(id) + "  " + mon_rig_report(_rig)
+  	+ "  was=" + _was_txt + "  now=" + _now + "  changed=" + …
+  	+ "  frames=" + … + "  speed=" + …);
+  ```
+
+  One line per corpse plus one per rig at boot (`RIG   walker 0 Grumble-Mulch
+  slots=4 walk=spr_grumble_walk idle=… attack=… die=spr_grumble_die`), which
+  answers all three causes in one read: `die=none` is a row/roster problem,
+  `changed=false` with `now=spr_x_walk` is the apply step, and `now=spr_x_die`
+  means the art was always right and whatever reported otherwise was reading
+  something else.
+
+`zomb_art_sprite` and `zomb_art_play` are **deleted** from `scr_zomb_art.gml`
+(nothing may index a rig array again), `zomb_bank_report` now prints all four
+slots through `mon_rig_report` instead of the first one, and the debug print in
+`obj_mon/Draw_0` guards `sprite_get_name` behind `sprite_exists` - it was a
+fatal error on `-1` (LL-012).
+
+**Guard rails.**
+
+* **Never read a rig by position.** A slot is `rig.die`, not `_art[3]`: an index
+  is one edit - one reordered row, one short array, one copied default - away
+  from a wrong answer that has no name. `grep -rn 'sprite_array\[' objects
+  scripts` must stay empty.
+* **A sentinel must not answer two questions.** `-1` for "no art" *and* "leave
+  it alone" is what made the fallback silent. `mon_rig_play` returns the sprite
+  it put on the instance, so the caller can compare and *know* which happened.
+* **The diagnostic a bug needs must not be gated on a flag that is off in the
+  build the bug appears in.** `devMode` is false by default; the trace that had
+  to exist for this one is a macro of its own (`ZOMB_RIG_TRACE`) using
+  `show_debug_message`, and the boot report prints **every** slot of **every**
+  row, not the first one.
+* **A copy is not a source.** The rig was built in one place and copied per
+  instance; the copy could differ from the original and nothing compared them.
+  Build once (roster), hand out a reference.
+* **A test that only reads source text cannot see this**, which is why the new
+  ones pin the SHAPE (`test_content.MonsterRigRosterTests`): no state may index
+  `sprite_array[`, every rig must have four **distinct** slots with a `_walk` at
+  0 and a `_die` at the die slot (a die slot that *is* the walk slot dies
+  without a death), the lookup is defined exactly once, `rig` is declared in
+  Create, and the trace is behind its switch.
+* **An edit that INSERTED into a file is an edit to re-measure, not to trust.**
+  This entry was nearly lost to the very thing [LL-077](#ll-077) describes: the
+  tail of `mon_roster_build` landed at EOF, so four of its sibling functions
+  ended up nested inside its inner `for` while every gate stayed green. What
+  caught it was a brace counter that remembers its DEPTH, and that check is now
+  a test over every `.gml` in the project
+  (`test_content.GmlBraceShapeTests.test_no_function_is_nested_inside_another`).
+
+**Status.** FIXED 2026-10-26 - the restructure is in; the last step is one run
+with `ZOMB_RIG_TRACE` on, looking for `die=spr_*_die … changed=1` on every kill
+and no `has NO die slot` warning on any of the fifteen rigs. If a corpse still
+prints `die=none`, the roster is not being built in that build; if it prints
+`now=spr_x_die … changed=0`, something is stepping on the sprite after the fall
+applied it - the line says which.
+
+**Files.** `scripts/scr_mon_roster/scr_mon_roster.gml` (new),
+`scripts/scr_zomb_art/scr_zomb_art.gml`,
+`scripts/scr_zombie_die/scr_zombie_die.gml`,
+`scripts/scr_zombie_path/scr_zombie_path.gml`,
+`scripts/scr_zombie_emerge/scr_zombie_emerge.gml`,
+`scripts/scr_zomb_death/scr_zomb_death.gml`,
+`scripts/scr_level_spawn/scr_level_spawn.gml`,
+`scripts/scr_setupSpawning/scr_setupSpawning.gml`,
+`objects/obj_mon/{Create_0,Draw_0}.gml`,
 `python_tools/tests/test_content.py`.
 
 ---

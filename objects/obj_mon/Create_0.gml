@@ -1,6 +1,24 @@
 action_inherited();
+
+debug_tracker_name = "";
+
 /// setup state
 sprite_array = array(spr_mon,spr_mon);
+
+/// ---- the creature's RIG (scr_mon_roster) ------------------------------
+/// This monster's four animations - walk, idle, attack, die - as ONE struct
+/// with those names, pulled from the roster by the creature's name instead of
+/// copied here as a bare array that every state then indexed by number.
+///
+/// It used to be a positional read of `sprite_array[3]`, and a slot that was
+/// missing answered -1 with no error at all: a dying monster kept its walk
+/// frames and looked like broken art rather than a missing slot (LL-079,
+/// LL-081).  scr_level_spawn fills this when it spawns the monster; declared
+/// HERE because a read must never be the first writer (LL-002), and because a
+/// monster that is on screen before a wave reaches it still draws - zomb_rig()
+/// answers undefined by pulling the roster and, failing that, by rebuilding
+/// the rig from this instance's own sprite_array.
+rig = undefined;
 /// the full size the emerge grows to (scr_zombie_emerge);
 /// scr_level_spawn overwrites this for each monster
 base_scale = 1;

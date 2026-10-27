@@ -11,17 +11,21 @@
 /// cycle lasts), and a decision in two places is two answers.
 ///
 /// THE SLOT ORDER IS THE CONTRACT.  `array(walk, idle, attack, die)` is what
-/// scr_setupSpawning writes and what ZOMB_ANIM indexes, and walk is 0 so every
-/// existing reader of `sprite_array[0]` keeps meaning "the walking art".
+/// scr_setupSpawning writes and what ZOMB_ANIM indexes, and walk is 0 so a row
+/// still reads in its author's order.
 ///
-/// A ROW THAT HAS NO RIG STILL WORKS - and that is exactly what hid a bug for
-/// weeks.  A slot that is missing answers -1, zomb_art_play changes nothing,
-/// and the monster simply keeps the art it had: five creatures whose die sheet
-/// was already on disk (the three originals and both region-1 bosses) went on
-/// playing their WALK frames while they died, then vanished, with no error
-/// anywhere (LL-079).  The fallback stays, because a one-slot row is legal for
-/// art that has not landed yet; what changed is that a row which HAS the art
-/// and does not pass it now fails a test instead of a playtest.
+/// THE READER IS scr_mon_roster NOW.  An index into an array copied onto every
+/// instance was silent when it was wrong - `sprite_array[3]` on a row with two
+/// slots answers -1, "change nothing" is a legal answer, and the corpse simply
+/// kept the art it died in (LL-079, LL-081).  The slots are asked for BY NAME
+/// on a rig struct instead, and a rig with no die sheet says so out loud.  This
+/// file keeps the ORDER and the two durations; the lookup lives there.
+///
+/// A ROW THAT HAS NO ART STILL WORKS, on purpose.  A slot that is missing
+/// answers -1 and the monster keeps the art it had, because a one-slot row is
+/// legal for art that has not landed yet.  What is no longer allowed is a row
+/// that HAS the art and does not pass it: that is a test failure now, and a
+/// WARNING in the log at the first corpse that misses it.
 
 /// The four slots of a rig, in the order scr_setupSpawning writes them.
 enum ZOMB_ANIM { walk, idle, attack, die }
@@ -38,38 +42,18 @@ enum ZOMB_ANIM { walk, idle, attack, die }
 /// that was tuned beside it (LL-040's shape: one number, one reader).
 #macro ZOMB_DIE_SECS   0.8
 
-/// The sprite in one slot of a rig, or -1 when this creature has no art
-/// there.  Guards every field, because a rig is data and data can be wrong
-/// (LL-002: an editor's typo must not be a fatal error in a Draw event).
-function zomb_art_sprite(_art, _slot) {
-	if(!is_array(_art))   return -1;
-	if(!is_real(_slot))   return -1;
-	if(_slot < 0)         return -1;
-	if(_slot >= array_length(_art)) return -1;
-
-	var _spr = _art[_slot];
-	if(!sprite_exists(_spr)) return -1;
-	return _spr;
-}
-
-/// Play one slot, and say whether this call CHANGED the sprite.
+/// ---- WHERE THE SLOTS ARE READ NOW -------------------------------------
+/// The two helpers that lived here - zomb_art_sprite() and zomb_art_play() -
+/// are gone: they took a bare ARRAY and an index, which is exactly the shape
+/// that let a dying monster play its walk frames in silence (LL-079, LL-081).
+/// Their job is scr_mon_roster's, by name:
 ///
-/// ONLY SWITCHING ON CHANGE (2026-10-18, LL-030's sibling): the walking state
-/// runs this every step, and re-assigning image_index = 0 every step would
-/// freeze the animation on frame 0 - a monster that slides along without
-/// moving its legs.  A cycle already playing is left alone, so the switch is
-/// idempotent and the states can call it as often as they like.
-function zomb_art_play(_art, _slot, _secs) {
-	var _spr = zomb_art_sprite(_art, _slot);
-	if(_spr == -1) return false;
-	if(sprite_index == _spr) return false;
-
-	sprite_index = _spr;
-	image_index  = 0;
-	/// a name, so the ANIM line in the log says WHICH rig was timed
-	image_speed  = scr_animSpeedForSeconds(_spr, _secs, sprite_get_name(_spr));
-	return true;
-}
+///     mon_rig_slot(rig, ZOMB_ANIM.die)     instead of zomb_art_sprite()
+///     mon_rig_play(rig, ZOMB_ANIM.walk, s) instead of zomb_art_play()
+///
+/// What stays here is what this file is for: the SLOT ORDER (ZOMB_ANIM), the
+/// two durations, and the boot report.  A caller that wants a monster's art
+/// asks zomb_rig() for it - never an array on the instance.
 
 /// Is this instance a corpse that has not finished dying?  True for anything
 /// that is not a live monster instance, so a caller can `continue` on it.
@@ -91,10 +75,14 @@ function zomb_is_dying(_inst) {
 /// One log line per bank, naming what every row ACTUALLY holds at runtime.
 ///
 /// This is the line that settles "the portraits are swapped" (LL-057) and now
-/// also "that creature has no rig" - a row whose sprite_data is a bare sprite
-/// prints rig=1, which is the difference between a creature that can idle and
-/// one that cannot.  Every read is guarded: sprite_get_name on a missing
-/// sprite is fatal (LL-012).
+/// also "that creature has no die sheet": every SLOT is printed by name, so a
+/// short row reads `die=none slots=2` at boot instead of being discovered by a
+/// corpse that keeps walking (LL-079, LL-081).  The slots come from
+/// scr_mon_roster's mon_rig_report(), which is the same lookup the monsters
+/// use - a report that re-derived the art would be a second opinion about it,
+/// and the whole bug was two opinions.
+/// Every read is guarded: sprite_get_name on a missing sprite is fatal
+/// (LL-012).
 function zomb_bank_report(_bank, _tag) {
 	if(!is_array(_bank)) return "";
 	if(!is_string(_tag)) _tag = "bank";
@@ -102,27 +90,16 @@ function zomb_bank_report(_bank, _tag) {
 	var _txt = "";
 	for(var _b = 0; _b < array_length(_bank); _b++){
 		var _row = _bank[_b],
-		    _w   = "none",
-		    _p   = "none",
-		    _rig = 0,
-		    _nm  = "?";
+		    _p   = "none";
 
-		if(is_array(_row)){
-			var _art = _row[MON.sprite_data];
-			if(is_array(_art)){
-				_rig = array_length(_art);
-				if(_rig > 0 && sprite_exists(_art[0])){
-					_w = sprite_get_name(_art[0]);
-				}
-			}
-			if(sprite_exists(_row[MON.portrait])){
-				_p = sprite_get_name(_row[MON.portrait]);
-			}
-			_nm = string(_row[MON.name]);
+		if(is_array(_row) && array_length(_row) > MON.portrait
+		&& sprite_exists(_row[MON.portrait])){
+			_p = sprite_get_name(_row[MON.portrait]);
 		}
 
-		_txt += (_b > 0 ? " | " : "") + string(_b) + "=" + _nm
-		        + " rig=" + string(_rig) + " walk=" + _w + " portrait=" + _p;
+		_txt += (_b > 0 ? " | " : "") + string(_b) + "="
+		        + mon_rig_report(mon_rig_from_row(_row, _tag))
+		        + " portrait=" + _p;
 	}
 
 	scr_meta_log("LEVEL", _tag, " bank: ", _txt);

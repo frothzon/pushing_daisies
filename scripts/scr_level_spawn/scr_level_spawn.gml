@@ -102,6 +102,13 @@ function scr_level_spawn() {
 	        var _inst = instance_create_depth(0,0,scr_depth_band(0),obj_mon);
 	        spawn_current++;
 	        _inst.sprite_array = _mon[MON.sprite_data];
+	        /// THE RIG the monster's states read (scr_mon_roster): pulled from
+	        /// the roster BY NAME, so every monster of a creature shares one
+	        /// struct and no instance carries its own copy of the slot list.
+	        /// `sprite_array` above stays - it is this row's art on the
+	        /// instance, and zomb_rig() rebuilds a rig from it when the roster
+	        /// has no answer - but no state indexes it any more (LL-081).
+	        _inst.rig = mon_rig_find(_mon[MON.name]);
 	        _inst.data = array_duplicate(_mon);
 	        /// the FULL size this monster grows to.  The emerge starts at
 	        /// nothing and scales 0.00 -> 1.00 of this, because the crawl

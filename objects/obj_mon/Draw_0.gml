@@ -42,3 +42,17 @@ if(inWater){
 } else {
     draw_self();
 }
+
+
+/// debug
+/// (an EXISTENCE GUARD, not politeness: sprite_get_name on -1 is FATAL, and a
+/// monster that has not been given art yet - or a rig with no walk slot - can
+/// reach a Draw with sprite_index == -1.  LL-012, LL-002.)
+var _stateInfo = scr_zomb_state_name(zomb_state);
+
+if(debug_tracker_name != _stateInfo){
+    var _sprName = sprite_exists(sprite_index) ? sprite_get_name(sprite_index) : "NONE";
+    var _text = $"##########\nobj: {id}\nstate: {_stateInfo}\nSprite-ind: {_sprName}\n##########\n";
+    show_debug_message(_text);
+    debug_tracker_name = _stateInfo;
+}

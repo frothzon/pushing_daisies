@@ -653,6 +653,202 @@ class ZombieRigTests(unittest.TestCase):
             "the feet are (LL-078)" % ZOMB_ART_REL)
 
 
+# The roster: one struct per creature, its four slots read back BY NAME
+# (LL-081).  Everything below is a text check on the SHAPE of that lookup,
+# because a test that cannot run GML cannot watch a corpse fall - what it can
+# pin is that no state asks for a slot by position any more, that the roster is
+# built once from both banks, and that a missing slot is loud.
+ROSTER_REL = "scripts/scr_mon_roster/scr_mon_roster.gml"
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class MonsterRigRosterTests(unittest.TestCase):
+    """A monster's art is asked for by NAME, on one struct per creature.
+
+    LL-081.  A rig used to be a bare array - ``array(walk, idle, attack, die)``
+    - copied onto every instance by scr_level_spawn, and then read by INDEX from
+    four scripts: emerge took ``[0]``, walk and idle went through
+    ``zomb_art_play(array, ZOMB_ANIM.x)``, and the kill and the fall both asked
+    for ``ZOMB_ANIM.die``.  Every read was correct in isolation and together
+    they could not be checked: a slot past the end of a short row answers -1,
+    "change nothing" is a legal answer, and a corpse that played its WALK frames
+    was indistinguishable from art that had not landed (LL-079).
+
+    So the slots are NAMED now: ``mon_rig_slot(rig, ZOMB_ANIM.die)``, on a
+    struct built once per creature from the same bank rows scr_setupSpawning
+    writes, cached in ``global.mon_roster`` and pulled per spawn.  These tests
+    pin the four things that makes true.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.roster = _code_only(
+            (PROJECT_ROOT / ROSTER_REL).read_text(encoding="utf-8-sig"))
+        cls.spawn = _code_only(
+            (PROJECT_ROOT / SPAWN_REL).read_text(encoding="utf-8-sig"))
+        cls.rows = _rows((PROJECT_ROOT / SPAWN_REL).read_text(encoding="utf-8-sig"))
+
+    def read(self, rel):
+        return _code_only((PROJECT_ROOT / rel).read_text(encoding="utf-8-sig"))
+
+    def test_no_state_indexes_a_copied_rig_array(self):
+        """The bug's shape was a POSITION; a name cannot be one slot out."""
+        for rel in (EMERGE_REL, ZPATH_REL, ZDIE_REL, ZDEATH_REL):
+            src = self.read(rel)
+            self.assertNotIn(
+                "sprite_array[", src,
+                "%s still indexes the rig array by position - a short or "
+                "reordered row answers -1 there, and -1 is silent (LL-081)"
+                % rel)
+            for old in ("zomb_art_play(", "zomb_art_sprite("):
+                self.assertNotIn(
+                    old, src,
+                    "%s still calls %s, which took an array and an index - the "
+                    "lookup is mon_rig_* now (LL-081)" % (rel, old))
+
+    def test_every_state_asks_the_one_lookup(self):
+        """Emerge, walk, fall and kill all ask zomb_rig() - one source of art."""
+        for rel in (EMERGE_REL, ZPATH_REL, ZDIE_REL, ZDEATH_REL):
+            self.assertRegex(
+                self.read(rel), r"\bzomb_rig\(\)",
+                "%s reads a monster's art without asking its rig - the roster "
+                "is the only place the four slots are named (LL-081)" % rel)
+    def test_the_fall_asks_for_the_die_slot_by_name(self):
+        """The slot this whole card is about, spelled out."""
+        self.assertIn("mon_rig_play(_rig, ZOMB_ANIM.die, ZOMB_DIE_SECS)",
+                      self.read(ZDIE_REL),
+                      "the fall no longer asks its rig for the die slot")
+        self.assertIn("mon_rig_slot(zomb_rig(), ZOMB_ANIM.die)",
+                      self.read(ZDEATH_REL),
+                      "the kill line no longer names the slot the fall will use")
+
+    def test_a_rig_with_no_die_art_is_loud(self):
+        """The silent fallback is what hid the bug: it must say so, once."""
+        self.assertIn("mon_rig_warn_no_die(_rig)", self.read(ZDIE_REL),
+                      "a corpse with no die sheet falls on the step clock in "
+                      "silence again - that is LL-079 all over")
+        warn = self.roster[self.roster.index("function mon_rig_warn_no_die"):]
+        self.assertIn("has NO die slot", warn)
+        self.assertIn("mon_no_die_reported", warn,
+                      "the warning is not once-per-creature, so it will spam")
+        self.assertRegex(warn, r"if\s*\(\s*variable_struct_exists\(",
+                         "the once-only set is read without a guard (LL-002)")
+
+    def test_the_roster_is_built_once_from_both_banks(self):
+        """One build, in the one scope where both banks exist (rule 6)."""
+        self.assertIn("mon_roster_build(spawn_mon, spawn_boss);", self.spawn,
+                      "%s does not build the roster, so no monster has a rig"
+                      % SPAWN_REL)
+        self.assertIn("global.mon_roster = [];", self.roster,
+                      "the roster is not rebuilt from scratch - a second boot "
+                      "would keep the old creatures' structs")
+        self.assertIn("array_push(global.mon_roster", self.roster)
+
+    def test_the_instance_pulls_its_rig_by_name(self):
+        """scr_level_spawn hands over the SHARED struct; Create declares it."""
+        src = self.read(LEVEL_SPAWN_REL)
+        self.assertIn("_inst.rig = mon_rig_find(_mon[MON.name]);", src,
+                      "a spawned monster is not given its rig, so the states "
+                      "would rebuild one from the instance")
+        self.assertRegex(self.read(MON_CREATE_REL), r"(?m)^rig\s*=\s*undefined",
+                         "obj_mon/Create_0 does not declare `rig` - a read "
+                         "would be the first writer (LL-002)")
+
+    def test_the_lookup_is_defined_exactly_once(self):
+        """A copy of the lookup is a second truth about where art comes from."""
+        for name in ("mon_rig_slot", "mon_rig_play", "mon_rig_find",
+                     "mon_roster_build", "zomb_rig"):
+            defs = sum(len(re.findall(r"\bfunction\s+%s\s*\(" % name,
+                                      p.read_text(encoding="utf-8-sig")))
+                       for p in PROJECT_ROOT.rglob("*.gml"))
+            self.assertEqual(1, defs, "%s() is defined %d times" % (name, defs))
+
+    def test_every_rig_has_four_distinct_slots_and_its_own_die(self):
+        """A row whose die slot IS its walk slot dies without a death.
+
+        ``mon_rig_play`` leaves a sheet alone when it is already playing, and
+        answers the sprite; the fall reads "not a change" as "no sheet to
+        watch".  So a die slot copied from the walk - a one-word paste, and the
+        exact shape of the art drops that have gone wrong here - would give back
+        the silent walk-through-death, this time with every slot filled.
+        Distinctness is the contract; the two suffixes say which name belongs in
+        which position.
+        """
+        for (bank, idx), (name, sprites) in sorted(self.rows.items()):
+            where = "%s[%d] %s" % (bank, idx, name)
+            self.assertEqual(len(RIG_SLOTS), len(sprites),
+                             "%s carries %d slots, not %d"
+                             % (where, len(sprites), len(RIG_SLOTS)))
+            self.assertEqual(len(set(sprites)), len(sprites),
+                             "%s uses one sprite for two slots: %s"
+                             % (where, sprites))
+            self.assertTrue(sprites[0].endswith("_walk"),
+                            "%s: slot 0 is %s, and slot 0 is the walk"
+                            % (where, sprites[0]))
+            self.assertTrue(sprites[RIG_SLOTS.index("die")].endswith("_die"),
+                            "%s: the die slot is %s, which is not a die sheet"
+                            % (where, sprites[RIG_SLOTS.index("die")]))
+
+    def test_the_report_and_the_trace_name_every_slot(self):
+        """A diagnostic must print NAMES, and it must be switchable off."""
+        self.assertIn("for(var _i = 0; _i < 4; _i++)", self.roster,
+                      "mon_rig_report no longer walks all four slots, so a "
+                      "blank one would read as a shorter list")
+        self.assertIn('#macro ZOMB_RIG_TRACE', self.roster,
+                      "the trace has no switch, so it can only be deleted")
+        self.assertEqual(2, self.roster.count("if(!ZOMB_RIG_TRACE) return;"),
+                         "a trace line is not behind ZOMB_RIG_TRACE")
+        self.assertIn("mon_rig_report(", self.read(ZOMB_ART_REL),
+                      "the boot report no longer uses the roster's own report, "
+                      "so it can disagree with what the monsters play")
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class GmlBraceShapeTests(unittest.TestCase):
+    """Every .gml defines every function at depth ZERO, and ends at zero.
+
+    LL-077 again, this time for the whole tree - because it happened again on
+    2026-10-26 while scr_mon_roster was being written.  An insert landed one
+    line early (right after the `array_push` instead of at EOF), so the TAIL of
+    mon_roster_build - the trace call, the closing braces, `return` - ended up
+    at the end of the file and mon_roster(), mon_rig_find(), zomb_rig() and
+    mon_rig_warn_no_die() were nested inside its inner `for`.  Every gate was
+    green: the braces balanced overall, `gm gml-functions scr_mon_roster` listed
+    every function in it (it is a regex), and the whole suite passed, because
+    every one of those checks reads TEXT.  The file only reads as a nested
+    program to a counter that remembers where it is.
+
+    A `function` at depth 0 is not a style rule - GML defines a function where
+    the braces put it, so a nested one is simply not the function the file says.
+    """
+
+    #: SKIP these - generated or vendored, not GameMaker resources
+    SKIP = ("Build/", "python_tools/", "datafiles/")
+
+    def test_no_function_is_nested_inside_another(self):
+        bad = []
+        for path in sorted(PROJECT_ROOT.rglob("*.gml")):
+            rel = path.relative_to(PROJECT_ROOT).as_posix()
+            if rel.startswith(self.SKIP):
+                continue
+            blocks, end_depth = _function_blocks(
+                path.read_text(encoding="utf-8-sig", errors="replace"))
+            for name, depth in blocks:
+                if depth != 0:
+                    bad.append("%s: %s() starts %d block(s) deep"
+                               % (rel, name, depth))
+            if end_depth != 0:
+                bad.append("%s: the file ends %+d braces from where it started"
+                           % (rel, end_depth))
+
+        self.assertEqual(
+            [], bad[:20],
+            "%d definition(s) are nested in a block that never closed - a "
+            "function tail that ended up elsewhere in the file. GML defines a "
+            "function where the braces put it, so this is not the program the "
+            "file reads like (LL-077)" % len(bad))
+
+
 @unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
 class StageCoverageTests(unittest.TestCase):
     """Every creature is sent somewhere, and every index a stage names exists."""
@@ -997,7 +1193,7 @@ class MonsterStateMachineTests(unittest.TestCase):
         src = self.read(MON_CREATE_REL)
         for var in ("zomb_state", "zomb_state_next", "zomb_state_time",
                     "zomb_die_steps", "zomb_die_art", "zomb_die_prev",
-                    "zomb_die_warned", "dying", "dying_time"):
+                    "zomb_die_warned", "dying", "dying_time", "rig"):
             self.assertRegex(src, r"(?m)^%s\s*=" % var,
                              "%s is read by a state but not declared in Create" % var)
 

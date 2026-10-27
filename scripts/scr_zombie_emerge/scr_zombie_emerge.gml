@@ -5,7 +5,13 @@ function scr_zombie_emerge() {
 	/// the monster GROWS from nothing to its full size, so the emerge
 	/// reads as the creature rising out of the ground.
 	if(zomb_state_time == 0){
-	    sprite_index = sprite_array[0];
+	    /// THE WALK SLOT, BY NAME (scr_mon_roster).  This was
+	    /// `sprite_array[0]` - positional, and correct only because walk
+	    /// happened to be slot 0 of an array nobody named.  The rig says
+	    /// which creature this is and which sheet is its walk, and a rig
+	    /// with no walk art leaves the sprite alone rather than blanking it.
+	    var _walk = mon_rig_slot(zomb_rig(), ZOMB_ANIM.walk);
+	    if(sprite_exists(_walk)) sprite_index = _walk;
 	    image_index = 0;
 	    image_speed = scr_animSpeedForSteps(sprite_index, 60);
 	    /// start at zero size.  scr_level_spawn stored the full size in

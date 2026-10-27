@@ -59,13 +59,15 @@ function scr_zomb_death() {
 	///
 	/// `die=` is the slot the fall is about to use, decided HERE rather than
 	/// after the line that reports it.  A row without a die sprite keeps the
-	/// walk frames it died in (zomb_art_play answers false and changes
-	/// nothing), which in a screenshot is indistinguishable from "the death
-	/// animation is broken" - five creatures shipped that way (LL-079), so
-	/// the kill line names the art instead of leaving it to be noticed.
-	/// zomb_art_sprite answers -1 for a missing slot, which is what the guard
-	/// below exists for.
-	var _die_spr = zomb_art_sprite(sprite_array, ZOMB_ANIM.die),
+	/// walk frames it died in (mon_rig_play answers -1 and changes nothing),
+	/// which in a screenshot is indistinguishable from "the death animation is
+	/// broken" - five creatures shipped that way (LL-079), so the kill line
+	/// names the art instead of leaving it to be noticed.
+	/// The slot is asked for BY NAME on the creature's rig (scr_mon_roster),
+	/// not as `sprite_array[ZOMB_ANIM.die]`: a short row made that a -1 that
+	/// nothing reported (LL-081).  mon_rig_slot answers -1 for a missing slot,
+	/// which is what the guard below exists for.
+	var _die_spr = mon_rig_slot(zomb_rig(), ZOMB_ANIM.die),
 	    _die_txt = "NONE (keeps the walk art)";
 	/// sprite_get_name on a missing sprite is FATAL (LL-012), so the name is
 	/// only read behind the existence guard - and an empty slot must still

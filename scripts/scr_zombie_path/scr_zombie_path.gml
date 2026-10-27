@@ -23,11 +23,13 @@ function scr_zombie_path() {
 	                     round(x), ",", round(y), " - scheduling a retry");
 	        alarm[0] = game_get_speed(gamespeed_fps) * 0.5;
 	    }
-	    /// ---- THE RIG TAKES OVER (scr_zomb_art) ----------------------
-	    /// The emerge and the walk share slot 0 (ZOMB_ANIM.walk), and the
-	    /// cycle time comes from the sprite's own frame COUNT, so
+	    /// ---- THE RIG TAKES OVER (scr_mon_roster, scr_zomb_art) ------
+	    /// The emerge and the walk are the same slot (ZOMB_ANIM.walk), and
+	    /// the cycle time comes from the sprite's own frame COUNT, so
 	    /// re-drawing a rig can never change how fast it plays (LL-030).
-	    zomb_art_play(sprite_array, ZOMB_ANIM.walk, ZOMB_CYCLE_SECS);
+	    /// Asked BY NAME: `sprite_array` was a positional array copied onto
+	    /// every instance, and a read that is one slot out is silent (LL-081).
+	    mon_rig_play(zomb_rig(), ZOMB_ANIM.walk, ZOMB_CYCLE_SECS);
 	    /// the emerge ends at full size; re-assert it here too, keeping
 	    /// the facing sign - image_xscale carries size AND facing (LL-012)
 	    image_xscale = base_scale * (image_xscale < 0 ? -1 : 1);
@@ -50,11 +52,11 @@ function scr_zombie_path() {
 	    /// ---- the rig: walking, or standing still --------------------
 	    /// A monster with no route (path_free false) or a stun/root on it
 	    /// (status_speed_mult 0) is going nowhere, so it IDLES - and a rig
-	    /// with no idle slot keeps its walk art, because zomb_art_play
-	    /// answers false and changes nothing.
+	    /// with no idle slot keeps its walk art, because mon_rig_play
+	    /// answers -1 and changes nothing.
 	    var _still = (!path_free || status_speed_mult() <= 0);
-	    zomb_art_play(sprite_array, _still ? ZOMB_ANIM.idle : ZOMB_ANIM.walk,
-	                  ZOMB_CYCLE_SECS);
+	    mon_rig_play(zomb_rig(), _still ? ZOMB_ANIM.idle : ZOMB_ANIM.walk,
+	                 ZOMB_CYCLE_SECS);
 
 	    /// path speed
 	    scr_zomb_pathSpeed();

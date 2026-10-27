@@ -90,13 +90,22 @@ function scr_setupSpawning() {
 
 	/// ---- both banks, named out loud (LL-057) --------------------------
 	/// The line that settles "the portraits are swapped", and now also
-	/// "that creature has no rig": scr_zomb_art's report prints what each
-	/// row ACTUALLY holds at runtime, so a stale build, a second writer of
-	/// MON.portrait or a one-sprite rig shows up here instead of in a
-	/// playtest.  walkers first, because a boot log reads top-down in the
-	/// order the player meets them.
+	/// "that creature has no die sheet": scr_zomb_art's report prints every
+	/// SLOT of every row, so a stale build, a second writer of MON.portrait
+	/// or a two-slot rig shows up here instead of in a playtest.  walkers
+	/// first, because a boot log reads top-down in the order the player
+	/// meets them.
 	zomb_bank_report(spawn_mon,  "walker");
 	zomb_bank_report(spawn_boss, "boss");
+
+	/// ---- and the ROSTER the monsters read their art from ---------------
+	/// Built HERE and only here, because this is the one scope where both
+	/// banks exist: spawn_mon/spawn_boss are this controller's variables,
+	/// and a monster asking for its rig later must not reach into another
+	/// instance for them (AGENTS.md 1 rule 6).  mon_roster_build caches the
+	/// result in global.mon_roster, so every monster gets the SAME struct
+	/// for its creature - one answer, not one per instance (LL-081).
+	mon_roster_build(spawn_mon, spawn_boss);
 
 	//------------- List Size
 	spawn_pool = array_last_index(spawn_mon);
