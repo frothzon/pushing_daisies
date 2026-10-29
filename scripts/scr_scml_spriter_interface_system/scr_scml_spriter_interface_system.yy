@@ -1,0 +1,13 @@
+{
+  "$GMScript":"v1",
+  "%Name":"scr_scml_spriter_interface_system",
+  "isCompatibility":false,
+  "isDnD":false,
+  "name":"scr_scml_spriter_interface_system",
+  "parent":{
+    "name":"System",
+    "path":"folders/SCML-custom/System.yy",
+  },
+  "resourceType":"GMScript",
+  "resourceVersion":"2.0",
+}
