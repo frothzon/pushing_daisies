@@ -78,6 +78,22 @@ function scr_zomb_begin() {
 function scr_zomb_step() {
 	scr_zomb_begin();
 
+	/// ---- NEVER DRAW THE PLACEHOLDER (LL-082) ----------------------------
+	/// obj_mon's own sprite is spr_mon - ONE frame - and the only thing that
+	/// ever replaced it was a state's entry code.  A monster that is created
+	/// anywhere except scr_level_spawn (a test, a dev seed, a hand-placed
+	/// instance) therefore played that one still picture as its walk AND as
+	/// its death, with fifteen rigs of real art unused.
+	///
+	/// Ask the rig every step instead of trusting the spawn.  This can never
+	/// fight a state: a walker holds its walk sheet and a corpse holds its die
+	/// sheet, and both are IN the rig, so mon_rig_has answers true and
+	/// mon_rig_dress is not called - the fall is never undone and a cycle in
+	/// progress is never restarted (LL-030).  It fires only when the sprite is
+	/// not the class's own art at all.
+	var _rig = zomb_rig();
+	if(!mon_rig_has(_rig, sprite_index)) mon_rig_dress(_rig);
+
 	/// ---- DEATH IS A STATE, AND THIS IS ITS ONLY DOOR --------------------
 	/// Checked BEFORE the switch and `return`ed, exactly like scr_level_step's
 	/// FAILED check: the kill settles the money, the points and the art, and

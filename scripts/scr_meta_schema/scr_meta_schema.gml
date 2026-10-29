@@ -1,12 +1,6 @@
-/// @description  The meta save's schema: file name, version, defaults, merge.
-///
-/// Roadmap 0.1.  One place that knows what a save contains, so the loader can
-/// merge an *older* file onto the current shape instead of throwing on a
-/// missing key (LL-002: a reader must never be able to throw either).
+/// @description Meta-save filename, version, defaults, and safe migration.
 
-/// Where the save lives.  A plain relative name is the GMS2 save area; the
-/// old code used  working_directory + name,  which is read-only once the game
-/// is exported - which is why nothing was ever actually saved.
+/// A relative filename resolves to GMS2's writable save area.
 function scr_meta_file() {
 	return "garden_meta.dat";
 }
@@ -56,33 +50,11 @@ function scr_meta_default() {
 	};
 }
 
-/// Merge a loaded (possibly older, possibly hand-edited) save onto a fresh
-/// default, keeping only the fields the current schema knows about.
-///
-/// WHY THIS READS THE FILE, AND NOT THE DEFAULT  (LL-050)
-/// -----------------------------------------------------
-/// v1 looped over the DEFAULT's key names.  For a nested map the default is
-/// `{}`, so the loop body never ran and the function returned that EMPTY map
-/// with a version stamp inside it: `{"version":1.0}`.  Every save carrying
-/// stage clears, badges, owned towers or clover nodes was therefore wiped at
-/// load, while `seeds`, `clovers` and the loadout ARRAY survived (they take
-/// the `else` branch).  The result was a *partial* reset - never a fresh
-/// save - which is why it read as "the game forgot my progress" rather than
-/// as a bug.  The load log could not see it either: it printed exactly the
-/// three fields the merge cannot lose.
-///
-/// THE RULE
-/// --------
-///  * an EMPTY struct in the default is an OPEN MAP - stages, clears,
-///    towers, badges, candy, the node tables.  The schema cannot name their
-///    keys, so every key in the file is carried over;
-///  * a POPULATED struct is a FIXED RECORD (last_stage).  It merges key by
-///    key, and a key the file is missing keeps its default;
-///  * a scalar or an array keeps its DEFAULT's type.  A file that disagrees
-///    is ignored rather than copied in, so a hand-edited save cannot make a
-///    later read throw (LL-002's rule, applied to data);
-///  * `version` is a stamp, not data.  It is never merged, and it is
-///    written once, on the top level, by the caller.
+/// Merge loaded data onto defaults (LL-050):
+/// - Empty default structs are open maps; retain all loaded keys.
+/// - Populated structs are fixed records; merge known keys recursively.
+/// - Scalars and arrays retain the default's type; mismatches are ignored.
+/// - Unknown fixed-record keys and loaded version stamps are discarded.
 function scr_meta_merge(_base, _loaded) {
 	if(!is_struct(_base) || !is_struct(_loaded)) return _base;
 

@@ -7,41 +7,21 @@ Most of the bugs here come from that gap.
 
 ---
 
-## 0. START HERE
+## 0. Start here
 
-### 0.1 What are we working on?
-
-**Read [`progress.json`](./progress.json) first — the `focus` block, and every
-card with `"awaiting": "rayu"`.** That is the standing answer to "what is on the
-board?", and the top strip of [`progress.html`](./progress.html) is the same
-answer rendered. Work that is not on the board gets a card before it gets code
-(§6).
-
-### 0.2 Consult `lessons_learned.md` before you debug
-
-**Before forming a theory about any bug, read
-[`lessons_learned.md`](./lessons_learned.md).**
-
-That file is a post-mortem of every hard-won bug in this project:
-*symptom → the real cause → the fix → the rule that stops it coming back*.
-These bugs **deliberately look like something else** — a "greyed-out button" was
-an array index, "buttons that never appear" was an error inside a log statement —
-so a symptom match means you are almost certainly looking at the same bug.
-
-1. Search it by symptom **and** by keyword:
+1. Read [`progress.json`](./progress.json): the `focus` block and every card
+   awaiting `rayu`. [`progress.html`](./progress.html) renders the same board.
+   Create a card before starting untracked work (§6).
+2. Before debugging, search [`lessons_learned.md`](./lessons_learned.md) by
+   symptom and keyword. Apply the matching fix **and** guard rails before
+   forming a new theory:
 
    ```bash
    grep -niE 'grey|not set before reading|active=0|noone|scope|room_speed|crlf|shadow|state machine' lessons_learned.md
    ```
 
-2. Read the matching entry and apply **both** its fix and its guard rails.
-3. Only if nothing matches do you debug from first principles.
-4. **When you fix something new that took more than a few minutes to understand,
-   add an entry to `lessons_learned.md` and a row to its Index.** That is part of
-   the task, not optional cleanup. The template is at the bottom of that file.
-
-> If you are about to write *"let me try changing X and see"* — stop and grep
-> `lessons_learned.md` first.
+3. After fixing a new, non-obvious bug, add an indexed entry using the template
+   at the end of `lessons_learned.md`.
 
 ---
 
@@ -67,50 +47,29 @@ outside the IDE for those files is silently thrown away. Before a structural
 edit, ask the user to close the project; before they test, ask them to reload it.
 
 ### 1.2 Version control
-The repo has real history: `git init -b main` on **2026-10-03**, then a
-catch-up commit at most working sessions (`git log --oneline` is short enough
-to read in full). So "undo" goes back one checkpoint, not to the start of
-the session. Do not quote a hash here - it goes stale the next time anyone
-commits; quote `git log` instead.
 
-**A checkpoint is only as good as the last commit.** On 2026-10-19, before
-commit `8a379e2`, the working tree held **106 uncommitted files**, twelve of
-them **untracked** — and the
-untracked set was the whole balance tester (`python_tools/gm/balance/`), four
-test files, `scr_curve`, `scr_level_boot`, `scr_menu_slider` and
-`spr_level_complete`. An untracked file is in **no** commit: no `git checkout`,
-no `git stash`, no revert can bring it back. So:
-
-* **Run `git status` before any structural change**, and commit a checkpoint if
-  the tree is dirty. Local only — `origin` is
-  `github.com/frothzon/pushing_daisies` and pushes are the owner's call
-  (`decide-github-push`).
-* **Building a new feature starts by noticing whether it is tracked.** A new
-  script or test that only exists in the working tree is one bad delete from
-  gone.
-* Copy anything you are about to *restructure* into `/tmp` as well
-  (`/tmp/menu_refactor_backup/`, `/tmp/gmfix_backup/` are previous sessions').
-
-`.gitignore` excludes `*.resource_order` and `Build`, so a clean checkout has no
-`.resource_order` until GameMaker writes one.
+* Run `git status` before structural changes. Commit a local checkpoint if the
+  tree is dirty; pushes are the owner's decision (`decide-github-push`).
+* Ensure new scripts and tests are tracked. Untracked files cannot be restored
+  by checkout, stash, or revert.
+* Back up files to `/tmp` before restructuring them.
+* Use `git log`, not stale hashes copied into documentation.
+* `.gitignore` excludes `*.resource_order` and `Build`; GameMaker recreates the
+  former after a clean checkout.
 
 ### 1.3 Line endings
-Measure before you assume. The 465 `.gml` files are **375 LF-only | 89 mixed |
-1 CRLF-only**; the mixed ones are `objects/**` event files where the *blank
-lines* are a lone LF among CRLF lines. `.gitattributes` says `*.gml text eol=lf`,
-so git stores LF and **rewrites the working tree on the next checkout** —
-GameMaker copes with both, but ~90 files' bytes change. Read/write GML through
-`gm.gml.read_gml` / `write_gml`, which preserve whatever is on disk, and verify:
+
+GML files may be LF, CRLF, or mixed; `objects/**` events often use CRLF with
+LF-only blank lines. `.gitattributes` normalizes stored files to LF. Always use
+`gm.gml.read_gml` / `write_gml` to preserve the working file's existing bytes.
 
 ```bash
-grep -cF '\r' <file.gml>     # fixed-string count of literal backslash-r: must be 0
-
-# and the ratio, which grep cannot see: a CRLF-only file must print the SAME
-# number twice. One short means an editor added a bare LF (LL-006).
+grep -cF '\r' <file.gml>  # literal backslash-r: must be 0
 t=$(wc -l < <file.gml>); c=$(grep -c $'\r$' <file.gml>); echo "$t lines, $c crlf"
 ```
 
-Full EOL census commands: [LL-006](./lessons_learned.md#ll-006).
+For CRLF-only files, the two counts must match. See
+[LL-006](./lessons_learned.md#ll-006) for the full census.
 
 ---
 
@@ -126,12 +85,8 @@ cd /home/rayu/GameMakerProjects/pushing_daisies_recovered
 PYTHONPATH=python_tools python3 -m gm roundtrip
 
 # 2. toolkit test suite
-#    expect: `Ran N tests ... OK`, and N must NOT DROP
-#    (247 on 2026-10-22 - it was 244 at 8a8ece9, and 101 when this file was
-#     written, and a number
-#     here goes stale every session - the signal is a drop, and after adding
-#     *n* tests the count must rise by *n*: a suite that cannot notice a
-#     missing test has a hole in it, LL-041)
+#    expect `OK`; the count must not drop, and adding n tests must raise it by n
+#    (a suite that cannot notice a missing test has a hole, LL-041)
 PYTHONPATH=python_tools python3 -m unittest discover -s python_tools/tests
 
 # 3. the GML you changed still parses, and has the functions you expect

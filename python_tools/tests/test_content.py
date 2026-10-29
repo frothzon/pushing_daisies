@@ -757,6 +757,7 @@ class MonsterRigRosterTests(unittest.TestCase):
     def test_the_lookup_is_defined_exactly_once(self):
         """A copy of the lookup is a second truth about where art comes from."""
         for name in ("mon_rig_slot", "mon_rig_play", "mon_rig_find",
+                     "mon_rig_has", "mon_rig_dress",
                      "mon_roster_build", "zomb_rig"):
             defs = sum(len(re.findall(r"\bfunction\s+%s\s*\(" % name,
                                       p.read_text(encoding="utf-8-sig")))
@@ -801,6 +802,103 @@ class MonsterRigRosterTests(unittest.TestCase):
         self.assertIn("mon_rig_report(", self.read(ZOMB_ART_REL),
                       "the boot report no longer uses the roster's own report, "
                       "so it can disagree with what the monsters play")
+
+    # ---- dressed at birth, healed every step (LL-082) -------------------
+    # obj_mon's own sprite is spr_mon: ONE 32x32 frame.  It is the object's
+    # spriteId, and a spriteId outlives every state that was meant to replace
+    # it - so "all my monsters play one sprite for both animations" is what the
+    # game looks like when nothing dresses the instance and no state runs.
+
+    def test_a_spawn_is_born_in_its_class_walk_art(self):
+        """The spawn dresses the instance it has just made, in the class's art."""
+        src = self.read(LEVEL_SPAWN_REL)
+        rig_at = src.index("_inst.rig = mon_rig_find(_mon[MON.name]);")
+        dress_at = src.index("mon_rig_dress(rig);")
+        self.assertLess(rig_at, dress_at,
+                        "%s dresses the monster before it has a rig, so "
+                        "mon_rig_dress has nothing to read" % LEVEL_SPAWN_REL)
+        self.assertIn("with(_inst){", src[rig_at:dress_at],
+                      "mon_rig_dress is called without with(_inst) - it writes "
+                      "sprite_index on the CALLING instance, which would be the "
+                      "level controller (rule 6)")
+
+        dress = self.roster[self.roster.index("function mon_rig_dress"):]
+        dress = dress[:dress.index("\n}")]
+        self.assertIn("mon_rig_slot(_rig, ZOMB_ANIM.walk)", dress,
+                      "mon_rig_dress does not ask the rig for the WALK slot by "
+                      "name (LL-081)")
+        self.assertNotIn("ZOMB_ANIM.die", dress,
+                         "mon_rig_dress touches the die slot: falling is the "
+                         "DIE state's job, and a live body dressed in its "
+                         "corpse sheet is a body that has not died (LL-080)")
+        self.assertIn("if(sprite_index == _walk) return _walk;", dress,
+                      "mon_rig_dress re-brands the sheet it is already playing, "
+                      "so a per-step caller restarts the walk cycle every step "
+                      "(LL-030)")
+
+    def test_no_step_can_leave_the_placeholder_on_screen(self):
+        """The heal fires on the sprite, BEFORE the dispatch, never after it."""
+        step = self.read(ZSTATE_REL)
+        self.assertIn("if(!mon_rig_has(_rig, sprite_index)) mon_rig_dress(_rig);",
+                      step,
+                      "%s does not heal a monster whose sprite is not its "
+                      "class's art - anything created outside scr_level_spawn "
+                      "keeps spr_mon for its whole life (LL-082)" % ZSTATE_REL)
+        self.assertLess(
+            step.index("if(!mon_rig_has(_rig, sprite_index))"),
+            step.index("switch(zomb_state)"),
+            "the heal runs after the dispatch, so it can replace the die sheet "
+            "a state has just played")
+
+        has = self.roster[self.roster.index("function mon_rig_has"):]
+        has = has[:has.index("\n}")]
+        self.assertIn("mon_rig_slot(_rig, _i)", has,
+                      "mon_rig_has does not ask the named lookup for each slot, "
+                      "so it would answer for a sprite the rig never named "
+                      "(LL-081)")
+
+    def test_the_objects_own_sprite_is_a_placeholder_that_cannot_animate(self):
+        """spr_mon is one frame; the Create says so and stops it animating."""
+        create = self.read(MON_CREATE_REL)
+        self.assertIn("sprite_array = [spr_mon,spr_mon];", create,
+                      "obj_mon's placeholder row is gone - zomb_rig() rebuilds "
+                      "a rig from it when the roster has no answer for a "
+                      "creature")
+        self.assertRegex(
+            create, r"(?m)^image_speed\s*=\s*0\s*;",
+            "obj_mon/Create_0 lets the one-frame placeholder animate: a "
+            "drifting image_index on a still picture reads as a broken walk "
+            "cycle rather than as a placeholder (LL-082)")
+
+        raw = (PROJECT_ROOT / MON_CREATE_REL).read_text(encoding="utf-8-sig")
+        self.assertIn("PLACEHOLDER", raw,
+                      "obj_mon/Create_0 does not say that spr_mon is a "
+                      "placeholder - the next reader will take it for the art")
+
+        frames = (PROJECT_ROOT / "sprites/spr_mon/spr_mon.yy").read_text(
+            encoding="utf-8-sig").count('"$GMSpriteFrame"')
+        self.assertEqual(1, frames,
+                         "spr_mon has %d frame(s) - if the placeholder has "
+                         "become real art, dress the monsters in it and delete "
+                         "this check (LL-082)" % frames)
+
+    def test_mon_rig_pick_does_not_type_test_the_enum_slot(self):
+        """is_real() answers FALSE for enum values - the manual says so.
+
+        mon_rig_from passes ZOMB_ANIM constants as _slot, and enum values
+        are stored as int64s, so an is_real guard there answers false for
+        every perfectly good slot: every rig is built with all four slots
+        -1, no monster is ever dressed in its class art, and the boot trace
+        says ``slots=4 walk=none`` while the art sits in the row - which is
+        the "every monster spawns as a 32x32 still (spr_mon)" report
+        (LL-083, LL-034's shape).  The bounds checks are the real guards.
+        """
+        self.assertNotIn(
+            "is_real(_slot)", self.roster,
+            "mon_rig_pick type-tests its slot with is_real: ZOMB_ANIM "
+            "values are int64s, is_real answers false for them, and every "
+            "slot of every rig bails - no monster is ever dressed in its "
+            "class art (LL-083, LL-034)")
 
 
 @unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
@@ -1059,6 +1157,27 @@ class MenuBackdropBlurTests(unittest.TestCase):
             self.assertNotIn("MENU_STATE.%s" % state, body,
                              "%s asks for the blur but keeps the backdrop sharp"
                              % state)
+
+    def test_menu_blur_wanted_does_not_type_test_the_enum_state(self):
+        """is_real() answers FALSE for enum values - the manual says so.
+
+        menu_state is a MENU_STATE value, stored as an int64, so an
+        is_real guard on _state answered false for every state: no screen
+        asked for the blur, every meta screen stayed sharp, and NOTHING
+        said so, because the !wanted path prints nothing on the first
+        screen (LL-083, LL-034's shape).  The guard was for -1.
+        """
+        body = _code_only(_body(self.blur_src, "menu_blur_wanted"))
+        self.assertNotIn(
+            "is_real", body,
+            "menu_blur_wanted type-tests _state with is_real: MENU_STATE "
+            "values are int64s, is_real answers false for them, and the "
+            "blurred backdrop is silently never drawn (LL-083)")
+        self.assertIn(
+            "if(_state == -1) return false;", body,
+            "the -1 first-frame sentinel is no longer guarded by name - "
+            "switch() answers 'not one of ours', but -1 is the caller's "
+            "first frame and deserves its own line")
 
     def test_nothing_outside_the_draw_can_switch_the_blur(self):
         self.assertIn("menu_blur_draw();", self.draw_code,

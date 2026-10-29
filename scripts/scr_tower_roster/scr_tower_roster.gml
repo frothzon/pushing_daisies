@@ -1,34 +1,8 @@
-/// @description  The tower roster - every tower the game knows about, in one
-/// place (roadmap 1.10).
+/// @description Tower content, unlocks, loadouts, and non-numeric traits.
 ///
-/// Before this, the four towers were a literal array inside
-/// objects/_levelControl/Create_0.gml, so "which towers exist" and "which
-/// towers are in this run" were the same question.  They are not: the roster
-/// is content (twelve towers by the end of Phase 5) and a *loadout* is the
-/// four the player brought (goal.md 3.1).
-///
-/// So the level asks the roster for the loadout by name, and the shop draws
-/// exactly that.  A tower the player has not unlocked cannot be in a loadout,
-/// so it cannot reach the shop at all.
-///
-/// WHY SIX UNTIL NOW: Phase 1 shipped the four starters plus two unlocks
-/// that need no new mechanic.  Chillip (slow), Bindweed (root), Belladonna
-/// Blitz (poison) and Thornamental (crit) each need the status system, so
-/// building them first would have meant building them twice (roadmap 5.2).
-/// That system is scr_status, and the four arrive one at a time on top of
-/// it - Chillip first, because a slow is the one status a player can SEE
-/// without being told what it is: the monster is still walking, and it is
-/// visibly late.  Their art already existed (spr_chillip_*, spr_bella_*,
-/// spr_bindweed_*, spr_thornamental_*).
-///
-/// NO TOWER IS A PLACEHOLDER ANY MORE (2026-10-21).  The last two - Cannon
-/// Tulip and Meat Bulb - borrowed another tower's trio at half size, and the
-/// art drop replaced them with spr_tulip_*_192x and spr_meatbulb_*_192x, which
-/// are 192x192 with their art bottom 20px below the origin.  That 20 is the
-/// number that makes a tower stand on its row: Daisy is 21, Mandrake 22,
-/// Belladonna 24, Pina 16 - see the feet check in art_descriptions 3.1.  So
-/// these two now draw at the same size as every other tower instead of at
-/// two-thirds of it, which is the only visible change the swap makes.
+/// The roster is all available content; a loadout is the player's four chosen
+/// tower names. Unlock gates are enforced before a tower reaches the shop.
+/// Sprite trios share the 192x192, feet-at-origin contract (art_descriptions §3.1).
 
 /// One tower.  `unlock` is the seed cost (0 = a free starter) and `gate` is
 /// the region that must be fully cleared before it can be bought (0 = none).
@@ -43,26 +17,10 @@ function tower_entry(_name, _sprites, _price, _data, _unlock, _gate){
 	};
 }
 
-/// The roster.
-///
-/// The four starters are the towers the game already had, so "four free
-/// towers" costs no new art, and it is what lets the Deploy screen always
-/// fill all four slots on a brand new save (goal.md 3.1).
+/// The four free starters always fill a new save's loadout (goal.md §3.1).
 function tower_roster() {
 	return [
-		/// ---- the four starters: free, and between them they cover cheap DPS,
-		///      damage over time, multi-target and area damage
-		/// ---- REPRICED 2026-10-13 (economy-prices-rebalance) ------------------
-		/// The ladder was 5 / 15 / 45 / 100 - a 3x-then-3x-then-2.2x climb against
-		/// an income that starts at $30 a wave, so the $45 and $100 towers arrived
-		/// on waves 9 and 12 of 15.  The second half of the roster was a one-wave
-		/// decision, which is why the measurable ladder was really "Daisy, then
-		/// Ivy".  At 5 / 10 / 20 / 40 all four starters are affordable by wave 6 and
-		/// every rung is a decision the player can actually make.
-		///
-		/// This compresses the roster against the wave curve on purpose: the curve
-		/// that goes with it is FITTED by the sim, not guessed (economy.md 4.1,
-		/// balance-fit-from-sim).
+		/// Starters: cheap DPS, damage over time, multi-target, and area damage.
 		tower_entry("Daisy Pusher",
 		            [spr_daisy_idle_192x, spr_daisy_attack_192x, spr_daisy_return_192x],
 		              5, scr_towerData(100,   4,    3, _eff_puff,   1),  0, 0),
@@ -76,12 +34,7 @@ function tower_roster() {
 		            [spr_pina_idle_192x, spr_pina_attack_192x, spr_pina_return_192x],
 		             40, scr_towerData( 75, 250,    0.10, _eff_xplod, 10),  0, 0),
 
-		/// ---- the two Phase 1 unlocks: pure stat changes, no status effect,
-		///      so they do not need Phase 2 (roadmap 5.2)
-		///
-		///      ART: their own trios since 2026-10-21 (spr_tulip_*_192x,
-		///      spr_meatbulb_*_192x).  The cost/rate/range numbers below are
-		///      unchanged by that - only the picture moved.
+		/// Phase 1 unlocks use stats only; no status system is required.
 		tower_entry("Cannon Tulip",
 		            [spr_tulip_idle_192x, spr_tulip_attack_192x, spr_tulip_return_192x],
 		             60, scr_towerData(200,  60,  0.5, _eff_xplod,  5), 25, 1),
@@ -124,22 +77,9 @@ function tower_data_copy(_name) {
 	return array_duplicate(_e.data);
 }
 
-/// ---- TRAITS: the half of a tower that is NOT a number ------------------
-/// scr_towerData holds what every tower has (range, damage, rate, targets),
-/// so a rung of the ladder can be computed from it.  A trait is what only
-/// some towers have - a status on hit, a crit chance - and it is kept in its
-/// own table for two reasons:
-///
-///   1. the balance tester parses scr_towerData calls out of this file and
-///      knows they take exactly five arguments (LL-038: the tables are the
-///      thing that must not drift), and
-///   2. a trait belongs to a NAMED tower, not to a data array, so an
-///      upgrade rung cannot accidentally multiply it (a crit chance that
-///      scales with the damage ladder is how every tower becomes the same
-///      tower).
-///
-/// A tower with no row here simply has no trait; every reader asks through
-/// tower_trait_get() and gets the default, so silence is the normal case.
+/// Named traits stay outside scr_towerData's five-argument balance contract
+/// and are never scaled by upgrades (LL-038). tower_trait_get() supplies
+/// defaults for towers without a row.
 function tower_trait_table() {
 	return [
 		/// name          crit   status         mult   seconds

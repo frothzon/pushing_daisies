@@ -8,22 +8,13 @@ install.
 
 ## Why this exists
 
-GameMaker's resource files are *almost* JSON, and the differences are exactly
-the ones that make naive tools rewrite the whole file and turn a one-line edit
-into a 1000-line diff:
+GameMaker resources are not standard JSON: they contain trailing commas,
+case-insensitive key ordering with `_` last, schema-dependent inline containers,
+special `%Name`/`$GMxxx` keys, LF endings, and no trailing newline. Generic JSON
+formatting therefore creates large diffs.
 
-* every object member and array element has a **trailing comma**;
-* object keys are sorted **case-insensitively, with `_` sorting last**
-  (`bboxMode` comes before `bbox_bottom`);
-* a nested object/array is sometimes written **inline** on one line
-  (`{"name":"x","path":"y",}`) and sometimes spread over several lines, and the
-  choice depends on the resource schema, not on a simple rule;
-* files use **LF** and have **no trailing newline**; `%Name` and `$GMxxx` keys
-  are part of the format.
-
-`gm` reads the file's real layout (including which containers were inline) into
-ordinary `dict`s/`list`s, and writes it back exactly. Edit one value and only
-that value changes on disk.
+`gm` preserves the original layout while exposing ordinary `dict`/`list` data,
+so editing one value changes only that value on disk.
 
 ## Quick start
 

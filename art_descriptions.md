@@ -1,45 +1,18 @@
-# Art descriptions — the remaining art, in enough detail to draw from
+# Art descriptions
 
-**What this is.** One brief per open art job: what the game actually does today,
-what is missing, what to draw, and the technical contract the drawing has to
-meet. It exists because the board (`progress.json`) says *what* is owed but not
-*what it looks like*, and because "draw a swamp tileset" is not a brief.
+Draw-ready briefs and technical contracts for the project's art. Measurements
+were taken from the repository on **2026-10-19**; proposals are labelled. The
+board tracks ownership and completion. Art is complete only when the game uses
+it; §5 is the integration checklist.
 
-**Who it is for.** Rayu (the artist — the ownership questions are his to settle,
-see §6) and cline (who wires whatever arrives). Every number here was measured
-from the repo on **2026-10-19**, not remembered: canvas sizes and origins from
-the sprite `.yy` files, draw scales and tints from the GML, frame counts from
-the frame lists. Where a thing is a **proposal** rather than a fact of the game
-it says so.
-
-**The one rule that overrides taste.** Art is only finished when the game
-*shows* it: a sprite nothing references is not a tower, a tileset no stage
-selects is not a biome (LL-023, and the Belladonna card that claimed "NOTHING"
-while a week-old trio sat in the repo). §5 is the checklist that catches that.
-
-## What has landed since these briefs were written
-
-**2026-10-21 — 75 sprites, 142 frames.** The drawing half of §4.3 (props),
-§4.4 (every icon), §4.5 (the banner) and §4.9 (four trios and their effect
-sprites) is now IN the project, and four of those uses are wired. Read a brief
-below as *what the art is for*, not as *work to do*, unless it says otherwise:
-
-| Brief | State on 2026-10-21 |
-| --- | --- |
-| §4.5 level-complete banner | **delivered and drawn**: `bck_level_complete_banner`, 680×360, art 647×323, one sprite pixel to one screen pixel at 16:9 |
-| §4.3 biome atlases + props | **props delivered** (18 sprites), **atlas still missing** — there is no `spr_graveyard_128x`, so region 5's ground is unchanged |
-| §4.4 meta icons | **delivered** (36 icons); the currency line, the Offense heading, the node pips and the headstones draw them — the rest wait on their screens |
-| §4.9 tower trios + effects | **delivered** (Tulip, Meat Bulb, Kaboom, Marigold, and the eight shot effects); Tulip and Meat Bulb are in the roster and now throw a muzzle puff and an impact, Kaboom and Marigold have no tower yet |
-| §4.1 bosses, §4.2 zombies | **not in this drop** — still owed |
-
-The banner's `bck_` name (against §3.7's `spr_` convention), the two blood icons
-whose origin is `(0,0)`, and the four sprite sets this drop made unreferenced
-are all on the board (`art-cleanup-unreferenced`), not in a comment.
+The 2026-10-21 drop delivered the level-complete banner, 18 biome props, 36
+meta icons, four tower trios, and eight shot effects. The Graveyard atlas and
+the boss/zombie rigs remained outside that drop. Naming and unreferenced-sprite
+cleanup is tracked by `art-cleanup-unreferenced`.
 
 ---
 
-
-## 0. The open art jobs, and what is actually missing
+## 0. Open art jobs
 
 | Card | Status | What is genuinely missing | Drawing? |
 | --- | --- | --- | --- |

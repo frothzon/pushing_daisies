@@ -1,42 +1,13 @@
-/// @description  Fitting a picture to a box by its ART, not by its origin.
+/// @description Fit and draw sprites by their visible art rectangle (LL-071).
 ///
-/// WHY THIS EXISTS (2026-10-22).  Two independent things were wrong with every
-/// UI picture at once, and they pointed the same way:
-///
-///   1. `icon_draw` centred by SUBTRACTING the origin, but draw_sprite_ext has
-///      already landed the origin on (x,y) - so a centred-origin icon was drawn
-///      half an icon UP AND LEFT of the point every caller passed.  The branch
-///      icon on the Garden Book landed at x 1..31 while the layout dump claimed
-///      16..50; the currency icons hung off the left of their own margin.
-///
-///   2. The 192x192 tower sheets are authored for the WORLD - feet on a ground
-///      line at y~180, empty sky above - so their art sits 25-40px BELOW the
-///      canvas centre.  Scaling the canvas and drawing at the centre therefore
-///      put a thumbnail at 46-75% of its cell, a different size per tower, and
-///      two of them (Cannon Tulip, Meat Bulb) poked out of the shop cell.
-///
-/// The fix is one idea, not two: PLACE THE ART RECTANGLE.  Measure the art with
-/// `sprite_get_bbox_*` (canvas-relative - LL-047), scale the ART to the box,
-/// put the ART's centre on the target, and register the rect that was drawn so
-/// the layout gate judges the pixels rather than the intention (LL-069).
-///
-/// The origin is still read - once, here - to turn canvas coordinates into a
-/// draw position, because draw_sprite_ext lands the origin on (x,y) whatever it
-/// is.  That is why a (0,0)-origin icon and a feet-origin sheet now need no
-/// special case: neither origin is ever subtracted from a centre.
-///
-/// `sprite_get_bbox_*` is inclusive at the far edge, hence the +1 in the width
-/// and in the centre: art spanning columns 2..46 is 45px wide and centred on
-/// 24.5 in canvas space, not 24.
+/// Measure canvas-relative bounds, scale the art rather than the canvas, and
+/// centre that rectangle on the target. Convert to a draw position using the
+/// origin only inside ui_art_draw(). Register the painted rect for layout
+/// checks. Bounding-box far edges are inclusive, hence the +1 calculations.
 
-/// The art box of `_spr` in CANVAS coordinates, as
-/// [left, top, right, bottom, width, height].
-///
-/// Returns width 0 when there is nothing to draw, so every caller has one test
-/// to make.  A sprite with NO opaque pixels reports a 0,0,0,0 bbox - a one-pixel
-/// dot in the corner - and scaling that would shrink a picture to a speck, so
-/// such a sprite falls back to its canvas.  Nothing here is allowed to throw on
-/// a sprite that does not exist (LL-012).
+/// Return [left, top, right, bottom, width, height] in canvas coordinates.
+/// Missing/empty sprites return zero dimensions; invalid bounds use the canvas.
+/// All sprite reads are guarded (LL-012).
 function ui_art_bbox(_spr) {
 	if(!sprite_exists(_spr)) return [-1, -1, -1, -1, 0, 0];
 	if(sprite_get_number(_spr) <= 0) return [-1, -1, -1, -1, 0, 0];
@@ -53,11 +24,7 @@ function ui_art_bbox(_spr) {
 	return [_l, _t, _r, _b, _r - _l + 1, _b - _t + 1];
 }
 
-/// The uniform scale that fits `_spr`'s ART inside `_maxw` x `_maxh`.
-///
-/// Capped at 1: a sprite is never blown up past its own pixels, so a small icon
-/// in a big box stays sharp instead of going soft (the rule meta_sprite_fit has
-/// documented since it was written, and only now enforces).
+/// Return the uniform art-fit scale, capped at 1 to avoid upscaling.
 function ui_art_scale(_spr, _maxw, _maxh) {
 	var _b = ui_art_bbox(_spr);
 	if(_b[4] <= 0 || _b[5] <= 0) return 0;
@@ -108,11 +75,7 @@ function ui_art_draw(_spr, _cx, _cy, _s, _blend, _alpha, _name) {
 /// Fit `_spr`'s art inside `_maxw` x `_maxh`, centred on (_cx,_cy), draw it and
 /// register it.  Returns the scale used, or 0 when it drew nothing.
 ///
-/// The overflow line is the ONE diagnostic here, and it can actually fire: a
-/// caller that passes a scale bigger than its own box is exactly the bug the
-/// old code could not report.  It reads only its own arguments, so it cannot
-/// throw (LL-002), and it is silent when the arithmetic is right - which is
-/// every frame of a healthy run.
+/// Overflow diagnostics read only arguments and cannot throw (LL-002).
 function ui_art_fit(_spr, _cx, _cy, _maxw, _maxh, _blend, _alpha, _name) {
 	var _s = ui_art_scale(_spr, _maxw, _maxh);
 	if(_s <= 0) return 0;

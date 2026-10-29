@@ -109,6 +109,17 @@ function scr_level_spawn() {
 	        /// instance, and zomb_rig() rebuilds a rig from it when the roster
 	        /// has no answer - but no state indexes it any more (LL-081).
 	        _inst.rig = mon_rig_find(_mon[MON.name]);
+	        /// THE CLASS'S OWN WALK SHEET, ON THE INSTANCE, FROM BIRTH - not
+	        /// on the monster's first Step.  obj_mon's own sprite is spr_mon:
+	        /// ONE 32x32 frame, a placeholder, so a monster drawn before any
+	        /// state names its art was a still blob whose "walk" and "death"
+	        /// were the same picture (LL-082).  mon_rig_dress also says once
+	        /// per creature which walk and die sheets its class got, which is
+	        /// how "is any of the zombie art being used?" gets answered from
+	        /// the log.
+	        with(_inst){
+	            mon_rig_dress(rig);
+	        }
 	        _inst.data = array_duplicate(_mon);
 	        /// the FULL size this monster grows to.  The emerge starts at
 	        /// nothing and scales 0.00 -> 1.00 of this, because the crawl

@@ -11,10 +11,9 @@
 
 ## 1. How to use this document
 
-* Every phase has a **deliverable**, a **gate** (how we know it worked), and a **falsifier** (what would prove it did not).
-* **Do not start a phase before its dependency is green.** The dependencies below are real, not decorative.
-* Every code change still obeys `AGENTS.md`: consult `lessons_learned.md` first, run the four verification gates, never hand-edit `.yy`, never change line endings, never shadow a built-in script name.
-* **GameMaker must be closed while these files are being edited** (LL-008) and reloaded before testing. This is the single most likely way to lose a session's work.
+Each phase has a **deliverable**, **gate**, and **falsifier**. Start only after
+its dependencies are green. All work follows `AGENTS.md`, including its
+verification, resource-editing, line-ending, and GameMaker reload rules.
 
 ---
 
@@ -311,10 +310,10 @@ understand and each one will look like something else next time:
 
 | Entry | The rule it produced |
 | --- | --- |
-| [LL-013](../lessons_learned.md#ll-013) | **A discarded return value is a silent failure** — and *validate the whole system, not the entrance to it* |
-| [LL-014](../lessons_learned.md#ll-014) | **One variable doing two jobs** — a state's fade must not be read by another state; never assume two surfaces are the same size |
-| [LL-015](../lessons_learned.md#ll-015) | **`array_last_index()` is not a count** — and a field that exists but is never printed looks finished |
-| [LL-016](../lessons_learned.md#ll-016) | **A parameter is not visible in a sibling function** — and an unreachable branch is not a test |
+| [LL-013](./lessons_learned.md#ll-013) | **A discarded return value is a silent failure** — and *validate the whole system, not the entrance to it* |
+| [LL-014](./lessons_learned.md#ll-014) | **One variable doing two jobs** — a state's fade must not be read by another state; never assume two surfaces are the same size |
+| [LL-015](./lessons_learned.md#ll-015) | **`array_last_index()` is not a count** — and a field that exists but is never printed looks finished |
+| [LL-016](./lessons_learned.md#ll-016) | **A parameter is not visible in a sibling function** — and an unreachable branch is not a test |
 
 ---
 

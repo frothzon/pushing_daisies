@@ -57,7 +57,15 @@
 /// that is not one of ours (a -1 on the first frame), which is every caller's
 /// first frame.
 function menu_blur_wanted(_state) {
-	if(!is_real(_state)) return false;
+	/// NO is_real() HERE (LL-083, LL-034's shape).  _state is a MENU_STATE
+	/// enum value - menu_state - and enum values are stored as int64s, so
+	/// the is_real(_state) line that used to be here answered FALSE for
+	/// every state: no screen ever asked for the blur and every meta
+	/// screen stayed SHARP, with no line to say so, because the !wanted
+	/// path prints nothing on the first screen.  The sentinel this guard
+	/// was FOR is -1; ask for it by name, and let the switch answer
+	/// everything else.
+	if(_state == -1) return false;
 
 	switch(_state){
 		case MENU_STATE.WORLD_MAP:

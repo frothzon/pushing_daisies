@@ -3,7 +3,22 @@ action_inherited();
 debug_tracker_name = "";
 
 /// setup state
-sprite_array = array(spr_mon,spr_mon);
+/// THE PLACEHOLDER, and nothing more.  obj_mon's own sprite is spr_mon: ONE
+/// 32x32 frame, so a monster drawn before anything names its art showed the
+/// same still picture as its walk AND as its death - the "every monster spawns
+/// with one sprite for both animations" report (LL-082).
+///
+/// This array is not the art.  scr_level_spawn overwrites it with the class's
+/// four slots and mon_rig_dress() puts the class's WALK sheet on the instance
+/// in the same breath, and scr_zomb_step re-dresses any monster whose sprite
+/// is not its class's.  It stays here because zomb_rig() rebuilds a rig from
+/// it when the roster has no answer for this creature - a last resort, not a
+/// default.
+///
+/// image_speed = 0 because a one-frame sprite that drifts its image_index
+/// looks like a broken walk cycle rather than the placeholder it is.
+sprite_array = [spr_mon,spr_mon];
+image_speed  = 0;
 
 /// ---- the creature's RIG (scr_mon_roster) ------------------------------
 /// This monster's four animations - walk, idle, attack, die - as ONE struct

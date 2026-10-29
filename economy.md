@@ -1,14 +1,9 @@
-# Garden Defense TD+ — Numerical Economy (numbers of record)
+# Garden Defense TD+ — Numerical Economy
 
-*Companion to [`goal.md`](./goal.md): that document says what the game is, this one says **what the numbers are**. Where they disagree, `goal.md` wins on intent and this file wins on values.*
+The values of record for [`goal.md`](./goal.md): intent wins on conflict, this
+file wins on numbers. Values are v1 starting points to tune from Phase 6 logs.
 
-Status: **v1 draft, approved for Phase 0/1 implementation.** Every value here is a starting point to be tuned in Phase 6 from play logs, not a law.
-
-| Field | Value |
-| --- | --- |
-| Last updated | 2026-10-04 |
-| Engine | GameMaker Studio 2 (converted from GameMaker 8) |
-| Companions | `goal.md` §1–§28, `roadmap.md`, `AGENTS.md`, `lessons_learned.md` |
+Last updated: **2026-10-04**.
 
 ---
 
@@ -372,7 +367,7 @@ nothing here should be fitted by arithmetic alone (LL-038).
 
 **Visuals are normalised by a fixed 10**, not by the current cap — the existing `lerp(0.25, 0.70, level / tower_max_level)` in `_levelControl/Step_0.gml:117` must become `level / 10` with adjusted endpoints, or a tower placed at floor 6 would be indistinguishable from one placed at floor 3.
 
-### 4.5 The wave count and the biome curve — as built 2026-10-05
+### 4.5 Wave count and biome curve
 
 Waves are no longer authored per stage. They are a **rule**, held in `region_data()`:
 
@@ -404,149 +399,33 @@ bend is 2 because a stage's money grows with the **square** of the wave number
 (§4.1: `spawn_count + wave div 5` kills a wave); a straight line makes the late
 waves relatively *easier*, which is the opposite of a ramp.
 
-This replaces `life *= power(2, wave/5 - 2) + 0.2*(wave - 1)`, which reached
-**×1036 at wave 60**. Retuned once already — see below.
+`STATINV.waves` is seeded at **0**, so the speed ramp, HUD, and `wave_count`
+refer to the same wave (LL-044). Region 1's `curve_end = 13` is confirmed for
+Normal; regions 2–6 remain assumptions until played. Refit curves after tower
+or economy changes, using `gm balance sim` as the outcome arbiter.
 
-**The wave a monster was ramped as was one ahead (LL-044, fixed 2026-10-14).**
-`scr_zomb_pathSpeed` reads `get_item_value(STATINV.waves)` for its speed ramp, and
-that item was seeded at **1** while `wave_count` started at **0** — so during wave
-N the ramp computed for wave **N+1**, and the HUD number and the level log were one
-high with it. The pre-wave banner wanted the *next* wave and was right by accident,
-which is why it survived a reprice, a curve change and two balance passes. The seed
-is **0** now, so the item equals `wave_count`.
+**Diagnostics.** `scr_curve_report()` logs and `scr_curve_draw()` displays the
+curve under `global.devMode`: biome endpoints, route and reachable slots,
+placement/rung DPS-per-dollar, and wave 1 / first boss / final wave rows with
+`req`, `bite`, and `LOW` / `HIGH` / `ok`. The target band is wave 1 `bite >=
+0.35` and final-wave `bite <= 0.90`.
 
-**No number in this document moves.** The ramp's wave weight only applies when
-`_spd < 1`, which flat ground (`z=6`, `_spd = 1.25`) never is, and on the slowest
-ground (`z=11`, `_spd = 0.625`) the monsters walk 0.2–0.5 frames faster on average
-with money, kills and leaks identical. It is recorded here because it changes what
-`m(wave)` *means* to a reader: `gm balance sim` and the closed form were modelling
-the ramp **one wave apart** until it landed (`model.demand` has always passed the
-true wave), and `balance-fit-from-sim` solves against both.
+```
+required  = count * hp / walk_seconds
+available = min(money / price, slots) * best_placement_dps
+```
 
-**As built 2026-10-12 — the curve is printed, on screen.** `scr_curve_report()`
-(`scripts/scr_curve`), called once from `scr_level_start` on stage entry, builds
-the whole read-out under `global.devMode`, and `scr_curve_draw()` paints those
-same lines as a panel in the top-left of the Draw GUI event — because the Output
-window is not visible while playing, and a diagnostic you cannot see is not a
-diagnostic. It prints one line per biome (`m` on wave 1 and on that region's
-last wave, so a row whose `m(1)` is not `1.00` is visible on the spot); then the
-current stage's route, its **slots** (the cells that can actually reach that
-route) and the placement/rung `dps`-per-dollar; then, per difficulty, a row for
-wave 1, the first mid-stage **boss** wave, and the last wave, each with
-`req`, `bite` and a verdict. Target band: **floor (wave 1) ≥ 0.35, ceiling (last
-wave) ≤ 0.90** → `LOW` / `HIGH` / `ok`.
+The in-game supply panel is deliberately approximate; `gm balance` is the
+authority. Its nominal fire-rate display is tracked separately by
+`tower-panel-effective-rate`.
 
-`required = count × hp ÷ walk_seconds` (one creature's traversal);
-`available = min(money ÷ price, slots) × best placement dps`. The `slots` term
-matters: money is not the only constraint, reachable ground is, and leaving it
-out is how a tool reports `ok` while a full wrap leaks.
+**Accepted combat/economy decisions:**
 
-**Retuned 2026-10-12 from the first play log (card `curve-cap-lower`).** Rayu
-leaked from **wave 10 of stage 1-1 with a full tower wrap**, then starved. Stage
-1 is 15 waves, so at the old ceiling of **30** the curve read
-`m(10) = 1 + 29 × ((10−1)/14)² = 12.98` — already past what he could field, with
-five waves still to go. The ceiling is now the difficulty he *could* clear:
-**region 1 30 → 13**, the other five scaled by the same factor on `(end − 1)`
-(0.4133) so the ramp *between* biomes is unchanged. Stage 1-1 now reads
-`m(10) = 5.96`, `m(15) = 13.00`.
-
-Note what did **not** work: raising `curve_pow` cannot fix this. With `pow = 3`
-the curve still crosses 12.98 at wave 11, so only the ceiling moves the wall.
-Regions 2–6 have no stages yet, so their new values are a stated assumption
-carried from region 1's factor, not a verified retune. And the whole change
-assumes **Normal**: on Brutal (`hp ×2.5`) the same wall is an effective
-`m ≈ 5`, so that ceiling would land near 5.
-
-Settled 2026-10-18: **a leak pays half**. It used to pay nothing
-(`scr_zomb_death` pays only on a kill), so the first leak removed the income
-needed to answer the next wave — the "starved of resources" half of the report.
-A leak now pays half of what the kill would have, which is still strictly worse
-than killing it.
-
-**Half is applied BEFORE the floor, not after.** `floor(1 x 0.5) = 0`, so
-halving the rounded payout would have paid nothing for the cheapest creature —
-exactly the behaviour it replaced. The scale is an argument to
-`scr_kill_money(base, wave, ramp, scale)` and multiplies into the same
-`money_carry` the difficulty column uses (LL-042), so two leaks of a 1-money
-creature pay exactly 1 between them. The sim mirrors it (`_payout(scale=)`,
-`_leak`), or the tester would report a purse the game does not have.
-
-**The four reprice decisions, settled 2026-10-18 (card `reprice-decisions`).**
-
-| # | Question | Answer |
-| --- | --- | --- |
-| 1 | `curve_end` for region 1 | **13, unchanged.** It is the only value confirmed in real play (2026-10-13). `gm balance fit` (the ratio) now puts the band at 10..20 with a middle of
-  **17**; `gm balance fit --sim` - the arbiter (LL-042) - narrows the window to
-  **10..15**, and 13 sits inside both, so it is the safe end - and the curve must be refitted AFTER the tower reprice, one change at a time. |
-| 2 | Is the 0.25s return animation charged on top of `fire_rate`? | **Yes, keep charging it.** It is real time (period + return + stagger) and a sim that pretends otherwise lies. What is wrong is the *display*: the panel shows the nominal rate, so it reads optimistically - filed as `tower-panel-effective-rate`. |
-| 3 | Does `scr_zombie_emerge` keep resetting life to `maxLife` at step 60? | **No.** Removed. It healed a monster that was shot while rising, which is the "HP bar refills" symptom, and it made the emerge a free heal instead of a vulnerable second. A monster is born at full life; nothing needs to restore it. |
-| 4 | Does a leak pay nothing or the reduced amount? | **Half**, applied before the floor (above). |
-
-**Confirmed in play 2026-10-13.** The retuned curve was run and Rayu asked to
-keep it, so `curve_end = 13` for region 1 is **no longer a first pass** — it is
-the difficulty of record until a later play log says otherwise. Regions 2–6
-remain the stated assumption above, and the Brutal caveat still stands: this
-confirms the Normal column.
-
-**Measured by `gm balance`, 2026-10-13 — and the model above was too kind.**
-`python_tools/gm/balance` reads these tables straight out of the GML, rebuilds
-stage 1-1's route and slots from `rooms/rm_test`, and projects every wave:
-
-| | worst bite | reading |
-| --- | --- | --- |
-| Normal, cap **13** (now) | **0.57** | holds all the way |
-| Hard, cap 13 | **0.88** | holds, but only just |
-| Brutal, cap 13 | **0.93** | `HIGH` on the last wave |
-| Normal, cap **30** (the old value) | **1.32** | `HIGH` from wave 13 — the leak |
-
-So the retune is no longer an inference from one play log: the old ceiling
-**cannot be held** by arithmetic, and the new one can. The three difficulty
-columns also come out as the three shapes §10 asks for — Normal comfortable,
-Hard marginal, Brutal losing its last wave.
-
-Three corrections to the model in this section, all found by running it:
-
-1. **`available` cannot buy anything for the first eleven waves.** It prices
-   every tower at the best `dps` per dollar — Pina Collider, $100 — so a $30
-   purse fields zero towers and the row reads `?`. The shop sells $5 towers.
-2. **`targets` is a claim about congestion, not a multiplier.** `damage × rate
-   × targets` gives Pina Collider 2000 dps, which needs ten monsters inside a
-   75px range at once. They spawn 0.5 s apart and walk ~1.26 px a step, so on
-   an 1840px route they sit about 37px apart: two or three, not ten.
-3. **Coverage is not 100%.** A tower fires only while a monster is inside its
-   range — 9–15% of the route on stage 1-1. The `slots` term counted *how many*
-   towers, never *how much of the route* each one holds.
-
-The tool prints the panel's figure and the honest one side by side, and the gap
-between them is the answer to "why did it read `ok` while the play leaked".
-Fixing all three is what turned the table above from a story into arithmetic.
-**DECIDED 2026-10-14 (status quo, `balance-panel-supply`):** the in-game panel
-stays a ROUGH read-out and `gm balance` stays the authority, so the three
-defects above are accepted rather than fixed. The tool prints both numbers
-side by side, and that gap is the intended way to read it.
-
-That decision is about the panel's **supply** estimate. A separate, still-open
-defect is the panel's **own fire rate** (`tower-panel-effective-rate`): it
-shows `fire_rate` without the 0.25s return animation, so a tower quoting 3
-shots/s lands about 1/(1/3 + 0.25) — the panel is not rough there, it is
-wrong, and that one is being fixed.
-
-
-**The supply model had two defects of its own, found 2026-10-15** (LL-048,
-`balance-sim-policy`). It ranked towers on **additive** coverage, so two towers over the
-same stretch of route both scored that stretch — on stage 1-1's 1841px route, $300 bought
-15 towers that between them shot **41%** of it and the last quartile of the route was
-**0%** covered. Ranking on **union** coverage instead (`dps × the share of route nothing
-else shoots`) covers **100%** of the route with 14 towers. In the sim itself, on the same
-$143 and the same stage, the old objective built 16 towers covering **35.5%** of the
-route and wasted 33% of its swings; the new one builds 11 towers covering **96.9%**,
-reaches level 3 instead of 2, and wastes 25%. And the planner was told
-which **cells** were taken but never which **towers** were standing, so a rung was
-invisible to it every wave and the run could only ever buy new $5 towers. Both fixed; the
-sim gained `--spend instant` (spend as the money lands instead of at the wave boundary),
-which leaves **$2** in the purse at the end instead of **$17**. Every figure in this
-section is unchanged — the fix moves the *policy*, not the tables.
-
+* Charge the return animation and stagger in the real shot cycle.
+* Do not heal monsters when their emerge animation finishes.
+* Leaks pay **half** the corresponding kill, scaled **before** flooring and
+  using the same fractional carry as difficulty payouts (LL-042).
+* Keep region 1's cap at 13 unless a later fit or play log reopens it.
 
 ### 4.6 The rung price and its worth disagree — kept on purpose (decided 2026-10-14)
 
@@ -864,18 +743,3 @@ Adjust **one** of these at a time, log first, and only after the previous one ha
 | Do cadies apply to the whole loadout or one tower? | The whole loadout — it is a run-wide power fantasy, not a focus-fire tool |
 
 ---
-
-## 12. Change log
-
-| Date | Change |
-| --- | --- |
-| 2026-10-14 | **§4.2 rebuilt against the code, and the roster split into built and planned.** Cannon Tulip and Meat Bulb were still showing the twelve-tower plan's numbers (120 / 220 / 150 / 0.5 / 1 and 200 / 140 / 400 / 1 / 1) in a table whose other ten rows are the game; both rows now read `scr_tower_roster()` verbatim, and the six unbuilt towers carry a `*planned*` mark in a new column. No number changed *in the game* — only the document stopped disagreeing with it (`economy-4-2-stale`). |
-| 2026-10-15 | **The spending policy double-counted coverage, and never bought a rung** (LL-048, `balance-sim-policy`). `policy.plan` ranked on `dps x coverage` with coverage ADDITIVE, so two towers over one stretch both scored it: $300 bought 15 towers shooting **41%** of the route with the last quartile at **0%**. It now scores UNION coverage (submodular, so the density greedy keeps its 1-1/e bound) - **100%** of the route with 14 towers - and it is handed the towers STANDING, not just the cells taken, so `allow_rungs` can finally buy an upgrade that survives a wave. Same $143: 16 towers / 33% wasted swings becomes 11 / 25%. New `--spend instant` re-runs the greedy while a wave is live: **$2 left at the end instead of $17**, 9 upgraded towers instead of 11 cheap ones. Every number in this document stands - the policy moved, the tables did not. The 10-target finding got STRONGER (widest in-range list 6 -> 3), and that test now says why. |
-| 2026-10-14 | **The wave counter was one ahead of the wave being fought** (LL-044, `hud-wave-offbyone`). `STATINV.waves` was seeded at 1 while `wave_count` started at 0, so the HUD number, the level log and the `scr_zomb_pathSpeed` speed ramp all read wave N+1 during wave N — while the pre-wave banner, which wants the next wave, was right by accident. The seed is 0 (the item now equals `wave_count`) and the banner asks for `get_item_value(waves) + 1` itself. **No number in this document moves**: measured, the monsters walk 0.2–0.5 frames faster on slow ground and identically on flat ground, with money, kills and leaks unchanged. It landed before the fit because the sim had restated the off-by-one as a Python literal while the closed form always used the true wave — the two tools were one wave apart, and `Sim.stat_waves` now reads the seed out of the GML (`constants.wave_seed`) instead. |
-| 2026-10-13 | **The reprice, the ramp and the carry shipped together.** Placement prices are now **5 / 10 / 20 / 40** for the four starters (§4.2) with all four affordable by wave 6; the kill payout is a **ramped** `base × (1 + 0.06×(wave−1))` in one named function (`scr_kill_money`, slope in `kill_money_slope()`, §4.1); and the difficulty money column applies to the ramped value with the FRACTION **CARRIED** on `_levelControl` instead of rounded - which is the LL-042 fix, so ×1.25 is +25% over a wave rather than a no-op. Measured after: income $160 / $196 / $264 and hp-per-dollar 0.0063 / 0.0076 / 0.0095, ordered for the first time (it was 1.00 / 1.17 / 1.01, worst on Hard). Both Python models were taught the same rule (`money_through`, `Sim._payout`) and the slope is read from the GML by `gm balance check`, so no tool holds a private opinion. Consequence: the reprice leaves the wave curve **stale** at cap 13 (worst bite 0.32, below the 0.35 floor) - checkpoint 15 added, and the refit is `balance-fit-from-sim`. |
-| 2026-10-13 | **The sim found the difficulty columns are upside down** (LL-042). The money column is applied AFTER a round to a $1 kill, so Hard's ×1.25 is a no-op and Brutal's ×1.50 doubles; hp per dollar is 1.00 / 1.17 / 1.01, making **Hard the hardest difficulty** and Brutal the easiest - measured, not yet fixed (`difficulty-columns-vs-curve`). Three model corrections landed with it, all in `gm balance`: the tallest ground HALVES (`scr_zomb_pathSpeed`'s `== load_max` test, so z=12 walks like z=6 and the slowest non-water ground is z=11); the shot cycle is read from `obj_tower/Create_0` and charged everywhere, including `policy.plan`'s ranking key, which moved the closed form's verdicts ~35% HARSHER (it is now the pessimistic tool - the sim is the arbiter on outcomes); and the deploy countdown is 3s + 5.9s + one frame. §4.1 and checkpoints 13-14 record the numbers. |
-| 2026-10-04 | v1 created out of the `goal.md` design review. All values first-pass; every one is expected to move in Phase 6. |
-| 2026-10-04 | Mastery redesigned on the user's call: clovers now raise the tower **floor and cap together** (`start = cap − 4`), so the money climb stays four rungs at every mastery. Seeds consequently buy **content only** (§2.3), and candy gained **levels 1–10** bought with shards (§6.4) as the game's unbounded shard sink. |
-| 2026-10-04 | Added the **special (rare) candies** (§6.5): 🍊 Blood Orange (pity fill ×1.10 → ×2.00) and 🍯 Money Honey (+15% → +29% kill money). Tier 4, 35 shards, gated, and the only candies that never stack. The shard one was reframed from "+10% drop rate" to pity fill because a +10% on 0.01% is imperceptible (§5.2's own rule), and it now also exposes the pity counter. Fixed the Growth tree's in-run money node from +75% to **+15%**, which contradicted the whole Harvest branch (+5%). |
-| 2026-10-04 | Candy redesigned from **stacking** to **duration** on the user's call: magnitude never stacks, each candy is 30 s, consuming more of a type *adds* time, and a clover track (§3.5) buys up to **+100%** duration. The +2% step became **+10%** (ten purchases, not fifty) so the +100% cap is honest rather than 2^49 clovers away; total 10,230 ☘️, making it the game's longest single clover sink. The timer counts **game frames** and ticks **only while a wave is live**. This is also the rule that a doubling ladder may only ever be attached to a knob that cannot break the power curve. |
-

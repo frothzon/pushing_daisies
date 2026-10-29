@@ -1,48 +1,12 @@
-/// @description  The monster ROSTER: one struct per creature, its four
-///               animations read BACK BY NAME - and the one place a monster's
-///               art is looked up.
+/// @description Shared, read-only monster art rigs, keyed by creature and slot.
 ///
-/// WHY THIS FILE EXISTS (LL-081)
-/// -----------------------------
-/// A rig used to be a bare array - `array(walk, idle, attack, die)` - copied
-/// onto every instance by scr_level_spawn and then read by MAGIC INDEX from
-/// four different places: scr_zombie_emerge took `sprite_array[0]`, the walk
-/// and idle came from `zomb_art_play(sprite_array, ZOMB_ANIM.x)`, and the kill
-/// and the fall both asked for `ZOMB_ANIM.die`.  Every one of those reads is
-/// correct in isolation, and together they were unanswerable: a corpse that
-/// played its WALK frames reported no error anywhere, because a missing slot
-/// answers -1 and "change nothing" is a legal answer.
-///
-/// So the art is a STRUCT now, built once per creature from the same rows
-/// scr_setupSpawning writes (`spawn_mon` / `spawn_boss`), cached in the global
-/// roster, and pulled by the instance:
-///
-///     mon_roster()                 - the array of structs, built by
-///                                    mon_roster_build() from both banks
-///     mon_rig_find(name)           - the struct for one creature
-///     zomb_rig()                   - the CALLING monster's struct (pull, and
-///                                    self-heal from its own row if the roster
-///                                    has no answer)
-///     mon_rig_slot(rig, anim)      - one sprite, by NAME, or -1
-///     mon_rig_play(rig, anim, s)   - switch to it and return it, or -1
-///
-/// A slot is now named (`rig.die`) rather than counted (`_art[3]`), so a row
-/// whose slot list is short or reordered is a named miss the tests can name
-/// too - and a rig with NO die art says so in the log once per creature
-/// instead of quietly keeping the walk cycle (mon_rig_warn_no_die).
-///
-/// THE STRUCT IS READ-ONLY.  One struct is shared by every monster of a
-/// creature, so a state must never write `rig.walk = ...`: a monster changes
-/// its own `sprite_index`, the rig is the table.  Only mon_rig_from() writes.
+/// mon_roster_build() caches one rig per spawn row; zomb_rig() returns the
+/// calling monster's rig. Read slots with mon_rig_slot()/mon_rig_play(), never
+/// positional sprite_array accesses (LL-081). Missing slots return -1; missing
+/// die art logs once per creature. Only mon_rig_from() writes rig fields.
 
-/// Provenance for a session that needs to see WHICH art a corpse fell with.
-///
-/// ON while LL-081 is being confirmed.  It is ungated on purpose -
-/// `show_debug_message`, not print() - because global.devMode is FALSE in a
-/// normal build (initialize_game), which is exactly why the ZOMB/LEVEL lines
-/// that would have answered this never appeared in the run it was found in.
-/// Flip it to false (or delete the two callers) once the die sheets are
-/// confirmed on screen; leaving it on costs two lines per corpse.
+/// Ungated trace for validating die art in normal builds. Disable after
+/// validation; it logs each rig at boot and each corpse once.
 #macro ZOMB_RIG_TRACE true
 
 /// The sprite in one slot of a row's array, or -1 when this creature has no
@@ -50,7 +14,17 @@
 /// wrong (LL-002: an editor's typo must not be a fatal error in a Draw event).
 function mon_rig_pick(_art, _slot) {
 	if(!is_array(_art)) return -1;
-	if(!is_real(_slot)) return -1;
+	/// NO is_real() ON THE SLOT (LL-083, LL-034's shape).  _slot is a
+	/// ZOMB_ANIM constant, and enum values are stored as int64s - the
+	/// manual's is_real page says so outright ("This function will return
+	/// false for any enum values as they are stored as int64s") - so the
+	/// is_real(_slot) line that used to be here answered FALSE for every
+	/// perfectly good slot.  Every rig was then built with
+	/// walk/idle/attack/die all -1, which is the "every monster is a
+	/// 32x32 still (spr_mon)" report: the boot trace said
+	/// `slots=4 walk=none` while the art sat in the row.  The bounds
+	/// checks below are the real guards; the slot is a compile-time
+	/// constant, not data anyone can mistype.
 	if(_slot < 0) return -1;
 	if(_slot >= array_length(_art)) return -1;
 
@@ -117,15 +91,8 @@ function mon_rig_slot(_rig, _anim) {
 	return _spr;
 }
 
-/// Play one slot, and return the sprite now on the instance (or -1).
-///
-/// ONLY SWITCHING ON CHANGE (2026-10-18, LL-030's sibling): the walking state
-/// runs this every step, and re-assigning image_index = 0 every step would
-/// freeze the animation on frame 0 - a monster that slides along without
-/// moving its legs.  A cycle already playing is left alone, so the call is
-/// idempotent AND it answers the sprite either way, which is what lets the
-/// fall tell "this corpse has a sheet to watch" from "it kept the art it died
-/// in" (LL-079, scr_zombie_die).
+/// Play a slot and return its sprite, or -1. Replaying the current sprite is
+/// a no-op so per-step callers do not reset image_index (LL-030, LL-079).
 function mon_rig_play(_rig, _anim, _secs) {
 	var _spr = mon_rig_slot(_rig, _anim);
 	if(_spr == -1) return -1;
@@ -136,6 +103,75 @@ function mon_rig_play(_rig, _anim, _secs) {
 	/// a name, so the ANIM line in the log says WHICH rig was timed
 	image_speed  = scr_animSpeedForSeconds(_spr, _secs, sprite_get_name(_spr));
 	return _spr;
+}
+
+/// Is _spr one of the four sheets this rig names?  The question the heal in
+/// scr_zomb_step asks - "is this monster wearing its OWN art?" - and the one
+/// state a monster can be in that answers no: still holding the object's
+/// placeholder sheet (LL-082).  A walker holds its walk sheet and a corpse
+/// holds its die sheet, both of which are IN the rig, so the answer can never
+/// undo a fall or a cycle that is already correct.
+function mon_rig_has(_rig, _spr) {
+	if(!is_struct(_rig)) return false;
+	if(!sprite_exists(_spr)) return false;
+
+	for(var _i = 0; _i < 4; _i++){
+		if(mon_rig_slot(_rig, _i) == _spr) return true;
+	}
+	return false;
+}
+
+/// Say it ONCE per creature which sheets its class was given - the line that
+/// makes "every monster plays the same placeholder sprite" answerable from the
+/// log instead of from a screenshot.  The die slot is NAMED here, never played
+/// here: falling is the DIE state's job (mon_rig_play(_rig, ZOMB_ANIM.die, ...))
+/// and dressing a live monster in its corpse sheet would draw a body that has
+/// not fallen yet.
+function mon_rig_report_spawn(_rig) {
+	if(!is_struct(_rig)) return;
+
+	if(!variable_global_exists("mon_spawn_reported")) global.mon_spawn_reported = {};
+	var _key = string(_rig.name);
+	if(variable_struct_exists(global.mon_spawn_reported, _key)) return;
+	global.mon_spawn_reported[$ _key] = true;
+
+	var _walk = mon_rig_slot(_rig, ZOMB_ANIM.walk),
+	    _die  = mon_rig_slot(_rig, ZOMB_ANIM.die);
+
+	/// every read guarded: sprite_get_name on -1 is a fatal error (LL-012,
+	/// LL-002)
+	scr_meta_log("ZOMB", "SPAWN ", _key,
+	             "  walk=", sprite_exists(_walk) ? sprite_get_name(_walk) : "none",
+	             "  die=",  sprite_exists(_die)  ? sprite_get_name(_die)  : "none");
+}
+
+/// Dress the CALLING monster in its class's own WALK sheet.  Returns the
+/// sprite, or -1 when the class has no walk art (the sprite is then left
+/// alone, exactly like mon_rig_slot's -1 - never blanked).
+///
+/// obj_mon's own sprite is spr_mon: ONE 32x32 frame, a placeholder.  Until this
+/// existed, the only thing that ever replaced it was a state's entry code, so
+/// a monster created anywhere other than scr_level_spawn - a test, a dev seed,
+/// an instance placed by hand - played one still picture as its walk AND as
+/// its death while fifteen rigs of real art sat unused (LL-082).  Called from
+/// scr_level_spawn, so a spawn is born in its class art, and from the heal at
+/// the top of scr_zomb_step, so nothing can leave a monster in the placeholder
+/// however it was created.
+///
+/// Re-dressing the sheet already playing is a no-op, so a per-step caller never
+/// resets a cycle in progress (LL-030, LL-079).
+function mon_rig_dress(_rig) {
+	var _walk = mon_rig_slot(_rig, ZOMB_ANIM.walk);
+	if(_walk == -1) return -1;
+
+	mon_rig_report_spawn(_rig);
+	if(sprite_index == _walk) return _walk;
+
+	sprite_index = _walk;
+	image_index  = 0;
+	image_speed  = scr_animSpeedForSeconds(_walk, ZOMB_CYCLE_SECS,
+	                                       sprite_get_name(_walk));
+	return _walk;
 }
 
 /// "Grumble-Mulch slots=4 walk=spr_grumble_walk idle=... attack=... die=..."
@@ -165,13 +201,8 @@ function mon_rig_trace(_rig, _where) {
 	show_debug_message("RIG   " + string(_where) + "  " + mon_rig_report(_rig));
 }
 
-/// The decisive line for a fall: what the rig holds, what the corpse was
-/// wearing, what it wears now, and whether that was a CHANGE.
-///
-/// `changed=false` with `die=spr_x_die` means the apply step is at fault;
-/// `die=none` means the row/roster never carried the slot; `now=` naming the
-/// die sheet means the art was right all along and the report that said
-/// otherwise was reading something else.  Three causes, one line.
+/// Trace the rig and sprite transition. changed=false or die=none distinguishes
+/// an apply failure from a missing slot.
 function mon_rig_trace_die(_rig, _was) {
 	if(!ZOMB_RIG_TRACE) return;
 

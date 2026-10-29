@@ -1,32 +1,17 @@
-Yes. I think this becomes much stronger if we make **Seeds = content**, **Four-Leaf Clovers = permanent power**, **Blood Shards = long-term prestige/economy**, and **Candy = temporary run power**. That gives every reward a distinct purpose and prevents one currency from doing everything.
-
-I'd structure the entire meta-game around four layers:
-
 # Garden Defense TD+ — Core Progression
 
-## 1. The Four Reward Currencies
+## 1. The four reward currencies
 
-| Currency | Primary Purpose | Earned From | Power Type |
+| Currency | Purpose | Earned from | Power type |
 | --- | --- | --- | --- |
-| 🌱 **Seeds** | Unlock towers | Clearing a stage (full on first clear, 25% on repeats) | Permanent content |
+| 🌱 **Seeds** | Unlock towers | Stage clears: full on first clear, 25% on repeats | Permanent content |
 | ☘️ **Four-Leaf Clovers** | Permanent upgrades | Remaining lives | Permanent power |
 | 🩸 **Blood Shards** | Meta-tech tree | Extremely rare zombie drops | Long-term progression |
-| 🍬 **Candy** | Temporary buffs | Endless + loot boxes | Run-specific power |
+| 🍬 **Candy** | Temporary buffs | Endless mode and loot boxes | Run-specific power |
 
-The important distinction:
-
-**Seeds unlock what you can play.**\
-**Clovers make your garden stronger.**\
-**Blood Shards improve your account over time.**\
-**Candy lets you break the rules temporarily.**
-
----
-
-One more economy sits *underneath* those four, and it is deliberately not a meta currency:
-
-**Money is the in-run economy.** It starts at 25, zombies pay 1–3, bosses pay `wave + 1`, and it buys placement, upgrades and refinement **inside the stage only**. It is left behind when the stage ends. Everything else in this document is *between-run*.
-
-That split is the spine of the whole design:
+**Money** is the separate in-run economy: start at 25, earn 1–3 per zombie and
+`wave + 1` per boss, and spend on placement and upgrades. It resets after the
+stage; the four currencies above persist between runs.
 
 > **Money is the moment. Seeds are the campaign. Clovers are the garden. Shards are the account. Candy is the run.**
 
@@ -84,38 +69,11 @@ The player can therefore choose:
 
 # 3. Four-Tower Loadout
 
-Before entering a stage:
-
-**Choose exactly 4 towers. Only those 4 can be placed in that stage.**
-
-That's important.
-
-It means having 20 towers doesn't mean every stage becomes overwhelming.
-
-The player has to answer:
-
-> "What four plants are best for this problem?"
-
-This creates a natural counter-system.
-
-For example:
-
-**Swamp Stage**
-
-- Fast zombies
-- Armored zombies
-- Regenerating zombies
-
-The player might bring:
-
-- Daisy Pusher — cheap DPS
-- Burning Ivy — regeneration counter
-- Slender Mandrake — multi-target
-- New slow/control tower
-
-The fifth tower they own doesn't matter because it wasn't selected.
-
-This also makes unlocking towers exciting without making the actual battlefield cluttered.
+**Choose exactly four towers before each stage; only those four can be placed.**
+This keeps the battlefield readable and makes each loadout a counter to the
+stage's enemies. For a Swamp stage with fast, armored, and regenerating zombies,
+a loadout could combine Daisy Pusher (cheap DPS), Burning Ivy (regeneration
+counter), Slender Mandrake (multi-target), and a slow/control tower.
 
 ## 3.1 The Loadout Rule (locked)
 
@@ -534,37 +492,16 @@ I'd deliberately mix **real botanical references + terrible puns + slightly absu
 
 # 11. Four-Leaf Clover System
 
-This becomes the player's **permanent garden technology**.
-
-At the end of every stage:
-
-> Remaining lives → Four-Leaf Clovers
-
-Example:
-
-Player finishes with:
-
-**17 / 20 lives**
-
-They receive:
-
-**17 Four-Leaf Clovers**
-
-This makes every life meaningful.
-
-But there's an important balancing question:
-
-### Don't make clovers completely proportional to lives forever.
-
-Otherwise players can farm easy stages.
-
-Instead:
+Clovers buy permanent garden technology. At stage end:
 
 **Clover reward = remaining lives × (1 + 0.25 × (difficulty − 1))**
 
-then diminishing returns on repeats: first clear ×1, second ×0.5, third and later ×0.25 (floor).
+For example, 17 / 20 lives on Normal pays 17 clovers. Repeat-clear multipliers
+are first ×1, second ×0.5, third and later ×0.25 (floor), preventing easy-stage
+farming.
 
-**Life is a per-stage budget, not a campaign pool.** Every stage starts with 20 lives (§12 *Vitality* can raise the cap). That is the only way "remaining lives" stays a meaningful, repeatable reward across 60 stages — a campaign-wide pool would either be gone by region 2 or so large that clovers stopped tracking skill. Failing a stage keeps everything already banked; it simply pays no stage reward, and *Untouched* (§25) waits for the next attempt.
+Each stage starts with **20 lives**; §12 *Vitality* can raise the cap. Failure
+keeps previously banked currency but pays no stage reward or new badges.
 
 ---
 
@@ -616,31 +553,8 @@ Improves economy.
 
 # 13. Level-Cap Progression
 
-This is one of the strongest uses for Clovers.
-
-Start:
-
-**Maximum tower level = 5**
-
-Eventually:
-
-**6 → 7 → 8 → 9 → 10**
-
-But don't let every tower automatically become Level 10.
-
-Instead, the tech tree unlocks:
-
-> **Garden Mastery I — Tower Cap 6**
-
-Then:
-
-> **Garden Mastery II — Tower Cap 7**
-
-etc.
-
-This creates a meaningful long-term objective.
-
-**The five master nodes:**
+Garden Mastery raises the account-wide tower cap from 5 to 10 and the arrival
+level with it:
 
 | Node | Effect | Cost |
 | --- | --- | --- |
@@ -650,48 +564,26 @@ This creates a meaningful long-term objective.
 | Garden Mastery IV | tower cap **9**, arrive at **5** | 900 ☘️ |
 | Garden Mastery V | tower cap **10**, arrive at **6** | 1500 ☘️ |
 
-Cap 6 lands around stage 10–12 on a Normal run; cap 10 is the endgame chase.
-
-**Mastery is account-wide.** One garden, one floor, one ceiling — which is what "clover" means as a currency, and it keeps the Garden Book small enough to read at a glance. The cost of that simplicity is that each node is a milestone rather than a per-tower project: the *arrival* level rises with the campaign, so by region 4 a freshly placed tower already fights like an old L4 one, and the four rungs above it are what money is for.
-
-*(If per-tower floors are ever wanted, it is a data change on the same resolver — a master node would name a tower instead of the garden — not a rewrite. Build the account-wide version first.)*
-
-**Specializations are never bought.** They arrive automatically at L3 (§5, §27.5) — the choice *is* the reward — so the Seed Tree does not gate them (§24).
+Cap 6 should arrive around stages 10–12 on Normal; cap 10 is the endgame chase.
+One garden shares one floor and ceiling. Per-tower floors are a possible data
+extension, not part of v1. Specializations unlock automatically at L3 and are
+never bought (§5, §24, §27.5).
 
 ---
 
 # 14. Blood Shards
 
-I like this idea, but the **0.01% drop rate needs to be handled carefully**.
-
-At 0.01%:
-
-**1 in 10,000 zombies**
-
-That makes Blood Shards feel genuinely mysterious.
-
-But we should add a **pity mechanism**.
-
-Otherwise a player could theoretically kill 100,000 zombies and receive nothing.
-
-I'd use:
-
-> Base Blood Shard chance: **0.01%** — 1 in 10,000
-
-plus a real pity mechanism, because "increases slightly" is not implementable:
+Base drop chance is **0.01% (1 in 10,000 zombies)**, with pity to bound bad luck:
 
 ```
 p = kills since the last shard
-c = 0.0001                                          # base
-if p >= 8000: c = 0.0001 + 0.00003 * ((p-8000)/1000)  # soft pity
-if p >= 20000: c = 1.0                                # hard pity: guaranteed
+c = 0.0001                                            # base
+if p >= 8000:  c = 0.0001 + 0.00003 * ((p-8000)/1000) # soft pity
+if p >= 20000: c = 1.0                                # guaranteed
 ```
 
-Then receiving a shard resets the counter (`p = 0`).
-
-A stage is roughly 100–400 kills, so **the first shard lands around region 3–4** — genuinely a "holy crap" moment, but reachable inside a single campaign rather than a statistical rumour. **Bosses always drop one shard**, which decouples the chase from a single dice roll.
-
-This maintains the "holy crap!" feeling without making the system frustrating. (The original paste spliced the closing paragraph of §26 into this sentence; it now ends where it should.)
+A shard resets `p` to 0. At roughly 100–400 kills per stage, the first shard
+should arrive around regions 3–4. **Bosses always drop one shard.**
 
 ---
 
@@ -741,9 +633,7 @@ Unlocks special Blood Shard content.
 
 # 16. Second Blood Shard Economy: Candy
 
-This is where I think your idea gets particularly good.
-
-**Shards do three different things to candy, and the third one is what keeps shards relevant forever.** They are deliberately separate:
+Shards unlock recipes, buy permanent levels 1–10, and purchase stock:
 
 | Thing | What it is | Where it comes from |
 | --- | --- | --- |
@@ -751,17 +641,13 @@ This is where I think your idea gets particularly good.
 | 🍬 **Candy level** | permanent power of that candy, **1 → 10** | 🩸 Blood Shards, on an escalating cost curve |
 | 🍬 **Candy stock** | the units you actually spend in a run | 🩸 Endless loot boxes, plus a shard shop at 1 shard = 5 candies |
 
-That resolves the three-sources problem in §1/§16/§20 without removing any of them, and it gives blood shards a *reliable*, never-finished sink.
+Nine paid levels per recipe provide the ongoing shard sink. Duration is bought
+with ☘️ clovers instead, rising from 30 to 60 seconds (`economy.md` §3.5).
+🍊 **Blood Orange** accelerates shard pity and exposes its counter; 🍯 **Money
+Honey** increases kill money. Both affect economies rather than combat
+(`economy.md` §6.5).
 
-**And a fourth thing shards do not buy: time.** Candy's *duration* comes from ☘️ clovers — a doubling ladder from 30 s to 60 s per candy (`economy.md` §3.5). That is deliberate: duration is the one candy knob that cannot break the power curve, which makes it the only safe home for a doubling ladder, and it gives clovers something to want long after every tree and every master node is bought.
-
-**Why candy has levels.** The blood tree is finite — five tiers and it is done. Candy recipes are finite — eight of them. Candy *levels* are not: eight candies × nine paid levels is a refinement track that can never be exhausted. It turns every shard into something a player still wants, which is exactly what a rare drop needs in order to stay interesting a hundred hours in. **Candy levels are the game's only unbounded shard sink, on purpose.**
-
-Candy becomes the game's temporary power system.
-
-**Two of the candies are special.** A rare, meta-flavoured pair — 🍊 **Blood Orange** (kills count toward the next blood shard faster) and 🍯 **Money Honey** (+money from every kill) — act on the *economies* rather than on combat. They answer *"what kind of run am I having?"* instead of *"how do I win this run?"*, and Blood Orange exists partly to make the pity counter **visible** — an invisible statistical buff is not a reward. Full rules and numbers: `economy.md` §6.5.
-
-For example:
+Level-1 examples:
 
 ### 🍬 Red Licorice
 
@@ -1192,37 +1078,19 @@ That gives completionists something to chase without contaminating the game's ec
 
 # 26. The Result
 
-The game now has **three fundamentally different reasons to replay a stage**:
+Each system supports a different replay motive:
 
-### "I need Seeds."
+| Motive | Activity |
+| --- | --- |
+| Progression | Campaign and Seeds |
+| Mastery | Higher difficulties |
+| Optimization | Preserve lives for Clovers |
+| Long-term chase | Kill zombies and bosses for Blood Shards |
+| Experimentation | Candy builds |
+| Score and push-your-luck | Endless mode |
+| Completionism | Garden Badges |
 
-Play campaign.
-
-### "I need Clovers."
-
-Try to finish with as many lives as possible.
-
-### "I need Blood Shards."
-
-Kill as many zombies as possible.
-
-And then:
-
-### "I want to see how far I can get."
-
-Play Endless.
-
-That is a very healthy foundation for replayability because the player isn't just grinding one resource.
-
-**Campaign = progression.**\
-**Difficulty = mastery.**\
-**Lives = optimization.**\
-**Blood Shards = long-term chase.**\
-**Candy = experimentation.**\
-**Endless = score/push-your-luck.**\
-**Badges = completionism.**
-
-The next thing I'd lock down before designing dozens of towers is the **actual numerical economy**: starting Seeds, tower unlock costs, Clover costs, Blood Shard probabilities/pity, Candy prices, tower level costs, stat growth per level, and Endless loot-box scaling. Once those numbers are established, we can design the 20-ish towers around a stable mathematical framework instead of having to rebalance the entire progression system later.
+Canonical values and costs live in `economy.md`.
 
 ---
 
@@ -1361,33 +1229,3 @@ So a Normal-only player **cannot** unlock the whole roster — they have to meet
 5. Towers 12 → 8
 
 **Never cut:** the save, the Deploy screen, the closed loop at region 1, or the four-currency identity.
-
-## 28.6 Reconciliation log — every discrepancy found in review, and its resolution
-
-| Was | Now |
-| --- | --- |
-| Seeds from "campaign completion" | per stage, first clear full / repeat 25% |
-| In-run money absent from the brief entirely | named as the fifth, run-scoped economy (§1) |
-| "2–3 new zombies × 6 regions" | 1 per region + variants (§2, §28.1) |
-| 20 tower names vs "20-ish towers" | a fixed 12-slot roster (§10.1) |
-| Candy from three sources, one contradicting §16 | recipes (shards) vs stock (boxes/shop) (§16) |
-| "Remaining lives" with no life model | life is a per-stage budget of 20 (§11) |
-| 0.01% drop rate with +10%/+25% nodes | a real pity curve, and nodes in −kills-required (§14, §15) |
-| "increases the chance slightly" | the explicit formula in §14 |
-| Wave 14.4 vs 15 | 15, with the formula as the authority (§19) |
-| §20's randomised box vs §21's choice of three | a choice, tiers govern quality (§20, §21) |
-| §22 stopping at wave 100 | a 90-wave cycle with per-cycle multipliers (§22) |
-| "Wave 50: two paths" | two alternating spawn points (§22) |
-| Seed Tree unlocking specializations | specs are automatic at L3; the tree grants mastery (§24, §13) |
-| "Frugal: less than X" | 50% of median spend (§25) |
-| Cosmetic rewards assumed | medals in v1, cosmetics deferred (§25) |
-| §14's spliced sentence | repaired (§14) |
-| Loadout undefined | a full spec, and the first-game case in §3.1 |
-| Seeds as a power currency (levels 6–10, 1,180 🌱 per tower) | seeds are **content only**; clovers grant the tower **floor and cap** (§4, §13), and leftover seeds convert to clovers at 20:1 |
-| Mastery raising only the cap | one node raises floor **and** cap, so the money climb is always four rungs — money never becomes irrelevant (§4) |
-| Candy had recipes and stock only | candy also has **levels 1–10** bought with shards — the game's unbounded shard sink, which is what keeps a rare drop interesting forever (§16, `economy.md` §6.4) |
-| Candy as a combat-only system | two **rare meta candies** act on the shard and money economies, never stack, and Blood Orange makes the pity counter visible so the buff can actually be felt (§16, `economy.md` §6.5) |
-| A "+10% blood shard drop rate" candy | reframed to **pity fill rate** (kills count 1.10× → 2.00×), because +10% on a 0.01% chance is 0.011% and no player can perceive it — the §15 rule applied to candy |
-| Candy stacking additively (10 per type, 20 in total, +190% spike builds) | candy **does not stack at all**: consuming more of a type extends its timer — 30 s per unit, up to 60 s with the clover track — so the ceiling is **time**, not magnitude (§17, `economy.md` §6.3) |
-| A +2%-per-purchase clover duration ladder to +100% | ten purchases at **+10%** instead: +2% × 50 purchases with a doubling price is 2^49 clovers, so the cap would be a lie in the UI. Same cost curve, honest cap, same total (10,230 ☘️) |
-

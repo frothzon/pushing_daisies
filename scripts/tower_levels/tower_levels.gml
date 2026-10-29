@@ -1,20 +1,8 @@
-/// @description  The tower level ladder - what a level is worth, and what it
-/// costs (economy.md 4.3/4.4, goal.md 4/13, roadmap 2.4 + 2.6).
+/// @description Tower level multipliers, prices, mastery, and attack timing.
 ///
-/// WHY THIS REPLACED DOUBLING.  A level used to be free power: every purchase
-/// added the tower's CURRENT damage, so an L5 did 16x an L1 - and
-/// scr_level_difficulty was written around exactly that.  These multipliers are
-/// measured against the tower's BASE instead, so a rung is a fixed, visible
-/// step and the numbers stay legible all the way to L10.
-///
-/// THE TWO HALVES ARE ONE CHANGE.  A ladder of ~2x and a wave curve are tuned
-/// against each other; landing one without the other makes the game trivial
-/// (16x towers) or impossible (16x-tuned waves with 2x towers).  economy.md
-/// 4.4 and goal.md 4 both say so, and they are right.
-///
-/// FLOOR AND CAP MOVE TOGETHER (`start = cap - 4`, goal.md 4/13): the garden
-/// raises both by one level per master node, so money always buys the same
-/// four rungs and the relative value of money never changes.
+/// Multipliers always use base stats, never current stats, so levels do not
+/// compound. Mastery raises floor and cap together; money always buys four
+/// rungs (economy.md §4.3–4.4; goal.md §4, §13).
 
 /// The ladder: level, damage, fire-rate, range (all measured against base).
 function tower_level_table() {
@@ -127,34 +115,9 @@ function tower_data_at_level(_base, _level, _clover_dmg, _clover_rate) {
 }
 
 
-/// The ring's colour for a tower level, or -1 for "no ring" (level 1).
-///
-/// THE RING IS THE LEVEL.  A tower's size no longer changes with its level
-/// (choose-upgrade-scale), so this is the cue that says how far a tower has
-/// come - and level 1 has NONE, so a freshly placed tower reads as the art
-/// does.  It is indexed by ABSOLUTE level and divided by a FIXED 10, never by
-/// the current cap, which is what goal.md 4 rule 3 asks for: a tower placed at
-/// floor 6 must not look like one placed at floor 3, whatever the garden has
-/// unlocked.
-///
-/// THE FIRST FIVE LEVELS ARE rayu's PALETTE (tower-level-palette, 2026-10-15):
-/// 2 RED, 3 ORANGE, 4 GREEN, 5 BLUE - the four rungs money buys on a garden with
-/// no mastery, which is every tower the build can make today (mastery is seeded
-/// 0 in scr_meta_schema and nothing raises it yet).  Level 1 is the floor and
-/// has no ring, so the ladder reads as five steps of which the first is "none".
-///
-/// LEVELS 6-10 ARE NOT NAMED YET.  They are the mastery ladder (goal.md 4: the
-/// floor and the cap each rise one level per master node) and nothing in the
-/// build can reach them, so they still carry the first-pass cool ramp that ends
-/// in gold at the cap.  That is a separate question from the four colours above
-/// and it is on the board (tower-ring-mastery-palette) rather than settled here.
-///
-/// Built with make_colour_rgb() and NOT with a $RRGGBB literal: GameMaker's hex
-/// colour literals are $BBGGRR, so $FFD24A would come out blue.  NOT with
-/// c_red/c_green/c_blue either: GameMaker's c_green is (0,128,0), a DARK green
-/// that barely registers under the additive blending the ring is drawn with.
-///
-/// Guarded so a bad level returns "no ring" rather than throwing (LL-002).
+/// Ring colour by absolute level; level 1 and invalid levels return -1.
+/// Levels 2–5 use the approved palette; 6–10 remain provisional. Use
+/// make_colour_rgb(): GML hex literals are BGR and c_green is too dark here.
 function tower_level_outline(_level) {
 	if(!is_real(_level)) return -1;
 
@@ -196,15 +159,8 @@ function tower_outline_alpha(_hover) {
 	return 0.25;
 }
 
-/// ---- the ATTACK TIMER (LL-054) -------------------------------------------
-///
-/// A tower's fire rate is a COOLDOWN, and these two functions are the two
-/// halves that used to be one number.  `frame_number = room_speed/fire_rate`
-/// was both the gap between shots AND the length of the attack animation, so
-/// a Pina Collider (0.10/s) swung for 600 frames and a zombie crossed its
-/// range long before the strike frame at the end of that swing - it never
-/// landed a hit.  Now the period is the wait (obj_tower/Step_0 ticks it in
-/// every state, so an idle tower is READY) and the swing is art.
+/// Fire rate controls cooldown, not animation length. obj_tower/Step_0 ticks
+/// the cooldown in every state; attack art has its own duration (LL-054).
 
 /// The gap between two shots, in frames.  Never 0 and never negative, so a
 /// bad rate cannot freeze the timer (LL-002's shape of guard).
