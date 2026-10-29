@@ -38,4 +38,11 @@ function scr_level_boot() {
 	             " -> depth ", scr_depth_band(0), " .. ",
 	             scr_depth_band(room_height),
 	             "  (plants, monsters, gravestones)");
+
+	/// ---- the Spriter players (scr_scml_rig) ---------------------------
+	/// A fresh room entry means every old player's monster is gone: remove
+	/// them all, clear the caches, and PRELOAD the fifteen definitions so
+	/// no first spawn ever pays the decode.  Runs on EVERY entry (LL-049),
+	/// so a room_restart() can never inherit a stale player list.
+	zomb_scml_reset();
 }

@@ -54,6 +54,9 @@ function mon_rig_from(_name, _art, _tag) {
 
 	_s.name   = string(_name);
 	_s.tag    = is_string(_tag) ? _tag : "?";
+	/// the creature's Spriter entity, or "" (scr_scml_rig's name map): the
+	/// SCML half of the rig.  "" = the sprite sheets below are all there is
+	_s.scml   = zomb_scml_entity(_s.name);
 	/// how many slots the ROW actually had: 4 is what every creature should
 	/// say, and the boot trace prints it, which is the number that settles
 	/// "the rig is short" without an argument (LL-057's lesson, LL-081's bug)
@@ -93,7 +96,17 @@ function mon_rig_slot(_rig, _anim) {
 
 /// Play a slot and return its sprite, or -1. Replaying the current sprite is
 /// a no-op so per-step callers do not reset image_index (LL-030, LL-079).
+///
+/// The SCML half answers FIRST (scr_scml_rig): a rig whose creature has a
+/// Spriter entity plays its clip on the shared system, stretched to the
+/// CALLER'S seconds, and returns the CLIP NAME (a string) - so a state can
+/// tell which half answered (scr_zombie_die branches on is_string).  A
+/// creature with no entity, no clip, or no player falls through to the
+/// sheets below, exactly as before.
 function mon_rig_play(_rig, _anim, _secs) {
+	var _clip = zomb_scml_play(_rig, _anim, _secs);
+	if(is_string(_clip)) return _clip;
+
 	var _spr = mon_rig_slot(_rig, _anim);
 	if(_spr == -1) return -1;
 	if(sprite_index == _spr) return _spr;
@@ -112,6 +125,13 @@ function mon_rig_play(_rig, _anim, _secs) {
 /// holds its die sheet, both of which are IN the rig, so the answer can never
 /// undo a fall or a cycle that is already correct.
 function mon_rig_has(_rig, _spr) {
+	/// ---- the SCML half first (scr_scml_rig) --------------------------
+	/// "Wearing its own art" is "its player is playing one of its clips":
+	/// a walker holds walk, a corpse holds die, so the heal can never undo
+	/// a fall (LL-030, LL-080).  A FALSE here still answers through the
+	/// sheets below - that is the FALLBACK dressing the monster.
+	if(zomb_scml_active(_rig)) return true;
+
 	if(!is_struct(_rig)) return false;
 	if(!sprite_exists(_spr)) return false;
 
@@ -136,11 +156,14 @@ function mon_rig_report_spawn(_rig) {
 	global.mon_spawn_reported[$ _key] = true;
 
 	var _walk = mon_rig_slot(_rig, ZOMB_ANIM.walk),
-	    _die  = mon_rig_slot(_rig, ZOMB_ANIM.die);
+	    _die  = mon_rig_slot(_rig, ZOMB_ANIM.die),
+	    _scml = (variable_struct_exists(_rig, "scml") && is_string(_rig.scml)
+	             && _rig.scml != "") ? _rig.scml : "none";
 
 	/// every read guarded: sprite_get_name on -1 is a fatal error (LL-012,
 	/// LL-002)
 	scr_meta_log("ZOMB", "SPAWN ", _key,
+	             "  scml=", _scml,
 	             "  walk=", sprite_exists(_walk) ? sprite_get_name(_walk) : "none",
 	             "  die=",  sprite_exists(_die)  ? sprite_get_name(_die)  : "none");
 }
@@ -161,6 +184,17 @@ function mon_rig_report_spawn(_rig) {
 /// Re-dressing the sheet already playing is a no-op, so a per-step caller never
 /// resets a cycle in progress (LL-030, LL-079).
 function mon_rig_dress(_rig) {
+	/// ---- the SCML half first (scr_scml_rig) --------------------------
+	/// Born rigged: a class with an entity plays its walk clip, and the
+	/// no-restart rule inside zomb_scml_play keeps a per-step heal from
+	/// ever resetting a cycle in progress (LL-030, LL-079).  FALSE here
+	/// (no entity / no clip / no player) falls through to the sheets.
+	var _clip = zomb_scml_play(_rig, ZOMB_ANIM.walk, ZOMB_CYCLE_SECS);
+	if(is_string(_clip)){
+		mon_rig_report_spawn(_rig);
+		return _clip;
+	}
+
 	var _walk = mon_rig_slot(_rig, ZOMB_ANIM.walk);
 	if(_walk == -1) return -1;
 
@@ -185,6 +219,12 @@ function mon_rig_report(_rig) {
 		if(variable_struct_exists(_rig, "slots")){
 			_txt += " slots=" + string(_rig.slots);
 		}
+		/// the Spriter entity, when the class has one - so the boot trace
+		/// says "scml=Grumble-Mulch" for a rigged creature and "scml=none"
+		/// for one that is on its sheets (the falsifier reads at a glance)
+		if(variable_struct_exists(_rig, "scml") && is_string(_rig.scml) && _rig.scml != ""){
+			_txt += " scml=" + _rig.scml;
+		}
 	}
 
 	for(var _i = 0; _i < 4; _i++){
@@ -208,6 +248,14 @@ function mon_rig_trace_die(_rig, _was) {
 
 	var _now = sprite_exists(sprite_index) ? sprite_get_name(sprite_index) : "none",
 	    _was_txt = sprite_exists(_was) ? sprite_get_name(_was) : "none";
+
+	/// a rigged corpse wears a CLIP, not a sprite - name the clip so the
+	/// line stays honest (a stale sprite_index is the placeholder, by
+	/// design, when the SCML half owns the fall)
+	var _st = zomb_scml_state();
+	if(!is_undefined(_st) && is_string(_st.animation)){
+		_now = "scml:" + _st.animation;
+	}
 
 	show_debug_message("RIG   die " + string(id) + "  " + mon_rig_report(_rig)
 		+ "  was=" + _was_txt

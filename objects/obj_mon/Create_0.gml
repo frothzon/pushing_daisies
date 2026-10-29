@@ -125,6 +125,12 @@ dying_time = 0;
 /// the same reason as `dying`: the DIE entry code is not the only reader.
 zomb_die_steps  = 0;     /// the duration the art was asked for, in steps
 zomb_die_art    = false; /// is there a sheet to watch?
+/// TRUE when the kill put a die CLIP on the Spriter player instead of a
+/// sheet (scr_scml_rig): the player's playing going FALSE at the clip's
+/// end is then the exit clock, and the sheet-wrap logic does not run.
+/// Declared here for the same reason as zomb_die_art: the DIE entry code
+/// is not the only reader (LL-002).
+zomb_die_scml   = false; /// is the fall a Spriter clip?
 zomb_die_prev   = 0;     /// the frame drawn last, to see the sheet wrap
 zomb_die_warned = false; /// has the backstop already said its piece?
 

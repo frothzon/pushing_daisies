@@ -10,6 +10,16 @@ meta icons, four tower trios, and eight shot effects. The Graveyard atlas and
 the boss/zombie rigs remained outside that drop. Naming and unreferenced-sprite
 cleanup is tracked by `art-cleanup-unreferenced`.
 
+Since **2026-10-28** the monster rigs are primarily **Spriter SCML** (the
+SCML-custom import, `scripts/scr_scml_spriter_interface_system`): the
+`zombies` collection carries 15 entities with four clips each
+(walk/idle/attack/die), played through `scripts/scr_scml_rig` with pose
+evaluation at 30hz. The four-slot sheets remain the automatic, loudly-logged
+fallback for any creature without an entity, and the portraits still come
+from the bank rows. Timing is the game's, not the art's: `ZOMB_CYCLE_SECS`
+and `ZOMB_DIE_SECS` (`scr_zomb_art`) stretch each clip, whatever it was
+authored as.
+
 ---
 
 ## 0. Open art jobs

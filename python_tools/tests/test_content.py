@@ -1376,3 +1376,151 @@ class MonsterStateMachineTests(unittest.TestCase):
         """D2: a tower brush arms Alarm_0; a corpse must refuse to be re-pathed."""
         self.assertRegex(self.read(MON_ALARM_REL), r"(?m)^if\s*\(dying\)\s*exit;")
         self.assertIn("alarm[0] = -1;", self.read(ZDEATH_REL))
+
+
+# ---------------------------------------------------------------------------
+# SCML-custom: every monster draws as its Spriter rig when its class has an
+# entity; the pose is evaluated at half the room's rate, staggered.
+# ---------------------------------------------------------------------------
+
+SCML_REL = "scripts/scr_scml_rig/scr_scml_rig.gml"
+SYSTEM_REL = "scripts/scr_scml_spriter_interface_system/scr_scml_spriter_interface_system.gml"
+MON_DRAW_REL = "objects/obj_mon/Draw_0.gml"
+MON_DIE_REL = "scripts/scr_zombie_die/scr_zombie_die.gml"
+LEVEL_CONTROL_STEP_REL = "objects/_levelControl/Step_0.gml"
+LEVEL_BOOT_REL = "scripts/scr_level_boot/scr_level_boot.gml"
+
+ENTITY_PAIR_RE = re.compile(r'"([A-Za-z][A-Za-z-]*)":\s*"([A-Za-z][A-Za-z-]*)"')
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class ScmlRigAdapterTests(unittest.TestCase):
+    """The SCML half answers first inside the rig seam; sheets stay the fallback.
+
+    SCML-custom (2026-10-28).  ONE shared SpriterInterfaceSystem plays every
+    monster's clips; the caller's seconds still win (set_speed stretches the
+    clip - LL-030's shape), the pose evaluates at SCML_POSE_HZ with a
+    per-monster phase (the "native 30fps" headroom), and a corpse is removed
+    when its die clip reports playing == false.  SEVEN of the fifteen bank
+    names differ from their SCML entities, so an explicit map is the only
+    thing standing between a creature and a silent sheet fallback (LL-082's
+    shape).  These tests pin that map and each seam behavior.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.adapter = _code_only(
+            (PROJECT_ROOT / SCML_REL).read_text(encoding="utf-8-sig"))
+        cls.system = (PROJECT_ROOT / SYSTEM_REL).read_text(encoding="utf-8-sig")
+        cls.roster = _code_only(
+            (PROJECT_ROOT / ROSTER_REL).read_text(encoding="utf-8-sig"))
+        cls.rows = _rows((PROJECT_ROOT / SPAWN_REL).read_text(encoding="utf-8-sig"))
+        cls.mon_draw = _code_only(
+            (PROJECT_ROOT / MON_DRAW_REL).read_text(encoding="utf-8-sig"))
+        cls.die = _code_only(
+            (PROJECT_ROOT / MON_DIE_REL).read_text(encoding="utf-8-sig"))
+        cls.lc_step = _code_only(
+            (PROJECT_ROOT / LEVEL_CONTROL_STEP_REL).read_text(encoding="utf-8-sig"))
+        cls.boot = _code_only(
+            (PROJECT_ROOT / LEVEL_BOOT_REL).read_text(encoding="utf-8-sig"))
+
+    def _bank_names(self):
+        return {name for (_bank, _i), (name, _sprites) in self.rows.items()}
+
+    def _map_pairs(self):
+        start = self.adapter.index("global.scml_entity_map = {")
+        end = self.adapter.index("};", start)
+        return ENTITY_PAIR_RE.findall(self.adapter[start:end])
+
+    def test_every_bank_name_maps_to_an_scml_entity(self):
+        """Seven of the fifteen bank names differ from their entities.
+
+        A creature missing from the map resolves to "" and silently plays
+        its sprite sheets while fourteen others are rigged - LL-082's shape
+        with a different door.  The map must cover the whole bank, exactly.
+        """
+        pairs = self._map_pairs()
+        self.assertTrue(pairs, "the entity map is empty or moved")
+        self.assertEqual(
+            self._bank_names(), {k for k, _v in pairs},
+            "the entity map does not cover exactly the bank's creature names")
+        renames = {k: v for k, v in pairs if k != v}
+        self.assertGreaterEqual(
+            len(renames), 5,
+            "the import renamed creatures (7 of 15) - a map with almost no "
+            "renames means the map was flattened back to identity and the "
+            "renamed creatures are silently on sheets")
+
+    def test_every_mapped_entity_exists_in_the_import(self):
+        """A map value the collection does not carry is a silent fallback."""
+        match = re.search(r"entities:\[([^\]]+)\]", self.system)
+        self.assertIsNotNone(
+            match, "the zombies collection's entity list moved in the import")
+        imported = {s.strip().strip('"') for s in match.group(1).split(",")}
+        for _bank, _entity in self._map_pairs():
+            self.assertIn(
+                _entity, imported,
+                "the map points %r at entity %r, which the zombies "
+                "collection does not carry" % (_bank, _entity))
+
+    def test_the_seam_plays_scml_first_and_keeps_the_sheets(self):
+        """mon_rig_play answers through the player, then through the sheets."""
+        self.assertIn("zomb_scml_play(_rig, _anim, _secs)", self.roster,
+                      "the SCML half no longer answers inside mon_rig_play")
+        self.assertIn("is_string(_clip)", self.roster,
+                      "the clip-name answer is no longer distinguished")
+        self.assertIn("var _spr = mon_rig_slot(_rig, _anim);", self.roster,
+                      "the sheet fallback is gone from mon_rig_play")
+
+    def test_the_draw_branch_is_a_chain_not_two_draws(self):
+        """A drawn rig must not also draw_self - one monster, one render."""
+        self.assertIn("if(zomb_scml_draw(zomb_rig())){", self.mon_draw,
+                      "the SCML draw branch is gone from obj_mon Draw_0")
+        self.assertIn("} else if(inWater){", self.mon_draw,
+                      "the water crop is not the rig branch's else - a "
+                      "rigged monster in water would draw twice")
+
+    def test_the_transform_carries_the_facing_sign_not_its_absolute(self):
+        """A negative image_xscale mirrors the rig - right-to-left walking."""
+        self.assertIn("image_xscale, image_yscale, _alpha", self.adapter,
+                      "set_transform no longer receives the instance's own "
+                      "scale pair")
+        self.assertNotIn("abs(image_xscale)", self.adapter,
+                         "the mirror was cleaned up into an absolute - "
+                         "right-to-left walking would moonwalk")
+
+    def test_one_update_owner_above_the_early_returns(self):
+        """One zomb_scml_update per step, before CLEAR/FAILED bail out.
+
+        Corpses keep playing their fall while the clear banner runs, so
+        the single update call must sit above the early returns in
+        _levelControl's Step.
+        """
+        idx = self.lc_step.index("zomb_scml_update();")
+        self.assertLess(
+            idx, self.lc_step.index("LEVEL_STATE.CLEAR"),
+            "zomb_scml_update moved below the CLEAR/FAILED early return - "
+            "corpses freeze during the clear banner")
+
+    def test_the_pose_rate_is_half_the_room(self):
+        """30hz pose, staggered by phase - the headroom the plan bought."""
+        self.assertIn("#macro SCML_POSE_HZ 30", self.adapter,
+                      "the pose rate is no longer half of 60")
+        self.assertIn("set_pose_rate(_name, SCML_POSE_HZ, _phase)", self.adapter,
+                      "players are no longer created with a staggered "
+                      "half-rate pose")
+
+    def test_the_corpse_clock_is_the_clips_end(self):
+        """A rigged fall is removed when its clip reports playing == false."""
+        self.assertIn("zomb_die_scml", self.die,
+                      "the die state no longer knows which clock it runs on")
+        self.assertIn("!_st.playing", self.die,
+                      "the clip-end exit check is gone - rigged corpses "
+                      "would wait for the backstop every time")
+
+    def test_boot_resets_the_players(self):
+        """Every room entry starts from an empty player list (LL-049)."""
+        self.assertIn("zomb_scml_reset();", self.boot,
+                      "scr_level_boot no longer resets the Spriter players - "
+                      "a room_restart() inherits stale players")
+

@@ -5,9 +5,22 @@
 /// c_white the moment the last effect expires, and both draw_self() and
 /// draw_self_part() read image_blend.  Nothing else in the project writes a
 /// monster's image_blend, which is what makes this one line rather than a
-/// colour to merge with somebody else's.
+/// colour to merge with somebody else's.  (On the Spriter branch below the
+/// tint is a carded no-op: the runtime's parts draw c_white - scr_scml_rig.)
 image_blend = status_tint();
 
+/// ---- THE RIG FIRST (scr_scml_rig) ------------------------------------
+/// A monster whose class has a Spriter entity draws its rigged player
+/// right here, at its OWN depth: bones, parts, the facing mirror (a
+/// negative image_xscale), and the emerge's growing size all ride the ONE
+/// set_transform inside zomb_scml_draw.  TRUE means drawn - and draw_self
+/// must NOT also run below, or the monster renders twice.  FALSE means no
+/// player, and the sheet path runs exactly as it always has.
+///
+/// Known, carded regressions on the SCML branch: the status tint (parts
+/// draw c_white) and the waterline crop (the crop reads one sheet's
+/// pixels; a rigged monster in water draws its full rig, uncropped).
+///
 /// ---- THE GROUND LINE IS THE ORIGIN: NOTHING IS CORRECTED HERE ------
 /// Do NOT add a vertical offset before this draw.  Every rig's die sheet
 /// is drawn on its walk sheet's origin - measured 2026-10-24, die frame
@@ -25,8 +38,9 @@ image_blend = status_tint();
 /// (scale 0.35), 28 px on the Shroud (2.0), 6.6 on the Bell-Ringer (0.3).
 /// Walk sheets keep padding too - 10 rows on the Gardener - so walkers sank
 /// as well: the Grumble-Mulch 2 px on every frame of the game.  LL-078.
-
-if(inWater){
+if(zomb_scml_draw(zomb_rig())){
+    /// drawn as its rigged player - nothing else to draw
+} else if(inWater){
     /// The crop is DERIVED from the origin rather than being 0.75 of the
     /// canvas, so a monster meets the water at the same world depth a tower
     /// does (water_line_keep, draw_water_shader.gml).  _sy is abs() because
@@ -51,7 +65,15 @@ if(inWater){
 var _stateInfo = scr_zomb_state_name(zomb_state);
 
 if(debug_tracker_name != _stateInfo){
+    /// a rigged monster wears a CLIP, not a sprite: name the clip, so the
+    /// old falsifier ("Sprite-ind: spr_mon") stays honest - a placeholder
+    /// sprite_index is BY DESIGN when the SCML half owns the draw
+    /// (scr_scml_rig).
+    var _scmlState = zomb_scml_state();
     var _sprName = sprite_exists(sprite_index) ? sprite_get_name(sprite_index) : "NONE";
+    if(!is_undefined(_scmlState) && is_string(_scmlState.animation)){
+        _sprName = "scml:" + _scmlState.animation;
+    }
     var _text = $"##########\nobj: {id}\nstate: {_stateInfo}\nSprite-ind: {_sprName}\n##########\n";
     show_debug_message(_text);
     debug_tracker_name = _stateInfo;

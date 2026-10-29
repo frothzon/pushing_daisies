@@ -5,15 +5,14 @@ function scr_zombie_emerge() {
 	/// the monster GROWS from nothing to its full size, so the emerge
 	/// reads as the creature rising out of the ground.
 	if(zomb_state_time == 0){
-	    /// THE WALK SLOT, BY NAME (scr_mon_roster).  This was
+	    /// THE RIG, ASKED BY NAME (scr_mon_roster).  This used to be
 	    /// `sprite_array[0]` - positional, and correct only because walk
-	    /// happened to be slot 0 of an array nobody named.  The rig says
-	    /// which creature this is and which sheet is its walk, and a rig
-	    /// with no walk art leaves the sprite alone rather than blanking it.
-	    var _walk = mon_rig_slot(zomb_rig(), ZOMB_ANIM.walk);
-	    if(sprite_exists(_walk)) sprite_index = _walk;
-	    image_index = 0;
-	    image_speed = scr_animSpeedForSteps(sprite_index, 60);
+	    /// happened to be slot 0 of an array nobody named (LL-081).  ONE
+	    /// mon_rig_play now covers both halves - the Spriter walk clip
+	    /// (scr_scml_rig) or the walk sheet - at the cycle duration the
+	    /// game asks for; the old hard-coded 60 steps of sheet speed was
+	    /// the same 1.0 s at 60 fps.
+	    mon_rig_play(zomb_rig(), ZOMB_ANIM.walk, ZOMB_CYCLE_SECS);
 	    /// start at zero size.  scr_level_spawn stored the full size in
 	    /// base_scale, so the 0.00 -> 1.00 growth here means 0 -> base_scale
 	    image_xscale = 0;

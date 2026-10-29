@@ -13,3 +13,7 @@ if(variable_instance_exists(id, "path_probe") && path_exists(path_probe)){
 }
 
 
+/// The Spriter player dies WITH the monster (scr_scml_rig): every
+/// destroy path - the fall, the despawn, the room end - lands here,
+/// so no player is left ticking in the system with nothing to draw it.
+zomb_scml_remove();

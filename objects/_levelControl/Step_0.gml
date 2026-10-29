@@ -1,5 +1,12 @@
 /// @description  tower editor
 
+/// ---- THE SPRITER CLOCK (scr_scml_rig) --------------------------------
+/// ONE update per Step for every player in the game, from ONE owner.  It
+/// sits ABOVE the early returns below on purpose: a clear banner or a
+/// failed stage still has corpses playing their falls.  A no-op whenever
+/// no player exists (the menu, the first frame of a boot).
+zomb_scml_update();
+
 /// ---- a FINISHED stage takes no input (LL-055) ------------------------
 /// The clear sequence owns the screen: the build ghost, the selection card
 /// and every click on the board go away with the rest of the UI, so the
