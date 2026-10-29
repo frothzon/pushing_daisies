@@ -253,8 +253,17 @@ function zomb_scml_draw(_rig) {
 	var _alpha = 1;
 	if(variable_instance_exists(id, "image_alpha") && is_real(image_alpha)) _alpha = image_alpha;
 
+	/// the per-entity SCALE FIX (zomb_scml_scale_fix, stamped by
+	/// mon_rig_from): rides the SAME transform, after the instance's own
+	/// scale and facing sign - states, base_scale and the emerge growth
+	/// stay blind to it
+	var _fix = 1;
+	if(variable_struct_exists(_rig, "scml_fix") && is_real(_rig.scml_fix)){
+		_fix = _rig.scml_fix;
+	}
+
 	zomb_scml().set_transform(zomb_scml_player(), x, y, _rot,
-	                          image_xscale, image_yscale, _alpha);
+	                          image_xscale * _fix, image_yscale * _fix, _alpha);
 	zomb_scml().draw(zomb_scml_player(), x, y);
 	return true;
 }
@@ -285,6 +294,146 @@ function zomb_scml_remove() {
 	}
 	zomb_scml().remove_player(_name);
 }
+
+/// The per-entity SCALE FIX: rig-native height -> original sheet art height.
+///
+/// The Spriter rigs were authored at a larger, per-entity-varying pixel
+/// scale than the sheets they replace (single appendage canvases run to
+/// 300px against whole walk sheets of 98-161px), so a rig drawn at the
+/// instance's own scale comes out inconsistent with the sheet era and with
+/// its neighbours.  The fix makes the rig's NATIVE posed height equal the
+/// creature's original walk-sheet ART height - then the same base_scale
+/// that scaled the sheets reproduces the sheet-era on-screen size exactly,
+/// and no state ever knows (it is applied in zomb_scml_draw, draw-time
+/// only).
+///
+/// MEASURED, not guessed: a scratch player plays the walk clip and eight
+/// poses across it are unioned through the public get_part_world - part
+/// CANVASES carry padding, only the drawn footprint counts.  The sheet's
+/// bbox is the target (its canvas carries padding rows too - LL-078
+/// measured up to 10 on the Gardener's walk sheet).  HEIGHT is the anchor
+/// because it is the ground-line dimension; the width ratio is LOGGED but
+/// never applied, so a creature whose limbs are proportionally off stays
+/// visible in the log instead of being quietly squashed.  Cached per
+/// entity - the fix is an art constant - and clamped, because a bad
+/// measurement must not make a monster invisible or giant.
+#macro SCML_FIX_MIN 0.05
+#macro SCML_FIX_MAX 5.0
+
+function zomb_scml_scale_fix(_entity, _sheet) {
+	if(!is_string(_entity) || _entity == "") return 1;
+	if(!sprite_exists(_sheet)) return 1;
+
+	if(!variable_global_exists("scml_fix_map") || !is_struct(global.scml_fix_map)){
+		global.scml_fix_map = {};
+	}
+	if(variable_struct_exists(global.scml_fix_map, _entity)){
+		return global.scml_fix_map[$ _entity];
+	}
+
+	var _fix = 1,
+	    _sys = zomb_scml();
+
+	/// the parts to measure, from the shared definition (describe_entity
+	/// is the public preloader; parts[] is its part-name list)
+	var _def = _sys.describe_entity(SCML_COLLECTION, _entity);
+	if(!is_undefined(_def) && variable_struct_exists(_def, "parts")
+	   && is_array(_def.parts) && array_length(_def.parts) > 0){
+
+		/// a scratch player poses the rig; play + seek each force a fresh
+		/// pose, so no update loop is needed (the demo's export checks do
+		/// the same).  Removed before returning - it is never in the
+		/// registry, so nothing else can see it.
+		var _scratch = "scml-fix";
+		_sys.remove_player(_scratch);
+		if(_sys.create_player(_scratch, SCML_COLLECTION, _entity)){
+			_sys.play(_scratch, "walk");
+
+			var _st  = _sys.get_player_state(_scratch),
+			    _dur = (!is_undefined(_st) && _st.duration_ms > 0)
+			           ? _st.duration_ms : 1000;
+
+			/// eight poses across the walk clip; the union of the drawn
+			/// part rects, and the MAXIMUM that union reaches - a single
+			/// frame can be an atypical pose
+			var _h_max = 0, _w_max = 0;
+			for(var _s = 0; _s < 8; _s++){
+				_sys.seek(_scratch, _dur * _s / 8);
+
+				var _min_x = 0, _max_x = 0, _min_y = 0, _max_y = 0,
+				    _any  = false;
+				for(var _p = 0; _p < array_length(_def.parts); _p++){
+					var _w = _sys.get_part_world(_scratch, _def.parts[_p]);
+					if(is_undefined(_w)) continue;
+					if(!is_real(_w.x) || !is_real(_w.y)) continue;
+					if(!is_real(_w.width) || !is_real(_w.height)) continue;
+
+					/// a rotated rect, centre-approximated from the pose's
+					/// own angle and scales (a few px of pivot offset is
+					/// nothing against a scale fix)
+					var _sx = is_real(_w.scale_x) ? abs(_w.scale_x) : 1,
+					    _sy = is_real(_w.scale_y) ? abs(_w.scale_y) : 1,
+					    _hw = _w.width * _sx * 0.5,
+					    _hh = _w.height * _sy * 0.5;
+					if(_hw <= 0 || _hh <= 0) continue;
+
+					var _a  = is_real(_w.angle) ? _w.angle : 0,
+					    _c  = dcos(_a), _sn = dsin(_a),
+					    _ex = abs(_c) * _hw + abs(_sn) * _hh,
+					    _ey = abs(_sn) * _hw + abs(_c) * _hh,
+					    _x0 = _w.x - _ex, _x1 = _w.x + _ex,
+					    _y0 = _w.y - _ey, _y1 = _w.y + _ey;
+
+					if(!_any){
+						_min_x = _x0; _max_x = _x1;
+						_min_y = _y0; _max_y = _y1;
+						_any = true;
+					} else {
+						_min_x = min(_min_x, _x0); _max_x = max(_max_x, _x1);
+						_min_y = min(_min_y, _y0); _max_y = max(_max_y, _y1);
+					}
+				}
+
+				if(_any){
+					_h_max = max(_h_max, _max_y - _min_y);
+					_w_max = max(_w_max, _max_x - _min_x);
+				}
+			}
+			_sys.remove_player(_scratch);
+
+			/// the target: the ORIGINAL walk sheet's art bbox, height the
+			/// anchor, width logged for eyeballing
+			var _sheet_h = sprite_get_bbox_bottom(_sheet)
+			               - sprite_get_bbox_top(_sheet) + 1,
+			    _sheet_w = sprite_get_bbox_right(_sheet)
+			               - sprite_get_bbox_left(_sheet) + 1;
+
+			if(_h_max > 0 && _sheet_h > 0){
+				_fix = _sheet_h / _h_max;
+				if(_fix < SCML_FIX_MIN || _fix > SCML_FIX_MAX){
+					scr_meta_log("SCML", "WARNING normalize ", _entity,
+					             " measured fix ", string_format(_fix, 1, 3),
+					             " is outside ", SCML_FIX_MIN, "..", SCML_FIX_MAX,
+					             " - keeping 1 (rig=", round(_h_max),
+					             "px sheet=", _sheet_h, "px)");
+					_fix = 1;
+				}
+			}
+
+			var _wr = (_h_max > 0 && _sheet_w > 0 && _w_max > 0)
+			          ? _sheet_w / _w_max : 0;
+			scr_meta_log("SCML", "normalize ", _entity,
+			             "  rig=", round(_h_max), "x", round(_w_max),
+			             "  sheet=", _sheet_h, "x", _sheet_w,
+			             "  fix=", string_format(_fix, 1, 3),
+			             "  width-ratio=", string_format(_wr, 1, 3));
+		}
+	}
+
+	global.scml_fix_map[$ _entity] = _fix;
+	return _fix;
+}
+
 
 /// Boot/reset: remove every tracked player (their monsters died with the
 /// room they were in), clear the caches a re-import would change, and

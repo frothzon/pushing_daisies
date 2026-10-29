@@ -2,7 +2,7 @@
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-28",
+    "updated": "2026-10-29",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set <id> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -20,7 +20,8 @@
   },
   "focus": {
     "now": [
-      "scml-mon-rig"
+      "scml-scale-normalize",
+      "scml-title-zombie"
     ],
     "next": [
       "scml-status-tint",
@@ -2868,6 +2869,28 @@
       "done": null
     },
     {
+      "id": "scml-scale-normalize",
+      "title": "Rigged zombie sizes normalized to the original sheets: a measured per-entity scale fix",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 1,
+      "needs": "Reload GameMaker (LL-008), set global.devMode = true, play a stage and compare every creature against the sheet-era look: a Grumble-Mulch walker about 39px tall, the Shroud about 24, the Gardener boss about 69 - the SAME relative sizes the walk sheets had, not the Spriter-authored ones. The log must show fifteen SCML normalize <entity> lines with fix values roughly 0.3-0.7 (rigs authored 2-3x the sheets) and NO normalize WARNING. Falsifiers: any creature visibly larger or smaller than its sheet-era self, a fix outside 0.05-5 clamped to 1 with a WARNING, or a width-ratio wildly different from the fix (that flags misproportioned appendages - its own card, scml-sprite-reads-adjacent).",
+      "notes": "The Spriter rigs were authored at a larger, per-entity-varying pixel scale than the sheets they replace (single appendage canvases up to 300px against whole walk sheets of 98-161px), so one shared base_scale left the creatures inconsistent. zomb_scml_scale_fix measures each entity once (cached): a scratch player poses the walk clip at 8 samples, the union of drawn part rects via the public get_part_world gives the rig-native footprint, and the fix brings that height to the creature's original walk-sheet ART bbox height (never the padded canvas - LL-078). The fix is stamped by mon_rig_from on every rig and applied draw-time only in zomb_scml_draw (image_xscale/yscale * fix), so states, base_scale and the emerge growth stay blind. Height is the anchor (ground-line dimension); the width ratio is logged but never applied, so misproportioned appendages stay visible instead of being squashed. Clamped 0.05-5: a bad measurement keeps 1 and warns. 2 new tests, mutation-checked.",
+      "refs": [
+        "scripts/scr_scml_rig/scr_scml_rig.gml",
+        "scripts/scr_mon_roster/scr_mon_roster.gml",
+        "python_tools/tests/test_content.py",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": null
+    },
+    {
       "id": "scml-sprite-reads",
       "title": "Sprite-geometry reads on rigged monsters: HP bar and shadow sizes",
       "status": "next",
@@ -2907,6 +2930,30 @@
       ],
       "created": "2026-10-28",
       "updated": "2026-10-28",
+      "done": null
+    },
+    {
+      "id": "scml-title-zombie",
+      "title": "The title zombie is a rigged Grumble-Mulch",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "Reload GameMaker (LL-008) and sit on the title screen: the zombie must be the RIGGED Grumble-Mulch at its usual sheet-era size (about 156px tall, mirrored when it walks toward a leftward mouse), idle breathing on the 2s loop (LL-072), walking at 1s, and grabbing at a hovered button once, then back to idle - never stuck grabbing. Then enter a stage and come back to the title: the zombie must be rigged again without a restart (its per-step re-assert re-rigs after the stage boot reset). Falsifiers: a frozen zombie (no update owner - rm_menu has no _levelControl), a flat sheet zombie, a double-drawn zombie, or a grab that repeats forever.",
+      "notes": "obj_titleZomb is rigged like every stage monster: Create builds its rig directly with mon_rig_from (the roster does not exist in the menu room), Step keeps its three states but plays idle/walk through mon_rig_play re-asserted per step (the no-restart rule makes looping clips safe and re-rigs after a stage boot reset), and the grab plays ONCE - a per-step call would restart the finished non-looping clip forever - ending when the clip reports playing false, with the sheet-wrap condition kept for the fallback. rm_menu has no _levelControl, so the one instance owns its room's zomb_scml_update. New Draw_0 draws through the same if/else chain as obj_mon (fallback draw_self on its spr_grumble_idle spriteId); new Destroy_0 removes the player. Its scale fix is the Grumble one, so it draws at the sheet-era ~156px. 1 new test, mutation-checked.",
+      "refs": [
+        "objects/obj_titleZomb/Create_0.gml",
+        "objects/obj_titleZomb/Step_0.gml",
+        "objects/obj_titleZomb/Draw_0.gml",
+        "objects/obj_titleZomb/Destroy_0.gml",
+        "scripts/scr_scml_rig/scr_scml_rig.gml",
+        "python_tools/tests/test_content.py"
+      ],
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
       "done": null
     },
     {
@@ -4747,6 +4794,18 @@
       "who": "cline",
       "task": "scml-mon-rig",
       "what": "SCML-custom imported (fa6f2a3) and monsters draw as Spriter rigs: scr_scml_rig is the adapter (ONE system, 15-row bank-to-entity map with the seven renames, players mon-<id>, 30hz staggered pose, caller-seconds timing, registry + boot reset), the roster seam answers SCML first with loud sheet fallback, the die state exits on the clip end, obj_mon/Draw_0 draws the player (mirror + grow via set_transform, never draw_self in that branch), _levelControl owns update, Destroy removes the player. 9 new tests (mutation-checked), 346 -> 355 expected. Review awaiting rayu devMode run."
+    },
+    {
+      "date": "2026-10-29",
+      "who": "cline",
+      "task": "scml-scale-normalize",
+      "what": "The rigs were authored at a larger, per-entity-varying pixel scale than the sheets they replace (appendage canvases up to 300px against whole walk sheets of 98-161px), so the creatures came out inconsistent. zomb_scml_scale_fix measures each entity once: a scratch player poses the walk clip at 8 samples, the union of drawn part rects (public get_part_world) gives the native footprint, and the fix brings its height to the original walk-sheet ART bbox height. Stamped by mon_rig_from, applied draw-time only in zomb_scml_draw, clamped 0.05-5, width ratio logged but never applied. 2 new tests, 355 -> 358 expected."
+    },
+    {
+      "date": "2026-10-29",
+      "who": "cline",
+      "task": "scml-title-zombie",
+      "what": "obj_titleZomb is a rigged Grumble-Mulch: Create builds its rig directly (no roster in the menu room), Step plays idle/walk per step through mon_rig_play (re-rigs after a stage boot reset) and the grab ONCE, ending on the clip (a per-step grab would restart the finished clip forever). rm_menu has no _levelControl, so the one instance owns its room update. New Draw_0 (rig chain, draw_self fallback) and Destroy_0 (player removal). 1 new test, mutation-checked."
     }
   ]
 }

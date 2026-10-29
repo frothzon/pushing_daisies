@@ -65,6 +65,13 @@ function mon_rig_from(_name, _art, _tag) {
 	_s.idle   = mon_rig_pick(_art, ZOMB_ANIM.idle);
 	_s.attack = mon_rig_pick(_art, ZOMB_ANIM.attack);
 	_s.die    = mon_rig_pick(_art, ZOMB_ANIM.die);
+	/// the per-entity SCALE FIX (scr_scml_rig): the rig's native posed
+	/// height is normalized to the creature's original walk-sheet ART
+	/// height, so the same base_scale that scaled the sheets reproduces
+	/// the sheet-era on-screen size.  Measured once per entity (cached),
+	/// applied at draw time only - states stay blind to it.  1 when there
+	/// is nothing to measure against (no entity or no walk sheet).
+	_s.scml_fix = zomb_scml_scale_fix(_s.scml, _s.walk);
 	return _s;
 }
 

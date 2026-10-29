@@ -18,7 +18,13 @@ evaluation at 30hz. The four-slot sheets remain the automatic, loudly-logged
 fallback for any creature without an entity, and the portraits still come
 from the bank rows. Timing is the game's, not the art's: `ZOMB_CYCLE_SECS`
 and `ZOMB_DIE_SECS` (`scr_zomb_art`) stretch each clip, whatever it was
-authored as.
+authored as. Each rig also carries a **per-creature scale fix**
+(`zomb_scml_scale_fix`, 2026-10-29): the rig's native posed height is
+measured against its original walk sheet's art bbox and normalized to it,
+so on-screen sizes match the sheet era — the Spriter rigs were authored
+2–3× larger, and per-entity-varying, so the fix is measured per creature,
+never hand-tuned. The title-screen zombie is the rigged Grumble-Mulch
+(`obj_titleZomb`), at its sheet-era ~156px.
 
 ---
 

@@ -1,24 +1,30 @@
 /// @description  Zombie State Machine
 
+/// ---- THE SPRITER CLOCK (scr_scml_rig) ----------------------------------
+/// rm_menu has no _levelControl, so THIS instance is the room's one update
+/// owner: it is the only SCML consumer here, and there is exactly one of
+/// it.  A no-op with no players.
+zomb_scml_update();
+
 /// increment state timer
 state_timer++;
 
 /// STATE MACHINE
 switch(state){
     //---------------------- Idle State
-    case 0: 
-        /// initialize idle state
-        if(state_timer == 0){
-            sprite_index = spr_grumble_idle;
-            image_index = 0;
-            /// a DURATION in SECONDS, not in steps: 60 steps was 2 s in the
-            /// GameMaker 8 build (30 fps) and became 1 s here (60 fps) - a
-            /// step is not a unit of time (LL-072).  The walk and the grab
-            /// below keep their 60 steps: they are meant to read faster.
-            image_speed = scr_animSpeedForSeconds(sprite_index,
-                                                  ANIM_SECONDS_ZOMBIE_IDLE,
-                                                  "title idle");
-        }
+    case 0:
+        /// THE RIG, re-asserted every step exactly like scr_zombie_path
+        /// does: the no-restart rule inside zomb_scml_play makes that safe
+        /// (a looping clip is never reset), and it re-rigs the player
+        /// after a stage boot reset it (zomb_scml_reset clears every
+        /// player, and the menu is re-entered after every stage).
+        ///
+        /// idle keeps its DURATION in SECONDS: 60 steps was 2 s in the
+        /// GameMaker 8 build (30 fps) and became 1 s here (60 fps) - a
+        /// step is not a unit of time (LL-072).  The walk and the grab
+        /// below keep their 60 steps (1.0 s): they are meant to read
+        /// faster.
+        mon_rig_play(rig, ZOMB_ANIM.idle, ANIM_SECONDS_ZOMBIE_IDLE);
         /// if range too great, change to walk state
         if(abs(mouse_x-x) > 16){
             state = 1;
@@ -35,19 +41,17 @@ switch(state){
         break;
     //---------------------------- Walk State
     case 1:
-        /// initialize walk state
-        if(state_timer == 0){
-            sprite_index = spr_grumble_walk;
-            image_index = 0;
-            image_speed = scr_animSpeedForSteps(sprite_index, 60);
-        }
+        /// the rig again, per step: walk at the sheet-era 60-step cycle
+        mon_rig_play(rig, ZOMB_ANIM.walk, ZOMB_CYCLE_SECS);
         /// if zombie is within range of mouse, go back to idle
         if(abs(mouse_x-x) < 16){
             state = 0;
             state_timer = -1;
         } else {
             /// point in direction of movement.  Never sign(): sign(0) is
-            /// 0, which hides the instance for a frame (LL-012)
+            /// 0, which hides the instance for a frame (LL-012).  The
+            /// adapter mirrors the sign into set_transform, so a negative
+            /// image_xscale mirrors the whole rig.
             var _dir = (mouse_x < x) ? -1 : 1;
             image_xscale = _dir * abs(image_xscale);
             /// move zombie
@@ -56,16 +60,27 @@ switch(state){
         break;
     //---------------------------- Grab State
     case 2:
-        /// initialize grab state
+        /// initialize grab state - ONCE.  Unlike idle and walk, the grab
+        /// is NOT re-asserted per step: zomb_scml_play restarts a finished
+        /// non-looping clip when asked again, so a per-step call here
+        /// would replay the grab for ever and it could never end.
         if(state_timer == 0){
-            sprite_index = spr_grumble_attack;
-            image_index = 0;
-            image_speed = scr_animSpeedForSteps(sprite_index, 60);
-        /// at animation end, change state
-        } else if(image_index > image_number-1){
-            state = 0;
-            state_timer = -1;
+            mon_rig_play(rig, ZOMB_ANIM.attack, ZOMB_CYCLE_SECS);
+        } else {
+            /// at animation end, change state: the CLIP's end when the
+            /// SCML half answered (playing goes false at the clip's end -
+            /// scr_scml_rig), the sheet's last frame otherwise (no player,
+            /// sprite_index is the attack sheet and image_index advances)
+            var _st = zomb_scml_state();
+            if(!is_undefined(_st)){
+                if(!_st.playing){
+                    state = 0;
+                    state_timer = -1;
+                }
+            } else if(image_index > image_number-1){
+                state = 0;
+                state_timer = -1;
+            }
         }
-        break;      
+        break;
 }
-

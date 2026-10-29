@@ -1423,6 +1423,12 @@ class ScmlRigAdapterTests(unittest.TestCase):
             (PROJECT_ROOT / LEVEL_CONTROL_STEP_REL).read_text(encoding="utf-8-sig"))
         cls.boot = _code_only(
             (PROJECT_ROOT / LEVEL_BOOT_REL).read_text(encoding="utf-8-sig"))
+        cls.title_create = _code_only(
+            (PROJECT_ROOT / "objects/obj_titleZomb/Create_0.gml").read_text(encoding="utf-8-sig"))
+        cls.title_step = _code_only(
+            (PROJECT_ROOT / "objects/obj_titleZomb/Step_0.gml").read_text(encoding="utf-8-sig"))
+        cls.title_draw = _code_only(
+            (PROJECT_ROOT / "objects/obj_titleZomb/Draw_0.gml").read_text(encoding="utf-8-sig"))
 
     def _bank_names(self):
         return {name for (_bank, _i), (name, _sprites) in self.rows.items()}
@@ -1482,9 +1488,9 @@ class ScmlRigAdapterTests(unittest.TestCase):
 
     def test_the_transform_carries_the_facing_sign_not_its_absolute(self):
         """A negative image_xscale mirrors the rig - right-to-left walking."""
-        self.assertIn("image_xscale, image_yscale, _alpha", self.adapter,
+        self.assertIn("image_xscale * _fix, image_yscale * _fix", self.adapter,
                       "set_transform no longer receives the instance's own "
-                      "scale pair")
+                      "scale pair (with the per-entity fix riding it)")
         self.assertNotIn("abs(image_xscale)", self.adapter,
                          "the mirror was cleaned up into an absolute - "
                          "right-to-left walking would moonwalk")
@@ -1523,4 +1529,69 @@ class ScmlRigAdapterTests(unittest.TestCase):
         self.assertIn("zomb_scml_reset();", self.boot,
                       "scr_level_boot no longer resets the Spriter players - "
                       "a room_restart() inherits stale players")
+
+    def test_the_scale_fix_is_measured_and_stamped_on_the_rig(self):
+        """Rig-native height is normalized to the original walk sheet.
+
+        The Spriter rigs were authored at a larger, per-entity-varying
+        pixel scale than the sheets they replace (single appendage canvases
+        run to 300px against whole walk sheets of 98-161px), so without a
+        per-entity fix the creatures come out inconsistent with the sheet
+        era and with each other.  The fix is MEASURED (a scratch player's
+        posed footprint through get_part_world) against the sheet's ART
+        bbox - never its padded canvas - and clamped, so a bad measurement
+        cannot make a monster invisible or giant.
+        """
+        self.assertIn("zomb_scml_scale_fix(_s.scml, _s.walk)", self.roster,
+                      "mon_rig_from no longer stamps the per-entity scale "
+                      "fix on every rig it builds")
+        self.assertIn("sprite_get_bbox_bottom(_sheet)", self.adapter,
+                      "the fix is no longer anchored to the sheet's art "
+                      "bbox - a canvas anchor would import the padding rows")
+        self.assertIn("#macro SCML_FIX_MIN", self.adapter,
+                      "the fix lost its clamp band - a bad measurement can "
+                      "now make a monster invisible or giant")
+
+    def test_the_draw_multiplies_the_instance_scale_by_the_fix(self):
+        """The fix rides the same transform, after scale and facing sign."""
+        self.assertIn("image_xscale * _fix, image_yscale * _fix", self.adapter,
+                      "zomb_scml_draw no longer applies the scale fix - "
+                      "rigged creatures render at their authored size")
+        self.assertIn("is_real(_rig.scml_fix)", self.adapter,
+                      "the fix read is unguarded (LL-002)")
+
+    def test_the_title_zombie_is_rigged_and_owns_its_rooms_update(self):
+        """rm_menu has no _levelControl: the one instance is the owner.
+
+        The title zombie builds its rig directly (the roster only exists
+        after level boot), re-asserts idle/walk per step like
+        scr_zombie_path does (safe on looping clips, and it re-rigs after a
+        stage boot reset), plays the grab ONCE and ends it on the clip -
+        a per-step grab would restart the finished clip forever.
+        """
+        destroy = _code_only((PROJECT_ROOT /
+                              "objects/obj_titleZomb/Destroy_0.gml"
+                              ).read_text(encoding="utf-8-sig"))
+        self.assertIn('mon_rig_from("Grumble-Mulch"', self.title_create,
+                      "the title zombie no longer builds a rig - it cannot "
+                      "draw rigged without one")
+        self.assertIn("zomb_scml_update();", self.title_step,
+                      "the title zombie is not its room's update owner - "
+                      "rm_menu has no _levelControl, so its rig would "
+                      "never advance")
+        self.assertIn("mon_rig_play(rig, ZOMB_ANIM.idle, ANIM_SECONDS_ZOMBIE_IDLE)",
+                      self.title_step,
+                      "the idle state lost its seconds-based duration "
+                      "(LL-072) or its rig call")
+        self.assertIn("!_st.playing", self.title_step,
+                      "the grab no longer ends on its clip - the title "
+                      "zombie would grab forever (a per-step restart) or "
+                      "never (no end check)")
+        self.assertIn("if(zomb_scml_draw(rig)){", self.title_draw,
+                      "the title zombie no longer draws through the rig "
+                      "chain - no player, no mirror, no fix")
+        self.assertIn("zomb_scml_remove();", destroy,
+                      "the title zombie's player is not removed on "
+                      "destroy - it ticks under the next room's update")
+
 
