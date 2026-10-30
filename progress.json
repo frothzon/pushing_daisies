@@ -27,7 +27,7 @@
       "garden-master-nodes",
       "garden-mastery-panel"
     ],
-    "note": "2026-10-30: Candy catalog, purchases, and run effects are implemented and awaiting Rayu runtime review. Remaining progression work: full clover branches, mastery purchases/panel, Endless loot boxes and Candy stock rewards, and the Region 6 Blood Fields consumer."
+    "note": "2026-10-30: Candy catalog, purchases, and run effects are implemented and awaiting Rayu runtime review. Implementing the four full clover branches next; after that, mastery purchases/panel, Endless loot boxes and Candy stock rewards, and the Region 6 Blood Fields consumer remain."
   },
   "tasks": [
     {
@@ -1989,7 +1989,7 @@
     {
       "id": "garden-trees",
       "title": "Clover trees: all four, 10 nodes x 5 ranks",
-      "status": "next",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -1997,7 +1997,7 @@
       "size": "L",
       "prio": 2,
       "needs": "",
-      "notes": "PARTIAL: scr_clover_tree currently contains only two Offense nodes (Tower Damage, 5 ranks; Fire Rate, 3 ranks). economy.md §3.2 calls for 10 nodes × 5 ranks in each of Vitality, Offense, Growth, and Harvest. Missing: eight more Offense nodes, all 10 nodes for each other branch, branch selection UI, and the unified stat/economy resolver for their effects.",
+      "notes": "CURRENT WORK: expand the existing two-node Offense proof into four branches, ten nodes each, five ranks each, with one unified resolver and Garden Book branch/page UI. economy.md lists ten node costs totaling 473; implementation interprets each entry as that node rank price and repeats it for its five ranks, so buying rank 1 across the branch costs the specified 473. Magnitudes not fully specified in goal.md/economy.md will be recorded as tuning assumptions.",
       "refs": [
         "scripts/scr_clover_tree/scr_clover_tree.gml",
         "scripts/scr_meta_clovers/scr_meta_clovers.gml",
