@@ -1153,8 +1153,8 @@
     },
     {
       "id": "dead-color-swap-shader",
-      "title": "set_colorSwap_shader() and setup_color_swap() have no caller - and no shader",
-      "status": "backlog",
+      "title": "Remove unused color-swap scripts with no shader",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -1162,13 +1162,14 @@
       "size": "S",
       "prio": 3,
       "needs": "",
-      "notes": "Ported dead code, the same shape as LL-045 - found while checking whether any shader could still be bound during the level's Post Draw (LL-046).  set_colorSwap_shader() sets a shader and its four uniforms; setup_color_swap() caches those uniforms; NOTHING CALLS EITHER (grep finds only the two definitions).  Worse than LL-045 in one way and better in another: there is no shader resource for it to bind at all - gm list GMShader is shd_blur, shd_outline, shd_water - so it cannot have run; but it also has no shader_reset(), which the next person to wire it up must add (LL-046), or the frame after it stays swapped.  DECIDE, do not leave it looking finished: either build the shader and use it (a biome tinting one sprite sheet is what it is for) or delete both scripts.  Not urgent - nothing is broken today, which is exactly why it would sit here for a year.",
+      "notes": "2026-10-30: The two project-local script resources have no project callers and no matching color-swap shader. shd_scml_tint is a separate SCML tint pipeline. The legacy set_colorSwap_shader function also leaves shader state bound. Remove the dead project-local resources with python_tools/gm; keep the packaged extension manifest unchanged.",
       "refs": [
-        "scripts/set_colorSwap_shader/set_colorSwap_shader.gml",
-        "scripts/setup_color_swap/setup_color_swap.gml"
+        "pushing_daisies_recovered.yyp",
+        "extensions/Simple_Game_Engine/Simple_Game_Engine.yy",
+        "shaders/shd_scml_tint/shd_scml_tint.yy"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15",
+      "updated": "2026-10-30",
       "done": null
     },
     {
