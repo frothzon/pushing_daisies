@@ -20,15 +20,14 @@
   },
   "focus": {
     "now": [
-      "shard-pity-and-drops"
+      "blood-tree"
     ],
     "next": [
-      "blood-tree",
       "candy-recipes",
       "garden-trees",
       "garden-master-nodes"
     ],
-    "note": "2026-10-30: Implementing the persistent shard pity and boss guarantee as the prerequisite for Blood Tree and candy progression. Garden Book tree work remains queued."
+    "note": "2026-10-30: Shard pity and guaranteed boss drops are implemented and awaiting runtime review. Adding the permanent Blood Tree next, then the recipes, stock, and active candy effects."
   },
   "tasks": [
     {
@@ -722,7 +721,7 @@
     {
       "id": "blood-tree",
       "title": "The blood tree: five tiers, nodes in -kills required",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -736,7 +735,7 @@
         "scripts/scr_meta_schema/scr_meta_schema.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-21",
+      "updated": "2026-10-30",
       "done": null
     },
     {
@@ -3029,15 +3028,15 @@
     {
       "id": "shard-pity-and-drops",
       "title": "Kill counter, pity curve and shard drops",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "4",
       "size": "M",
       "prio": 2,
-      "needs": "",
-      "notes": "roadmap 4.4 / economy.md 5.1, with the boss guarantee. Log every roll under devMode: an invisible statistical buff is not a reward (goal.md 16), and the falsifier here is '15,000 kills produce no shard', which is only checkable if the rolls are in the log.",
+      "needs": "Reload GameMaker with global.devMode=true and run a stage through a boss kill. Expect META [SHARD] boss guaranteed +1 pity=N->0 total=M saved=true, the visible shard counter to increase by one, and the shard balance to remain after returning to the menu and relaunching. On regular kills expect one META [SHARD] kill pity=... chance=0.01000% roll=... drop=0 line per kill, with pity increasing. A boss that gives no shard, a pity counter that does not reset, or a balance that vanishes after reload falsifies the implementation.",
+      "notes": "Implemented goal.md §14: regular-kill base chance 0.01%, the 8,000-kill soft-pity ramp, guarantee at 20,000, boss-guaranteed shard, immediate save on shard payout, and persistent shard count/pity in the meta currency display.",
       "refs": [
         "scripts/scr_zomb_death/scr_zomb_death.gml",
         "scripts/scr_meta_log/scr_meta_log.gml"

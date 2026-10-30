@@ -57,6 +57,7 @@ function scr_load_meta() {
 	             " seeds=", global.meta[$ "seeds"],
 	             " clovers=", global.meta[$ "clovers"],
 	             " shards=", global.meta[$ "shards"],
+	             " shard_pity=", shard_pity_get(),
 	             " stages=", scr_meta_count(global.meta[$ "stages"]),
 	             " clears=", scr_meta_count(global.meta[$ "clears"]),
 	             " towers=", scr_meta_count(global.meta[$ "towers"]),

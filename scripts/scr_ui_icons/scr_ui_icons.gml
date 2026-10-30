@@ -25,9 +25,8 @@
 enum CURRENCY { SEEDS = 0, CLOVERS, SHARDS, CANDY };
 enum BRANCH   { VITALITY = 0, OFFENSE, GROWTH, HARVEST };
 
-/// A currency icon.  All four have art, but only Seeds and Clovers have a
-/// system to count them today: Blood Shards arrive with shard-pity-and-drops
-/// and Candy with candy-recipes, and until then nothing calls for them.
+/// A currency icon. All four resources have art; the shard balance is now
+/// backed by scr_meta_shards, while Candy remains on the progression roadmap.
 function icon_currency(_kind) {
 	switch(_kind){
 		case CURRENCY.SEEDS:   return spr_seeds;

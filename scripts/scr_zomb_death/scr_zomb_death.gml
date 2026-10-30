@@ -36,6 +36,9 @@ function scr_zomb_death() {
 	add_item_value(STATINV.money, _pay);
 	var _points = floor(sqrt(data[MON.maxLife]))+1;
 	add_item_value(STATINV.points,_points);
+	var _is_boss = array_length(data) > MON.combat_class
+	               && data[MON.combat_class] == MON_CLASS.BOSS;
+	shard_on_kill(_is_boss);
 	float_text(x,y-32,concat("+",_points," Pts"),c_ltgray);
 
 	/// Log the paid amount and named die slot. Missing slots remain visible in

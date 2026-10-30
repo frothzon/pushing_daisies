@@ -146,13 +146,14 @@ function meta_icon_w(_spr, _size) {
 	return _b[4] * _s + 6;
 }
 
-/// The four currency items as [sprite, text] pairs - ONE list, measured to
+/// The persistent currency items as [sprite, text] pairs - ONE list, measured to
 /// choose a size and then drawn, so the size that was chosen is the size that
 /// was drawn.
 function meta_currency_items() {
 	return [
 		[icon_currency(CURRENCY.SEEDS),   string(seeds_get())],
 		[icon_currency(CURRENCY.CLOVERS), string(clovers_get())],
+		[icon_currency(CURRENCY.SHARDS),  string(shards_get())],
 		[-1, "Towers " + string(tower_owned_count()) + "/" +
 		     string(array_length(tower_roster()))],
 		[-1, "Badges " + string(badge_total_earned()) + "/" +
@@ -175,9 +176,8 @@ function meta_currency_width(_items, _size) {
 ///
 /// ONE chooser: the draw below and the centring maths in meta_currency_draw
 /// both ask it, so a line can never be measured as if it were 16pt and then
-/// painted at 12.  At 960 the four items measure ~482 at 16pt and ~373 at
-/// 12pt, so the bottom strip - which now has the full canvas width - gets
-/// 16pt; a narrow window drops to 12 rather than running off the edge.
+/// painted at 12. The complete list is measured on every canvas, so a narrow
+/// window drops to 12 rather than running off the edge.
 function meta_currency_size(_items, _maxw) {
 	var _lim = is_undefined(_maxw) ? 10000 : _maxw;
 	if(meta_currency_width(_items, 16) <= _lim) return 16;
@@ -186,10 +186,8 @@ function meta_currency_size(_items, _maxw) {
 
 /// Draw the currency line at `_x` and return the y the NEXT line starts at.
 ///
-/// The size is FITTED to `_maxw` (the band used to give it 240 units, and at
-/// 960 the four items measured ~300 at 12pt - the fixed 16pt line was already
-/// 60 units wider than its column and ran into the title on every screen,
-/// before any aspect change at all).  Since 2026-10-22 it is drawn by
+/// The size is FITTED to `_maxw` (the band used to give it 240 units, which
+/// could not hold the complete line). Since 2026-10-22 it is drawn by
 /// meta_currency_draw() into the full-width strip at the bottom instead, and
 /// this is the half that paints.
 function meta_currency_line(_x, _y, _maxw) {

@@ -1237,6 +1237,7 @@
     {"id":{"name":"scr_scml_rig","path":"scripts/scr_scml_rig/scr_scml_rig.yy",},},
     {"id":{"name":"shd_scml_tint","path":"shaders/shd_scml_tint/shd_scml_tint.yy",},},
     {"id":{"name":"scr_tower_specs","path":"scripts/scr_tower_specs/scr_tower_specs.yy",},},
+    {"id":{"name":"scr_meta_shards","path":"scripts/scr_meta_shards/scr_meta_shards.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",
