@@ -20,15 +20,15 @@
   },
   "focus": {
     "now": [
-      "garden-trees"
+      "shard-pity-and-drops"
     ],
     "next": [
-      "garden-master-nodes",
-      "shard-pity-and-drops",
       "blood-tree",
-      "candy-recipes"
+      "candy-recipes",
+      "garden-trees",
+      "garden-master-nodes"
     ],
-    "note": "2026-10-30: Filling the permanent upgrade systems first, then the shard and candy economy. The existing run-level tower ladder and local specialization work remain in review for Rayu."
+    "note": "2026-10-30: Implementing the persistent shard pity and boss guarantee as the prerequisite for Blood Tree and candy progression. Garden Book tree work remains queued."
   },
   "tasks": [
     {
@@ -1988,7 +1988,7 @@
     {
       "id": "garden-trees",
       "title": "Clover trees: all four, 10 nodes x 5 ranks",
-      "status": "doing",
+      "status": "next",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -3029,7 +3029,7 @@
     {
       "id": "shard-pity-and-drops",
       "title": "Kill counter, pity curve and shard drops",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -3043,7 +3043,8 @@
         "scripts/scr_meta_log/scr_meta_log.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "slider-drag-modal",
