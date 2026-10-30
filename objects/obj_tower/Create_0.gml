@@ -53,6 +53,8 @@ anim_reported = array(false, false, false);
 /// nothing reads another scope (AGENTS rule 6, LL-062).  It was called
 /// damage_calc, and scr_do_damage read it from here.
 shot_damage = 0;
+shot_crit_chance = 0.05;
+shot_crit_multiplier = 1.50;
 
 /// ---- the status THIS swing will land (scr_tower_shoot) --------------
 /// Defaults, for the same reason base_data is undefined: the creator
@@ -62,6 +64,8 @@ shot_damage = 0;
 shot_status        = -1;
 shot_status_mult   = 1;
 shot_status_frames = 0;
+shot_status_chance = 0;
+shot_status_amount = 0;
 frame_number = 0;
 
 /// ---- the ATTACK TIMER (LL-054) -------------------------------------

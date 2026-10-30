@@ -38,7 +38,19 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 	    _base = variable_instance_exists(id, "base_data") ? base_data : undefined,
 	    _base_price = variable_instance_exists(id, "base_price") && is_real(base_price) ? base_price : 0,
 	    _stagger = variable_instance_exists(id, "time_offset") && is_real(time_offset) ? max(0, time_offset) : 4.5,
-	    _return_seconds = 0.25;
+	    _return_seconds = 0.25,
+	    _crit_base = 0.05,
+	    _crit_multiplier_base = 1.50;
+
+	if(array_length(_data) > TOWER.crit_chance){
+		if(is_real(_data[TOWER.crit_chance])) _crit_base = _data[TOWER.crit_chance];
+	}
+	if(array_length(_data) > TOWER.crit_damage){
+		if(is_real(_data[TOWER.crit_damage])) _crit_multiplier_base = _data[TOWER.crit_damage];
+	}
+	var _crit_chance = clamp(_crit_base + tower_trait_get(_name, "crit", 0), 0, 1),
+	    _crit_multiplier = max(1, _crit_multiplier_base + tower_trait_get(_name, "crit_damage", 0)),
+	    _crit_factor = 1 + _crit_chance * (_crit_multiplier - 1);
 
 	if(variable_instance_exists(id, "anim_seconds") && is_array(anim_seconds)
 	&& array_length(anim_seconds) > TOWER_ANIM.return
@@ -64,9 +76,20 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 		}
 	}
 
+	var _next_crit_base = _crit_base,
+	    _next_crit_multiplier_base = _crit_multiplier_base;
+	if(array_length(_next_data) > TOWER.crit_chance){
+		if(is_real(_next_data[TOWER.crit_chance])) _next_crit_base = _next_data[TOWER.crit_chance];
+	}
+	if(array_length(_next_data) > TOWER.crit_damage){
+		if(is_real(_next_data[TOWER.crit_damage])) _next_crit_multiplier_base = _next_data[TOWER.crit_damage];
+	}
 	var _next_eff_rate = _fps / max(1, tower_cycle_frames(_next_data[TOWER.fire_rate], _return_seconds) + _stagger),
-	    _current_dps = _dmg * _current_eff_rate,
-	    _next_dps = _next_data[TOWER.damage] * _next_eff_rate;
+	    _next_crit_chance = clamp(_next_crit_base + tower_trait_get(_name, "crit", 0), 0, 1),
+	    _next_crit_multiplier = max(1, _next_crit_multiplier_base + tower_trait_get(_name, "crit_damage", 0)),
+	    _current_dps = _dmg * _current_eff_rate * _crit_factor,
+	    _next_dps = _next_data[TOWER.damage] * _next_eff_rate
+	                * (1 + _next_crit_chance * (_next_crit_multiplier - 1));
 
 	/// The card frame and heading.
 	draw9slice(spr_towerUpgrade, _x, _y, _w, _h, c_white, 1);
@@ -96,10 +119,13 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 	    c_white, c_black, 1);
 	draw_text_outline(_x+176, _y+60,
 	    concat("TGT  ", _targets), c_white, c_black, 1);
-	draw_text_outline(_x+176, _y+80,
+	draw_text_outline(_x+12, _y+80,
 	    concat("DPS  ", round(_current_dps),
 	           _can_upgrade ? concat(" -> ", round(_next_dps)) : ""),
 	    c_yellow, c_black, 1);
+	draw_text_outline(_x+176, _y+80,
+	    concat("CRIT ", round(_crit_chance*100), "% x", string_format(_crit_multiplier,1,2)),
+	    c_white, c_black, 1);
 
 	if(_can_upgrade){
 		draw_text_outline(_x+12, _y+100,

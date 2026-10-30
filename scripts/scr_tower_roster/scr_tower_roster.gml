@@ -82,16 +82,24 @@ function tower_data_copy(_name) {
 /// defaults for towers without a row.
 function tower_trait_table() {
 	return [
-		/// name          crit   status         mult   seconds
+		/// name            crit  status         chance  mult   amount  seconds
 		{ name : "Chillip",
 		  crit : 0.00,
-		  status : STATUS.SLOW,     /// scr_status: one instance per monster
-		  mult : 0.55,              /// 55% of the monster's own speed
-		  seconds : 1.5 }           /// longer than its 0.67s period, so a
-		                            /// Chillip that keeps its target keeps it
-		                            /// slowed; a lapse is 0.15s of full speed
+		  status : STATUS.SLOW,
+		  status_chance : 1.00,
+		  mult : 0.55,
+		  amount : 0,
+		  seconds : 1.5 },
+		{ name : "Burning Ivy",
+		  crit : 0.00,
+		  status : STATUS.BURN,
+		  status_chance : 0.20,
+		  mult : 1.00,
+		  amount : 10,
+		  seconds : 3.0 }
 	];
 }
+
 
 /// One tower's trait row, or undefined - the same contract as
 /// tower_entry_find(), so a caller can guard instead of crashing (LL-002).

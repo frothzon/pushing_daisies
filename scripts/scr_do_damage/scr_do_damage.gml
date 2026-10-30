@@ -1,32 +1,37 @@
-/// @description  scr_do_damage(_arr, _ind, _amount);
-/// @param _arr     the target list the tower cached for THIS shot
-/// @param _ind     which entry has been hit
-/// @param _amount  the damage this one hit lands
+/// @description  scr_do_damage(_arr, _ind, _amount, _is_critical);
+/// @param _arr          the target list the caller cached
+/// @param _ind          which entry has been hit
+/// @param _amount       the damage this one hit lands
+/// @param _is_critical  visual marker only; this helper never rolls crit
 ///
 /// THE AMOUNT IS AN ARGUMENT, NOT A VARIABLE THE CALLER LEFT BEHIND
-/// (LL-062).  This used to subtract `damage_calc`, an instance variable
-/// set by scr_tower_shoot and declared on obj_tower - so what the
-/// function DID depended on whose scope called it.  That is AGENTS.md
-/// rule 6 broken in the damage path, and it is why crit had nowhere to
-/// live: a multiplier rolled at the tower could not reach a function that
-/// also serves splash, and a status tick or an AoE calling it later would
-/// silently have dealt the tower's number instead of its own.
+/// (LL-062). Direct attacks compute their amount before they call this; a
+/// status tick passes its own damage-per-frame. `_is_critical` only routes the
+/// displayed damage into a separate CRIT float - this function never rolls
+/// chance or multiplies damage, so DoT cannot accidentally crit.
 ///
-/// Now the caller decides the number and passes it, so a direct hit, a
-/// splash hit at half, and a burn tick can all call this.
-///
-/// `damage_amount` stays on the MONSTER: it is a per-frame accumulator for
-/// the floating number (scr_showMonDamage reads it and resets it), not an
-/// input to this function.
-function scr_do_damage(_arr, _ind, _amount) {
+/// Per-swing values are locked on the tower because a swing spans frames. The
+/// function is told the damage and marker it needs rather than reading caller
+/// scope (AGENTS rule 6).
+function scr_do_damage(_arr, _ind, _amount, _is_critical) {
+	if(!is_array(_arr) || !is_real(_ind)) return;
+	if(_ind < 0 || _ind >= array_length(_arr)) return;
 	var _obj = _arr[_ind];
-	/// guard: a caller that forgot the argument lands 0 rather than taking
-	/// the Step event down with a fatal read (LL-002)
-	var _dmg = is_real(_amount) ? _amount : 0;
+	/// A caller that forgot the amount lands 0; this helper never takes down
+	/// a Step event with a fatal read (LL-002).
+	var _dmg = is_real(_amount) ? _amount : 0,
+	    _critical = (_is_critical == true);
 	if(scr_isValidInstance(_obj)){
-	    /// do damage
-	    _obj.data[MON.life] -= _dmg;
-	    /// show effect
-	    _obj.damage_amount += _dmg;
+		with(_obj){
+			if(variable_instance_exists(id, "data") && is_array(data)
+			&& array_length(data) > MON.life){
+				data[MON.life] -= _dmg;
+			}
+			if(_critical && variable_instance_exists(id, "damage_critical_amount")){
+				damage_critical_amount += _dmg;
+			} else if(variable_instance_exists(id, "damage_amount")){
+				damage_amount += _dmg;
+			}
+		}
 	}
 }

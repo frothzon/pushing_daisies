@@ -20,17 +20,14 @@
   },
   "focus": {
     "now": [
-      "tower-card-upgrade-preview",
-      "tower-panel-effective-rate",
-      "tower-card-status-line"
+      "combat-status-stun"
     ],
     "next": [
-      "garden-nav",
-      "garden-trees",
-      "garden-currency-hud",
-      "candy-recipes"
+      "combat-status-poison-root",
+      "combat-status-bleed-vulnerable",
+      "combat-resistances"
     ],
-    "note": "2026-10-30: Rayu set the full goal.md as the active objective. Current implementation pass: correct the in-run tower card (real next rung, delivered rate, trait line); then continue through Garden Book and the remaining goal.md phases. The project owner is away and will review/playtest after returning."
+    "note": "2026-10-30: Full goal.md remains active. The enum type-test that blocked every status is fixed; Chillip slow and Burning Ivy burn now await Rayu runtime review. Continue with stun, remaining statuses and resistances before meta progression."
   },
   "tasks": [
     {
@@ -849,14 +846,14 @@
     {
       "id": "combat-crit",
       "title": "Crit: 5% chance, x1.5, direct hits only",
-      "status": "backlog",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "2",
       "size": "S",
       "prio": 1,
-      "needs": "",
+      "needs": "Reload the project and run a stage with a tower in range. Crits should appear on direct hits as yellow CRIT damage floats, near 1 in 20 at the base 5% chance, and deal 1.5x damage; an ordinary hit marked CRIT or a status tick marked CRIT falsifies the behavior.",
       "notes": "goal.md 6: baseline 5% / x1.5, additive chance, direct hits only - splash does not crit. Needs the pipeline card first (a crit multiplier has nowhere to live until the amount is an argument). `crit` goes on enum TOWER APPENDED AT THE END (roadmap 2.7) so every existing index keeps its meaning: scr_towerData builds the array positionally and the project already has one array whose field order is load-bearing by accident (mon_enums.gml:6).",
       "refs": [
         "scripts/tower_enums/tower_enums.gml",
@@ -864,7 +861,8 @@
         "scripts/scr_do_damage/scr_do_damage.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "combat-damage-pipeline",
@@ -968,21 +966,22 @@
     {
       "id": "combat-status-burn",
       "title": "Status 2: burn - the first ticking status",
-      "status": "backlog",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "2",
       "size": "M",
       "prio": 2,
-      "needs": "",
-      "notes": "Needs a damage-over-time pass, which means the pipeline card must land first, and the tick must not crit. Sets the stacking rule that the remaining DoTs reuse (goal.md 8, Damage over Time), so it is worth getting right rather than fast.",
+      "needs": "Reload the project and run a stage with Burning Ivy. Wait for a STAT burn 10 damage/s for 180f line and an orange zombie tint; later procs should extend the reported remaining frames without raising 10 damage/s, and burn damage floats must never say CRIT. No burn proc, a false CRIT label, or an increasing burn rate falsifies the fix.",
+      "notes": "Burning Ivy now has a 20% per-target proc for 10 damage/s over 3 seconds. Burn uses the shared damage pipeline once per live monster step, never rolls crit, keeps the strongest damage rate and adds proc durations. The STATUS enum validation now uses explicit cases (the old is_real guard rejected enum values); status application also refuses dead monsters. Static GML inspection passes; runtime review is required.",
       "refs": [
         "objects/obj_mon/Step_0.gml",
         "scripts/scr_do_damage/scr_do_damage.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "combat-status-poison-root",
@@ -1006,15 +1005,15 @@
     {
       "id": "combat-status-slow",
       "title": "Status 1: slow - the pattern-proving status",
-      "status": "done",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "2",
       "size": "M",
       "prio": 1,
-      "needs": "One status end to end: apply, tick, expire, clear; frames from game_get_speed; a log line naming the monster, the multiplier and the frames left.",
-      "notes": "First status end to end, chosen because speed is already computed in exactly ONE place (scr_zomb_pathSpeed), so the whole lifecycle - apply, tick, expire, clear - is provable with a one-line effect. Durations in game_get_speed frames, never room_speed (LL-007). One instance per status per monster. The log line must name the monster, the multiplier and the frames left, because goal.md 15 says a buff the player cannot perceive is a broken buff. roadmap 2.2. SHIPPED 2026-10-20 as scr_status: one struct of instances per monster (keyed by the STATUS enum, one per kind, strongest multiplier and longest duration win), frames from game_get_speed, ticked LAST in obj_mon/Step_0, multiplied in scr_zomb_pathSpeed, and visible as an image_blend wash (obj_mon/Draw_0 writes it every frame, so expiry clears it). Log: 'STAT  slow x0.55 for 90f on <id> (new) now slow x0.55 90f', and 'STAT  expired slow on <id> speed now x1'. Stun/root are declared and already read as speed 0; the LL-031 valve guard that makes that safe landed here (LL-065).",
+      "needs": "Reload the project and run a stage with Chillip in range. Confirm it slows a living zombie to about 55% speed, the STAT slow x0.55 line appears, and it returns to normal after the 90f duration; no slow line or a permanent slow means the enum guard or expiry still fails.",
+      "notes": "The original review claimed this shipped, but status_apply used is_real() on STATUS enum values; LL-083 shows that rejects int64 enums, so no status could apply. Replaced that type test with an explicit enum switch and added a live-monster guard. Static GML inspection passes; runtime review is still required for apply, movement multiplier, expiry and tint.",
       "refs": [
         "scripts/scr_status/scr_status.gml",
         "scripts/scr_zomb_pathSpeed/scr_zomb_pathSpeed.gml",
@@ -1024,8 +1023,8 @@
         "objects/obj_mon/Draw_0.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-20",
-      "done": "2026-10-20"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "combat-status-stun",
@@ -4883,6 +4882,24 @@
       "who": "cline",
       "task": "tower-card-upgrade-preview",
       "what": "The in-run tower card now resolves the next rung through tower_data_at_level(), shows its actual price and DMG/RNG/effective RATE/DPS preview, displays the existing trait note, and includes return plus the selected tower's stagger in the displayed rate. Expanded the card while keeping its button grid anchored inside it. GML syntax/structure was inspected; awaiting Rayu's reload and playtest."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "combat-crit",
+      "what": "Added crit chance/multiplier fields after all legacy TOWER indices, initialized the 5% / x1.5 baseline without changing scr_towerData’s five-argument contract, and roll capped additive tower-trait chance per direct target. The selected-tower card shows expected DPS and CRIT chance/multiplier; critical damage floats are explicitly labeled. Garden/spec/candy sources will be connected as those systems land; awaiting direct-hit review."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "combat-status-slow",
+      "what": "Reopened the old slow card after finding status_apply used is_real() on STATUS enum values. LL-083 documents that enums are int64s and fail that guard, so the prior implementation never applied. Explicit enum cases now validate kinds; dead targets are rejected. Static inspection passes; awaiting Rayu run to confirm x0.55 movement, expiry and tint."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "combat-status-burn",
+      "what": "Burning Ivy now procs burn at 20% per target for 10 damage/s over 3s. The status tick uses the amount-based damage pipeline without crit, keeps the strongest burn rate and adds proc duration. Corrected STATUS enum validation and blocked status application to dead monsters; awaiting Rayu run."
     }
   ]
 }

@@ -70,20 +70,27 @@ function tower_stat_note(_name) {
 	var _t = tower_trait_find(_name);
 	if(!is_struct(_t)) return "";
 
-	if(tower_trait_get(_name, "status", -1) == STATUS.SLOW){
-		var _m = tower_trait_get(_name, "mult", 1),
-		    _s = tower_trait_get(_name, "seconds", 0);
+	var _status = tower_trait_get(_name, "status", -1),
+	    _seconds = tower_trait_get(_name, "seconds", 0);
+	if(_status == STATUS.SLOW){
+		var _m = tower_trait_get(_name, "mult", 1);
 		return "slows its target to " + string(round(_m*100)) + "% for " +
-		       string(_s) + "s";
+		       string(_seconds) + "s";
+	}
+	if(_status == STATUS.BURN){
+		var _chance = tower_trait_get(_name, "status_chance", 0),
+		    _damage = tower_trait_get(_name, "amount", 0);
+		return string(round(_chance*100)) + "% chance to burn for " +
+		       string(_damage) + " damage/s for " + string(_seconds) + "s";
 	}
 
 	var _crit = tower_trait_get(_name, "crit", 0);
 	if(is_real(_crit) && _crit > 0){
-		return string(round(_crit*100)) + "% chance of a critical hit";
+		return string(round(_crit*100)) + "% extra chance of a critical hit";
 	}
-
 	return "";
 }
+
 
 /// The buy line: what the shop cell's click would do, in the same words the
 /// old info bar used, so nothing the player could read before was lost.

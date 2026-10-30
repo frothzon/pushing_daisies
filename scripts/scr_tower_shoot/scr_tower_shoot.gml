@@ -38,6 +38,19 @@ function scr_tower_shoot() {
 	    /// started is committed (LL-054), so an upgrade bought mid-swing
 	    /// lands on the NEXT shot.  This is also where crit will roll.
 	    shot_damage  = data[TOWER.damage];
+	    /// Crit is locked with this swing and rolled per direct target. DoT
+	    /// uses scr_do_damage directly and never enters this block (goal.md 6).
+	    var _base_crit = 0.05,
+	        _base_crit_damage = 1.50;
+	    if(array_length(data) > TOWER.crit_chance){
+	        if(is_real(data[TOWER.crit_chance])) _base_crit = data[TOWER.crit_chance];
+	    }
+	    if(array_length(data) > TOWER.crit_damage){
+	        if(is_real(data[TOWER.crit_damage])) _base_crit_damage = data[TOWER.crit_damage];
+	    }
+	    shot_crit_chance = clamp(_base_crit + tower_trait_get(name, "crit", 0), 0, 1);
+	    shot_crit_multiplier = max(1, _base_crit_damage
+	                                  + tower_trait_get(name, "crit_damage", 0));
 
 	    /// ---- and the STATUS this swing will land (scr_status) ------------
 	    /// Read from the trait table ONCE, at the shot, and COPIED onto the
@@ -49,6 +62,8 @@ function scr_tower_shoot() {
 	    shot_status        = tower_trait_get(name, "status",  -1);
 	    shot_status_mult   = tower_trait_get(name, "mult",     1);
 	    shot_status_frames = status_frames(tower_trait_get(name, "seconds", 0));
+	    shot_status_chance = clamp(tower_trait_get(name, "status_chance", 0), 0, 1);
+	    shot_status_amount = max(0, tower_trait_get(name, "amount", 0));
 	    target       = noone;   /// acquire fresh - never inherit normal's single pick
 	    did_damage   = false;
 	    did_particles = false;
@@ -118,7 +133,16 @@ function scr_tower_shoot() {
 	    /// (array, index), so it cannot carry the amount - which is the whole
 	    /// point of the argument (LL-062).
 	    for(var _i = 0; _i < array_length(target); _i++){
-	        scr_do_damage(target, _i, shot_damage);
+	        var _hit = target[_i];
+	        if(scr_isValidInstance(_hit)){
+	            var _hit_damage = shot_damage,
+	                _is_critical = (shot_crit_chance > 0)
+	                               && (random(1) < shot_crit_chance);
+	            if(_is_critical){
+	                _hit_damage *= shot_crit_multiplier;
+	            }
+	            scr_do_damage(target, _i, _hit_damage, _is_critical);
+	        }
 	    }
 	    did_damage = true;
 
@@ -129,10 +153,15 @@ function scr_tower_shoot() {
 	    /// effect of a hit.  `target` can hold instances that have died since
 	    /// the swing started - status_apply guards, so the loop does not have
 	    /// to (LL-012).
-	    if(shot_status >= 0 && shot_status_frames > 0){
+	    if(shot_status >= 0 && shot_status_frames > 0
+	    && shot_status_chance > 0){
 	        for(var _s = 0; _s < array_length(target); _s++){
-	            status_apply(target[_s], shot_status, shot_status_mult,
-	                         shot_status_frames);
+	            var _status_target = target[_s];
+	            if(scr_isValidInstance(_status_target)
+	            && random(1) < shot_status_chance){
+	                status_apply(_status_target, shot_status, shot_status_mult,
+	                             shot_status_frames, shot_status_amount);
+	            }
 	        }
 	    }
 

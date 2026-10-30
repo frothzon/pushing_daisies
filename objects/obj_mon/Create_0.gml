@@ -87,6 +87,7 @@ data = scr_makeMonster(0,0,0,0,0,0);
 /// show damage taken
 damage_timer = irandom(3)*game_get_speed(gamespeed_fps);
 damage_amount = 0;
+damage_critical_amount = 0;
 
 /// climb
 z_climb = 0;

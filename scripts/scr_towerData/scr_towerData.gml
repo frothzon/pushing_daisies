@@ -11,15 +11,14 @@ function scr_towerData(argument0, argument1, argument2, argument3, argument4) {
 
 	var _data;
 
-	_data[0] = argument0;   /// range
-	_data[1] = argument1;   /// damage
-	_data[2] = argument2;   /// fire rate = 1/time
-	_data[3] = argument3;   /// effect object
-	_data[4] = 1;           /// level
-	_data[5] = argument4;   /// AoE
+	_data[TOWER.range]       = argument0;   /// range
+	_data[TOWER.damage]      = argument1;   /// damage
+	_data[TOWER.fire_rate]   = argument2;   /// fire rate = 1/time
+	_data[TOWER.effect]      = argument3;   /// effect object
+	_data[TOWER.level]       = 1;           /// initial level
+	_data[TOWER.targets]     = argument4;   /// target count
+	_data[TOWER.crit_chance] = 0.05;        /// 5% baseline
+	_data[TOWER.crit_damage] = 1.50;        /// 150% damage
 
 	return(_data);
-
-
-
 }

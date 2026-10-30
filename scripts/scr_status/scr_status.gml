@@ -2,11 +2,9 @@
 /// answers "how fast is it moving right now" (roadmap 2.1).
 ///
 /// ONE instance of each kind per monster.  That is the rule the whole file
-/// exists to enforce: an effect that STACKS is an effect whose strength
-/// depends on how many towers happened to be in range, and that is not a
-/// number anyone can put on a card (goal.md 15).  So two Chillips slow a
-/// zombie exactly as hard as one - the strongest multiplier wins, the longest
-/// duration wins, and neither adds up.
+/// exists to enforce: status strength does not depend on how many towers were
+/// in range (goal.md 7-8). Slow keeps its strongest multiplier and longest
+/// duration; Burn keeps its strongest damage rate and adds proc durations.
 ///
 /// A monster's statuses live in ONE struct, `statuses`, keyed by the enum
 /// (as a string, because a struct key is a string).  Every function here
@@ -54,22 +52,48 @@ function status_frames(_seconds) {
 
 /// Apply (or REFRESH) one kind on one monster.
 ///
-/// `_mult` is a SPEED multiplier for SLOW (0.55 = a bit over half speed) and
-/// is ignored by the kinds that are not speed.  Returns false for anything it
-/// could not do, so the caller can decide whether to log it.
+/// `_mult` is a SPEED multiplier for SLOW; `_amount` is damage per second for
+/// BURN. A burn keeps the strongest rate and adds each proc's duration; other
+/// statuses keep their strongest effect and longest duration.
 ///
 /// STALE ENTRIES ARE OVERWRITTEN, NOT REMOVED.  An expired status keeps its
 /// key and sits at frames <= 0, which every reader treats as "not there".
 /// variable_struct_remove would be tidier, but nothing else in this project
 /// uses it, and a built-in the runtime does not have is a compile error - the
 /// same reasoning loadout_has() uses for array_contains.
-function status_apply(_mon, _kind, _mult, _frames) {
-	if(!scr_isValidInstance(_mon))    return false;
-	if(!is_real(_kind) || !is_real(_frames)) return false;
+function status_apply(_mon, _kind, _mult, _frames, _amount) {
+	if(!scr_isValidInstance(_mon)) return false;
 
-	var _m    = is_real(_mult) ? clamp(_mult, 0, 4) : 1,
-	    _f    = max(1, round(_frames)),
-	    _key  = string(_kind),
+	/// Enum values are int64s, so is_real(_kind) rejects every valid STATUS
+	/// (LL-083). Let the enum switch validate the supported kinds instead.
+	var _known = false;
+	switch(_kind){
+		case STATUS.SLOW:   _known = true; break;
+		case STATUS.STUN:   _known = true; break;
+		case STATUS.BURN:   _known = true; break;
+		case STATUS.POISON: _known = true; break;
+		case STATUS.ROOT:   _known = true; break;
+		case STATUS.BLEED:  _known = true; break;
+		case STATUS.VULN:   _known = true; break;
+	}
+	if(!_known || !is_real(_frames)) return false;
+
+	/// A strike can kill a target before its on-hit status loop runs. Check
+	/// life only inside with() (AGENTS rule 6), so corpses never gain effects.
+	var _alive = false;
+	with(_mon){
+		if(variable_instance_exists(id, "data") && is_array(data)
+		&& array_length(data) > MON.life && is_real(data[MON.life])
+		&& data[MON.life] > 0){
+			_alive = true;
+		}
+	}
+	if(!_alive) return false;
+
+	var _m = is_real(_mult) ? clamp(_mult, 0, 4) : 1,
+	    _f = max(1, round(_frames)),
+	    _a = is_real(_amount) ? max(0, _amount) : 0,
+	    _key = string(_kind),
 	    _fresh = false;
 
 	with(_mon){
@@ -81,30 +105,54 @@ function status_apply(_mon, _kind, _mult, _frames) {
 		}
 		if(variable_struct_exists(statuses, _key)){
 			var _s = statuses[$ _key];
-			if(_s.frames <= 0){
-				/// the effect had ENDED, so its multiplier is stale: a stronger
-				/// slow that expired must not weaken the one replacing it
-				_fresh  = true;
+			if(!is_struct(_s)){
+				_s = { kind: _kind, mult: _m, amount: _a, frames: _f };
+				statuses[$ _key] = _s;
+				_fresh = true;
+			} else if(!variable_struct_exists(_s, "frames")
+			|| !is_real(_s.frames) || _s.frames <= 0){
+				/// An expired effect's old strength cannot weaken its replacement.
+				_s.kind = _kind;
 				_s.mult = _m;
+				_s.amount = _a;
+				_s.frames = _f;
+				_fresh = true;
 			} else {
-				/// still running: the strongest multiplier wins, so a weak tower
-				/// cannot shorten or weaken a strong one's effect
-				_s.mult = min(_s.mult, _m);
+				/// Slow keeps the strongest multiplier; Burn keeps the highest rate.
+				if(_kind == STATUS.SLOW){
+					var _old_mult = 1;
+					if(variable_struct_exists(_s, "mult") && is_real(_s.mult)){
+						_old_mult = _s.mult;
+					}
+					_s.mult = min(_old_mult, _m);
+				}
+				var _old_amount = 0;
+				if(variable_struct_exists(_s, "amount") && is_real(_s.amount)){
+					_old_amount = _s.amount;
+				}
+				_s.amount = max(_old_amount, _a);
+				if(_kind == STATUS.BURN){
+					/// Burn stacks time, not rate; repeated hits cannot spike DPS.
+					_s.frames += _f;
+				} else {
+					_s.frames = max(_s.frames, _f);
+				}
 			}
-			_s.frames = max(_s.frames, _f);   /// longest wins
-		} else {
-			statuses[$ _key] = { kind: _kind, mult: _m, frames: _f };
-			_fresh = true;
 		}
 		if(_fresh) status_count += 1;
 	}
 
-	/// one line per application, so a slow that never lands and a slow that
-	/// never ends are different lines in the log (LL-011)
-	print("STAT  ", status_name(_kind), " x", _m, " for ", _f, "f on ", _mon,
-	      " (", _fresh ? "new" : "refresh", ") now ", status_summary(_mon));
+	if(_kind == STATUS.BURN){
+		print("STAT  ", status_name(_kind), " ", _a, " damage/s for ", _f,
+		      "f on ", _mon, " (", _fresh ? "new" : "refresh", ") now ",
+		      status_summary(_mon));
+	} else {
+		print("STAT  ", status_name(_kind), " x", _m, " for ", _f, "f on ", _mon,
+		      " (", _fresh ? "new" : "refresh", ") now ", status_summary(_mon));
+	}
 	return true;
 }
+
 
 
 /// What is on this monster, as one line of text.  Reads ANOTHER instance's
@@ -119,15 +167,32 @@ function status_summary(_mon) {
 			var _names = variable_struct_get_names(statuses);
 			for(var _i = 0; _i < array_length(_names); _i++){
 				var _s = statuses[$ _names[_i]];
-				if(_s.frames <= 0) continue;
-				_out += (_out == "" ? "" : ", ")
-				      + status_name(_s.kind) + " x" + string(_s.mult)
-				      + " " + string(_s.frames) + "f";
+				if(!is_struct(_s)
+				|| !variable_struct_exists(_s, "kind")
+				|| !variable_struct_exists(_s, "frames")
+				|| !is_real(_s.frames) || _s.frames <= 0) continue;
+				_out += (_out == "" ? "" : ", ");
+				if(_s.kind == STATUS.BURN){
+					var _amount = 0;
+					if(variable_struct_exists(_s, "amount") && is_real(_s.amount)){
+						_amount = _s.amount;
+					}
+					_out += status_name(_s.kind) + " " + string(_amount) + "dps "
+					      + string(_s.frames) + "f";
+				} else {
+					var _mult = 1;
+					if(variable_struct_exists(_s, "mult") && is_real(_s.mult)){
+						_mult = _s.mult;
+					}
+					_out += status_name(_s.kind) + " x" + string(_mult)
+					      + " " + string(_s.frames) + "f";
+				}
 			}
 		}
 	}
 	return (_out == "" ? "none" : _out);
 }
+
 
 /// How fast the CALLING monster moves right now: 1 = unaffected, 0 = stopped.
 ///
@@ -190,12 +255,30 @@ function status_tick() {
 		return;
 	}
 
-	var _names = variable_struct_get_names(statuses),
-	    _live  = 0,
-	    _gone  = "";
+	var _fps = max(game_get_speed(gamespeed_fps), 1),
+	    _self = [id],
+	    _alive_for_dot = false,
+	    _names = variable_struct_get_names(statuses),
+	    _live = 0,
+	    _gone = "";
+	if(variable_instance_exists(id, "data") && is_array(data)
+	&& array_length(data) > MON.life){
+		if(is_real(data[MON.life]) && data[MON.life] > 0) _alive_for_dot = true;
+	}
+
 	for(var _i = 0; _i < array_length(_names); _i++){
 		var _s = statuses[$ _names[_i]];
 		if(_s.frames <= 0) continue;
+		if(_s.kind == STATUS.BURN && _alive_for_dot){
+			var _damage_per_second = 0;
+			if(variable_struct_exists(_s, "amount")){
+				if(is_real(_s.amount)) _damage_per_second = max(0, _s.amount);
+			}
+			if(_damage_per_second > 0){
+				/// Directly uses the amount pipeline: status ticks never roll crit.
+				scr_do_damage(_self, 0, _damage_per_second / _fps, false);
+			}
+		}
 		_s.frames -= 1;
 		if(_s.frames <= 0){
 			_gone += (_gone == "" ? "" : ", ") + status_name(_s.kind);
@@ -205,8 +288,6 @@ function status_tick() {
 	}
 	status_count = _live;
 
-	/// one line per expiry.  A slow that never expires is either a bug or a
-	/// tower doing exactly its job, and this is how you tell which.
 	if(_gone != ""){
 		print("STAT  expired ", _gone, " on ", id, " speed now x",
 		      status_speed_mult());
