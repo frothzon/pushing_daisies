@@ -35,12 +35,13 @@
       "ui-hud-flex",
       "ui-flex-other-screens",
       "ui-palette-adopt",
-      "dead-color-swap-shader"
+      "dead-color-swap-shader",
+      "perf-60-monsters"
     ],
     "next": [
       "hud-readability-and-strings"
     ],
-    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, wired terrain atlas selection by biome, moved the in-run HUD and Level Complete banner onto flex geometry, centralized meta-screen colors without RGB changes, and removed the unused color-swap GML resources. The HUD text catalog is now implemented; remaining work is in-game review after Rayu reloads GameMaker."
+    "note": "2026-10-30: Phase 6 performance pass. Regions 2–6 are now authored, so the original “measure before adding art” timing has passed. The current project has 494 sprite resources in one Default texture group; root-frame images total about 182.7 MiB of raw RGBA texels before atlas packing. Adding dev-only wave-40/60-live telemetry to measure frame time and status load on Rayu’s target machine before deciding whether texture-group splits or runtime optimizations are needed."
   },
   "tasks": [
     {
@@ -2656,7 +2657,7 @@
     {
       "id": "perf-60-monsters",
       "title": "Performance: 60 monsters with statuses, sprite memory, texture groups",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -2669,7 +2670,7 @@
         "roadmap.md"
       ],
       "created": "2026-10-18",
-      "updated": "2026-10-18",
+      "updated": "2026-10-30",
       "done": null
     },
     {
