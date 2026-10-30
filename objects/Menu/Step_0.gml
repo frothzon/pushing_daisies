@@ -196,6 +196,7 @@ switch(menu_state){
                     } else if(stage_unlocked(_rgn, _stg)){
                         global.region = _rgn;
                         global.stage  = _stg;
+                        global.endless_setup = false;
                         scr_playSound(snd_button, false);
                         print("MENU  chose stage ", _rgn, "-", _stg);
                         scr_menu_changeState(MENU_STATE.DEPLOY);
@@ -204,6 +205,13 @@ switch(menu_state){
                     }
                 } else if(meta_button_clicked(_wgeom.garden, true)){
                     scr_menu_changeState(MENU_STATE.GARDEN);
+                } else if(meta_button_clicked(_wgeom.endless, true)){
+                    if(endless_is_unlocked()){
+                        global.endless_setup = true;
+                        scr_menu_changeState(MENU_STATE.DEPLOY);
+                    } else {
+                        print("MENU  Endless locked - clear Region 1 Stage 10 first");
+                    }
                 } else if(meta_button_clicked(_wgeom.title, true)){
                     /// "Title" returns to the start menu, which is the state
                     /// that owns Start / Options / Quit
@@ -291,14 +299,20 @@ switch(menu_state){
                     if(loadout_ready()
                        && meta_button_clicked(_dgeom.deploy, true)){
                         loadout_set(loadout_stored());
-                        /// remember WHERE, so a relaunch can resume here
-                        /// and Retry comes back to this stage (schema v2)
-                        run_set(global.region, global.stage, global.difficulty);
-                        scr_save_meta();
-                        print("MENU  deploy!  region ", global.region,
-                              " stage ", global.stage,
-                              " ", difficulty_name(global.difficulty),
-                              " with ", string(loadout_stored()));
+                        if(global.endless_setup){
+                            endless_begin();
+                            print("MENU  deploy! Endless ",difficulty_name(global.difficulty),
+                                  " with ",string(loadout_stored()));
+                        } else {
+                            /// remember WHERE, so a relaunch can resume here
+                            /// and Retry comes back to this stage (schema v2)
+                            run_set(global.region, global.stage, global.difficulty);
+                            scr_save_meta();
+                            print("MENU  deploy!  region ", global.region,
+                                  " stage ", global.stage,
+                                  " ", difficulty_name(global.difficulty),
+                                  " with ", string(loadout_stored()));
+                        }
                         audio_stop_all();
                         fadeout(global.startRoom, c_black, 1, 0, 0);
                         _done = true;
@@ -312,6 +326,7 @@ switch(menu_state){
                     }
                 }
                 if(!_done && meta_button_clicked(_dgeom.back, true)){
+                    global.endless_setup = false;
                     scr_menu_changeState(MENU_STATE.WORLD_MAP);
                 }
             }
@@ -332,15 +347,40 @@ switch(menu_state){
                 _candy_view = (_mode == 2),
                 _ghov = _candy_view ? -1 : meta_garden_shop_hit();
             if(_ghov >= 0) garden_focus = _ghov;
+            var _garden_tab = -1;
+            for(var _tab_check=0; _tab_check<array_length(_ggeom.tabs); _tab_check++){
+                if(_garden_tab < 0 && meta_button_clicked(_ggeom.tabs[_tab_check],true)){
+                    _garden_tab = _tab_check;
+                }
+            }
+            var _branch_tab = -1;
+            if(_mode == 0){
+                for(var _branch_check=0; _branch_check<array_length(_ggeom.branch_tabs); _branch_check++){
+                    if(_branch_tab < 0 && meta_button_clicked(_ggeom.branch_tabs[_branch_check],true)){
+                        _branch_tab = _branch_check;
+                    }
+                }
+            }
+            var _focus_name = "";
+            if(variable_instance_exists(id,"garden_focus") && is_real(garden_focus)){
+                var _focus_roster = tower_roster();
+                if(garden_focus >= 0 && garden_focus < array_length(_focus_roster)){
+                    _focus_name = _focus_roster[garden_focus].name;
+                }
+            }
 
             if(_gclick){
-                if(meta_button_clicked(_ggeom.view,true)){
-                    global.garden_view_mode = (_mode + 1) mod 4;
-                    global.garden_blood_view = (global.garden_view_mode == 1);
-                    var _view_name = global.garden_view_mode == 0 ? "Clover Tree"
-                                   : (global.garden_view_mode == 1 ? "Blood Alchemy"
-                                     : (global.garden_view_mode == 2 ? "Candy Shop" : "Garden Mastery"));
-                    print("MENU  garden view -> ",_view_name);
+                if(_garden_tab >= 0){
+                    global.garden_view_mode = _garden_tab;
+                    global.garden_blood_view = (_garden_tab == 1);
+                    var _view_name = _garden_tab == 0 ? "Clover Tree"
+                                   : (_garden_tab == 1 ? "Blood Alchemy"
+                                     : (_garden_tab == 2 ? "Candy Shop" : "Garden Mastery"));
+                    print("MENU  garden tab -> ",_view_name);
+                } else if(_branch_tab >= 0){
+                    global.garden_clover_branch = _branch_tab;
+                    global.garden_clover_page = 0;
+                    print("MENU  clover branch -> ",clover_branch_name());
                 } else if(_candy_view){
                     if(meta_button_clicked(_ggeom.page,true)){
                         global.garden_candy_page = 1 - garden_candy_page_get();
@@ -384,9 +424,26 @@ switch(menu_state){
                             }
                         }
                     }
-                } else if(_mode == 0 && meta_button_clicked(_ggeom.branch,true)){
-                    clover_branch_cycle();
-                    print("MENU  clover branch -> ",clover_branch_name());
+                } else if(_mode == 0 && clover_branch_respec_fee(clover_branch_key()) >= 0
+                          && meta_button_clicked(_ggeom.branch_respec,true)){
+                    var _branch=clover_branch_key(),
+                        _spent=clover_branch_invested(_branch),
+                        _fee=clover_branch_respec_fee(_branch);
+                    if(clover_branch_respec(_branch)){
+                        var _save_ok=scr_save_meta();
+                        print("MENU  respec clover branch ",_branch," spent=",_spent,
+                              " fee=",_fee," refund=",_spent-_fee," saved=",_save_ok);
+                    }
+                } else if((_mode == 0 || _mode == 1)
+                          && tower_spec_respec_cost(_focus_name) > 0
+                          && clovers_get() >= tower_spec_respec_cost(_focus_name)
+                          && meta_button_clicked(_ggeom.spec_respec,true)){
+                    var _spec_cost=tower_spec_respec_cost(_focus_name);
+                    if(tower_spec_respec(_focus_name)){
+                        var _spec_saved=scr_save_meta();
+                        print("MENU  respec specialization ",_focus_name,
+                              " cost=",_spec_cost," saved=",_spec_saved);
+                    }
                 } else if(_mode == 0 && meta_button_clicked(_ggeom.clover_page,true)){
                     clover_page_cycle();
                     print("MENU  clover page -> ",clover_page_get()+1,"/2");
@@ -462,9 +519,14 @@ switch(menu_state){
                 scr_menu_changeState(MENU_STATE.WORLD_MAP);
             } else {
                 var _lr = global.level_result;
-                print("MENU  results ", _lr.outcome, " ", _lr.region, "-", _lr.stage,
-                      " lives ", _lr.lives, " leaked ", _lr.leaked,
-                      " seeds +", _lr.seeds, " clovers +", _lr.clovers);
+                if(_lr.outcome == "ENDLESS"){
+                    print("MENU  results Endless wave ",_lr.waves," score ",_lr.score,
+                          " boxes ",_lr.boxes," best ",_lr.best_wave);
+                } else {
+                    print("MENU  results ", _lr.outcome, " ", _lr.region, "-", _lr.stage,
+                          " lives ", _lr.lives, " leaked ", _lr.leaked,
+                          " seeds +", _lr.seeds, " clovers +", _lr.clovers);
+                }
                 /// the results screen is part of the menu, so it keeps the
                 /// menu theme; a stage exit stopped the region theme (5.8)
                 scr_music_start_menu();
@@ -486,13 +548,18 @@ switch(menu_state){
                 /// to a DIFFERENT room - the restart argument is for a retry
                 /// that stays put, and is not needed here.
                 results_leaving   = true;
-                global.region     = _res.region;
-                global.stage      = _res.stage;
                 global.difficulty = _res.difficulty;
                 loadout_set(loadout_stored());
-                run_set(_res.region, _res.stage, _res.difficulty);
-                scr_save_meta();
-                print("MENU  retry ", _res.region, "-", _res.stage);
+                if(_res.outcome == "ENDLESS"){
+                    endless_begin();
+                    print("MENU  retry Endless");
+                } else {
+                    global.region = _res.region;
+                    global.stage = _res.stage;
+                    run_set(_res.region, _res.stage, _res.difficulty);
+                    scr_save_meta();
+                    print("MENU  retry ", _res.region, "-", _res.stage);
+                }
                 audio_stop_all();
                 fadeout(global.startRoom, c_black, 1, 0, 0);
             } else if(meta_button_clicked(_rgeom.next, !is_undefined(_next))){
@@ -503,6 +570,8 @@ switch(menu_state){
                 scr_menu_changeState(MENU_STATE.DEPLOY);
             } else if(meta_button_clicked(_rgeom.map, true)){
                 results_leaving = true;
+                global.endless_active = false;
+                global.endless_setup = false;
                 scr_menu_changeState(MENU_STATE.WORLD_MAP);
             }
         }

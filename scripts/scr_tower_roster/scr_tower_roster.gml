@@ -20,7 +20,7 @@ function tower_entry(_name, _sprites, _price, _data, _unlock, _gate){
 /// The four free starters always fill a new save's loadout (goal.md §3.1).
 function tower_roster() {
 	return [
-		/// Starters: cheap DPS, damage over time, multi-target, and area damage.
+		/// Four starters form the first loadout.
 		tower_entry("Daisy Pusher",
 		            [spr_daisy_idle_192x, spr_daisy_attack_192x, spr_daisy_return_192x],
 		              5, scr_towerData(100,   4,    3, _eff_puff,   1),  0, 0),
@@ -34,30 +34,31 @@ function tower_roster() {
 		            [spr_pina_idle_192x, spr_pina_attack_192x, spr_pina_return_192x],
 		             40, scr_towerData( 75, 250,    0.10, _eff_xplod, 10),  0, 0),
 
-		/// Phase 1 unlocks use stats only; no status system is required.
-		tower_entry("Cannon Tulip",
-		            [spr_tulip_idle_192x, spr_tulip_attack_192x, spr_tulip_return_192x],
-		             60, scr_towerData(200,  60,  0.5, _eff_xplod,  5), 25, 1),
-		tower_entry("Meat Bulb",
-		            [spr_meatbulb_idle_192x, spr_meatbulb_attack_192x, spr_meatbulb_return_192x],
-		             80, scr_towerData( 90, 250, 0.75, _eff_spikes, 1), 40, 1),
-
-		/// ---- the Phase 2 tower: a slow, and the first one -----------------
-		///      Cheap on purpose ($15, one target, 12 nominal DPS) because a
-		///      control tower is bought for what it does to the OTHER towers'
-		///      shots: everything on the route gets 1.8x longer to fire at it.
-		///      Its numbers are deliberately not a damage ladder - see
-		///      tower_trait_table() for the half of the tower that is not in
-		///      scr_towerData.
+		/// Unlocks follow economy.md §2.2 and goal.md §10.1.
 		tower_entry("Chillip",
 		            [spr_chillip_idle_192x, spr_chillip_attack_192x, spr_chillip_return_192x],
-		             15, scr_towerData( 90,   8,   1.5, _eff_puff,   1), 30, 1),
+		             15, scr_towerData( 90,   8,   1.5, _eff_puff,   1),  25, 1),
 		tower_entry("Bindweed",
 		            [spr_bindweed_idle_192x, spr_bindweed_attack_192x, spr_bindweed_return_192x],
-		             40, scr_towerData( 70,   5,   1.0, _eff_puff,   2), 50, 1),
+		             40, scr_towerData( 70,   5,   1.0, _eff_puff,   2),  50, 1),
+		tower_entry("Thornamental",
+		            [spr_thornamental_idle_192x, spr_thornamental_attack_192x, spr_thornamental_return_192x],
+		             60, scr_towerData(110, 100,   2.0, _eff_spikes, 1),  90, 2),
 		tower_entry("Belladonna Blitz",
 		            [spr_bella_idle_192x, spr_bella_attack_192x, spr_bella_return_192x],
-		             55, scr_towerData( 85,  12,   4.0, _eff_acid,   2), 150, 2)
+		             55, scr_towerData( 85,  12,   4.0, _eff_acid,   2), 150, 2),
+		tower_entry("Cannon Tulip",
+		            [spr_tulip_idle_192x, spr_tulip_attack_192x, spr_tulip_return_192x],
+		             60, scr_towerData(200,  60,   0.5, _eff_xplod,   5), 230, 3),
+		tower_entry("Kaboom Kalanchoe",
+		            [spr_kaboom_idle_192x, spr_kaboom_attack_192x, spr_kaboom_return_192x],
+		            150, scr_towerData( 80, 120,   1.0, _eff_xplod,   6), 340, 4),
+		tower_entry("Money Marigold",
+		            [spr_marigold_idle_192x, spr_marigold_attack_192x, spr_marigold_return_192x],
+		             35, scr_towerData(  0,   0,   0.0, _eff_puff,   1), 480, 5),
+		tower_entry("Meat Bulb",
+		            [spr_meatbulb_idle_192x, spr_meatbulb_attack_192x, spr_meatbulb_return_192x],
+		             80, scr_towerData( 90, 250,   0.75, _eff_spikes, 1), 650, 6)
 	];
 }
 
@@ -84,14 +85,15 @@ function tower_data_copy(_name) {
 }
 
 /// Named traits stay outside scr_towerData's five-argument balance contract
-/// and are never scaled by upgrades (LL-038). tower_trait_get() supplies
-/// defaults for towers without a row.
+/// (LL-038). Combat status values are read by the shot; passive income is
+/// resolved from the tower's level and specialization. tower_trait_get()
+/// supplies defaults for towers without a row.
 function tower_trait_table() {
 	return [
 		{ name : "Chillip",
 		  crit : 0.00,
 		  statuses : [
-			{ kind : STATUS.SLOW, chance : 1.00, mult : 0.55, amount : 0, seconds : 1.5 },
+			{ kind : STATUS.SLOW, chance : 1.00, mult : 0.25, amount : 0, seconds : 1.5 },
 			{ kind : STATUS.STUN, chance : 0.05, mult : 1.00, amount : 0, seconds : 1.0 }
 		  ] },
 		{ name : "Burning Ivy",
@@ -102,17 +104,28 @@ function tower_trait_table() {
 		{ name : "Bindweed",
 		  crit : 0.00,
 		  statuses : [
-			{ kind : STATUS.ROOT, chance : 0.30, mult : 1.00, amount : 0, seconds : 1.0 }
+			{ kind : STATUS.ROOT, chance : 1.00, mult : 1.00, amount : 0, seconds : 1.3 }
 		  ] },
+		{ name : "Thornamental",
+		  crit : 0.15,
+		  statuses : [] },
 		{ name : "Belladonna Blitz",
 		  crit : 0.00,
 		  statuses : [
 			{ kind : STATUS.POISON, chance : 0.20, mult : 1.00, amount : 3, seconds : 5.0 }
 		  ] },
+		{ name : "Kaboom Kalanchoe",
+		  crit : 0.00,
+		  statuses : [
+			{ kind : STATUS.BURN, chance : 0.20, mult : 1.00, amount : 15, seconds : 3.0 }
+		  ] },
 		{ name : "Money Marigold",
 		  crit : 0.00,
-		  money : 0.15,
-		  statuses : [] }
+		  passive : true,
+		  wave_income : 1,
+		  money : 0,
+		  statuses : []
+		}
 	];
 }
 

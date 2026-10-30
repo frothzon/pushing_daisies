@@ -335,7 +335,7 @@ understand and each one will look like something else next time:
 | 1.8 | **Badges v1** — *Untouched*, *Exterminator*, *Brutalist* | new `scr_badges` | the other four are data + a flag once the pattern exists |
 | 1.9 | **Region 1 content** — 10 stages + the region boss (a retuned existing rig) | `stage_data` rows | the boss costs **no new art** |
 | 1.10 | **Six towers** — the 4 starters plus **2 unlocks that need no new mechanics** | `tower_array` | see 5.2 |
-| 1.11 | **Art for the slice** — 2 tower sprite trios (6 sprites × 15 frames) | `sprites/spr_t5_*`, `spr_t6_*` | the only art Phase 1 needs; region 1 reuses the 3 existing zombies |
+| 1.11 | **Art for the slice** — dedicated trios for the slice towers | `sprites/spr_tulip_*`, `spr_meatbulb_*` | integrated from the 2026-10-21 art drop |
 
 ### 5.2 The sequencing decision inside 1.10
 
@@ -344,7 +344,7 @@ Phase 1 must ship a **real unlock loop** without shipping status effects (that i
 * 🎆 **Cannon Tulip** — long range, low fire rate (no status)
 * 🎺 **Meat Bulb** — high damage, single target (no status)
 
-**Chillip (slow), Bindweed (root), Belladonna Blitz (poison) and Thornamental (crit) deliberately wait for Phase 2**, because each of them needs a system that does not exist yet. This is the whole reason to cut systems and content into separate phases.
+This was the original Phase 1 sequencing decision. Phase 2 later supplied the status, crit, and specialization systems; the complete roster now includes those towers plus Kaboom Kalanchoe and Money Marigold (roadmap 6.1 / 9.1).
 
 ### 5.3 Gate — the loop, end to end
 
@@ -372,7 +372,7 @@ Regions 2–6, status effects, crit, specializations, endless, candy, blood shar
 | 1.8 | Badges v1 | **done** | `scr_badges`; counters in `_levelControl` and `lose_life` |
 | 1.9 | Region 1 content | **done** | the ten `stage_data` rows (Phase 0) |
 | 1.10 | Six towers | **done** | `scr_tower_roster` — four starters plus **Cannon Tulip** and **Meat Bulb** |
-| 1.11 | Art for the slice | **NOT done** | the two unlocks borrow the t3/t4 sprite trios as clearly-marked placeholders |
+| 1.11 | Art for the slice | **done 2026-10-21** | Cannon Tulip and Meat Bulb use dedicated trios from the art drop |
 
 #### 5.6.1 The one deviation: the screens are Menu states, not new rooms
 
@@ -469,10 +469,10 @@ Return button, which is what that state's `hide` calls always meant.
 | 2.2 | **Statuses: burn, slow, stun** (the three the game needs first) | new `scr_status_*`, `objects/obj_mon` | one instance per status per zombie; durations in `game_get_speed` frames |
 | 2.3 | **Resistances** — zombie / elite / boss columns | `mon_enums`, `scr_makeMonster` | `goal.md` §7; elites introduced here |
 | 2.4 | **Persistent tower level** — the level a tower ends a stage at is stored per tower in the save, so upgrade money is never lost between stages | save schema, `objects/obj_tower` | money buys the rungs in-run; **no XP per kill** — mastery is the five clover nodes, 3.3 and `goal.md` §4 |
-| 2.5 | **Specializations at L3** — two per tower, stored per tower, respec costs seeds | new `scr_spec_*` | 12 specs for the 6 shipped towers |
+| 2.5 | **Specializations at L3** — two per tower, stored per tower, respec costs clovers | new `scr_spec_*` | 12 specs for the 6 shipped towers; Seeds remain content-only (`goal.md` §1) |
 | 2.6 | **`scr_level_difficulty` rewrite** — the new curve from `economy.md` §4.4 | `scripts/scr_level_difficulty` | **atomic with 2.4**: the old function exists to match a ×16 L5 |
 | 2.7 | **Tower stat vocabulary** — extend `enum TOWER` and `scr_towerData` with crit/status fields | `tower_enums`, `scr_towerData` | append fields at the **end** of the enum: every existing index must keep its meaning |
-| 2.8 | **The other three towers** — Chillip (slow), Bindweed (root), Belladonna Blitz (poison) + Thornamental (crit) | `tower_array` | now that their systems exist |
+| 2.8 | **Six role towers** — Chillip, Bindweed, Thornamental, Belladonna, Kaboom, and Money Marigold | `scr_tower_roster`, `scr_tower_specs`, `scr_tower_shoot` | code landed 2026-10-30; runtime balance review remains |
 | 2.9 | **Art** — 4 tower trios (12 sprites), 1–2 new zombies | sprites | the largest single art push in v1 |
 
 ### 6.2 Gate
@@ -527,8 +527,8 @@ too steep. If clearing a stage needs no upgrades at all, the ladder is too flat.
 | 3.2 | **The five master nodes** — cap 6→10 | the campaign's long tail |
 | 3.3 | **Mastery** — the five master nodes (floor **and** cap, `start = cap − 4`), plus a panel showing where each tower arrives and how far it can go | account-wide, so there are no per-tower level screens: the tree *is* the mastery UI |
 | 3.4 | **Currency HUD** — all four, with a "new" highlight when one changes | so nothing is earned invisibly |
-| 3.5 | **Respec** — specialization changes for seeds; tree respec for a clover fee | protects experimentation |
-| 3.6 | **Garden Book navigation** — tabs for the four trees, the shop, and (later) the blood tree and the **candy panel** | one screen, six tabs; the candy content lands in Phase 4, so the layout is proven here first |
+| 3.5 | **Respec** — specialization changes for clovers; branch respec refunds its investment minus a clover fee | protects experimentation; Seeds remain content-only (`goal.md` §1) |
+| 3.6 | **Garden Book navigation** — direct tabs for Clovers, Blood, Candy, and Mastery; direct sub-tabs for the four clover branches | one screen; Seed Shop stays pinned beside the active tree or candy panel |
 
 ### 7.2 Gate
 
@@ -574,7 +574,7 @@ If 15,000 kills produce no shard, the pity window is wrong (that is the first nu
 | 5.2 | **Five region mechanics** | the `goal.md` §27.4 table | **zero new engine work by design** |
 | 5.3 | **Five bosses** — 4 new rigs + region 2 reusing the second existing boss | 4 × 2 sprites × 15 frames | boss art is the most expensive in the game |
 | 5.4 | **Six new zombies** — one per region, plus variants from the existing 3 rigs | 6 × 2 sprites × 15 frames | variants cost data, not art |
-| 5.5 | **Six towers** — the remaining unlockables | 6 × 3 sprites × 15 frames | the largest art block in v1 |
+| 5.5 | **Six unlockable towers** — complete roster, seed costs, gates, paths, and FX wiring | `scr_tower_roster`, `scr_tower_specs`, `scr_fx` | code and existing art integrated 2026-10-30; runtime review remains |
 | 5.6 | **Fifty stages** — data rows, spawn mixes, `par_spend`, `par_time` | authoring | should be *minutes per stage*, not hours |
 | 5.7 | **All seven badges** across all 60 stages | data | the pattern exists after Phase 1 |
 | 5.8 | **Audio** — region music, new tower/zombie sounds | 5 tracks + ~15 stings | can run in parallel with everything |

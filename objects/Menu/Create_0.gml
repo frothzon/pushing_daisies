@@ -37,6 +37,7 @@ if(!variable_global_exists("garden_candy_page")) global.garden_candy_page = 0;
 if(!variable_global_exists("garden_candy_focus")) global.garden_candy_focus = "red_licorice";
 if(!variable_global_exists("garden_clover_branch")) global.garden_clover_branch = 1;
 if(!variable_global_exists("garden_clover_page")) global.garden_clover_page = 0;
+if(!variable_global_exists("endless_setup")) global.endless_setup = false;
 
 /// state machine (plain switch - see the Step event)
 menu_state      = -1;                    /// set on the first step

@@ -303,6 +303,73 @@ def cmd_balance(args: argparse.Namespace) -> int:
         root, region=args.region, stage=args.stage, difficulty=diff,
         loadout=args.loadout, spawns=args.spawns, z=args.z)
 
+    if args.action == "gate":
+        from .balance import sim as bsim
+        from .balance import terrain as bterrain
+
+        if args.trials < 1:
+            print("gate needs --trials >= 1")
+            return 2
+
+        loadouts = {
+            "control": ("Chillip", "Bindweed", "Thornamental", "Cannon Tulip"),
+            "damage": ("Daisy Pusher", "Cannon Tulip", "Thornamental", "Pina Collider"),
+        }
+        scenarios = ((5, 1, "fast wave: Shroud"),
+                     (6, 1, "high-HP wave: Harvester"))
+        print(report.rule(f"combat gate - {args.trials} seeded trials, Brutal"))
+        gate_waves = args.max_waves if args.max_waves is not None else 5
+        print("   Fixed four-tower L1 deployments, no specialization or candy, same route cells;")
+        print("   combat-only run (no purchases). Setup cost is shown separately.")
+        print(f"   seeds {args.seed}..{args.seed + args.trials - 1}; first {gate_waves} waves per scenario")
+        for region, stage, label in scenarios:
+            scenes = {
+                name: model.resolve(root, region=region, stage=stage,
+                                    difficulty="Brutal", loadout=names,
+                                    spawns=args.spawns, z=args.z)
+                for name, names in loadouts.items()
+            }
+            cells = bsim.common_deployment_cells(list(scenes.values()), count=4)
+            print(report.rule(f"Region {region}-{stage} - {label}"))
+            print("   common cells " + ", ".join(f"{c[0]},{c[1]}" for c in cells))
+            for build_name, scene in scenes.items():
+                placements = tuple(zip(loadouts[build_name], cells))
+                records = []
+                for offset in range(args.trials):
+                    runner = bsim.Sim(
+                        scene, ter=bterrain.Terrain(args.z, "uniform"),
+                        spend="none", max_waves=gate_waves, seed=args.seed + offset,
+                        initial_placements=placements)
+                    out = runner.run()
+                    last_wave = out.waves[-1] if out.waves else None
+                    fight_frames = sum(
+                        max(0, wave.clear_frame - wave.spawn_frame)
+                        for wave in out.waves if wave.clear_frame)
+                    if out.failed and last_wave is not None and not last_wave.clear_frame:
+                        fight_frames += max(0, out.frames - last_wave.spawn_frame)
+                    duration = max(1, fight_frames) / scene.tables.constants.fps
+                    clean = out.leaks == 0 and not out.failed
+                    dealt = {tw.name: tw.dealt / duration for tw in runner.towers}
+                    records.append((out, duration, clean, dealt))
+                clear_n = sum(1 for _, _, clean, _ in records if clean)
+                mean_leaks = sum(out.leaks for out, _, _, _ in records) / args.trials
+                mean_lives = sum(out.lives_left for out, _, _, _ in records) / args.trials
+                mean_fight = sum(duration for _, duration, _, _ in records) / args.trials
+                setup = records[0][0].setup_cost
+                failed_n = sum(1 for out, _, _, _ in records if out.failed)
+                leaky_n = sum(1 for out, _, _, _ in records if out.leaks > 0)
+                print(f"   {build_name:<7} clean {clear_n}/{args.trials}  "
+                      f"failed {failed_n}/{args.trials}  leaked {leaky_n}/{args.trials}  "
+                      f"leaks {mean_leaks:.2f} avg  lives "
+                      f"{mean_lives:.1f}/{records[0][0].start_life} avg  "
+                      f"fight {mean_fight:.1f}s avg  setup ${setup:.0f}  in-run spend $0")
+                for tower_name in loadouts[build_name]:
+                    values = [dealt.get(tower_name, 0.0)
+                              for _, _, _, dealt in records]
+                    mean_dps = sum(values) / args.trials
+                    print(f"      delivered {tower_name:<20} {mean_dps:>7.2f} DPS avg")
+        return 0
+
     if args.action == "route":
         from .balance import geometry
         scene = scene_for(args.difficulty)
@@ -473,7 +540,7 @@ def cmd_balance(args: argparse.Namespace) -> int:
         ter = bterrain.Terrain(args.z, "uniform")
         wants = ["real", "nominal"] if args.cycle == "both" else [args.cycle]
         runs = {mode: bsim.Sim(scene, ter=ter, cycle=mode, spend=args.spend,
-                               max_waves=args.max_waves).run()
+                               max_waves=args.max_waves, seed=args.seed).run()
                 for mode in wants}
         lines = report.sim_report(runs[wants[0]], scene)
         lines += report.sim_findings(runs[wants[0]], scene)
@@ -627,7 +694,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("balance", help="the headless balance tester")
     p.add_argument("action", nargs="?", default="project",
                    choices=["tables", "route", "project", "towers", "afford",
-                            "sim", "check", "fit"])
+                            "sim", "gate", "check", "fit"])
     p.add_argument("--region", type=int, default=1)
     p.add_argument("--stage", type=int, default=1)
     p.add_argument("--difficulty", default="Normal",
@@ -647,7 +714,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--spend", default="ceiling", choices=["none", "ceiling", "instant"],
                    help="sim: buy nothing, or re-plan the greedy at every wave")
     p.add_argument("--max-waves", type=int, default=None,
-                   help="sim: stop after N waves instead of running the stage out")
+                   help="sim/gate: stop after N waves instead of running the stage out (gate default 5)")
+    p.add_argument("--seed", type=int, default=0,
+                   help="sim/gate: seeded combat-effect rolls (default 0)")
+    p.add_argument("--trials", type=int, default=20,
+                   help="gate: seeded repetitions per loadout and scenario")
     p.add_argument("--param", default="curve_end",
                    help="fit: the Region field to sweep (fit.PARAMS)")
     p.add_argument("--from", dest="from_value", type=float, default=None,

@@ -166,6 +166,7 @@ function status_apply(_mon, _kind, _mult, _frames, _amount) {
 				_s.amount = _a;
 				_s.frames = _f;
 				_s.stacks = 1;
+				if(_kind == STATUS.BURN) _s.wildfire_signature = false;
 				_fresh = true;
 			} else {
 				/// Slow keeps the strongest multiplier; Burn keeps the highest rate.

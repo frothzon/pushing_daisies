@@ -7,7 +7,7 @@
 function tower_spec_tier(_damage, _rate, _range, _crit, _crit_damage, _targets, _knockback, _statuses) {
 	return {
 		damage : _damage, rate : _rate, range : _range,
-		crit : _crit, crit_damage : _crit_damage, money : 0,
+		crit : _crit, crit_damage : _crit_damage, money : 0, income : 0,
 		targets : _targets, knockback : _knockback,
 		statuses : is_array(_statuses) ? _statuses : []
 	};
@@ -23,13 +23,17 @@ function tower_spec_income_tier(_tier, _money) {
 	return _tier;
 }
 
+function tower_spec_flat_income_tier(_tier, _income) {
+	if(is_struct(_tier) && is_real(_income)) _tier.income = max(0,_income);
+	return _tier;
+}
+
 function tower_spec_path(_key, _label, _description, _tiers) {
 	return { key : _key, label : _label, description : _description,
 	         tiers : _tiers };
 }
 
-/// Two paths for each planned tower. The three not yet in tower_roster() are
-/// defined now so adding their roster rows does not silently omit choices.
+/// Two paths for every tower in the roster; effects resolve by named slot.
 function tower_spec_table() {
 	return [
 		{ tower : "Daisy Pusher", paths : [
@@ -165,15 +169,15 @@ function tower_spec_table() {
 			])
 		]},
 		{ tower : "Money Marigold", paths : [
-			tower_spec_path("compound_interest", "Compound Interest", "Earns more from the kills it secures", [
-				tower_spec_income_tier(tower_spec_tier(0,0.08,0,0,0,0,0,[]),0.05),
-				tower_spec_income_tier(tower_spec_tier(0,0.08,0,0,0,0,0,[]),0.05),
-				tower_spec_income_tier(tower_spec_tier(0.05,0.10,0,0,0,0,0,[]),0.08)
+			tower_spec_path("compound_interest", "Compound Interest", "Increases wave dividends", [
+				tower_spec_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),0.05),
+				tower_spec_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),0.05),
+				tower_spec_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),0.08)
 			]),
-			tower_spec_path("golden_harvest", "Golden Harvest", "Pays off with range and critical strikes", [
-				tower_spec_tier(0,0,0.12,0.04,0,0,0,[]),
-				tower_spec_tier(0,0,0.08,0.04,0.10,0,0,[]),
-				tower_spec_tier(0,0.05,0,0.06,0.15,1,0,[])
+			tower_spec_path("golden_harvest", "Golden Harvest", "Adds flat income each wave", [
+				tower_spec_flat_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),1),
+				tower_spec_flat_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),1),
+				tower_spec_flat_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),2)
 			])
 		]}
 	];
@@ -228,6 +232,27 @@ function tower_spec_save(_tower_name, _key) {
 	return _saved;
 }
 
+/// Changing a saved path costs permanent power currency; seeds remain content-only.
+function tower_spec_respec_cost(_tower_name) {
+	return tower_spec_saved(_tower_name) == "" ? -1 : 25;
+}
+
+function tower_spec_respec(_tower_name) {
+	var _cost=tower_spec_respec_cost(_tower_name);
+	if(_cost < 0 || !variable_global_exists("meta") || !is_struct(global.meta)
+	|| !clovers_spend(_cost)) return false;
+	var _saved=global.meta[$ "specializations"], _keep={},
+	    _keys=variable_struct_get_names(_saved);
+	for(var _i=0; _i<array_length(_keys); _i++){
+		var _key=_keys[_i];
+		if(_key != _tower_name) _keep[$ _key]=_saved[$ _key];
+	}
+	global.meta[$ "specializations"]=_keep;
+	scr_meta_log("SPEC",_tower_name," path cleared cost=",_cost,
+	             " clovers=",clovers_get());
+	return true;
+}
+
 /// The Growth tree's sixth node unlocks the signature tier one rung early.
 function tower_spec_tier_limit(_level) {
 	if(!is_real(_level)) return 0;
@@ -242,11 +267,12 @@ function tower_spec_tier_limit(_level) {
 
 function tower_spec_modifiers(_tower_name, _key, _level) {
 	var _out = { damage:0, rate:0, range:0, crit:0, crit_damage:0,
-	             money:0, targets:0, knockback:0 };
+	             money:0, income:0, targets:0, knockback:0 };
 	var _spec = tower_spec_find(_tower_name,_key);
 	if(!is_struct(_spec) || !is_array(_spec.tiers)) return _out;
 	var _limit = min(tower_spec_tier_limit(_level),array_length(_spec.tiers));
-	var _fields = ["damage","rate","range","crit","crit_damage","money","targets","knockback"];
+	var _fields = ["damage","rate","range","crit","crit_damage","money",
+	               "income","targets","knockback"];
 	for(var _i = 0; _i < _limit; _i++){
 		var _tier = _spec.tiers[_i];
 		if(!is_struct(_tier)) continue;
@@ -264,6 +290,7 @@ function tower_spec_modifiers(_tower_name, _key, _level) {
 	_out.crit *= _strength;
 	_out.crit_damage *= _strength;
 	_out.money *= _strength;
+	_out.income *= _strength;
 	return _out;
 }
 
@@ -339,6 +366,148 @@ function tower_spec_shot_statuses(_tower_name, _key, _level) {
 		else _out[_found] = _spec[_i];
 	}
 	return _out;
+}
+
+/// L5 Deadeye signature: a critical cannon hit ricochets for half of its
+/// committed damage to the nearest other living target in range. The current
+/// shot's full target list is excluded, so the secondary cannot be hit twice.
+function tower_spec_signature_on_hit(_tower_name, _key, _level, _x, _y, _range, _already_hit, _damage, _critical) {
+	if(_tower_name != "Cannon Tulip" || _key != "deadeye"
+	|| !is_real(_level) || tower_spec_tier_limit(_level) < 3 || _critical != true
+	|| !is_real(_x) || !is_real(_y) || !is_real(_range) || _range <= 0
+	|| !is_real(_damage) || _damage <= 0) return false;
+	var _cap = max(1,instance_number(obj_mon)),
+	    _near = find_all_range(_x,_y,obj_mon,_range,_cap);
+	if(!is_array(_near)) return false;
+	for(var _i = 0; _i < array_length(_near); _i++){
+		var _candidate = _near[_i],
+		    _already = false;
+		if(!scr_isValidInstance(_candidate)) continue;
+		if(is_array(_already_hit)){
+			for(var _j = 0; _j < array_length(_already_hit); _j++){
+				if(_already_hit[_j] == _candidate){ _already = true; break; }
+			}
+		}
+		if(_already) continue;
+		var _ricochet = _damage*0.50*(1+clover_specialization_bonus());
+		scr_do_damage(_near,_i,_ricochet,false);
+		print("TOWER  signature Deadeye ricochet damage=",round(_ricochet),
+		      " target=",string(_candidate));
+		return true;
+	}
+	return false;
+}
+
+/// Tag Burning Ivy's L5 Wildfire burn so its death can pass a smaller burn
+/// to one nearby living target. Ordinary burns and lower path tiers do not tag.
+function tower_spec_mark_wildfire(_target, _tower_name, _key, _level) {
+	if(!scr_isValidInstance(_target) || _tower_name != "Burning Ivy"
+	|| _key != "wildfire" || !is_real(_level)
+	|| tower_spec_tier_limit(_level) < 3) return false;
+	var _marked = false,
+	    _status_key = string(STATUS.BURN);
+	with(_target){
+		if(variable_instance_exists(id,"statuses") && is_struct(statuses)
+		&& variable_struct_exists(statuses,_status_key)){
+			var _burn = statuses[$ _status_key];
+			if(is_struct(_burn) && variable_struct_exists(_burn,"frames")
+			&& is_real(_burn.frames) && _burn.frames > 0){
+				_burn.wildfire_signature = true;
+				_marked = true;
+			}
+		}
+	}
+	return _marked;
+}
+
+/// When a tagged burning target dies, halve its burn rate and remaining time
+/// and apply that burn to the nearest other target within 64 pixels.
+function tower_spec_wildfire_on_death(_mon) {
+	if(!scr_isValidInstance(_mon)) return false;
+	var _eligible = false, _x = 0, _y = 0, _amount = 0, _frames = 0,
+	    _status_key = string(STATUS.BURN);
+	with(_mon){
+		_x = x; _y = y;
+		if(variable_instance_exists(id,"statuses") && is_struct(statuses)
+		&& variable_struct_exists(statuses,_status_key)){
+			var _burn = statuses[$ _status_key];
+			if(is_struct(_burn) && variable_struct_exists(_burn,"wildfire_signature")
+			&& _burn.wildfire_signature == true
+			&& variable_struct_exists(_burn,"amount") && is_real(_burn.amount)
+			&& variable_struct_exists(_burn,"frames") && is_real(_burn.frames)
+			&& _burn.amount > 0 && _burn.frames > 1){
+				_amount = _burn.amount*0.50;
+				_frames = max(1,floor(_burn.frames*0.50));
+				_burn.wildfire_signature = false;
+				_eligible = true;
+			}
+		}
+	}
+	if(!_eligible) return false;
+	var _near = find_all_range(_x,_y,obj_mon,64,max(1,instance_number(obj_mon)));
+	if(!is_array(_near)) return false;
+	for(var _i = 0; _i < array_length(_near); _i++){
+		var _target = _near[_i];
+		if(!scr_isValidInstance(_target) || _target == _mon) continue;
+		if(status_apply(_target,STATUS.BURN,1,_frames,_amount)){
+			print("TOWER  signature Wildfire spread damage/s=",_amount,
+			      " frames=",_frames," target=",string(_target));
+			return true;
+		}
+	}
+	return false;
+}
+
+/// Current active stack count for a target status, or zero when absent/expired.
+function tower_spec_target_status_stacks(_target, _kind) {
+	if(!scr_isValidInstance(_target)) return 0;
+	var _count = 0, _key = string(_kind);
+	with(_target){
+		if(variable_instance_exists(id,"statuses") && is_struct(statuses)
+		&& variable_struct_exists(statuses,_key)){
+			var _effect = statuses[$ _key];
+			if(is_struct(_effect) && variable_struct_exists(_effect,"frames")
+			&& is_real(_effect.frames) && _effect.frames > 0){
+				_count = status_stack_count(_effect);
+			}
+		}
+	}
+	return _count;
+}
+
+/// Ripper L5: bleeding targets are easier to crit.
+function tower_spec_signature_crit_bonus(_tower_name, _key, _level, _target) {
+	if(_tower_name == "Meat Bulb" && _key == "ripper"
+	&& is_real(_level) && tower_spec_tier_limit(_level) >= 3
+	&& tower_spec_target_status_stacks(_target,STATUS.BLEED) > 0){
+		return 0.25*(1+clover_specialization_bonus());
+	}
+	return 0;
+}
+
+/// Tenderizer L5: its direct hits deal extra damage to already vulnerable foes.
+function tower_spec_signature_damage_bonus(_tower_name, _key, _level, _target) {
+	if(_tower_name == "Meat Bulb" && _key == "tenderizer"
+	&& is_real(_level) && tower_spec_tier_limit(_level) >= 3
+	&& tower_spec_target_status_stacks(_target,STATUS.VULN) > 0){
+		return 0.20*(1+clover_specialization_bonus());
+	}
+	return 0;
+}
+
+/// Potent Venom L5: when this path raises Poison to five stacks, burst once
+/// for one second of the new maximum stacked poison DPS.
+function tower_spec_signature_poison_burst(_tower_name, _key, _level, _target, _amount, _before) {
+	if(_tower_name != "Belladonna Blitz" || _key != "potent_venom"
+	|| !is_real(_level) || tower_spec_tier_limit(_level) < 3
+	|| !scr_isValidInstance(_target) || !is_real(_amount) || _amount <= 0
+	|| !is_real(_before) || _before >= 5) return false;
+	if(tower_spec_target_status_stacks(_target,STATUS.POISON) < 5) return false;
+	var _burst = _amount*5, _single = [_target];
+	scr_do_damage(_single,0,_burst,false);
+	print("TOWER  signature Potent Venom burst damage=",round(_burst),
+	      " target=",string(_target));
+	return true;
 }
 
 /// Apply committed knockback to a target's route position. path_position is
@@ -425,6 +594,7 @@ function tower_spec_choose_instance(_tower, _index) {
 	if(!is_array(_resolved)) return undefined;
 	if(_buy_l3){
 		add_item_value(money,-_cost);
+		badge_record_purchase(LEVEL,_cost,"");
 		print("Purchase ",-_cost);
 		print(get_item_value(money));
 	}
@@ -474,13 +644,20 @@ function tower_spec_self_name() {
 
 /// A compact two-column prompt above the tower card; the existing bottom-row
 /// buttons become the two path choices while this panel is open.
-function tower_spec_choice_draw(_x, _y, _w, _tower_name, _cost) {
-	var _panel_y = max(8,_y-82),
-	    _panel_h = 76,
+function tower_spec_choice_draw(_x, _y, _w, _tower_name, _cost, _level) {
+	var _panel_y = max(8,_y-112),
+	    _panel_h = 104,
+	    _col_w = (_w-24)*0.5,
+	    _target_level = (_cost > 0) ? 3 : max(3,floor(is_real(_level) ? _level : 3)),
 	    _left = tower_spec_option_label(_tower_name,0),
 	    _right = tower_spec_option_label(_tower_name,1),
 	    _left_desc = tower_spec_option_description(_tower_name,0),
-	    _right_desc = tower_spec_option_description(_tower_name,1);
+	    _right_desc = tower_spec_option_description(_tower_name,1),
+	    _left_paths = tower_spec_options(_tower_name),
+	    _left_key = array_length(_left_paths) > 0 ? _left_paths[0].key : "",
+	    _right_key = array_length(_left_paths) > 1 ? _left_paths[1].key : "",
+	    _left_effects = tower_spec_choice_effect_summary(_tower_name,_left_key,_target_level),
+	    _right_effects = tower_spec_choice_effect_summary(_tower_name,_right_key,_target_level);
 	draw_set_alpha(0.94);
 	draw_set_colour(c_dkgray);
 	draw_rectangle(_x,_panel_y,_x+_w,_panel_y+_panel_h,false);
@@ -493,10 +670,16 @@ function tower_spec_choice_draw(_x, _y, _w, _tower_name, _cost) {
 	draw_text_outline(_x+8,_panel_y+5,
 	    _cost > 0 ? concat("Choose a path (free); L3 rung costs $",_cost)
 	              : "Choose a path (free)",c_lime,c_black,1);
-	draw_text_ext(_x+8,_panel_y+24,string_hash_to_newline(_left+"#"+_left_desc),2,(_w-24)*0.5);
-	draw_text_ext(_x+_w*0.5+4,_panel_y+24,string_hash_to_newline(_right+"#"+_right_desc),2,(_w-24)*0.5);
+	draw_text_ext(_x+8,_panel_y+23,
+	    string_hash_to_newline(_left+"#"+_left_desc+"#Effects: "+_left_effects),
+	    2,_col_w);
+	draw_text_ext(_x+_w*0.5+4,_panel_y+23,
+	    string_hash_to_newline(_right+"#"+_right_desc+"#Effects: "+_right_effects),
+	    2,_col_w);
 	draw_set_font(fnt_size16);
 	draw_set_colour(c_white);
+	draw_set_halign(fa_left);
+	draw_set_valign(fa_top);
 }
 
 
@@ -509,4 +692,110 @@ function tower_spec_record_money_source(_target, _bonus) {
 		last_hit_tower_money_bonus = _fraction;
 	}
 	return true;
+}
+
+/// Compact player-facing summary of a path's active numeric and status effects.
+function tower_spec_choice_effect_summary(_tower_name, _key, _level) {
+	var _parts = "",
+	    _statuses = tower_spec_statuses(_tower_name,_key,_level);
+	for(var _i = 0; _i < array_length(_statuses); _i++){
+		var _effect = _statuses[_i], _label = "";
+		switch(_effect.kind){
+			case STATUS.SLOW: _label = "slow to "+string(round(_effect.mult*100))+"% speed/"+string_format(_effect.seconds,1,1)+"s"; break;
+			case STATUS.STUN: _label = "stun "+string(round(_effect.chance*100))+"%/"+string_format(_effect.seconds,1,1)+"s"; break;
+			case STATUS.BURN: _label = "burn "+string(round(_effect.chance*100))+"%, "+string(_effect.amount)+"/s"; break;
+			case STATUS.POISON: _label = "poison "+string(round(_effect.chance*100))+"%, "+string(_effect.amount)+"/s/stack"; break;
+			case STATUS.ROOT: _label = "root "+string(round(_effect.chance*100))+"%/"+string_format(_effect.seconds,1,1)+"s"; break;
+			case STATUS.BLEED: _label = "bleed "+string(round(_effect.chance*100))+"%, "+string_format(_effect.amount,1,2)+" dmg/px"; break;
+			case STATUS.VULN: _label = "vulnerable +"+string(round(_effect.amount*100))+"%/"+string_format(_effect.seconds,1,1)+"s"; break;
+		}
+		if(_label != "") _parts = tower_spec_choice_add(_parts,_label);
+	}
+
+	var _mods = tower_spec_modifiers(_tower_name,_key,_level);
+	if(_mods.damage != 0) _parts = tower_spec_choice_add(_parts,"damage +"+string(round(_mods.damage*100))+"%");
+	if(_mods.rate != 0) _parts = tower_spec_choice_add(_parts,"shots +"+string(round(_mods.rate*100))+"%");
+	if(_mods.range != 0) _parts = tower_spec_choice_add(_parts,"range +"+string(round(_mods.range*100))+"%");
+	if(_mods.crit != 0) _parts = tower_spec_choice_add(_parts,"crit +"+string(round(_mods.crit*100))+"%");
+	if(_mods.crit_damage != 0) _parts = tower_spec_choice_add(_parts,"crit dmg +"+string(round(_mods.crit_damage*100))+"%");
+	if(_mods.targets != 0) _parts = tower_spec_choice_add(_parts,"targets +"+string(round(_mods.targets)));
+	if(_mods.money != 0){
+		var _money_label = _tower_name == "Money Marigold"
+		                   ? "wave dividends +"+string(round(_mods.money*100))+"%"
+		                   : "kill money +"+string(round(_mods.money*100))+"%";
+		_parts = tower_spec_choice_add(_parts,_money_label);
+	}
+	if(_mods.income != 0) _parts = tower_spec_choice_add(_parts,"+$"+string(round(_mods.income))+"/wave");
+	if(_mods.knockback != 0) _parts = tower_spec_choice_add(_parts,"push +"+string(round(_mods.knockback)));
+	return _parts == "" ? "No direct stat change" : _parts;
+}
+
+/// Give the tier-three mechanic a visible signature label on the selected
+/// tower card. Existing tier-three status, target, and income values remain
+/// the source of truth for each path's displayed effect.
+function tower_spec_signature_summary(_tower_name, _key, _level, _summary) {
+	if(tower_spec_tier_limit(_level) < 3) return _summary;
+	var _signature = "SIG: ",
+	    _strength = 1+clover_specialization_bonus();
+	if(_tower_name == "Cannon Tulip" && _key == "deadeye")
+		return _signature + "crit ricochet " + string(round(50*_strength)) + "% dmg";
+	if(_tower_name == "Burning Ivy" && _key == "wildfire")
+		return _signature + "burn spreads on death";
+	if(_tower_name == "Meat Bulb" && _key == "tenderizer")
+		return _signature + "vulnerable hits +" + string(round(20*_strength)) + "%";
+	if(_tower_name == "Meat Bulb" && _key == "ripper")
+		return _signature + "bleed grants +" + string(round(25*_strength)) + "% crit";
+	if(_tower_name == "Belladonna Blitz" && _key == "potent_venom")
+		return _signature + "5 stacks burst";
+	if(_tower_name == "Money Marigold" && _key == "compound_interest")
+		return _signature + "+" + string_format(2*_strength,1,2) + "%/clear cap+"
+		       + string(round(20*_strength)) + "%";
+	if(_tower_name == "Money Marigold" && _key == "golden_harvest")
+		return _signature + "bonus $" + string_format(5*_strength,1,2) + "/5th";
+	return _signature + _summary;
+}
+
+/// Add one compact item to a specialization preview.
+function tower_spec_choice_add(_current, _part) {
+	if(!is_string(_part) || _part == "") return _current;
+	if(!is_string(_current) || _current == "") return _part;
+	return _current+", "+_part;
+}
+
+/// Return this tower's current level for its path-choice preview.
+function tower_spec_self_level() {
+	if(!variable_instance_exists(id,"data") || !is_array(data)
+	|| array_length(data) <= TOWER.level || !is_real(data[TOWER.level])) return 1;
+	return data[TOWER.level];
+}
+
+function tower_wave_income(_tower_name, _level, _key) {
+	var _base = tower_trait_get(_tower_name,"wave_income",0);
+	if(!is_real(_base) || _base <= 0 || !is_real(_level)) return 0;
+	var _lv = clamp(floor(_level),1,10),
+	    _scaled = min(3,_base+floor((_lv-1)*0.5)),
+	    _mastery_scale = _lv > 5
+	                     ? tower_level_damage(_lv)/max(0.01,tower_level_damage(5)) : 1,
+	    _mods = tower_spec_modifiers(_tower_name,_key,_lv),
+	    _percent = is_real(_mods.money) ? max(0,_mods.money) : 0,
+	    _flat = is_real(_mods.income) ? max(0,_mods.income) : 0;
+	return max(0,_scaled*_mastery_scale*(1+_percent)+_flat);
+}
+
+/// Wave-aware L5 signatures for the two Money Marigold paths. Compound
+/// Interest grows on consecutive clears; Golden Harvest adds a fifth-wave
+/// bonus. The selected-tower card describes these rules before they trigger.
+function tower_wave_income_for_wave(_tower_name, _level, _key, _wave) {
+	var _income = tower_wave_income(_tower_name,_level,_key);
+	if(!is_real(_wave) || _wave < 1
+	|| tower_spec_tier_limit(_level) < 3
+	|| _tower_name != "Money Marigold") return _income;
+	var _clear = floor(_wave);
+	var _strength = 1+clover_specialization_bonus();
+	if(_key == "compound_interest")
+		_income *= min(1+0.20*_strength,
+		                power(1+0.02*_strength,max(0,_clear-1)));
+	else if(_key == "golden_harvest" && _clear mod 5 == 0)
+		_income += 5*_strength;
+	return max(0,_income);
 }

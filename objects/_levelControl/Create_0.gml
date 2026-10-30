@@ -13,6 +13,7 @@ ground_map = _mainControl.ground_map;
 
 
 tower_list = ds_list_create();
+run_mode_endless = endless_is_active();
 
 
 /// setup spawns
@@ -57,6 +58,8 @@ set_item_value(money, round(25 * difficulty_start_money_mult()) + clover_startin
 /// CARRIED here instead: four kills at x1.25 pay 1, 1, 1, 2.
 /// See scr_kill_money (difficulty_data.gml).
 money_carry = 0;
+wave_income_paid = 0;
+wave_income_count = 0;
 
 /// set starting life
 var _life_bonus = clover_max_life_bonus();
@@ -149,6 +152,12 @@ for(var _ai = 0; _ai < _armed; _ai++){
 /// scr_level_wait() should not earn the exterminator medal.
 level_leaked = 0;
 level_forced = false;
+level_life_losses = 0;
+level_money_spent = 0;
+level_tower_types = {};
+level_tower_type_count = 0;
+level_towers_placed = 0;
+level_elapsed_seconds = 0;
 
 /// calculate position to draw towers
 var _x = 16,

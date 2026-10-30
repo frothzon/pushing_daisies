@@ -11,7 +11,7 @@
 /// change, then apply it at the top of the next Step, so a state's "just
 /// entered" code runs exactly once (LL-010).
 
-enum LEVEL_STATE { NONE, START, SPAWN, WAIT, CLEAR, FAILED };
+enum LEVEL_STATE { NONE, START, SPAWN, WAIT, CLEAR, FAILED, LOOT };
 
 function scr_level_state_name(_s) {
 	switch(_s){
@@ -20,6 +20,7 @@ function scr_level_state_name(_s) {
 		case LEVEL_STATE.WAIT:   return "WAIT";
 		case LEVEL_STATE.CLEAR:  return "CLEAR";
 		case LEVEL_STATE.FAILED: return "FAILED";
+		case LEVEL_STATE.LOOT:   return "LOOT";
 	}
 	return "NONE";
 }
@@ -48,9 +49,14 @@ function scr_level_begin() {
 		level_state_time = 0;
 		if(_was != level_state){
 			var _row = stage_current();
-			scr_meta_log("LEVEL", "now ", scr_level_state_name(level_state),
-			             " | stage ", _row.region, "-", _row.stage,
-			             " wave ", get_item_value(waves), "/", _row.waves);
+			if(endless_is_active()){
+				scr_meta_log("LEVEL","now ",scr_level_state_name(level_state),
+				             " | Endless wave ",get_item_value(waves),"/",_row.waves);
+			} else {
+				scr_meta_log("LEVEL", "now ", scr_level_state_name(level_state),
+				             " | stage ", _row.region, "-", _row.stage,
+				             " wave ", get_item_value(waves), "/", _row.waves);
+			}
 		}
 	} else {
 		level_state_time++;
@@ -60,6 +66,14 @@ function scr_level_begin() {
 /// The whole level flow - called once per Step from _levelControl.
 function scr_level_step() {
 	scr_level_begin();
+
+	/// Count real elapsed time during waves and between-wave play only.
+	/// Pause deactivates this owner; deploy and results are outside these states.
+	if((level_state == LEVEL_STATE.SPAWN || level_state == LEVEL_STATE.WAIT)
+	&& variable_instance_exists(id,"level_elapsed_seconds")
+	&& is_real(level_elapsed_seconds) && is_real(delta_time)){
+		level_elapsed_seconds += clamp(delta_time / 1000000, 0, 0.1);
+	}
 
 	/// ---- A LOST STAGE IS A STATE (goal.md 27.3) ---------------------
 	/// This used to be the legacy main controller's job: scr_main_normal
@@ -83,12 +97,22 @@ function scr_level_step() {
 		case LEVEL_STATE.WAIT:  scr_level_wait();  break;
 		case LEVEL_STATE.CLEAR: scr_level_clear(); break;
 		case LEVEL_STATE.FAILED: scr_level_failed(); break;
+		case LEVEL_STATE.LOOT:   endless_box_step(); break;
 	}
 }
 
 /// The stage is over.  This is the first thing in the game that touches the
 /// meta save, so it is also the first proof that the save works.
 function scr_level_clear() {
+	if(variable_instance_exists(id,"run_mode_endless") && run_mode_endless){
+		if(level_state_time == 0) endless_finish("wave_cap",level_leaked);
+		if(level_state_time > 5 && !level_finished){
+			level_finished = true;
+			scr_meta_log("ENDLESS","wave cap sequence complete");
+			fadeout(rm_menu,c_black,0.8,0,0);
+		}
+		return;
+	}
 	/// ---- SETUP: everything that happens once, on entry -----------------
 	if(level_state_time == 0){
 		var _row    = stage_current(),
@@ -100,23 +124,50 @@ function scr_level_clear() {
 		var _seeds   = seeds_award_stage(_row, global.difficulty),
 		    _clovers = clovers_award_stage(_lives, global.difficulty, _before);
 
-		/// badges.  Only the NEW ones go into the banner, so replaying a
-		/// stage does not announce a medal the player already has.
-		///   Untouched    - nothing reached the exit
-		///   Exterminator - that, AND the safety valve never had to fire
-		///   Brutalist    - cleared on Brutal
+		/// Badges. Only NEW medals go into the banner, so replaying a stage
+		/// does not announce a medal already in the profile.
 		var _earned = "";
-		if(level_leaked == 0){
-			if(badge_award(_row.region, _row.stage, BADGE.UNTOUCHED)){
-				_earned += "   " + badge_name(BADGE.UNTOUCHED);
-			}
-			if(!level_forced
-			   && badge_award(_row.region, _row.stage, BADGE.EXTERMINATOR)){
-				_earned += "   " + badge_name(BADGE.EXTERMINATOR);
-			}
+		if(variable_instance_exists(id,"level_life_losses")
+		&& is_real(level_life_losses) && level_life_losses == 0
+		&& badge_award(_row.region,_row.stage,BADGE.UNTOUCHED)){
+			_earned += "   " + badge_name(BADGE.UNTOUCHED);
+		}
+		if(level_leaked == 0 && !level_forced
+		&& badge_award(_row.region,_row.stage,BADGE.EXTERMINATOR)){
+			_earned += "   " + badge_name(BADGE.EXTERMINATOR);
+		}
+		var _tower_types = variable_instance_exists(id,"level_tower_type_count")
+		                   && is_real(level_tower_type_count) ? level_tower_type_count : -1,
+		    _tower_placements = variable_instance_exists(id,"level_towers_placed")
+		                        && is_real(level_towers_placed) ? level_towers_placed : 0;
+		if(_tower_types >= 4
+		&& badge_award(_row.region,_row.stage,BADGE.BOTANIST)){
+			_earned += "   " + badge_name(BADGE.BOTANIST);
+		}
+		if(_tower_types == 1 && _tower_placements > 0
+		&& badge_award(_row.region,_row.stage,BADGE.PURIST)){
+			_earned += "   " + badge_name(BADGE.PURIST);
+		}
+		var _par_spend = (is_struct(_row)
+		                  && variable_struct_exists(_row,"par_spend")
+		                  && is_real(_row.par_spend)) ? _row.par_spend : 0,
+		    _par_time = (is_struct(_row)
+		                 && variable_struct_exists(_row,"par_time")
+		                 && is_real(_row.par_time)) ? _row.par_time : 0;
+		if(variable_instance_exists(id,"level_money_spent")
+		&& is_real(level_money_spent) && _par_spend > 0
+		&& level_money_spent < _par_spend
+		&& badge_award(_row.region,_row.stage,BADGE.FRUGAL)){
+			_earned += "   " + badge_name(BADGE.FRUGAL);
+		}
+		if(variable_instance_exists(id,"level_elapsed_seconds")
+		&& is_real(level_elapsed_seconds) && _par_time > 0
+		&& level_elapsed_seconds < _par_time
+		&& badge_award(_row.region,_row.stage,BADGE.SPEED_GROWER)){
+			_earned += "   " + badge_name(BADGE.SPEED_GROWER);
 		}
 		if(global.difficulty == DIFFICULTY.BRUTAL
-		   && badge_award(_row.region, _row.stage, BADGE.BRUTALIST)){
+		&& badge_award(_row.region,_row.stage,BADGE.BRUTALIST)){
 			_earned += "   " + badge_name(BADGE.BRUTALIST);
 		}
 
@@ -263,6 +314,15 @@ function scr_level_clear() {
 /// legacy arcade path (scr_main_gameOver -> rm_score) and the meta layer was
 /// never told the stage was over.  See the guard at the top of scr_level_step().
 function scr_level_failed() {
+	if(variable_instance_exists(id,"run_mode_endless") && run_mode_endless){
+		if(level_state_time == 0) endless_finish("lives_lost",level_leaked);
+		if(level_state_time > 5 && !level_finished){
+			level_finished = true;
+			scr_meta_log("ENDLESS","loss sequence complete");
+			fadeout(rm_menu,c_black,0.8,0,0);
+		}
+		return;
+	}
 	if(level_state_time == 0){
 		var _row   = stage_current(),
 		    _lives = get_item_value(STATINV.life);

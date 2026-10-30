@@ -39,6 +39,55 @@ function scr_level_wait() {
 	    /// walk.  The pick itself was stored at state entry.
 	    if(!wave_preview_shown){
 	        wave_preview_shown = true;
+			if(wave_count > 0){
+				wave_income_paid = 0;
+				wave_income_count = 0;
+				with(obj_tower){
+					if(variable_instance_exists(id,"name") && name == "Money Marigold"
+					&& variable_instance_exists(id,"data") && is_array(data)
+					&& array_length(data) > TOWER.level){
+						var _key = variable_instance_exists(id,"specialization")
+						           && is_string(specialization) ? specialization : "",
+						    _wave = variable_instance_exists(other.id,"wave_count")
+						            && is_real(other.wave_count) ? other.wave_count : 0,
+						    _earned = tower_wave_income_for_wave(name,data[TOWER.level],_key,_wave);
+						if(tower_spec_tier_limit(data[TOWER.level]) >= 3){
+							if(_key == "compound_interest" && _wave > 1){
+								print("TOWER  signature Compound Interest wave=",_wave,
+								      " income=$",string_format(_earned,1,2));
+							} else if(_key == "golden_harvest" && _wave mod 5 == 0){
+								print("TOWER  signature Golden Harvest wave=",_wave,
+								      " bonus=$",string_format(5*(1+clover_specialization_bonus()),1,2));
+							}
+						}
+						if(is_real(_earned) && _earned > 0){
+							var _carry = variable_instance_exists(other.id,"money_carry")
+							             && is_real(other.money_carry) ? other.money_carry : 0,
+							    _total = _earned + _carry,
+							    _paid = floor(_total);
+							other.money_carry = _total - _paid;
+							other.wave_income_count += 1;
+							other.wave_income_paid += _paid;
+							if(_paid > 0) add_item_value(STATINV.money,_paid);
+							fx_play(spr_marigold_income_sparkle,x,y-24,0.55,10,true);
+						}
+					}
+				}
+				var _income_wave = variable_instance_exists(id,"wave_count")
+				                  && is_real(wave_count) ? wave_count : -1,
+				    _income_count = variable_instance_exists(id,"wave_income_count")
+				                   && is_real(wave_income_count) ? wave_income_count : 0,
+				    _income_paid = variable_instance_exists(id,"wave_income_paid")
+				                  && is_real(wave_income_paid) ? wave_income_paid : 0,
+				    _carry_report = variable_instance_exists(id,"money_carry")
+				                    && is_real(money_carry) ? money_carry : 0;
+				if(_income_count > 0){
+					print("TOWER  wave income wave=",_income_wave,
+					      " marigolds=",_income_count,
+					      " paid=$",_income_paid,
+					      " carry=",string_format(_carry_report,1,2));
+				}
+			}
 	        candy_run_wave_end(wave_count);
 	        var _regen=clover_wave_regen(wave_count);
 	        if(_regen > 0){
@@ -49,9 +98,14 @@ function scr_level_wait() {
 	            scr_meta_log("CLOVER","wave ",wave_count," regeneration +",
 	                         min(_regen,max(0,_life_max-_life_now))," life");
 	        }
-	        if(is_struct(next_pick) && next_pick.index >= 0){
-	            scr_wave_preview(next_pick);
-	        }
+			if(endless_box_due(wave_count)){
+				endless_box_begin(wave_count);
+				scr_level_request(LEVEL_STATE.LOOT);
+				return;
+			}
+			if(is_struct(next_pick) && next_pick.index >= 0){
+				scr_wave_preview(next_pick);
+			}
 	    }
 	    spawn_timer--;
 	    wait_stuck = 0;

@@ -22,10 +22,9 @@
 ///    bad argument has to mean "no effect", not "the shot crashed" (LL-002).
 ///
 /// THE TABLE IS KEYED BY TOWER NAME, like the trait table, so a tower that is
-/// sold, renamed or not in the roster simply has no row and no effect.  The
-/// kalanchoe (Kaboom) and marigold rows are deliberately ABSENT until those
-/// towers exist: their art is in the project, but a table row for a tower
-/// nothing can place is a row nothing can test (LL-023).
+/// sold, renamed or not in the roster simply has no row and no effect. Combat
+/// towers use strike/impact rows; Money Marigold is passive, so its sparkle is
+/// played from the once-per-wave income settlement instead of a strike.
 
 /// How many effect instances may be alive at once.  Generous for a wave,
 /// small enough that the worst case is bounded.
@@ -36,19 +35,26 @@ function fx_cap() { return 64; }
 /// something that reads at the 0.5 the towers are drawn at.
 function fx_table() {
 	return [
-		/// Cannon Tulip: a shell leaves the bud, and bursts on arrival
+		/// Cannon Tulip: a shell leaves the bud, and bursts on arrival.
 		{ tower  : "Cannon Tulip",
 		  muzzle : spr_tulip_muzzle_puff,
 		  m_scale: 0.80, m_fps : 14,
 		  impact : spr_tulip_bud_shell,
 		  i_scale: 0.90, i_fps : 14 },
 
-		/// Meat Bulb: spit, then the puddle it leaves
+		/// Meat Bulb: spit, then the puddle it leaves.
 		{ tower  : "Meat Bulb",
 		  muzzle : spr_meat_spit_projectile,
 		  m_scale: 0.90, m_fps : 12,
 		  impact : spr_meat_saliva_burst,
-		  i_scale: 0.75, i_fps : 12 }
+		  i_scale: 0.75, i_fps : 12 },
+
+		/// Kaboom Kalanchoe: launch a bud, burst on impact, mark the burn.
+		{ tower  : "Kaboom Kalanchoe",
+		  muzzle : spr_kalanchoe_bud_projectile,
+		  m_scale: 0.55, m_fps : 12,
+		  impact : spr_kalanchoe_fire_burst,
+		  i_scale: 0.90, i_fps : 12 }
 	];
 }
 

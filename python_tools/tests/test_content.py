@@ -50,6 +50,7 @@ PATHSPEED_REL = "scripts/scr_zomb_pathSpeed/scr_zomb_pathSpeed.gml"
 MON_STEP_REL = "objects/obj_mon/Step_0.gml"
 MON_CREATE_REL = "objects/obj_mon/Create_0.gml"
 SPAWN_CREATE_REL = "objects/obj_spawn/Create_0.gml"
+LOADOUT_REL = "scripts/scr_loadout/scr_loadout.gml"
 TOWER_CREATE_REL = "objects/obj_tower/Create_0.gml"
 TOWER_EDIT_STEP_REL = "objects/obj_tower_edit/Step_0.gml"
 EMERGE_REL = "scripts/scr_zombie_emerge/scr_zombie_emerge.gml"
@@ -415,8 +416,8 @@ class DamagePipelineTests(unittest.TestCase):
 
     def test_the_amount_is_a_parameter(self):
         src = self.read(DAMAGE_REL)
-        self.assertIn("function scr_do_damage(_arr, _ind, _amount)", src)
-        self.assertIn("_obj.data[MON.life] -= _dmg;", src)
+        self.assertIn("function scr_do_damage(_arr, _ind, _amount, _is_critical)", src)
+        self.assertIn("data[MON.life] -= _final_dmg;", src)
 
     def test_no_scope_variable_is_left_behind(self):
         """`damage_calc` was the caller's variable; it must not exist in code."""
@@ -424,9 +425,9 @@ class DamagePipelineTests(unittest.TestCase):
             src = _code_only(path.read_text(encoding="utf-8-sig"))
             self.assertNotIn("damage_calc", src, str(path.relative_to(PROJECT_ROOT)))
 
-    def test_the_only_caller_passes_three_arguments(self):
+    def test_the_only_caller_passes_four_arguments(self):
         src = self.read(SHOOT_REL)
-        self.assertIn("scr_do_damage(target, _i, shot_damage)", src)
+        self.assertIn("scr_do_damage(target, _i, _hit_damage, _is_critical)", src)
         # the shape that forced a scope read: for_array runs (array, index) only
         self.assertNotIn("for_array(target,scr_do_damage)", src)
 
@@ -434,6 +435,30 @@ class DamagePipelineTests(unittest.TestCase):
         src = self.read(TOWER_CREATE_REL)
         self.assertIn("shot_damage = 0;", src)
         self.assertIn("shot_damage  = data[TOWER.damage];", self.read(SHOOT_REL))
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class LoadoutSandboxTests(unittest.TestCase):
+    def test_dev_unlock_bypass_is_ephemeral(self):
+        src = _code_only((PROJECT_ROOT / LOADOUT_REL).read_text(encoding="utf-8-sig"))
+
+        def body(name, args):
+            match = re.search(r"function " + name + r"\(" + args + r"\)\s*\{(.*?)\n\}",
+                              src, re.S)
+            self.assertIsNotNone(match, name + " is missing")
+            return match.group(1)
+
+        mode = body("loadout_dev_mode", "")
+        self.assertIn('variable_global_exists("devMode") && global.devMode == true', mode)
+        self.assertIn("LOADOUT DEV sandbox: unlock bypass is temporary; save unchanged", mode)
+
+        unlock = body("loadout_unlocked", r"_name")
+        self.assertRegex(unlock, r"if\s*\(\s*loadout_dev_mode\(\)\s*\)\s*return true;")
+
+        save = body("loadout_set", r"_arr")
+        self.assertRegex(save, r"global\.loadout\s*=\s*_arr;")
+        self.assertRegex(save, r"&&\s*!loadout_dev_mode\(\)\s*\)\s*\{\s*"
+                               r"global\.meta\[\$\s*\"loadout\"\]\s*=\s*_arr;")
 
 
 if __name__ == "__main__":
@@ -1645,5 +1670,64 @@ class ScmlRigAdapterTests(unittest.TestCase):
                       "the rig footprint stopped measuring painted part pixels")
         self.assertIn("bbox_left - 4", self.hp_draw,
                       "sheet-backed monsters lost their existing HP bar fallback")
+
+
+@unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
+class BiomePropTests(unittest.TestCase):
+    """The delivered scenery table is complete and keeps the route buildable."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.src = _code_only((PROJECT_ROOT /
+                              "scripts/scr_biome_props/scr_biome_props.gml"
+                              ).read_text(encoding="utf-8-sig"))
+        cls.level_start = _code_only((PROJECT_ROOT /
+                                      "scripts/scr_level_start/scr_level_start.gml"
+                                      ).read_text(encoding="utf-8-sig"))
+        cls.tower_edit = _code_only((PROJECT_ROOT /
+                                     "objects/obj_tower_edit/Step_0.gml"
+                                     ).read_text(encoding="utf-8-sig"))
+
+    def test_every_delivered_prop_is_in_its_biome_table(self):
+        rows = re.findall(
+            r"biome_prop_row\((spr_\w+),\s*BIOME\.(\w+),\s*"
+            r"(\d+),\s*(\d+),\s*(\d+)\)", self.src)
+        counts = {}
+        for sprite, biome, size, weight, footprint in rows:
+            counts[biome] = counts.get(biome, 0) + 1
+            self.assertGreater(int(size), 0, "%s has no render size" % sprite)
+            self.assertGreater(int(weight), 0, "%s has no selection weight" % sprite)
+            self.assertGreater(int(footprint), 0, "%s has no grid footprint" % sprite)
+            self.assertTrue(
+                (PROJECT_ROOT / "sprites" / sprite / (sprite + ".yy")).is_file(),
+                "%s is named by the prop table but is not a project sprite" % sprite)
+        self.assertEqual(len(rows), 18, "the prop table dropped or duplicated delivered art")
+        self.assertEqual(counts, {
+            "SWAMP": 3, "DESERT": 3, "JUNGLE": 4,
+            "GRAVEYARD": 6, "BLOOD_FIELDS": 2,
+        }, "the biome table no longer matches the delivered sprite inventory")
+
+    def test_props_are_stage_seeded_and_keep_off_the_route(self):
+        self.assertIn("random_get_seed()", self.src,
+                      "the spawner does not save the combat RNG state (LL-016)")
+        self.assertIn("random_set_seed(_seed)", self.src)
+        self.assertIn("random_set_seed(_previous_seed)", self.src)
+        self.assertIn("biome_prop_route_clear(_x,_y,_path_pad)", self.src)
+        self.assertIn("scr_resetDrawPath();", self.src,
+                      "the visible path is not rebuilt after prop reservations")
+        self.assertNotRegex(self.src, r"other\._(?:entry|scale|col|row|footprint|clear|mark_)")
+
+    def test_stage_start_and_tower_placement_use_prop_reservations(self):
+        self.assertIn("biome_props_spawn(_row.biome,_row.region,_row.stage)",
+                      self.level_start,
+                      "stage start does not scatter the current biome's props")
+        self.assertLess(self.level_start.index("scr_resetDrawPath();"),
+                        self.level_start.index("biome_props_spawn("),
+                        "the route must exist before scenery placement")
+        self.assertIn("biome_props_block_grid(placement_grid,grid_w,grid_h)",
+                      self.tower_edit,
+                      "tower placement can overlap reserved prop footprints")
+        self.assertIn("depth = scr_depth_y(y)", self.src,
+                      "prop instances do not use the shared ground depth sort")
 
 

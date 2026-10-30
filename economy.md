@@ -129,6 +129,8 @@ One branch at rank 1 across all 10 nodes: **473 ☘️**. All four branches: **1
 - **Vitality:** nodes 1–5 grant +1 max life per rank; node 6 reduces life loss by 5% per rank (cap 25%); node 7 restores one life per rank every fifth wave; node 8 saves one boss leak per rank per stage (cap 5); nodes 9 and 10 grant +1 and +2 max life per rank. A full branch adds 40 max life to the base 20.
 - **Offense:** nodes 1–5 grant +0.4% damage per rank (10% together); node 6 grants +1% attack speed per rank; node 7 grants +1% crit chance per rank; node 8 grants +5% crit damage per rank; nodes 9 and 10 grant +2% and +3% damage per rank.
 - **Growth:** nodes 1–5 grant 1% upgrade discount per rank (25% together); node 6 grants +3% kill money per rank; node 7 unlocks specialization tier 3 at L4 and adds 1% specialization stat strength per rank; nodes 8 and 9 discount mastery nodes by 2% and 4% per rank (30% together); node 10 grants +2 starting money per rank.
+
+**Respec in the Garden Book.** Resetting one clover branch clears only that branch and refunds its recorded spend minus a fee of `max(1, floor(spent × 10%))` clovers. Resetting a tower's saved specialization costs **25 clovers**; the next L3 choice is still free. Seeds remain content-only, as required by `goal.md` §1.
 - **Harvest:** nodes 1–5 grant +1% kill money per rank; node 6 grants +1 starting money per rank; node 7 grants +5% boss reward per rank; nodes 8–10 grant +1%, +2%, and +3% seed reward per rank. Money bonuses share one additive axis.
 
 ### 3.3 The five master nodes (priced separately, outside the 473 totals)
@@ -230,31 +232,44 @@ what "harder" is supposed to mean - where it was 1.00 / 1.17 / 1.01. The income
 figures now include the wave ramp, so they are not comparable to the
 $122 / $128 / $247 measured above.
 
-### 4.2 Placement prices (repriced 2026-10-13)
+### 4.2 Placement prices
 
-**The nine towers that exist, first, read straight off `scr_tower_roster()`** — the
-next three are the unbuilt half of the twelve-tower plan (roadmap 5.5) and are
-marked *planned*, so a number in this table can no longer be mistaken for a
-number in the game:
+All 12 towers are present in `scr_tower_roster()`. Combat towers show their
+base numbers; Money Marigold is passive and earns dividends rather than attacking.
 
 | Tower | Price | Range | Damage | Fire rate | Targets | In the build? |
-| --- | --- | --- | --- | --- | --- | --- |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
 | Daisy Pusher | 5 | 100 | 4 | 3 | 1 | **built** |
-| Burning Ivy | **10** | 80 | 40 | 2 | 1 | **built** |
-| Slender Mandrake | **20** | 125 | 125 | 1 | 3 | **built** |
-| Pina Collider | **40** | 75 | 200 | 1 | 10 | **built** |
-| Cannon Tulip | **60** | 200 | 60 | 0.5 | 5 | **built** (25 🌱, gate 1) |
-| Meat Bulb | **80** | 90 | 250 | 0.75 | 1 | **built** (40 🌱, gate 1) |
-| Chillip | **15** | 90 | 8 | 1.5 | 1 | **built** (30 🌱, gate 1) |
-| Bindweed | **40** | 70 | 5 | 1 | 2 | **built** (50 🌱, gate 1) |
-| Thornamental | 60 | 110 | 90 | 2 | 1 | *planned* |
-| Belladonna Blitz | **55** | 85 | 12 | 4 | 2 | **built** (150 🌱, gate 2) |
-| Kaboom Kalanchoe | 150 | 80 | 120 | 1 | 6 | *planned* |
-| Money Marigold | 35 | — | 0 | — | — | *planned* |
+| Burning Ivy | 10 | 80 | 40 | 2 | 1 | **built** |
+| Slender Mandrake | 20 | 125 | 100 | 0.35 | 3 | **built** |
+| Pina Collider | 40 | 75 | 250 | 0.10 | 10 | **built** |
+| Chillip | 15 | 90 | 8 | 1.5 | 1 | **built** (25 🌱, Region 1) |
+| Bindweed | 40 | 70 | 5 | 1 | 2 | **built** (50 🌱, Region 1) |
+| Thornamental | 60 | 110 | 100 | 2 | 1 | **built** (90 🌱, Region 2) |
+| Belladonna Blitz | 55 | 85 | 12 | 4 | 2 | **built** (150 🌱, Region 2) |
+| Cannon Tulip | 60 | 200 | 60 | 0.5 | 5 | **built** (230 🌱, Region 3) |
+| Kaboom Kalanchoe | 150 | 80 | 120 | 1 | 6 | **built** (340 🌱, Region 4) |
+| Money Marigold | 35 | — | — | — | — | **built** (480 🌱, Region 5; passive) |
+| Meat Bulb | 80 | 90 | 250 | 0.75 | 1 | **built** (650 🌱, Region 6) |
 
-*The six *planned* rows are first approximations that keep today's five `d/$`
-ratios roughly intact while making the new roles affordable. They will move in
-Phase 2 tuning; the **curve** matters more than the numbers.*
+**Control tuning (2026-10-30):** Chillip slows to 25% movement speed (75% slow)
+for 1.5 s on every hit; Bindweed roots for 1.3 s with a 100% proc chance.
+Root duration scales to 0.78 s on elites and 0.39 s on bosses. Thornamental
+damage is 100 per hit. These values keep the ordinary slow within goal.md's
+75% cap and retain class resistance; they tune control to hold fast waves.
+
+Money Marigold pays $1 at L1–L2, $2 at L3–L4, and $3 at L5 per cleared wave.
+At L6–L10, its dividend grows by the same +8% per level as the tower mastery
+ladder. Compound Interest raises the dividend by 5%, 5%, and 8% across the
+three tiers; at L5 its signature compounds a 2% base bonus per cleared wave,
+up to 20%. Golden Harvest adds $1, $1, and $2 per wave, then pays a $5 bonus on
+every fifth cleared wave at L5. Both signatures scale with Growth's
+specialization-strength bonus. Fractional income carries through the same
+run-level money accumulator as kill payouts.
+
+These are the starting balance values. The tower and economy review cards still
+own the playtest tuning; the roster and unlock prices now match §2.2 and the
+actual code.
 
 **REBUILT AGAINST THE CODE 2026-10-14** (`economy-4-2-stale`): the Cannon Tulip
 and Meat Bulb rows read **120 / 220 / 150 / 0.5 / 1** and **200 / 140 / 400 / 1 /
@@ -278,10 +293,9 @@ roster and the ramped payout, stage 1-1 at `curve_end` **13** reads a worst bite
 of **0.32** - below the panel's own 0.35 floor, i.e. *trivial* - where it read
 0.57 before. The old cap 30 now reads 0.73 and only `curve_end` ≈ 50+ puts a wave
 over the ceiling. **The wave curve has to be refitted against sim outcomes
-(`balance-fit-from-sim`); it is deliberately NOT guessed here.** The unlock
-prices for Cannon Tulip and Meat Bulb **stay at 25 / 40 🌱 behind gate 1** — the
-worst value in the roster, kept on purpose rather than overlooked
-(`unlock-prices`, closed as status quo 2026-10-14).
+(`balance-fit-from-sim`); it is deliberately NOT guessed here.** The former
+Cannon / Meat unlock prices (25 / 40 🌱 behind Region 1) are retired: §2.2 now
+sets the full roster's gates and costs, and the code follows that table.
 
 **⚠ The `Targets` column did nothing until 2026-10-13 (LL-039).** `find_all_range`
 read `array_last_index(_targets)` and then wrote at that same index, so the list
@@ -532,6 +546,10 @@ The boss guarantee is the safety valve: even a player on a cold streak gets a sh
 
 *If `Crimson Appetite` and `Blood Moon` test as invisible in Phase 4, replace them with flat extra shards per boss (a number the player can see) rather than nerfing the idea away.*
 
+### 5.3 Blood Fields night
+
+After buying Crimson Garden, every fifth wave in campaign Region 6 becomes Night. The current tuning guess raises the elite spawn chance from 5% to 15% and adds +1 effective pity progress per kill for that wave. This bonus adds to Blood Moon and Blood Orange fill bonuses on the same pity axis; boss kills keep their guaranteed +1 shard rule.
+
 ---
 
 ## 6. Candy 🍬
@@ -554,7 +572,7 @@ Each level adds one unit of **that candy's own** stat, so the growth is always l
 | --- | --- | --- | --- | --- | --- |
 | 🍬 **Red Licorice** | 1 | +10% damage | +1% | **+19%** | 30 s |
 | 🍬 **Jawbreaker** | 1 | +10% range | +1% | +19% | 30 s |
-| 🍬 **Gummy Worm** | 1 | +15% slow effectiveness | +1.5% | +28% | 30 s |
+| 🍬 **Gummy Worm** | 1 | +15% slow effectiveness | +1.5% | +28.5% | 30 s |
 | 🍬 **Sour Drop** | 2 | +10% crit chance | +0.5% | +14.5% | 30 s |
 | 🍬 **Fireball Candy** | 2 | +20% burn damage | +2% | +38% | 30 s |
 | 🍬 **Frosted Flake** | 2 | +10% fire rate | +1% | +19% | 30 s |
@@ -617,7 +635,7 @@ Two candies act on the **economies** rather than on combat — and because nothi
 | Candy | Tier | Effect at **L1** | Per level | At **L10** | Duration |
 | --- | --- | --- | --- | --- | --- |
 | 🍊 **Blood Orange** | 4 (rare) | kills count **1.10×** toward the next blood shard | +0.10× | **2.00×** | 30 s |
-| 🍯 **Money Honey** | 4 (rare) | **+15%** money from every kill | +1.5% | **+29%** | 30 s |
+| 🍯 **Money Honey** | 4 (rare) | **+15%** money from every kill | +1.5% | **+28.5%** | 30 s |
 
 **Recipe: 35 shards each. Gated:** Blood Orange requires the blood tree's tier 2 (*Hemorrhagic Harvest*); Money Honey requires region 4 cleared. Neither can therefore distort the early economy.
 
@@ -678,6 +696,10 @@ Two candies act on the **economies** rather than on combat — and because nothi
 | The player has cap 10 on everything | box seeds convert to clovers at 1:2, and clovers to shards at 100:1 |
 
 ---
+
+### 7.5 Endless modifiers
+
+The Endless bands follow `goal.md` §22. The wave-40 Hardened band uses **35% more HP** (`HP x1.35`) as the v1 proxy for armor: `goal.md` §2 cuts armor to avoid adding a second resistance matrix. Waves 80–89 force the existing elite class (1.5x health, 1.1x speed); the Endless band does not multiply that health bonus a second time.
 
 ## 8. Badges 🏅 (medals only in v1)
 

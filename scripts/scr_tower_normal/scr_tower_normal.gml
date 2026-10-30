@@ -43,10 +43,18 @@ function scr_tower_normal() {
 	/// always did - and fire the moment the cooldown is up and something is
 	/// inside the range.  `>=` and not `==`, because the period is fractional
 	/// whenever fire_rate is scaled (LL-029).
+	/// Money Marigold is passive: it never acquires targets or enters attack.
+	if(tower_trait_get(name,"passive",false)){
+		target = noone;
+		exit;
+	}
+
 	target = instance_nearest(x,y,obj_mon);
+var _range_mult=endless_is_active()
+	                  ? endless_tower_range_multiplier(get_item_value(STATINV.waves)) : 1;
 	if(attack_timer >= attack_cycle
 	&& scr_isValidInstance(target)
-	&& point_in_circle(x,y,target.x,target.y,data[TOWER.range])){
+	&& point_in_circle(x,y,target.x,target.y,data[TOWER.range]*_range_mult)){
 	    /// change state to shoot
 	    scr_changeState(scr_tower_shoot);
 	}

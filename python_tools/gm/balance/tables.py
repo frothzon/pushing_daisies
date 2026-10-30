@@ -246,6 +246,17 @@ class Monster:
 
 
 @dataclass(frozen=True)
+class HitStatus:
+    """One on-hit status from ``tower_trait_table()`` in the game."""
+
+    kind: str
+    chance: float
+    mult: float
+    amount: float
+    seconds: float
+
+
+@dataclass(frozen=True)
 class Tower:
     """One roster entry (tower_roster.gml)."""
 
@@ -257,6 +268,9 @@ class Tower:
     targets: int
     unlock: int
     gate: int
+    crit_chance: float = 0.05
+    crit_damage: float = 1.5
+    statuses: Tuple[HitStatus, ...] = ()
 
     @property
     def dps(self) -> float:
@@ -432,6 +446,7 @@ class Tables:
     towers: List[Tower] = field(default_factory=list)
     ladder: List[Ladder] = field(default_factory=list)
     constants: Constants = field(default_factory=Constants)
+    status_cc: Dict[str, Dict[str, float]] = field(default_factory=dict)
     sources: Dict[str, str] = field(default_factory=dict)
 
     # -- lookups ----------------------------------------------------------
@@ -677,6 +692,82 @@ def load(root: Path) -> Tables:
         t.towers.append(Tower(str(a[0]), float(a[2]), float(d[0]), float(d[1]),
                               float(d[2]), int(d[4]), int(a[4]), int(a[5])))
 
+    # ---- crit and on-hit statuses ------------------------------------
+    # These live beside the roster, deliberately outside scr_towerData's
+    # five-argument contract.  Keep the sim's combat outcomes sourced from the
+    # same records as the game rather than maintaining a second status list.
+    base_crit_rel = "scripts/scr_towerData/scr_towerData.gml"
+    base_crit_src = src_of(base_crit_rel)
+    base_crit = float(_num(base_crit_src,
+                           r"_data\[TOWER\.crit_chance\]\s*=\s*([\d.]+)",
+                           base_crit_rel))
+    base_crit_damage = float(_num(base_crit_src,
+                                  r"_data\[TOWER\.crit_damage\]\s*=\s*([\d.]+)",
+                                  base_crit_rel))
+    trait_src = src_of(rel)
+    raw_traits = find_array_after(trait_src, "function tower_trait_table")
+    trait_rows: Dict[str, Dict[str, Any]] = {}
+    for row in raw_traits:
+        if not isinstance(row, dict) or not isinstance(row.get("name"), str):
+            continue
+        trait_rows[row["name"]] = row
+    updated_towers: List[Tower] = []
+    for tower in t.towers:
+        row = trait_rows.get(tower.name, {})
+        statuses: List[HitStatus] = []
+        for status in row.get("statuses", []) if isinstance(row, dict) else []:
+            if not isinstance(status, dict):
+                continue
+            kind = status.get("kind", "")
+            if isinstance(kind, str):
+                kind = kind.rsplit(".", 1)[-1].lower()
+            if kind not in {"slow", "stun", "burn", "poison", "root", "bleed", "vuln"}:
+                continue
+            chance = status.get("chance", 0)
+            mult = status.get("mult", 1)
+            amount = status.get("amount", 0)
+            seconds = status.get("seconds", 0)
+            if not all(isinstance(v, (int, float)) for v in
+                       (chance, mult, amount, seconds)):
+                raise TableError(f"{rel} {tower.name}: invalid {kind} status row")
+            if chance <= 0 or seconds <= 0:
+                continue
+            statuses.append(HitStatus(kind, float(chance), float(mult),
+                                      float(amount), float(seconds)))
+        trait_crit = row.get("crit", 0) if isinstance(row, dict) else 0
+        trait_crit_damage = row.get("crit_damage", 0) if isinstance(row, dict) else 0
+        if not isinstance(trait_crit, (int, float)):
+            trait_crit = 0
+        if not isinstance(trait_crit_damage, (int, float)):
+            trait_crit_damage = 0
+        updated_towers.append(replace(
+            tower,
+            crit_chance=min(1.0, base_crit + float(trait_crit)),
+            crit_damage=base_crit_damage + float(trait_crit_damage),
+            statuses=tuple(statuses)))
+    t.towers = updated_towers
+
+    # Control effects lose duration on elite and boss monsters.  Parse the
+    # ordered assignments from the same function the game calls so resistance
+    # changes cannot silently leave the balance sim behind.
+    status_rel = "scripts/scr_status/scr_status.gml"
+    status_src = src_of(status_rel)
+    marker = "function status_cc_frames"
+    status_at = status_src.find(marker)
+    if status_at < 0:
+        raise TableError(f"{status_rel}: missing {marker}()")
+    status_body = status_src[status_at:]
+    assignments = re.findall(
+        r"case STATUS\.(SLOW|STUN|ROOT):\s*_scale\s*=\s*([\d.]+)",
+        status_body)
+    if len(assignments) != 6:
+        raise TableError(f"{status_rel}: expected six elite/boss CC scales, "
+                         f"found {len(assignments)}")
+    t.status_cc = {
+        "elite": {kind.lower(): float(scale) for kind, scale in assignments[:3]},
+        "boss": {kind.lower(): float(scale) for kind, scale in assignments[3:]},
+    }
+
     # ---- creatures: the two banks -------------------------------------
     rel = "scripts/scr_setupSpawning/scr_setupSpawning.gml"
     src = src_of(rel)
@@ -792,7 +883,7 @@ def load(root: Path) -> Tables:
 
 
 def parse_value(text: str) -> Any:
-    """Parse one GML literal: a number, a string, a list, a call, or a token.
+    """Parse one GML literal: a number, string, list, struct, call, or token.
 
     An identifier that is not a literal (``BIOME.GRASS``, ``_eff_puff``) is
     returned as its own text - the tables only use them for enums and sprite
@@ -805,6 +896,40 @@ def parse_value(text: str) -> Any:
         end = _matching(t, 0)
         inner = t[1:end]
         return [parse_value(p) for p in split_args(inner)] if inner.strip() else []
+    if t.startswith("{"):
+        end = _matching(t, 0)
+        inner = t[1:end]
+        fields: Dict[str, Any] = {}
+        for part in split_args(inner):
+            in_str = False
+            depth = 0
+            colon = -1
+            i = 0
+            while i < len(part):
+                ch = part[i]
+                if in_str:
+                    if ch == "\\":
+                        i += 2
+                        continue
+                    if ch == '"':
+                        in_str = False
+                elif ch == '"':
+                    in_str = True
+                elif ch in "([{":
+                    depth += 1
+                elif ch in ")]}":
+                    depth -= 1
+                elif ch == ":" and depth == 0:
+                    colon = i
+                    break
+                i += 1
+            if colon < 0:
+                raise TableError(f"struct field has no colon: {part!r}")
+            key = part[:colon].strip()
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+                raise TableError(f"invalid struct key: {key!r}")
+            fields[key] = parse_value(part[colon + 1:])
+        return fields
     if t.startswith('"'):
         # a string literal: find its closing quote, honouring \"
         i, out = 1, []
@@ -823,6 +948,10 @@ def parse_value(text: str) -> Any:
         return int(t)
     if _FLOAT_RE.match(t):
         return float(t)
+    if t == "true":
+        return True
+    if t == "false":
+        return False
     m = _CALL_RE.match(t)
     if m is not None:
         open_paren = t.index("(", m.end() - 1)

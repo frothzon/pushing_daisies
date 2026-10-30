@@ -110,7 +110,7 @@ class TableTests(unittest.TestCase):
                          [m.life for m in self.t.bosses])
 
     def test_towers_carry_price_and_stats(self):
-        self.assertEqual(7, len(self.t.towers))
+        self.assertEqual(12, len(self.t.towers))
         daisy = self.t.tower("Daisy Pusher")
         self.assertEqual((5, 100, 4, 3, 1),
                          (daisy.price, daisy.range, daisy.damage,
@@ -133,6 +133,12 @@ class TableTests(unittest.TestCase):
                          (chillip.price, chillip.range, chillip.damage,
                           chillip.fire_rate, chillip.targets))
         self.assertEqual(12, chillip.dps)            # 8 x 1.5 x 1
+
+        marigold = self.t.tower("Money Marigold")
+        self.assertEqual((35, 0, 0, 0, 1),
+                         (marigold.price, marigold.range, marigold.damage,
+                          marigold.fire_rate, marigold.targets))
+        self.assertEqual(0, marigold.dps)            # passive wave income
 
     def test_ladder_and_rung_costs(self):
         self.assertEqual(10, len(self.t.ladder))
@@ -629,7 +635,9 @@ class FireCycleTests(unittest.TestCase):
             self.assertAlmostEqual(after, self.c.period(rate))
 
     def test_the_card_rate_is_always_an_overstatement(self):
-        for w in self.t.towers:
+        combat = [w for w in self.t.towers if w.fire_rate > 0]
+        self.assertEqual(11, len(combat))
+        for w in combat:
             _, rate, _ = self.t.data_at_level(w, 1)
             self.assertLess(self.c.rate(rate), rate,
                             f"{w.name}: delivered rate must beat nothing")
@@ -639,7 +647,7 @@ class FireCycleTests(unittest.TestCase):
             return (self.c.double_counted_frames(rate) + self.c.period(rate)) \
                 / self.c.period(rate)
 
-        rates = sorted({w.fire_rate for w in self.t.towers})
+        rates = sorted({w.fire_rate for w in self.t.towers if w.fire_rate > 0})
         gains = [gain(r) for r in rates]
         self.assertEqual(gains, sorted(gains, reverse=True))  # falls as rate rises
         self.assertGreater(gains[0], 1.3)
@@ -664,9 +672,9 @@ class FireCycleTests(unittest.TestCase):
 class SimTests(unittest.TestCase):
     """The time-stepped run: the wave shapes, and what a leak costs.
 
-    One of these is a FINDING rather than a behaviour test
-    (``test_the_emerge_reset_erases_real_damage``) and one is an off-by-one the
-    game carries on purpose (``test_the_speed_ramp_reads_the_wave_after``).
+    One is an off-by-one the game carries on purpose
+    (``test_the_speed_ramp_reads_the_wave_after``); the status tests pin
+    behavior that the gate's control loadout depends on.
     """
 
     @classmethod
@@ -730,23 +738,27 @@ class SimTests(unittest.TestCase):
         self.assertEqual(o.start_money + o.money_earned - o.money_spent,
                          o.money_left)
 
-    def test_the_emerge_reset_erases_real_damage(self):
-        """A FINDING: 60 frames of emerge, then ``life = maxLife``.
+    def test_emerge_keeps_damage_instead_of_healing(self):
+        """scr_zombie_emerge does not restore life when it requests PATH."""
+        s = self.run_(spend="none")
+        m = sim.SimMonster(max_life=100, life=55, state="emerge",
+                           state_time=60)
+        changed = s._run_mon_state(m)
+        self.assertTrue(changed)
+        self.assertEqual("walk", m.state)
+        self.assertEqual(55, m.life)
 
-        ``scr_zombie_emerge`` restores the life at the end of the grow, so every
-        point of damage a tower lands during that second is thrown away.  It is
-        small next to a stage's total hp - which is exactly why it went
-        unnoticed, and why it is worth a number rather than a hunch.
-
-        PARKED 2026-10-17: the reprice moved the ratio past the 10% pin
-        (424.8 erased against a 388.6 limit), so the pin needs a new
-        threshold - card balance-fit-from-sim, not a silent rewrite here.
-        """
-        self.skipTest("rebalance moved erased damage past the 10% pin; "
-                      "re-pin with balance-fit-from-sim")
-        o = self.run_(spend="ceiling").run()
-        self.assertGreater(o.erased_damage, 0)
-        self.assertLess(o.erased_damage, 0.1 * o.hp_total)
+    def test_control_duration_uses_the_monster_class(self):
+        """Chillip slow is 90f normal, 54f elite and 36f boss at 60fps."""
+        s = self.run_(spend="none")
+        chillip = self.scene.tables.tower("Chillip")
+        slow = next(effect for effect in chillip.statuses
+                    if effect.kind == "slow")
+        want = ((False, False, 90), (False, True, 54), (True, False, 36))
+        for boss, elite, frames in want:
+            m = sim.SimMonster(boss=boss, elite=elite, max_life=100, life=100)
+            s._apply_status(m, slow, -1)
+            self.assertEqual(frames, m.statuses["slow"].frames)
 
     def test_a_ten_target_cap_never_fills_on_this_route(self):
         """A FINDING, and the answer to the Pina Collider question.
@@ -907,7 +919,9 @@ class TowerTraitTests(unittest.TestCase):
 
     def test_every_trait_names_a_real_roster_tower(self):
         rows = self._rows()
-        self.assertEqual(["Chillip"], [n for n, _ in rows])
+        self.assertEqual(["Chillip", "Burning Ivy", "Bindweed", "Thornamental",
+                          "Belladonna Blitz", "Kaboom Kalanchoe", "Money Marigold"],
+                         [n for n, _ in rows])
         for name, _ in rows:
             self.assertIn(f'tower_entry("{name}"', self.src,
                           f"trait row '{name}' names no tower in tower_roster()")

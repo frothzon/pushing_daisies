@@ -6,6 +6,11 @@
 /// failed stage still has corpses playing their falls.  A no-op whenever
 /// no player exists (the menu, the first frame of a boot).
 zomb_scml_update();
+if((variable_instance_exists(id,"level_state") && level_state==LEVEL_STATE.LOOT)
+|| (variable_instance_exists(id,"level_state_next") && level_state_next==LEVEL_STATE.LOOT)){
+    scr_level_step();
+    return;
+}
 
 /// ---- a FINISHED stage takes no input (LL-055) ------------------------
 /// The clear sequence owns the screen: the build ghost, the selection card
@@ -266,6 +271,7 @@ if(mouse_check_button_pressed(mb_left) && tower_timer > 10){
                         float_text_gui(tower_display[0],tower_display[1]+32,concat("Range + ",round(_rng)),c_yellow);
                         print("Purchase ",-tower_price_save[0]);
                         add_item_value(money,-tower_price_save[0]);
+                        badge_record_purchase(id,tower_price_save[0],"");
                         print(get_item_value(money));
 
                         /// remember what has been put in, so selling refunds

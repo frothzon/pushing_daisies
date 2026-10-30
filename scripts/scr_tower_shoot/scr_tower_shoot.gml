@@ -147,14 +147,32 @@ function scr_tower_shoot() {
 	        var _hit = target[_i];
 	        if(scr_isValidInstance(_hit)){
 	            var _hit_damage = shot_damage,
-	                _is_critical = (shot_crit_chance > 0)
-	                               && (random(1) < shot_crit_chance);
+	                _signature_crit = tower_spec_signature_crit_bonus(
+	                    name,_spec_key,data[TOWER.level],_hit),
+	                _hit_crit_chance = clamp(shot_crit_chance+_signature_crit,0,1),
+	                _is_critical = (_hit_crit_chance > 0)
+	                               && (random(1) < _hit_crit_chance);
 	            if(shot_knockback > 0) tower_spec_push_target(_hit,shot_knockback);
 	            tower_spec_record_money_source(_hit,shot_money_bonus);
 	            if(_is_critical){
 	                _hit_damage *= shot_crit_multiplier;
 	            }
+	            var _signature_damage = tower_spec_signature_damage_bonus(
+	                name,_spec_key,data[TOWER.level],_hit);
+	            if(_signature_damage > 0){
+	                _hit_damage *= 1+_signature_damage;
+	                print("TOWER  signature Tenderizer exposed bonus=",
+	                      round(_signature_damage*100),"% target=",string(_hit));
+	            }
+	            if(_signature_crit > 0){
+	                print("TOWER  signature Ripper bleeding crit +",
+	                      round(_signature_crit*100),"% target=",string(_hit));
+	            }
 	            scr_do_damage(target, _i, _hit_damage, _is_critical);
+	            if(_is_critical){
+	                tower_spec_signature_on_hit(name,_spec_key,data[TOWER.level],
+	                    x,y,data[TOWER.range],target,_hit_damage,true);
+	            }
 	        }
 	    }
 	    did_damage = true;
@@ -190,8 +208,23 @@ function scr_tower_shoot() {
 	                    if(_effect.kind == STATUS.BURN){
 	                        _effect_amount *= 1+candy_active_magnitude("burn_damage");
 	                    }
+	                    var _poison_before = (_effect.kind == STATUS.POISON)
+	                        ? tower_spec_target_status_stacks(_status_target,STATUS.POISON) : 0;
 	                    status_apply(_status_target, _effect.kind, _effect_mult,
 	                                 _effect.frames, _effect_amount);
+	                    if(_effect.kind == STATUS.POISON){
+	                        tower_spec_signature_poison_burst(name,_spec_key,
+	                            data[TOWER.level],_status_target,_effect_amount,_poison_before);
+	                    }
+	                    if(_effect.kind == STATUS.BURN){
+	                        tower_spec_mark_wildfire(_status_target,name,_spec_key,
+	                            data[TOWER.level]);
+	                    }
+	                    if(_effect.kind == STATUS.BURN && name == "Kaboom Kalanchoe"){
+	                        with(_status_target){
+	                            fx_play(spr_kalanchoe_burn_marker,x,y-20,0.60,8,true);
+	                        }
+	                    }
 	                }
 	            }
 	        }

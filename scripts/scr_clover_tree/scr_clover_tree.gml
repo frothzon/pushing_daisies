@@ -159,6 +159,46 @@ function clover_buy(_id) {
 	return true;
 }
 
+/// Total clovers invested in one branch, at current rank and recorded costs.
+function clover_branch_invested(_branch) {
+	if(!is_string(_branch)) return 0;
+	var _spent=0, _nodes=clover_nodes(_branch);
+	for(var _i=0; _i<array_length(_nodes); _i++){
+		var _rank=clover_rank(_nodes[_i].id);
+		for(var _r=0; _r<_rank; _r++) _spent += _nodes[_i].costs[_r];
+	}
+	return _spent;
+}
+
+/// A branch respec refunds the investment less a 10% fee (minimum 1 clover).
+function clover_branch_respec_fee(_branch) {
+	var _spent=clover_branch_invested(_branch);
+	if(_spent <= 0) return -1;
+	return max(1,floor(_spent*0.10));
+}
+
+/// Reset one branch without touching ranks in any other branch.
+function clover_branch_respec(_branch) {
+	if(!is_string(_branch) || !variable_global_exists("meta") || !is_struct(global.meta)) return false;
+	var _spent=clover_branch_invested(_branch),
+	    _fee=clover_branch_respec_fee(_branch);
+	if(_spent <= 0 || _fee < 0) return false;
+	var _owned=variable_struct_exists(global.meta,"clover_nodes") && is_struct(global.meta.clover_nodes)
+	           ? global.meta.clover_nodes : {},
+	    _keep={},
+	    _keys=variable_struct_get_names(_owned);
+	for(var _i=0; _i<array_length(_keys); _i++){
+		var _id=_keys[_i], _node=clover_node_find(_id);
+		if(!is_struct(_node) || _node.branch != _branch) _keep[$ _id]=_owned[$ _id];
+	}
+	global.meta.clover_nodes=_keep;
+	var _refund=max(0,_spent-_fee);
+	clovers_add(_refund);
+	scr_meta_log("CLOVER","respec branch ",_branch," spent=",_spent,
+	             " fee=",_fee," refund=",_refund);
+	return true;
+}
+
 function clover_effect_bonus(_field) {
 	if(!is_string(_field)) return 0;
 	var _sum=0, _all=clover_all_nodes();

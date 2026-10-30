@@ -17,54 +17,56 @@
 ///
 /// Returns a struct { wave, is_boss, index, name, portrait }.
 function scr_level_pick_spawn(_wave) {
+	if(endless_is_active()){
+		var _is_boss = endless_is_boss_wave(_wave),
+		    _pool = endless_enemy_pool(_wave),
+		    _bank = _is_boss ? spawn_boss : spawn_mon,
+		    _index = _is_boss
+		             ? endless_boss_index(_wave,endless_modifier(_wave)==ENDLESS_MOD.FINAL_BOSS,array_length(spawn_boss))
+		             : _pool[irandom(array_length(_pool)-1)];
+		if(!is_array(_bank) || array_length(_bank)==0) return scr_level_pick_none(_wave);
+		if(!is_real(_index)) _index=0;
+		_index=clamp(_index,0,array_length(_bank)-1);
+		var _mon=_bank[_index], _name="?", _port=-1;
+		if(is_array(_mon)){
+			_name=_mon[MON.name];
+			_port=_mon[MON.portrait];
+		}
+		return {wave:_wave,is_boss:_is_boss,index:_index,name:_name,portrait:_port};
+	}
+
 	var _row    = stage_current(),
 	    _pool   = _row.spawns,
 	    _bosses = _row.bosses;
 	if(array_length(_pool) == 0) _pool = [0];
 
-	/// A STAGE NAMES BOTH OF ITS BOSSES, IN ORDER: `bosses` is [mid, end]
-	/// (LL-060).  NO `irandom` IS INVOLVED.  A boss the player is meant to
-	/// learn cannot be a different creature on the next attempt, and a mid
-	/// boss cannot arrive on a different wave - and the mid WAVE is derived
-	/// (GameLevelData.boss_wave = waves div 2) so it can never go stale
-	/// against the stage's wave count.
 	var _is_end  = (_wave >= _row.waves),
 	    _is_mid  = (_row.boss_wave > 1 && _wave == _row.boss_wave),
 	    _is_boss = (_is_end || _is_mid);
 
 	var _index;
 	if(_is_boss && array_length(_bosses) > 0){
-	    /// [mid, end].  A stage that names only ONE boss sends it twice
-	    /// rather than indexing past the array - that is the old table's
-	    /// shape, and it stays legal.
 	    var _slot = _is_end ? 1 : 0;
 	    if(_slot >= array_length(_bosses)) _slot = 0;
 	    _index = _bosses[_slot];
 	} else if(_is_boss){
-	    /// a stage that names NO boss still ends on one (and still gets a mid
-	    /// boss on the derived wave).  The creature is rolled because there is
-	    /// nothing authored to be faithful to, and scr_level_pick_store logs
-	    /// every pick - an unauthored boss can never pass for a decision.
 	    _index = irandom(array_length(spawn_boss) - 1);
 	} else {
 	    _index = _pool[irandom(array_length(_pool) - 1)];
 	}
 
-	/// clamp, so bad stage data cannot index past a pool and throw
-	var _bank = _is_boss ? spawn_boss : spawn_mon;
-	if(!is_array(_bank) || array_length(_bank) == 0) return scr_level_pick_none(_wave);
-	_index = clamp(_index, 0, array_length(_bank) - 1);
+	var _bank2 = _is_boss ? spawn_boss : spawn_mon;
+	if(!is_array(_bank2) || array_length(_bank2) == 0) return scr_level_pick_none(_wave);
+	_index = clamp(_index, 0, array_length(_bank2) - 1);
 
-	var _mon  = _bank[_index],
-	    _name = "?",
-	    _port = -1;
-	if(is_array(_mon)){
-		_name = _mon[MON.name];
-		_port = _mon[MON.portrait];
+	var _mon2 = _bank2[_index],
+	    _name2 = "?",
+	    _port2 = -1;
+	if(is_array(_mon2)){
+		_name2 = _mon2[MON.name];
+		_port2 = _mon2[MON.portrait];
 	}
-
-	return { wave : _wave, is_boss : _is_boss, index : _index,
-	         name : _name, portrait : _port };
+	return {wave:_wave,is_boss:_is_boss,index:_index,name:_name2,portrait:_port2};
 }
 
 /// "nothing to send": the last wave of a stage has no next wave.  A struct

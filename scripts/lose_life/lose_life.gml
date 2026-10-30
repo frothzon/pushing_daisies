@@ -23,7 +23,14 @@ function lose_life() {
 			clover_life_loss_carry -= _life_loss;
 		}
 	}
-	if(_life_loss > 0) add_item_value(STATINV.life,-_life_loss);
+	if(_life_loss > 0){
+	add_item_value(STATINV.life,-_life_loss);
+	with(_levelControl){
+		if(variable_instance_exists(id,"level_life_losses") && is_real(level_life_losses)){
+			level_life_losses++;
+		}
+	}
+}
 
 	/// ---- A LEAK PAYS HALF (decided 2026-10-18, economy.md 4.5) --------
 	/// It used to pay NOTHING, so a leak cost a life AND the income the

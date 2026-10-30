@@ -109,26 +109,50 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 		draw_set_colour(c_white);
 	}
 
+	var _is_passive = tower_trait_get(_name,"passive",false);
 	draw_set_font(fnt_size16);
-	draw_text_outline(_x+12, _y+40,
-	    concat("DMG  ", round(_dmg), _can_upgrade ? concat(" -> ", round(_next_data[TOWER.damage])) : ""),
-	    c_white, c_black, 1);
-	draw_text_outline(_x+12, _y+60,
-	    concat("RNG  ", round(_range), _can_upgrade ? concat(" -> ", round(_next_data[TOWER.range])) : ""),
-	    c_white, c_black, 1);
-	draw_text_outline(_x+176, _y+40,
-	    concat("RATE ", string_format(_current_eff_rate,1,2), "/s",
-	           _can_upgrade ? concat(" -> ", string_format(_next_eff_rate,1,2), "/s") : ""),
-	    c_white, c_black, 1);
-	draw_text_outline(_x+176, _y+60,
-	    concat("TGT  ", _targets), c_white, c_black, 1);
-	draw_text_outline(_x+12, _y+80,
-	    concat("DPS  ", round(_current_dps),
-	           _can_upgrade ? concat(" -> ", round(_next_dps)) : ""),
-	    c_yellow, c_black, 1);
-	draw_text_outline(_x+176, _y+80,
-	    concat("CRIT ", round(_crit_chance*100), "% x", string_format(_crit_multiplier,1,2)),
-	    c_white, c_black, 1);
+	if(_is_passive){
+		var _income_now = tower_wave_income(_name,_level,_spec_key),
+		    _income_next = tower_wave_income(_name,_can_upgrade ? _level+1 : _level,_spec_key);
+		draw_text_outline(_x+12,_y+40,
+		    concat("INCOME  +$",string_format(_income_now,1,2),"/wave"),
+		    c_yellow,c_black,1);
+		draw_text_outline(_x+12,_y+60,
+		    concat("NEXT  +$",string_format(_income_next,1,2),"/wave",
+		           _can_upgrade && _income_next != _income_now
+		               ? concat(" (was +$",string_format(_income_now,1,2),")") : ""),
+		    c_white,c_black,1);
+		draw_set_font(fnt_size12);
+		draw_text_outline(_x+12,_y+82,"Passive support; paid when each wave clears",
+		                  c_silver,c_black,1);
+	} else {
+		draw_text_outline(_x+12, _y+40,
+		    concat("DMG  ", round(_dmg), _can_upgrade ? concat(" -> ", round(_next_data[TOWER.damage])) : ""),
+		    c_white, c_black, 1);
+		draw_text_outline(_x+12, _y+60,
+		    concat("RNG  ", round(_range), _can_upgrade ? concat(" -> ", round(_next_data[TOWER.range])) : ""),
+		    c_white, c_black, 1);
+		draw_set_font(fnt_size12);
+		draw_text_outline(_x+176, _y+40,
+		    concat("SHOTS/s ", string_format(_current_eff_rate,1,2),
+		           _can_upgrade ? concat(" -> ", string_format(_next_eff_rate,1,2)) : ""),
+		    c_white, c_black, 1);
+		draw_set_font(fnt_size16);
+		draw_text_outline(_x+176, _y+60,
+		    concat("TGT  ", _targets,
+		           _can_upgrade && _next_data[TOWER.targets] != _targets
+		               ? concat(" -> ", _next_data[TOWER.targets]) : ""),
+		    c_white, c_black, 1);
+		draw_text_outline(_x+12, _y+80,
+		    concat("DPS  ", round(_current_dps),
+		           _can_upgrade ? concat(" -> ", round(_next_dps)) : ""),
+		    c_yellow, c_black, 1);
+		draw_text_outline(_x+176, _y+80,
+		    concat("CRIT ", round(_crit_chance*100), "%",
+		           _can_upgrade && _next_crit_chance != _crit_chance
+		               ? concat(" -> ", round(_next_crit_chance*100), "%") : ""),
+		    c_white, c_black, 1);
+	}
 
 	if(_can_upgrade){
 		draw_text_outline(_x+12, _y+100,
@@ -138,20 +162,37 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 	} else {
 		draw_text_outline(_x+12, _y+100, "NEXT RUNG UNAVAILABLE", c_gray, c_black, 1);
 	}
-
-	var _spec_path = tower_spec_find(_name,_spec_key);
-	if(is_struct(_spec_path)){
-		draw_text_outline(_x+12, _y+120,
-		    concat("SPEC  ",_spec_path.label,"  T",tower_spec_tier_limit(_level)),
-		    c_aqua,c_black,1);
-	} else {
-		var _trait = tower_stat_note(_name);
-		if(_trait != ""){
-			draw_text_outline(_x+12, _y+120, concat("TRAIT  ", _trait),
-			                   c_white, c_black, 1);
-		}
+	if(!_is_passive){
+		draw_text_outline(_x+176, _y+100,
+		    concat("MULT x", string_format(_crit_multiplier,1,2),
+		           _can_upgrade && _next_crit_multiplier != _crit_multiplier
+		               ? concat(" -> x", string_format(_next_crit_multiplier,1,2)) : ""),
+		    c_white, c_black, 1);
 	}
 
+	var _spec_path = tower_spec_find(_name,_spec_key),
+	    _preview_level = _can_upgrade ? _level+1 : _level;
+	draw_set_font(fnt_size12);
+	if(is_struct(_spec_path)){
+		var _tier_now = tower_spec_tier_limit(_level),
+		    _tier_preview = tower_spec_tier_limit(_preview_level),
+		    _spec_summary = tower_spec_signature_summary(
+		        _name,_spec_key,_preview_level,
+		        tower_spec_choice_effect_summary(_name,_spec_key,_preview_level)),
+		    _spec_text = concat(_spec_path.label," T",_tier_now,
+		                        _tier_preview > _tier_now ? concat("->T",_tier_preview) : "",
+		                        " ",_spec_summary);
+		draw_text_outline(_x+12, _y+120, ui_clip_text(_spec_text,_w-24),
+		                   c_aqua,c_black,1);
+	} else if(_level >= 3 || (_can_upgrade && _level+1 >= 3)){
+		draw_text_outline(_x+12,_y+120,
+		                  _level >= 3 ? "SPEC  Choose a path" : "SPEC  Choose a path at L3",
+		                  c_aqua,c_black,1);
+	} else {
+		var _trait = tower_stat_note(_name);
+		if(_trait != "") draw_text_outline(_x+12, _y+120, concat("TRAIT  ", _trait),c_white,c_black,1);
+	}
+	draw_set_font(fnt_size16);
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 }

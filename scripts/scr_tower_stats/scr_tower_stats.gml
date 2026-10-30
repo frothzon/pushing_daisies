@@ -27,11 +27,18 @@ function tower_stat_lines(_name) {
 
 	var _e = tower_entry_find(_name);
 	if(is_undefined(_e)) return _out;
-
-	/// is_array, not is_undefined: a roster row whose data is a struct, a
-	/// number or missing is a code bug, and it must draw an empty card
-	/// rather than throw inside a Draw event (LL-002)
 	if(!is_array(_e.data)) return _out;
+
+	if(tower_trait_get(_name,"passive",false)){
+		var _income = tower_wave_income(_name,1,tower_spec_saved(_name));
+		_out[0] = { label : "INCOME", value : "+$"+string_format(_income,1,2)+"/wave" };
+		_out[1] = { label : "LEVEL 1–2", value : "$1/wave" };
+		_out[2] = { label : "LEVEL 3–4", value : "$2/wave" };
+		_out[3] = { label : "LEVEL 5", value : "$3/wave" };
+		_out[4] = { label : "LEVEL 6–10", value : "+8%/level" };
+		_out[5] = { label : "PRICE", value : "$"+string(_e.price) };
+		return _out;
+	}
 
 	var _d = tower_data_at_level(_e.data, 1,
 	                             clover_damage_bonus(), clover_firerate_bonus());
@@ -40,12 +47,6 @@ function tower_stat_lines(_name) {
 	var _dmg  = _d[TOWER.damage],
 	    _rate = _d[TOWER.fire_rate],
 	    _tgt  = _d[TOWER.targets],
-	    /// SINGLE-TARGET dps, the same product scr_curve uses for `dps` in
-	    /// scr_curve_dps_per_money: damage * fire_rate.  Multiplying by the
-	    /// target count here would make an AoE tower's headline number a
-	    /// figure it only reaches against a full crowd, which is not what a
-	    /// card comparing two towers should be built on - TARGETS sits next
-	    /// to it and says the rest.
 	    _dps  = _dmg * _rate;
 
 	_out[0] = { label : "DAMAGE",  value : string(round(_dmg)) };
@@ -65,6 +66,9 @@ function tower_stat_lines(_name) {
 /// ("55% speed for 1.5s") rather than as a status id, because a name the game
 /// has not shown anywhere yet is not an explanation.
 function tower_stat_note(_name) {
+	if(tower_trait_get(_name,"passive",false)){
+		return "Pays $1–3/wave through L5; +8% per level after that";
+	}
 	var _effects = tower_trait_statuses(_name),
 	    _out = "";
 	for(var _i = 0; _i < array_length(_effects); _i++){

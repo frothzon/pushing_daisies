@@ -65,6 +65,10 @@ if(mouse_check_button_released(mb_left)){
         /// the live grid gives them (scr_grid_block_instances, LL-027)
         scr_grid_block_instances(LEVEL.placement_grid, obj_tower);
         scr_grid_block_instances(LEVEL.placement_grid, obj_wall);
+        /// Keep scenery footprints unavailable to towers and path probes.
+        with(LEVEL){
+            biome_props_block_grid(placement_grid,grid_w,grid_h);
+        }
 
         var _to_x = obj_despawn.x,
             _to_y = obj_despawn.y,
@@ -98,6 +102,7 @@ if(mouse_check_button_released(mb_left)){
         }
         //--------------------------- place object
         add_item_value(STATINV.money,-price);
+        badge_record_purchase(LEVEL,price,name);
         ///
         var _dd = scr_depth_y(y);   /// the one depth rule (LL-059)
         var _tObj = instance_create_depth(x,y,_dd,obj_tower);

@@ -31,6 +31,7 @@ if(_ui > 0.01){
     draw_set_alpha(_ui);
     scr_draw_statinv();
     candy_pity_hud_draw(_ui);
+    candy_run_hud_draw(_ui);
     draw_set_alpha(1);
 }
 
@@ -68,7 +69,7 @@ if(_ui > 0.01 && scr_isValidInstance(tower_selection)){
         with(tower_selection){
             tower_spec_choice_draw(other.tower_card_x,other.tower_card_y,
                                    other.tower_card_w,tower_spec_self_name(),
-                                   other.tower_price_save[0]);
+                                   other.tower_price_save[0],tower_spec_self_level());
         }
     }
 }
@@ -86,4 +87,7 @@ if(_ui > 0.01) scr_curve_draw();
 /// in it.  It draws nothing unless the flow is in CLEAR and the banner
 /// has come up (see scr_level_clear).
 scr_level_complete_draw();
+
+endless_hud_draw();
+if(level_state == LEVEL_STATE.LOOT) endless_box_draw();
 

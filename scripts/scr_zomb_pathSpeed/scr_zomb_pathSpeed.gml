@@ -1,60 +1,30 @@
 /// @description  update path speed based on terrain
 function scr_zomb_pathSpeed() {
-
-
-	/// NO DEPTH HERE (LL-059).  This file used to write one - view-relative,
-	/// `-((y - YView) div 16) - 60` - which is a FOURTH formula nobody could
-	/// predict from the other three, and it was already dead: obj_mon/Step_0
-	/// derives the depth from the feet AFTER scr_runState returns.  There is
-	/// one writer now (scr_depth_y), and this is not it.
 	inWater = false;
-
-	//---------------- grab position inside of grid
-	var _x = clamp(x>>5,0,ds_grid_width(LEVEL.ground_map)-1),
-	    _y = clamp(y>>5,0,ds_grid_height(LEVEL.ground_map)-1);
-    
-	///---------------- get ground height, and calculate speed and depth
-	var _groundHeight = LEVEL.ground_map[# _x,_y];
-	if(_groundHeight == _mainControl.load_max){
-	    _groundHeight *= 0.5;
-	}
-
-	z_climb = lerp(z_climb,_groundHeight,0.1);
-	/// scr_zomb_pathSpeed();
-
-	var _spd = ((12-z_climb)/12)*1.5 + 0.5;
+	var _x=clamp(x>>5,0,ds_grid_width(LEVEL.ground_map)-1),
+	    _y=clamp(y>>5,0,ds_grid_height(LEVEL.ground_map)-1),
+	    _groundHeight=LEVEL.ground_map[# _x,_y];
+	if(_groundHeight == _mainControl.load_max) _groundHeight *= 0.5;
+	z_climb=lerp(z_climb,_groundHeight,0.1);
+	var _spd=((12-z_climb)/12)*1.5+0.5;
 	if(z_climb < 2){
-	    _spd = 0.25;
-	    inWater = true;
-	    if(chance(0.03)){
-	        scr_burstPartSelf(ENGINE.pt_splashy,5,30);
-	    }
+		_spd=0.25;
+		inWater=true;
+		if(chance(0.03)) scr_burstPartSelf(ENGINE.pt_splashy,5,30);
 	}
-
-	//------------------- weight speed suppression based on wave  
-	var _wave = get_item_value(STATINV.waves);
-	if(_spd < 1){ 
-	    var _weight = 1-power(2,-(_wave/30));       /// goes from 0 to 1 over infinity
-	    _spd = _spd*(1-_weight) + _weight;      /// goes from _spd -> 1 over infinity
-	} 
-	/// speed gained per level
-	_spd += .01*_wave;
-
-	///------------------ Move forward, if collision move backwards
-	/// the difficulty column scales speed too (goal.md 2): a "harder" stage
-	/// that only adds HP is a longer stage, not a harder one
-	/// The status MULTIPLIES, and it multiplies last: the terrain ramp, the
-/// wave ramp and the difficulty column all answer "how fast is this
-/// monster", and a status answers "and now".  One question, one place
-/// (LL-021) - and a stun or a root is a 0 here, which is what makes
-/// path_speed 0 rather than a special case inside the path follower.
-var _spd_mult = difficulty_speed_mult() * status_speed_mult();
+	var _wave=get_item_value(STATINV.waves);
+	if(!endless_is_active()){
+		if(_spd < 1){
+			var _weight=1-power(2,-(_wave/30));
+			_spd=_spd*(1-_weight)+_weight;
+		}
+		_spd += 0.01*_wave;
+	}
+	var _spd_mult=difficulty_speed_mult()*status_speed_mult();
+	if(endless_is_active()) _spd_mult *= endless_speed_multiplier(_wave);
 	if(path_free){
-	    path_speed = _spd*data[MON.speed]*_spd_mult;
+		path_speed=_spd*data[MON.speed]*_spd_mult;
 	} else {
-	    path_speed = -_spd*data[MON.speed]*_spd_mult;
+		path_speed=-_spd*data[MON.speed]*_spd_mult;
 	}
-
-
-
 }

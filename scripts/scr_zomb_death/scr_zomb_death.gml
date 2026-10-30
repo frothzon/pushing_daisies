@@ -11,6 +11,7 @@ function scr_zomb_death() {
 
 	/// ---- and a monster that is not dead has nothing to settle --------
 	if(data[MON.life] > 0) return;
+	tower_spec_wildfire_on_death(id);
 
 	// add points and score
 	/// WHAT a kill pays - the wave ramp, the difficulty column and the

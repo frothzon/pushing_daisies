@@ -20,11 +20,21 @@ function scr_level_spawn() {
 
 	//--------------------------- choose the creature
 	if(level_state_time == 0){
-	    wave_count++;
-	    candy_run_wave_begin(wave_count);
-	    shard_wave_begin(wave_count);
-	    add_item_value(waves,1);
-	    scr_playSound(snd_zomb_emerge,false);
+		wave_count++;
+		if(endless_is_active()){
+			global.endless_wave = wave_count;
+			if(wave_count == 1 || wave_count mod 10 == 0){
+				scr_meta_log("ENDLESS","wave ",wave_count," region=",endless_wave_region(wave_count),
+				             " modifier=",endless_modifier_name(endless_modifier(wave_count)),
+				             " hp x",endless_hp_multiplier(wave_count),
+				             " speed x",endless_speed_multiplier(wave_count),
+				             " range x",endless_tower_range_multiplier(wave_count));
+			}
+		}
+		candy_run_wave_begin(wave_count);
+		shard_wave_begin(wave_count,_row.region);
+		add_item_value(waves,1);
+		scr_playSound(snd_zomb_emerge,false);
 
 	    /// The creature was already chosen - when the level entered START
 	    /// or WAIT - so the "Up Next..." popup and the wave it names agree.
@@ -93,6 +103,7 @@ function scr_level_spawn() {
 	/// the difficulty column adds its own extra (Brutal sends one more).
 	var MAX = _mon[MON.spawn_count] + wave_count div 5 + difficulty_count_bonus();
 	if(MAX < 1) MAX = 1;
+	if(endless_is_active()) MAX = min(MAX,60);
 	if(is_boss_wave) MAX = 1;
 
 	if(MAX > spawn_current){
@@ -122,8 +133,9 @@ function scr_level_spawn() {
 	        with(_inst){
 	            mon_rig_dress(rig);
 	        }
-	        var _elite_chance = 0.05,  /// initial tuning point; review after play
-	            _is_elite = !is_boss_wave && random(1) < _elite_chance;
+	        var _elite_chance = 0.05 + blood_fields_night_elite_bonus(_row.region,wave_count),
+	            _forced_elite = endless_is_active() && endless_forced_elites(wave_count),
+	            _is_elite = !is_boss_wave && (random(1) < _elite_chance || _forced_elite);
 	        _inst.data = array_duplicate(_mon);
 	        _inst.data[MON.combat_class] = is_boss_wave ? MON_CLASS.BOSS
 	                                      : (_is_elite ? MON_CLASS.ELITE : MON_CLASS.NORMAL);
@@ -145,11 +157,11 @@ function scr_level_spawn() {
 	        _inst.image_xscale = 0;
 	        _inst.image_yscale = 0;
 	        /// modify life for the wave and the difficulty
-	        scr_level_difficulty(_inst);
+	        scr_level_difficulty(_inst,wave_count);
 	    }
 	} else {
 	    spawn_current = 0;
-	    spawn_timer = spawn_wait_time;
+	    spawn_timer = endless_is_active() ? game_get_speed(gamespeed_fps)*1.5 : spawn_wait_time;
 	    wait_stuck = 0;
 	    wait_valve_fired = false;   /// every wave gets its own backstop
 	    scr_level_request(LEVEL_STATE.WAIT);

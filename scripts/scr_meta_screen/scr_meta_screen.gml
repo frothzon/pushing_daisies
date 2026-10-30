@@ -151,14 +151,43 @@ function meta_icon_w(_spr, _size) {
 /// was drawn.
 function meta_currency_items() {
 	return [
-		[icon_currency(CURRENCY.SEEDS),   string(seeds_get())],
-		[icon_currency(CURRENCY.CLOVERS), string(clovers_get())],
-		[icon_currency(CURRENCY.SHARDS),  string(shards_get())],
+		[icon_currency(CURRENCY.SEEDS),   string(seeds_get()), "seeds", seeds_get()],
+		[icon_currency(CURRENCY.CLOVERS), string(clovers_get()), "clovers", clovers_get()],
+		[icon_currency(CURRENCY.SHARDS),  string(shards_get()), "shards", shards_get()],
+		[icon_currency(CURRENCY.CANDY), "Candy "+string(candy_stock_total()), "candy", candy_stock_total()],
 		[-1, "Towers " + string(tower_owned_count()) + "/" +
 		     string(array_length(tower_roster()))],
 		[-1, "Badges " + string(badge_total_earned()) + "/" +
 		     string(badge_total_possible())]
 	];
+}
+
+/// Track the four balances for a short new-value highlight on the meta HUD.
+function meta_currency_highlight(_key, _value) {
+	if(!is_string(_key) || !is_real(_value)) return false;
+	if(!variable_global_exists("meta_currency_previous") || !is_struct(global.meta_currency_previous)){
+		global.meta_currency_previous={};
+	}
+	if(!variable_global_exists("meta_currency_flash") || !is_struct(global.meta_currency_flash)){
+		global.meta_currency_flash={};
+	}
+	var _previous=global.meta_currency_previous,
+	    _flash=global.meta_currency_flash;
+	if(!variable_struct_exists(_previous,_key) || !is_real(_previous[$ _key])){
+		_previous[$ _key]=_value;
+		_flash[$ _key]=0;
+		return false;
+	}
+	var _timer=variable_struct_exists(_flash,_key) && is_real(_flash[$ _key])
+	           ? max(0,floor(_flash[$ _key])) : 0;
+	if(_previous[$ _key] != _value){
+		_previous[$ _key]=_value;
+		_timer=45;
+	} else if(_timer > 0){
+		_timer--;
+	}
+	_flash[$ _key]=_timer;
+	return _timer > 0;
 }
 
 /// How wide the whole line is at size `_size`.  The trailing item's 20px tail is
@@ -202,7 +231,11 @@ function meta_currency_line(_x, _y, _maxw) {
 	/// on screen the icons are 20, not the 24 of the icon canvas: they sit on
 	/// a 16pt baseline instead of standing above it
 	for(var _n = 0; _n < array_length(_items); _n++){
-		_x = meta_icon_value(_x, _y, _items[_n][0], _items[_n][1], c_white, 20);
+		var _item=_items[_n], _colour=c_white;
+		if(array_length(_item) > 3 && meta_currency_highlight(_item[2],_item[3])){
+			_colour=c_yellow;
+		}
+		_x = meta_icon_value(_x, _y, _item[0], _item[1], _colour, 20);
 	}
 
 	return _y + string_height("Ag");
@@ -415,24 +448,21 @@ function meta_tower_wall_rects(_x, _y, _cell, _cols) {
 /// cw/ch are DERIVED from the grid node's own size, so the six-by-ten division
 /// cannot disagree with the rectangle the map was given.
 function meta_worldmap_geom() {
-	var _g = ui_meta_rect("worldmap", "worldmap.grid"),
-	    _c = meta_canvas_rect();
-
-	/// a missing tree is a bug ui_meta_check() has already logged; this keeps
-	/// the map drawable inside the canvas instead of stacking it at 0,0
-	if(array_length(_g) < 4) _g = [_c[0] + 96, _c[1] + 56, _c[2], _c[3] - 34];
-
-	return { x0: _g[0], y0: _g[1],
-	         cw: (_g[2] - _g[0]) / 10,
-	         ch: (_g[3] - _g[1]) / 6,
-	         cols: 10, grid: _g,
-	         labels:   ui_meta_rect("worldmap", "worldmap.labels"),
-	         info:     ui_meta_rect("worldmap", "worldmap.info"),
-	         head_info: ui_meta_rect("worldmap", "worldmap.head.info"),
-	         head_mid: ui_meta_rect("worldmap", "worldmap.head.title"),
-	         garden:   ui_meta_rect("worldmap", "worldmap.btn.garden"),
-	         title:    ui_meta_rect("worldmap", "worldmap.btn.title"),
-	         cur:      ui_meta_rect("worldmap", "worldmap.cur") };
+	var _g=ui_meta_rect("worldmap","worldmap.grid"),
+	    _c=meta_canvas_rect();
+	if(array_length(_g)<4) _g=[_c[0]+96,_c[1]+56,_c[2],_c[3]-34];
+	return {
+		x0:_g[0], y0:_g[1], cw:(_g[2]-_g[0])/10, ch:(_g[3]-_g[1])/6,
+		cols:10, grid:_g,
+		labels:ui_meta_rect("worldmap","worldmap.labels"),
+		info:ui_meta_rect("worldmap","worldmap.info"),
+		head_info:ui_meta_rect("worldmap","worldmap.head.info"),
+		head_mid:ui_meta_rect("worldmap","worldmap.head.title"),
+		garden:ui_meta_rect("worldmap","worldmap.btn.garden"),
+		endless:ui_meta_rect("worldmap","worldmap.btn.endless"),
+		title:ui_meta_rect("worldmap","worldmap.btn.title"),
+		cur:ui_meta_rect("worldmap","worldmap.cur")
+	};
 }
 
 /// The rectangle of every stage node.  Index = (region-1)*10 + (stage-1),
@@ -468,6 +498,7 @@ function meta_draw_worldmap() {
 	meta_title("World Map", _g.head_mid);
 	meta_currency_draw(_g.cur);
 	meta_button_draw(_g.garden, "Garden Book", true);
+	meta_button_draw(_g.endless, "Endless", endless_is_unlocked());
 	meta_button_draw(_g.title,  "Title",       true);
 
 	/// the region gutter, registered so a label that outgrew its column is a
@@ -527,10 +558,11 @@ function meta_draw_worldmap() {
 			/// a cleared node shows the medals it earned, so the map doubles
 			/// as the collection screen (goal.md 25)
 			if(_done){
-				for(var _b = 0; _b < badge_count(); _b++){
-					draw_set_colour(badge_has(_r, _s, _b) ? c_yellow : c_dkgray);
-					draw_rectangle(_rect[0] + 6 + _b*8, _rect[3] - 12,
-					               _rect[0] + 12 + _b*8, _rect[3] - 6, false);
+				for(var _bi = 0; _bi < badge_count(); _bi++){
+					var _badge = badge_display_at(_bi);
+					draw_set_colour(badge_has(_r, _s, _badge) ? c_yellow : c_dkgray);
+					draw_rectangle(_rect[0] + 6 + _bi*8, _rect[3] - 12,
+					               _rect[0] + 12 + _bi*8, _rect[3] - 6, false);
 				}
 			}
 		}
@@ -655,7 +687,7 @@ function meta_draw_deploy() {
 	    _load  = loadout_stored(),
 	    _pal   = ui_palette();
 
-	meta_title("Deploy", _g.head_mid);
+	meta_title(global.endless_setup ? "Endless Loadout" : "Deploy", _g.head_mid);
 	meta_currency_draw(_g.cur);
 
 	/// ---- the band's left column: the stage being deployed to.  The four
@@ -672,12 +704,21 @@ function meta_draw_deploy() {
 		draw_set_colour(c_white);
 		draw_set_halign(fa_left);
 
-		var _stage_txt = ui_clip_text("Region " + string(_row.region) +
-		                              "   Stage " + string(_row.stage) +
-		                              "   " + string(_row.waves) + " waves",
-		                              _info_w);
+		var _stage_txt = global.endless_setup
+		                  ? ui_clip_text("Endless Mode   500 waves",_info_w)
+		                  : ui_clip_text("Region "+string(_row.region)+"   Stage "+string(_row.stage)+
+		                                 "   "+string(_row.waves)+" waves",_info_w);
 		draw_text(_info[0], _info[1] + 2, _stage_txt);
 		ui_reg_text("stage", _info[0], _info[1] + 2, _stage_txt, fa_left, fa_top);
+		if(!global.endless_setup
+		&& variable_struct_exists(_row,"par_spend") && is_real(_row.par_spend)
+		&& variable_struct_exists(_row,"par_time") && is_real(_row.par_time)){
+			var _par_txt = ui_clip_text("Frugal < $"+string(_row.par_spend)
+			                            +"   Speed Grower < "+string(_row.par_time)+"s",
+			                            _info_w);
+			draw_text(_info[0], _info[1] + 18, _par_txt);
+			ui_reg_text("par", _info[0], _info[1] + 18, _par_txt, fa_left, fa_top);
+		}
 	}
 
 	/// ---- the band's right column: what the loadout row means, or why the
@@ -799,7 +840,7 @@ function meta_draw_deploy() {
 	/// button is inside the body - over the wall, at 675.  The band's right
 	/// column is empty on this screen and is the one place that can hold it.
 	var _ready = loadout_ready();
-	meta_button_draw(_g.deploy, "Deploy", _ready);
+	meta_button_draw(_g.deploy, global.endless_setup ? "Start Endless" : "Deploy", _ready);
 	meta_button_draw(_g.back,   "Back",   true);
 }
 
@@ -836,18 +877,38 @@ function meta_garden_geom() {
 		wall     : _w,
 		back     : ui_meta_rect("garden", "garden.btn.back"),
 		branch   : ui_meta_rect("garden", "garden.branch"),
+		tabs     : [ui_meta_rect("garden", "garden.tab.0"),
+		            ui_meta_rect("garden", "garden.tab.1"),
+		            ui_meta_rect("garden", "garden.tab.2"),
+		            ui_meta_rect("garden", "garden.tab.3")],
+		branch_tabs: [ui_meta_rect("garden", "garden.branch.0"),
+		               ui_meta_rect("garden", "garden.branch.1"),
+		               ui_meta_rect("garden", "garden.branch.2"),
+		               ui_meta_rect("garden", "garden.branch.3")],
+		branch_respec: ui_meta_rect("garden", "garden.btn.branch_respec"),
 		clover_page: ui_meta_rect("garden", "garden.page"),
 		page     : ui_meta_rect("garden", "garden.page"),
-		view     : ui_meta_rect("garden", "garden.view"),
 		stats     : ui_meta_rect("garden", "garden.stats"),
 		stats_head: ui_meta_rect("garden", "garden.stats.head"),
 		stats_grid: ui_meta_rect("garden", "garden.stats.grid"),
 		stats_note: ui_meta_rect("garden", "garden.stats.note"),
+		spec_respec: ui_meta_rect("garden", "garden.stats.action"),
 		shophdr  : ui_meta_rect("garden", "garden.shophdr"),
+		shophdr_title: ui_meta_rect("garden", "garden.shophdr.title"),
 		head_info: ui_meta_rect("garden", "garden.head.info"),
 		head_mid : ui_meta_rect("garden", "garden.head.title"),
 		cur      : ui_meta_rect("garden", "garden.cur")
 	};
+}
+
+function meta_garden_tab_draw(_rect, _label, _selected) {
+	if(!is_array(_rect) || array_length(_rect) < 4) return;
+	meta_button_draw(_rect,_label,true);
+	if(_selected){
+		draw_set_colour(c_yellow);
+		draw_rectangle(_rect[0],_rect[1],_rect[2],_rect[3],true);
+	}
+	draw_set_colour(c_white);
 }
 
 function meta_garden_node_rects() {
@@ -911,7 +972,8 @@ function meta_garden_stats_draw(_g) {
 	    _s  = _g.stats,
 	    _hd = _g.stats_head,
 	    _gr = _g.stats_grid,
-	    _nt = _g.stats_note;
+	    _nt = _g.stats_note,
+	    _ac = _g.spec_respec;
 
 	if(array_length(_s) < 4){
 		_s = [_g.wall_x, _g.wall_y + 2*_g.wall_cell + 8,
@@ -920,6 +982,7 @@ function meta_garden_stats_draw(_g) {
 	if(array_length(_hd) < 4) _hd = [_s[0] + 8, _s[1] + 8,  _s[2] - 8, _s[1] + 32];
 	if(array_length(_gr) < 4) _gr = [_s[0] + 8, _hd[3] + 4,  _s[2] - 8, _hd[3] + 72];
 	if(array_length(_nt) < 4) _nt = [_s[0] + 8, _gr[3] + 4,  _s[2] - 8, _gr[3] + 20];
+	if(array_length(_ac) < 4) _ac = [_s[0] + 8, _nt[3] + 4, _s[2] - 8, _nt[3] + 24];
 
 	var _pal = ui_palette();
 	meta_panel(_s[0], _s[1], _s[2] - _s[0], _s[3] - _s[1],
@@ -969,12 +1032,18 @@ function meta_garden_stats_draw(_g) {
 		meta_text(_x2, _y, _l.value, _pal.ink,      fa_right);
 	}
 
-	/// ---- the trait line, or nothing at all for a tower without one
-	var _note = tower_stat_note(_it.name);
+	/// ---- show the saved path in the plant card; otherwise explain when it unlocks
+	var _spec_key=tower_spec_saved(_it.name),
+	    _spec_path=tower_spec_find(_it.name,_spec_key),
+	    _note=is_struct(_spec_path) ? "Path: "+_spec_path.label : tower_stat_note(_it.name),
+	    _respec_cost=tower_spec_respec_cost(_it.name),
+	    _respec_text=_respec_cost > 0 ? "Reset path  "+string(_respec_cost)+" clovers"
+	                                 : "Choose a path at level 3 in a stage";
 	if(_note != ""){
 		meta_text(_nt[0], _nt[1] + 2, ui_clip_text(_note, _nt[2] - _nt[0]),
 		          _pal.gold, fa_left);
 	}
+	meta_button_draw(_ac,_respec_text,_respec_cost > 0 && clovers_get() >= _respec_cost);
 
 	draw_set_font(fnt_size16);
 }
@@ -1015,26 +1084,30 @@ function meta_draw_garden() {
 
 	meta_title("Garden Book", _g.head_mid);
 	meta_currency_draw(_g.cur);
-	var _next_view = _mode == 0 ? "Blood Tree" : (_mode == 1 ? "Candy Shop" : (_mode == 2 ? "Mastery" : "Clover Tree"));
-	meta_button_draw(_g.view, _next_view, true);
+	var _tab_labels=["Clovers","Blood","Candy","Mastery"];
+	for(var _tab=0; _tab<min(4,array_length(_g.tabs)); _tab++){
+		meta_garden_tab_draw(_g.tabs[_tab],_tab_labels[_tab],_mode==_tab);
+	}
 
 	var _br = _g.branch;
 	if(array_length(_br) < 4){
-		_br = [_g.node_x, _g.node_y - 36, _g.node_x + _g.node_w, _g.node_y];
+		_br = [_g.node_x, _g.node_y - 28, _g.node_x + _g.node_w, _g.node_y];
 	}
-	draw_set_font(fnt_size16);
-	draw_set_colour(c_white);
-	draw_set_halign(fa_left);
-	draw_set_valign(fa_top);
-	var _bh = string_height("Ag"),
-	    _branch_name = _candy ? "Candy Recipes" : (_blood ? "Blood Alchemy" : (_mastery ? "Mastery" : clover_branch_name()+" >")),
-	    _branch_icon = _candy ? icon_currency(CURRENCY.CANDY)
-	                         : (_blood ? icon_blood(1) : (_mastery ? icon_mastery(max(1,min(5,tower_mastery()+1))) : icon_branch(clover_branch_icon())));
-	icon_draw(_branch_icon, _br[0] + 16, (_br[1] + _br[3])*0.5, 32, "branch_icon");
-	var _branch_label = ui_clip_text(_branch_name,max(20,_br[2]-_br[0]-44));
-	draw_text(_br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5, _branch_label);
-	ui_reg_text("heading", _br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5,
-	            _branch_label, fa_left, fa_top);
+	if(_mode == 0){
+		var _branch_labels=["Vitality","Offense","Growth","Harvest"],
+		    _branch_index=clover_branch_index();
+		for(var _branch_tab=0; _branch_tab<min(4,array_length(_g.branch_tabs)); _branch_tab++){
+			meta_garden_tab_draw(_g.branch_tabs[_branch_tab],_branch_labels[_branch_tab],
+			                     _branch_tab==_branch_index);
+		}
+	} else {
+		var _branch_name = _candy ? "Candy Recipes" : (_blood ? "Blood Alchemy" : "Garden Mastery"),
+		    _branch_icon = _candy ? icon_currency(CURRENCY.CANDY)
+		                         : (_blood ? icon_blood(1) : icon_mastery(max(1,min(5,tower_mastery()+1))));
+		meta_panel(_br[0],_br[1],_br[2]-_br[0],_br[3]-_br[1],_pal.panel,c_black);
+		icon_draw(_branch_icon, _br[0] + 16, (_br[1] + _br[3])*0.5, 24, "branch_icon");
+		meta_text(_br[0]+34,(_br[1]+_br[3])*0.5-8,_branch_name,c_white,fa_left);
+	}
 	draw_set_font(fnt_size12);
 
 	if(_candy && is_struct(_focus)){
@@ -1063,7 +1136,7 @@ function meta_draw_garden() {
 			meta_panel(_rc[0], _rc[1], _cw, _rc[3] - _rc[1], _bg,
 			           (_can && _hov) ? c_lime : c_black);
 			var _node_icon = _blood ? icon_blood(_n.tier) : (_mastery ? icon_mastery(_n.rank) : icon_node(_max));
-			icon_draw(_node_icon, _rc[0] + 26, _rc[1] + 28, 40, _blood ? "blood_node_icon" : (_mastery ? "mastery_node_icon" : "node_icon"));
+			icon_draw(_node_icon, _rc[0] + 26, _rc[1] + (_rc[3]-_rc[1])*0.5, 40, _blood ? "blood_node_icon" : (_mastery ? "mastery_node_icon" : "node_icon"));
 			draw_set_font(fnt_size16);
 			draw_set_colour(c_white);
 			draw_set_halign(fa_left);
@@ -1093,11 +1166,13 @@ function meta_draw_garden() {
 		}
 	}
 
-	var _shh = _g.shophdr;
+	var _shh = _g.shophdr,
+	    _shop_title = _g.shophdr_title;
 	if(array_length(_shh) < 4) _shh = [_g.wall_x, _g.wall_y - 30, _g.wall_x + 336, _g.wall_y];
+	if(array_length(_shop_title) < 4) _shop_title = _shh;
 	if(_candy){
 		draw_set_font(fnt_size16);
-		meta_text(_shh[0], _shh[1] + 3, "Candy Shop", c_white, fa_left);
+		meta_text(_shop_title[0], _shop_title[1] + 3, "Candy Shop", c_white, fa_left);
 		var _page_rect = _g.page;
 		if(array_length(_page_rect) >= 4){
 			meta_button_draw(_page_rect, "Page " + string(_page + 1) + "/2", true);
@@ -1112,7 +1187,7 @@ function meta_draw_garden() {
 	} else {
 		draw_set_font(fnt_size16);
 		draw_set_colour(c_white);
-		meta_text(_shh[0], _shh[1] + 3, "Seed Shop", c_white, fa_left);
+		meta_text(_shop_title[0], _shop_title[1] + 3, "Seed Shop", c_white, fa_left);
 		if(_mode == 0){
 			var _node_page_rect=_g.page;
 			if(array_length(_node_page_rect) >= 4){
@@ -1122,6 +1197,10 @@ function meta_draw_garden() {
 		meta_draw_tower_wall(_g.wall_x, _g.wall_y, _g.wall_cell, _g.wall_cols, false);
 		if(_mastery) meta_garden_mastery_summary_draw(_g);
 		else meta_garden_stats_draw(_g);
+	}
+	var _branch_fee=clover_branch_respec_fee(clover_branch_key());
+	if(_mode == 0 && _branch_fee >= 0 && array_length(_g.branch_respec) >= 4){
+		meta_button_draw(_g.branch_respec,"Respec tree  fee "+string(_branch_fee),true);
 	}
 	meta_button_draw(_g.back, "Return", true);
 }
@@ -1301,15 +1380,16 @@ function meta_draw_results() {
 	    _pal = ui_palette(),
 	    _has = variable_global_exists("level_result") && is_struct(global.level_result),
 	    _res = _has ? global.level_result : undefined,
-	    _win = _has && (_res[$ "outcome"] == "CLEAR");
+	    _win = _has && (_res[$ "outcome"] == "CLEAR"),
+	    _endless = _has && (_res[$ "outcome"] == "ENDLESS");
 
-	meta_title(_win ? "Stage Clear" : "Stage Lost",
+	meta_title(_endless ? "Endless Run" : (_win ? "Stage Clear" : "Stage Lost"),
 	           ui_meta_rect("results", "results.head.title"));
 	meta_currency_draw(_g.cur);
 
 	meta_panel(_g.panel[0], _g.panel[1],
 	           _g.panel[2] - _g.panel[0], _g.panel[3] - _g.panel[1],
-	           _pal.bg, _win ? c_lime : c_red);
+	           _pal.bg, _endless ? c_yellow : (_win ? c_lime : c_red));
 
 	/// A results screen with nothing to show.  This is the one state that can
 	/// be entered WITHOUT a stage having run (a stale global.menu_entry from a
@@ -1340,37 +1420,49 @@ function meta_draw_results() {
 
 	/// 32pt fitted: "Region 6   Stage 10" is the widest this gets, and the
 	/// panel is only as wide as the canvas allowed
-	var _res_head = "Region " + string(_res.region) +
-	                "   Stage " + string(_res.stage);
+	var _res_head = _endless
+	                ? "ENDLESS   Wave "+string(_res.waves)
+	                : "Region "+string(_res.region)+"   Stage "+string(_res.stage);
 	ui_fit_font(_res_head, (_hr[2] - _hr[0]) - 8, [32, 20, 16]);
 	draw_set_colour(c_white);
 	draw_text(_hr[0], _hr[1], _res_head);
 	ui_reg_text("heading", _hr[0], _hr[1], _res_head, fa_left, fa_top);
 
 	draw_set_font(fnt_size16);
-	draw_set_colour(_win ? c_lime : c_red);
-	var _res_word = _win ? "CLEARED" : "FAILED";
+	draw_set_colour(_endless ? c_yellow : (_win ? c_lime : c_red));
+	var _res_word = _endless ? "RUN ENDED" : (_win ? "CLEARED" : "FAILED");
 	draw_text(_orow[0], _orow[1], _res_word);
 	ui_reg_text("outcome", _orow[0], _orow[1], _res_word, fa_left, fa_top);
 
-	/// the numbers.  A loss shows what it did NOT pay, because "nothing" is
-	/// the design decision a player should be able to read (goal.md 27.3).
-	var _lines = [
-		"Difficulty      " + difficulty_name(_res.difficulty),
-		"Lives left      " + string(_res.lives),
-		"Leaked          " + string(_res.leaked)
-	];
-	if(_win){
-		_lines[3] = "Seeds earned    +" + string(_res.seeds);
-		_lines[4] = "Clovers earned  +" + string(_res.clovers);
-		var _b = _res[$ "badges"];
-		if(is_string(_b) && _b != "") _lines[5] = "Badges          " + _b;
+	/// Endless writes no campaign rewards; boxes were banked as they were chosen.
+	var _lines;
+	if(_endless){
+		_lines = [
+			"Wave reached   "+string(_res.waves),
+			"Best wave      "+string(_res.best_wave),
+			"Score          "+string(_res.score),
+			"Boxes claimed  "+string(_res.boxes),
+			"Run ended      "+string(_res.reason),
+			"Difficulty     "+difficulty_name(_res.difficulty)
+		];
 	} else {
-		_lines[3] = "Seeds earned    nothing - a stage pays on a clear";
+		/// A campaign loss shows what it did NOT pay (goal.md 27.3).
+		_lines = [
+			"Difficulty      "+difficulty_name(_res.difficulty),
+			"Lives left      "+string(_res.lives),
+			"Leaked          "+string(_res.leaked)
+		];
+		if(_win){
+			_lines[3] = "Seeds earned    +"+string(_res.seeds);
+			_lines[4] = "Clovers earned  +"+string(_res.clovers);
+			var _b=_res[$ "badges"];
+			if(is_string(_b) && _b!="") _lines[5]="Badges          "+_b;
+		} else {
+			_lines[3] = "Seeds earned    nothing - a stage pays on a clear";
+		}
+		var _row=stage_get(_res.region,_res.stage);
+		if(!is_undefined(_row)) _lines[6]="Waves           "+string(_row.waves);
 	}
-	var _row = stage_get(_res.region, _res.stage);
-	if(!is_undefined(_row)) _lines[6] = "Waves           " + string(_row.waves);
-
 	var _rh  = string_height("Ag"),
 	    _rw  = _rows[2] - _rows[0],
 	    _n_fit = floor((_rows[3] - _rows[1]) / _rh);
@@ -1387,7 +1479,7 @@ function meta_draw_results() {
 
 	/// the actions
 	var _next = _win ? meta_results_next(_res.region, _res.stage) : undefined;
-	meta_button_draw(_g.retry, "Retry", true);
+	meta_button_draw(_g.retry, _endless ? "Run Again" : "Retry", true);
 	meta_button_draw(_g.next,  "Next",  !is_undefined(_next));
 	meta_button_draw(_g.map,   "World Map", true);
 }
@@ -1462,7 +1554,7 @@ function meta_garden_candy_list_draw(_nodes, _rects, _offset, _selected, _pal) {
 		    _bg = (_sel || (_can && _hov)) ? _pal.panel_lit : _pal.panel;
 		meta_panel(_rc[0],_rc[1],_cw,_rc[3]-_rc[1],_bg,
 		           _sel ? c_yellow : ((_can && _hov) ? c_lime : c_black));
-		meta_garden_candy_icon_draw(_n.id,_rc[0]+26,_rc[1]+28,38);
+		meta_garden_candy_icon_draw(_n.id,_rc[0]+26,_rc[1]+(_rc[3]-_rc[1])*0.5,38);
 		draw_set_font(fnt_size16);
 		draw_set_colour(c_white);
 		draw_set_halign(fa_left);
@@ -1513,7 +1605,7 @@ function meta_garden_candy_detail_draw(_g, _recipe) {
 	    _unlocked = candy_recipe_unlocked(_id),
 	    _level = candy_level_get(_id),
 	    _gate = candy_recipe_gate_reason(_id),
-	    _mag = meta_garden_candy_effect(_id,max(1,_level)),
+	    _mag = meta_garden_candy_effect(_id,max(1,_level)), _mag_data = candy_magnitude(_id,max(1,_level)),
 	    _stock = candy_stock_get(_id),
 	    _duration_cost = candy_duration_cost(),
 		    _actions = meta_garden_candy_action_rects(_g);
@@ -1529,7 +1621,7 @@ function meta_garden_candy_detail_draw(_g, _recipe) {
 	meta_text(_w[0]+104,_w[1]+48,"Tier "+string(_recipe.tier)+"  |  "+(_unlocked ? "Level "+string(_level)+"/10" : "Recipe locked"),c_yellow,fa_left);
 	draw_set_font(fnt_size12);
 	meta_text(_w[0]+104,_w[1]+76,ui_clip_text(_mag,_w[2]-_w[0]-116),c_silver,fa_left);
-	meta_text(_w[0]+104,_w[1]+96,"Stock: "+string(_stock)+"  |  Duration: "+string(candy_duration_seconds())+"s",c_silver,fa_left);
+	meta_text(_w[0]+104,_w[1]+96,"Stock: "+string(_stock)+"  |  "+(_id == "everlasting_gob" ? "Freeze: "+string(_mag_data.freeze_waves)+" wave(s)" : "Duration: "+string(candy_duration_seconds())+"s"),c_silver,fa_left);
 	if(_gate != "") meta_text(_w[0]+104,_w[1]+116,ui_clip_text(_gate,_w[2]-_w[0]-116),c_orange,fa_left);
 
 	meta_panel(_s[0],_s[1],_s[2]-_s[0],_s[3]-_s[1],make_colour_rgb(20,20,24),c_black);

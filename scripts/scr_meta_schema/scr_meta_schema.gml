@@ -5,12 +5,10 @@ function scr_meta_file() {
 	return "garden_meta.dat";
 }
 
-/// The schema version.  Bump this when a field changes meaning, and add the
-/// migration to scr_meta_merge().
-/// v2 adds `last_stage` - the run cursor: which stage was last deployed,
-/// on which difficulty, so continuing can reopen where the player was.
+/// The schema version. New fields merge onto old saves through the defaults.
+/// v2 added the campaign run cursor; v3 adds Endless personal bests.
 function scr_meta_version() {
-	return 2;
+	return 3;
 }
 
 /// A brand new save.  Every field a later phase needs is already here, so an
@@ -38,11 +36,14 @@ function scr_meta_default() {
 		clover_nodes : {},      /// clover tree node -> rank
 		blood_nodes  : {},      /// blood tree node -> rank
 		candy_levels : {},      /// recipe name -> level 1..10
-		specializations : {},  /// tower name -> free L3 path choice
+		specializations : {},  /// tower name -> free L3 path; reset costs 25 clovers
 		candy_duration : 0,     /// candy duration track purchases 0..10
 
 		/// ---- long term counters ----
 		shard_pity   : 0,       /// effective pity kill-equivalents since the last shard
+		endless_best_wave  : 0, /// highest Endless wave reached
+		endless_best_score : 0, /// highest Endless score
+		endless_clover_shard_carry : 0, /// capped clovers accumulated toward 1 shard per 100
 
 		/// ---- where the run is (v2) ----
 		/// A FIXED RECORD, not an open map: a populated struct, so

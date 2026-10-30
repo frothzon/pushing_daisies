@@ -376,7 +376,7 @@ def sim_report(o, scene=None) -> List[str]:
 
     The columns are the questions a ratio cannot answer: how long each wave
     actually took, how much of that was spent waiting for the next one, how many
-    leaked, what the purse did, and how much damage the emerge reset cancelled.
+    leaked, what the purse did, and how much effective damage the towers dealt.
     """
     out = [rule("the sim: what actually happens")]
     who = (f"{scene.stage.region}-{scene.stage.stage} on {scene.difficulty.name}   "
@@ -410,8 +410,7 @@ def sim_report(o, scene=None) -> List[str]:
     out.append("")
     out.append(f"   money    started {o.start_money:.0f}  earned {o.money_earned:.0f}  "
                f"spent {o.money_spent:.0f}  left {o.money_left:.0f}")
-    out.append(f"   damage   hp killed {o.hp_killed:.0f} of {o.hp_total:.0f}   "
-               f"hp erased by the emerge reset {o.erased_damage:.0f}")
+    out.append(f"   damage   hp killed {o.hp_killed:.0f} of {o.hp_total:.0f}")
     pct = (100.0 * o.wasted / o.shots) if o.shots else 0.0
     out.append(f"   towers   {o.towers} built   swings {o.shots} "
                f"({o.wasted} achieved nothing, {pct:.0f}%)")
@@ -441,8 +440,7 @@ def sim_findings(o, scene=None) -> List[str]:
                f"{total} frames waiting, not fighting")
     if o.shots:
         out.append(f"   the cycle  {100.0 * o.wasted / o.shots:.0f}% of swings "
-                   f"achieved nothing, and {o.erased_damage:.0f} hp of damage was "
-                   f"ERASED by the emerge reset (life = maxLife at frame 60)")
+                   f"achieved nothing")
     out.append(f"   the purse  ${o.money_left:.0f} unspent at the end"
                + ("  <- the ladder ran out of things worth buying"
                   if o.money_left >= 10 * max(1, o.towers // 4) else ""))

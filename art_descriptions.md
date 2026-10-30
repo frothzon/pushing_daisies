@@ -34,21 +34,19 @@ never hand-tuned. The title-screen zombie is the rigged Grumble-Mulch
 | --- | --- | --- | --- |
 | `region-bosses` | **code done 2026-10-24** | the **4 new boss rigs** and their 4 portraits arrived and are wired (a row carries `array(walk, idle, attack, die)`, `scr_zomb_art` plays it); region 2 reuses an existing boss | — |
 | `region-zombies` | **code done 2026-10-24**, one art job left | the **6 rigs** arrived (walk + idle + attack + die each); **two portraits are still missing** - Sandblasted and Shroud (`art-sandblasted-portrait`). `attack` is drawn but never played: the gate is a place, not an enemy (`zomb-attack-at-gate`, §3.2) | two portraits |
-| `tower-slice-trios` | **done 2026-10-21** | all four trios arrived; Tulip and Meat Bulb draw theirs, Kaboom and Marigold wait for their towers (§4.9) | — |
+| `tower-slice-trios` | **done 2026-10-21** | all four trios arrived; every roster tower now uses its named trio, and all eight shot-effect sprites are wired (§4.9) | — |
 | `art-biome-tiles` | backlog | **only the Graveyard atlas** — the 18 props arrived 2026-10-21; the other four biomes already have greyscale atlases (§4.3) | small |
 | `art-garden-book` | **done 2026-10-21** | every icon arrived (36); the screens that show the rest are their own cards | — |
 | `art-level-complete` | **done 2026-10-21** | the banner arrived and is drawn at 1:1 (§4.5) | — |
 | `art-state-origins` | next | **no drawing** — per-state y-origins (§4.8) | no |
 | `portrait-draw-fit` | backlog | **no drawing** unless frameless busts are chosen (§4.6) | optional |
 | `legacy-boss-art-cleanup` | backlog | **no drawing** — five unused sprites to delete (§4.7) | no |
-| `tower-belladonna` | backlog | **no drawing** — the trio exists, the code does not (§4.9) | no |
 
-Not on an art card yet: **Kaboom Kalanchoe** and **Money Marigold** (roadmap 5.5)
-have their art since 2026-10-21 but no final design — §4.9 describes them
-provisionally so the design cards have something to agree with, and their trios
-and effect sprites sit in the project unused until those towers exist.
-**Cannon Tulip** and **Meat Bulb** were on borrowed art until the same drop;
-they now draw their own (§4.9).
+The three formerly unwired unlockables, Kaboom Kalanchoe, Money Marigold, and
+Thornamental, now have roster entries and use their finished trios. Kaboom's
+bud, fire burst, and burn marker are wired; Marigold's income sparkle plays
+when a wave dividend is paid. All tower art assets are now integrated; the
+remaining review is in-game readability and balance, not missing sprites.
 
 ---
 
@@ -56,12 +54,10 @@ they now draw their own (§4.9).
 
 Verified by opening the files, not by listing names:
 
-* **Tower trios, 192×192, 5–9 frames per state** — Daisy Pusher, Burning Ivy,
-  Slender Mandrake, Pina Collider, Chillip, Thornamental, Bindweed and
-  Belladonna Blitz. All eight have idle / attack / return. Four of them
-  (Chillip, Thornamental, Bindweed, Bella) are not yet on the roster, but their
-  art is finished. **Cannon Tulip and Meat Bulb are on the roster and still wear
-  the old `spr_t3_*` / `spr_t4_*` trios** — see §4.9.
+* **Tower trios, 192×192, 5–9 frames per state** — all 12 roster towers have
+  dedicated idle / attack / return art, including Cannon Tulip, Meat Bulb,
+  Thornamental, Kaboom Kalanchoe, and Money Marigold. The support Marigold uses
+  its idle trio and income sparkle; its attack animation is not a combat action.
 * **Monster rigs, 4 states × 16 frames** — Grumble-Mulch, Dome-Alone,
   Professor-Cerebrisk, plus the two bosses Tusk-A-Lot and Sub-Zero. Each state
   has its **own canvas size** (that is the origin bug, §4.8).
@@ -798,61 +794,26 @@ the origin fix stays fixed.
 
 ---
 
-### 4.9 Towers — two on borrowed art now, two with no design yet, and Belladonna
+### 4.9 Towers — all roster trios integrated
 
-**Belladonna Blitz needs no art.** `spr_bella_{idle,attack,return}_192x` are in
-the repo (5 / 8 / 7 frames, 192×192) and are real belladonna art — purple bell
-flowers, a crouch attack, a return. `tower-belladonna` is a **code** card: add
-the trio to `scr_tower_roster` as slot 12. The optional Oct-6 45-frame source is
-polish, not a dependency (LL-030: frame count is not timing).
+All 12 roster towers use dedicated 192×192 idle / attack / return trios under
+the names in `scr_tower_roster()`. Cannon Tulip and Meat Bulb no longer borrow
+the old `spr_t3_*` / `spr_t4_*` art. Chillip, Bindweed, Thornamental, and
+Belladonna Blitz use the completed trios already in the project.
 
-#### In the game now, on someone else's art: **Cannon Tulip** and **Meat Bulb**
+**Kaboom Kalanchoe** (slot 10) uses `spr_kaboom_*`, launches
+`spr_kalanchoe_bud_projectile`, bursts with `spr_kalanchoe_fire_burst`, and
+shows `spr_kalanchoe_burn_marker` when its burn applies. The tower is AoE and
+burn focused.
 
-`scr_tower_roster` says it plainly — both borrow the old `spr_t3_*` / `spr_t4_*`
-trios "until roadmap 1.11 draws `spr_t5_*` / `spr_t6_*`". Roadmap 1.11 is
-**NOT done**, so two of the six towers in the vertical slice are drawn as
-different towers. This is the cheapest visible art win in the project: both
-towers already exist, are already priced, already have stats, and only lack a
-face.
+**Money Marigold** (slot 11) uses `spr_marigold_*` and is a passive economy
+tower. It pays $1–3 per cleared wave through L5, then scales by 8% per
+mastery level; `spr_marigold_income_sparkle` plays when paid. The attack trio
+is retained as art, but does not imply that the passive tower damages monsters.
 
-* **Cannon Tulip** (200 damage, short range, slowest fire, small blast): a tulip
-  whose bloom *is* the barrel. A thick green stem as the carriage, two leaves
-  folded back as trail legs, iron banding around the flower head, a soot-stained
-  muzzle where the petals part, and a bud-shell visible in the throat between
-  shots. Palette: hot red-orange petals, deep green stem, gunmetal and brass.
-  The silhouette is **a cannon first, a flower second** — that is the joke.
-* **Meat Bulb** (90 damage, long range, fast, single target): a pale fleshy bulb
-  with a mouth instead of a flower, rows of blunt teeth, a long tongue that
-  snaps out on the attack, and a papery skin peeling at the base. It is the
-  long-range sniper of the starters, so its eye-line must point forward and its
-  head must be the highest point of the silhouette. Palette: bone cream, raw
-  pink, dried-blood red; the ugliest plant in the garden, deliberately.
+**Two art questions remain, neither needing a redraw:**
 
-Spec: three states each (`idle` / `attack` / `return`), 192×192, origin (96,157),
-5–9 frames per state, following §3.1. Names `spr_t5_*` / `spr_t6_*` as roadmap
-1.11 says, or `spr_cannon_tulip_*` / `spr_meat_bulb_*` if the roster is renamed —
-decide once, because the roster entry has to match.
-
-#### Not built yet, no design: **Kaboom Kalanchoe** and **Money Marigold**
-
-Roadmap 5.5 owes six unlockables and four already have finished trios (Chillip,
-Thornamental, Bindweed, Belladonna). These two are provisional briefs so the
-design cards have something concrete to accept or change:
-
-* **Kaboom Kalanchoe** (slot 10, AoE + burn): a squat kalanchoe with thick
-  scalloped leaves and a crown of scarlet "grenade" buds fused into one flower
-  head; a lit stamen fuse; the attack lobs a bud that blooms into fire, the
-  return shows it regrowing. Palette: succulent green, ember orange, charcoal.
-  The silhouette must say *round, heavy, about to burst*.
-* **Money Marigold** (slot 11, in-run economy): a marigold whose petals are gold
-  coins, with a merchant's scale on one leaf and a small ledger leaf; the attack
-  flicks a coin at the path, the idle jingles. Palette: marigold orange, brass
-  gold, deep green. It is a support tower, so it should look **prosperous, not
-  aggressive** — the only tower smiling.
-
-**Two art questions already on the board, neither needing a redraw:**
-
-* **Pina Collider is ~30 % smaller than its peers.** Either intentional (it is
+* **Pina Collider is ~30% smaller than its peers.** Either intentional (it is
   the cheap AoE) or its art should be scaled up. `draw_scale` is frozen at 0.5
   for the level look, so "scale it up" means redrawing the trio larger on the
   192 canvas, not changing the code.
@@ -860,8 +821,6 @@ design cards have something concrete to accept or change:
   constrains tower art: every trio needs a clean closed outline for the ring to
   trace. Check a new trio by drawing a 3 px outline around it and looking at it
   at 96 px.
-
----
 
 ## 5. Delivery checklist (the part that makes it "done")
 
@@ -897,9 +856,6 @@ design cards have something concrete to accept or change:
 4. **Pina's size** — intentional, or a redraw?
 5. **Boss and zombie names** in §4.1/§4.2 are proposals; settle them before the
    portraits, because the name is what the popup prints.
-6. **Tower sprite names for the slice trios** — `spr_t5_*` / `spr_t6_*` as
-   roadmap 1.11 says, or descriptive `spr_cannon_tulip_*` /
-   `spr_meat_bulb_*`. The roster entry has to match whichever is chosen.
 
 ---
 

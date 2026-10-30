@@ -61,10 +61,29 @@ function shard_drop_chance(_pity) {
 
 /// Roll Blood Moon once at wave start. Called from _levelControl, so the
 /// temporary modifier lives on the owning level instance for this whole wave.
-function shard_wave_begin(_wave) {
-	var _chance = blood_moon_chance(),
+/// Crimson Garden exposes the Region 6 night every fifth campaign wave.
+function blood_fields_night_active(_region,_wave) {
+	if(!is_real(_region) || _region != 6 || !is_real(_wave)) return false;
+	return blood_content_unlocked() && (_wave mod 5 == 0);
+}
+
+function blood_fields_night_elite_bonus(_region,_wave) {
+	return blood_fields_night_active(_region,_wave) ? 0.10 : 0;
+}
+
+function blood_fields_night_pity_bonus(_region,_wave) {
+	return blood_fields_night_active(_region,_wave) ? 1.0 : 0;
+}
+
+/// Roll Blood Moon once at wave start and add the Blood Fields night bonus.
+/// Both modifiers are additive kill-equivalent pity progress for this wave.
+function shard_wave_begin(_wave,_region) {
+	var _night = blood_fields_night_active(_region,_wave),
+	    _chance = blood_moon_chance(),
 	    _roll = (_chance > 0) ? random(1) : 1,
-	    _bonus = (_chance > 0 && _roll < _chance) ? blood_moon_fill_bonus() : 0;
+	    _moon_bonus = (_chance > 0 && _roll < _chance) ? blood_moon_fill_bonus() : 0,
+	    _night_bonus = blood_fields_night_pity_bonus(_region,_wave),
+	    _bonus = _moon_bonus + _night_bonus;
 
 	if(variable_instance_exists(id,"shard_wave_bonus")){
 		shard_wave_bonus = _bonus;
@@ -73,7 +92,12 @@ function shard_wave_begin(_wave) {
 		scr_meta_log("SHARD","Blood Moon wave=",_wave,
 		             " roll=",string_format(_roll,1,5),
 		             " chance=",string_format(_chance*100,1,2),
-		             "% fill_bonus=",_bonus);
+		             "% fill_bonus=",_moon_bonus);
+	}
+	if(_night){
+		scr_meta_log("SHARD","Blood Fields night wave=",_wave,
+		             " region=",_region," elite_bonus=10.00% fill_bonus=",_night_bonus,
+		             " combined_fill_bonus=",_bonus);
 	}
 	return _bonus;
 }

@@ -159,6 +159,7 @@ function level_count() {
 /// flow can read it without a guard on every line (LL-002).  The deploy gate
 /// (level_exists) is what stops an unauthored stage getting this far.
 function level_current() {
+	if(endless_is_active()) return endless_level_data();
 	var _r = variable_global_exists("region") ? global.region : 1,
 	    _s = variable_global_exists("stage")  ? global.stage  : 1,
 	    _l = level_get(_r, _s);

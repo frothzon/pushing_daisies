@@ -9,7 +9,8 @@ function scr_level_start() {
 	    whatever the runtime speed setting happens to be (LL-007).
 	*/
 
-	var _fps = game_get_speed(gamespeed_fps);
+	var _fps = game_get_speed(gamespeed_fps),
+	    _row = stage_current();
 
 	if(level_state_time == 0){
 	    spawn_timer = _fps * 5.9;
@@ -19,7 +20,8 @@ function scr_level_start() {
 	    /// the curve diagnostic (card curve-diagnostic): the ramp and the
 	    /// ladder, printed once so a curve that has gone wrong is visible
 	    /// here instead of after a sixty-wave playtest
-	    scr_curve_report();
+	    if(endless_is_active()) scr_meta_log("ENDLESS","start wave=1 cap=",endless_wave_cap());
+		else scr_curve_report();
 
 	    /// choose the FIRST wave's creature now, so scr_level_spawn() can
 	    /// simply consume it.  The choice has to exist before SPAWN, or
@@ -31,6 +33,10 @@ function scr_level_start() {
 	    /// the region's theme, up under the countdown rather than arriving
 	    /// with wave 1 (roadmap 5.8)
 	    scr_music_start_level();
+
+	    /// Prepare a route before scattering scenery; props reserve cells
+	    /// off this route and outside its ground footprint.
+	    scr_resetDrawPath();
 	}
 
 	/// when the timer runs out, begin the waves
@@ -50,4 +56,7 @@ function scr_level_start() {
 	}
 
 	scr_level_showPath();
+	if(!variable_instance_exists(id,"biome_props_spawned") || !biome_props_spawned){
+		biome_props_spawn(_row.biome,_row.region,_row.stage);
+	}
 }

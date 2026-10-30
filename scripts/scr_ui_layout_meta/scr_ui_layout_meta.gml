@@ -62,7 +62,7 @@
 #macro UI_META_BTN_PAD  24          /// a button's side padding - the same +24 scr_scaleButton uses
 #macro UI_META_BTN_MIN  64          /// narrower than this a label has no room at all
 #macro UI_GARDEN_SHOPHDR_H 24      /// the "Seed Shop" heading row
-#macro UI_GARDEN_STATS_H   132     /// the plant card: 8 + 24 + 4 + 68 + 4 + 16 + 8
+#macro UI_GARDEN_STATS_H   156     /// the shop card: previous 132 + 4 gap + 20px specialization action
 
 
 /// ---- the trees ----------------------------------------------------------
@@ -273,37 +273,36 @@ function ui_meta_worldmap_tree() {
 	    _avail = global.ui.w - 2*_t.margin,
 	    /// 96 for the labels, one gap on either side of the grid
 	    _cell  = clamp(floor((_avail - 96 - 3*_t.gap) / 10), 30, 62),
-	    _ch    = round(_cell*50/62),      /// the 62x50 cell the map shipped with
+	    _ch    = round(_cell*50/62),
 	    _gw    = _cell*10,
 	    _gh    = _ch*6,
-	    /// one width for both exits, from the widest label in the row
-	    _bw    = ui_meta_btn_w(["Garden Book", "Title"]);
+	    /// one width for all three exits, measured from the widest label
+	    _bw    = ui_meta_btn_w(["Garden Book", "Endless", "Title"]);
 
 	return { name: "worldmap", width: "100%", height: "100%",
 	         flexDirection: "column",
 	         paddingLeft: _t.margin, paddingRight: _t.margin,
 	         paddingTop: _t.margin,  paddingBottom: _t.margin,
-
 	         nodes: [
-	         	ui_meta_band("worldmap", [
-	         		{ name: "worldmap.btn.garden", width: _bw, height: 40 },
-	         		{ name: "worldmap.btn.title",  width: _bw, height: 40 }
-	         	]),
-	         	{ name: "worldmap.body", width: "100%", flexGrow: 1,
-	         	  flexDirection: "column", justifyContent: "center",
-	         	  alignItems: "center", gapRow: _t.gap,
-	         	  nodes: [
-	         	  	{ name: "worldmap.pair", width: _gw + 96, height: _gh,
-	         	  	  flexDirection: "row",
-	         	  	  nodes: [
-	         	  	  	{ name: "worldmap.labels", width: 96, height: _gh },
-	         	  	  	{ name: "worldmap.grid",   width: _gw, height: _gh }
-	         	  	  ]},
-	         	  	/// the hover bar is a ROW of the body, not a panel at a
-	         	  	/// computed y: the same place, but it cannot creep up
-	         	  	/// into the grid when the cell size changes
-	         	  	{ name: "worldmap.info", width: _gw + 96, height: 34 }
-	         	  ]}
+			ui_meta_band("worldmap", [
+				{ name: "worldmap.btn.garden",  width: _bw, height: 40 },
+				{ name: "worldmap.btn.endless", width: _bw, height: 40 },
+				{ name: "worldmap.btn.title",   width: _bw, height: 40 }
+			]),
+			{ name: "worldmap.body", width: "100%", flexGrow: 1,
+			  flexDirection: "column", justifyContent: "center",
+			  alignItems: "center", gapRow: _t.gap,
+			  nodes: [
+				{ name: "worldmap.pair", width: _gw + 96, height: _gh,
+				  flexDirection: "row",
+				  nodes: [
+					{ name: "worldmap.labels", width: 96, height: _gh },
+					{ name: "worldmap.grid",   width: _gw, height: _gh }
+				  ]},
+				/// The hover bar is a row of the body, so it cannot creep
+				/// into the grid when the cell size changes.
+				{ name: "worldmap.info", width: _gw + 96, height: 34 }
+			  ]}
 	         ]};
 }
 
@@ -418,22 +417,31 @@ function ui_meta_garden_tree() {
 	                            _avail - 20 - _leftmin),
 	    _cards   = [];
 
-	/// the branch heading is a ROW of the column, not a text 30px above
-	/// node 0: with node 0 at the top of the body there is nothing above it
-	/// to draw into, and its 36px icon needs the row to be that tall
+	/// Four direct tabs switch the Garden Book's major views.
 	_cards[0] = {
-		name: "garden.nav", width: "100%", height: 36,
+		name: "garden.nav", width: "100%", height: 32,
 		flexDirection: "row", alignItems: "center", gapColumn: 4,
 		nodes: [
-			{ name: "garden.branch", flexGrow: 1, flexBasis: 0, height: 36 },
-			{ name: "garden.view", width: 112, height: 30 }
+			{ name: "garden.tab.0", flexGrow: 1, flexBasis: 0, height: 30 },
+			{ name: "garden.tab.1", flexGrow: 1, flexBasis: 0, height: 30 },
+			{ name: "garden.tab.2", flexGrow: 1, flexBasis: 0, height: 30 },
+			{ name: "garden.tab.3", flexGrow: 1, flexBasis: 0, height: 30 }
 		]
 	};
-	/// Keep all five node rectangles in the tree in either view. The visible
-	/// node data changes, but the layout remains stable when the tab is clicked.
+	/// Direct sub-tabs choose one of the four clover branches.
+	_cards[1] = {
+		name: "garden.branch", width: "100%", height: 28,
+		flexDirection: "row", gapColumn: 4,
+		nodes: [
+			{ name: "garden.branch.0", flexGrow: 1, flexBasis: 0, height: 26 },
+			{ name: "garden.branch.1", flexGrow: 1, flexBasis: 0, height: 26 },
+			{ name: "garden.branch.2", flexGrow: 1, flexBasis: 0, height: 26 },
+			{ name: "garden.branch.3", flexGrow: 1, flexBasis: 0, height: 26 }
+		]
+	};
 	for(var _i = 0; _i < 5; _i++){
 		_cards[array_length(_cards)] =
-			{ name: "garden.node." + string(_i), width: "100%", height: 56 };
+			{ name: "garden.node." + string(_i), width: "100%", height: 52 };
 	}
 
 	return { name: "garden", width: "100%", height: "100%",
@@ -447,7 +455,7 @@ function ui_meta_garden_tree() {
 	         	  flexDirection: "row", gapColumn: 20,
 	         	  nodes: [
 	         	  	{ name: "garden.left", flexGrow: 1, flexBasis: 0,
-	         	  	  flexDirection: "column", gapRow: 12,
+					flexDirection: "column", gapRow: 8,
 	         	  	  nodes: _cards },
 	         	  	{ name: "garden.right", width: _cell*_cols,
 	         	  	  flexDirection: "column", gapRow: 4,
@@ -467,14 +475,16 @@ function ui_meta_garden_tree() {
 	         	  	  	  nodes: [
 	         	  	  	  	{ name: "garden.stats.head", width: "100%", height: 24 },
 	         	  	  	  	{ name: "garden.stats.grid", width: "100%", flexGrow: 1 },
-	         	  	  	  	{ name: "garden.stats.note", width: "100%", height: 16 }
+					{ name: "garden.stats.note", width: "100%", height: 16 },
+					{ name: "garden.stats.action", width: "100%", height: 20 }
 	         	  	  	  ]}
 	         	  	  ]}
 	         	  ]},
 	         	{ name: "garden.foot", width: "100%", height: UI_META_FOOT,
 	         	  flexDirection: "row", alignItems: "center",
-	         	  justifyContent: "flex-end",
+			justifyContent: "flex-end", gapColumn: 12,
 	         	  nodes: [
+				{ name: "garden.btn.branch_respec", width: 190, height: 52 },
 	         	  	{ name: "garden.btn.back", width: _fw, height: 52 }
 	         	  ]}
 	         ]};
@@ -589,7 +599,7 @@ function ui_meta_names(_screen) {
 	switch(_key){
 		case "worldmap":
 			_out = ["worldmap.head.info", "worldmap.head.title", "worldmap.head.acts",
-			        "worldmap.btn.garden", "worldmap.btn.title",
+			        "worldmap.btn.garden", "worldmap.btn.endless", "worldmap.btn.title",
 			        "worldmap.labels", "worldmap.grid", "worldmap.info"];
 			break;
 
@@ -613,10 +623,14 @@ function ui_meta_names(_screen) {
 			/// and not declared, so renaming one was invisible to this check -
 			/// which is the one thing it exists to catch.
 			_out = ["garden.head.info", "garden.head.title", "garden.head.acts",
-			        "garden.wall", "garden.branch", "garden.view", "garden.shophdr", "garden.shophdr.title", "garden.page",
-			        "garden.cur", "garden.btn.back",
+			        "garden.wall", "garden.branch", "garden.shophdr", "garden.shophdr.title", "garden.page",
+			        "garden.cur", "garden.btn.branch_respec", "garden.btn.back",
 			        "garden.stats", "garden.stats.head",
-			        "garden.stats.grid", "garden.stats.note"];
+			        "garden.stats.grid", "garden.stats.note", "garden.stats.action"];
+			for(var _tab = 0; _tab < 4; _tab++){
+				_out[array_length(_out)] = "garden.tab." + string(_tab);
+				_out[array_length(_out)] = "garden.branch." + string(_tab);
+			}
 			for(var _c = 0; _c < 5; _c++){
 				_out[array_length(_out)] = "garden.node." + string(_c);
 			}

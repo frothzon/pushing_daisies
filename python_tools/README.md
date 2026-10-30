@@ -70,6 +70,7 @@ python -m gm balance towers      # the roster: card dps vs delivered, and domina
 python -m gm balance afford      # the income curve against the ladder prices
 python -m gm balance sim         # time-step a whole stage: leaks, hearts, the gate
 python -m gm balance sim --cycle both   # ...against the idealised fire cycle
+python -m gm balance gate --trials 20 --seed 17  # control vs DPS loadout gate
 python -m gm balance project --all-waves --profile
 python -m gm balance check       # every table still parses (the fast gate)
 
@@ -104,20 +105,31 @@ Slender Mandrake.
 `balance sim` is the other half: where `project` is a closed form (a ratio),
 `sim` steps the real rules at 60fps - monsters spawn one per 0.5s, towers run
 the idle/attack/return state machine, damage lands on `fire_frame` against the
-capped target list, a kill pays in the frame it lands, a leak costs a life and
-pays nothing, and the stage fails at zero (``scr_main_normal``). It reports
-leaks, hearts, idle money, the split between fighting and the 354-frame
-wave gate, how many swings achieved nothing, and the widest target list any
-tower held - which is the only honest way to ask whether a `targets` cap can
-ever fill. `--cycle nominal` runs the same stage on the idealised fire period
-instead of the state machine. `--spend` picks the policy: `none` buys nothing
-(the baseline that shows what a wave costs with no towers), `ceiling` re-runs
+target list, crits and on-hit statuses use seeded rolls, and status effects tick
+on every monster Step. Damage during the emerge is retained, matching the
+current GML life check; a leak costs one life and pays half a kill. It reports
+leaks, hearts, idle money, the split between fighting and the 354-frame wave
+gate, how many swings achieved nothing, and the widest target list any tower
+held - which is the only honest way to ask whether a `targets` cap can ever
+fill. `--seed` makes combat-effect rolls repeatable. `--cycle nominal` runs the
+same stage on the idealised fire period instead of the state machine. `--spend`
+picks the policy: `none` buys nothing (the baseline that shows what a wave costs
+with no towers), `ceiling` re-runs
 the greedy at each wave boundary - perfect play with perfect information, and
 optimistic because money that lands mid-wave idles until the next one - and
 `instant` re-runs it while a wave is live, which is what a person does. The
 greedy scores UNION coverage (`dps x the share of route nothing else shoots`)
 and is handed the towers already standing, so it spreads along the route and
 buys rungs as well as placements (LL-048).
+
+`balance gate` runs the current control and damage four-tower builds on the
+first five Brutal waves of the fast Shroud and high-HP Harvester stages. It
+places both level-1 builds without specializations or candy in the same four
+route cells and reports clean runs, failed runs, leaks, lives, fixed setup cost,
+and delivered DPS per tower. Set `--trials`
+and `--seed` to choose repeat count and the first deterministic seed; use
+`--max-waves` to change the wave count. This is a combat comparison, so it does
+not buy more towers during the run.
 
 Add `-p /path/to/project` (or `--project`) to any command to point at a
 project other than the one above the current directory.

@@ -46,10 +46,22 @@ function loadout_has(_arr, _name) {
 	return false;
 }
 
-/// Is this tower unlocked?  A starter is; anything named in the save's
-/// `towers` map is; everything else is not.  Never throws (LL-002).
+/// A local developer sandbox that never writes a currency or ownership grant.
+function loadout_dev_mode() {
+	var _enabled = variable_global_exists("devMode") && global.devMode == true;
+	if(_enabled && (!variable_global_exists("devSandboxLogged")
+	|| global.devSandboxLogged != true)){
+		global.devSandboxLogged = true;
+		print("LOADOUT DEV sandbox: unlock bypass is temporary; save unchanged");
+	}
+	return _enabled;
+}
+
+/// Is this tower unlocked?  Starters and save-owned towers are available to
+/// players; devMode temporarily exposes the full roster for testing (LL-002).
 function loadout_unlocked(_name) {
 	if(!is_string(_name)) return false;
+	if(loadout_dev_mode()) return true;
 	if(loadout_has(loadout_starters(), _name)) return true;
 	if(!variable_global_exists("meta")) return false;
 	if(!is_struct(global.meta)) return false;
@@ -109,14 +121,15 @@ function loadout_ready() {
 	return array_length(loadout_stored()) >= loadout_size();
 }
 
-/// Write a selection into the save and mirror it into the global the rest of
-/// the game reads.  The caller is responsible for calling scr_save_meta();
-/// this only changes the in-memory state, so a half-finished edit on the
-/// Deploy screen is not written to disk every frame.
+/// Write a selection into the run and, outside the dev sandbox, the save.
+/// The caller is responsible for calling scr_save_meta(); this only changes
+/// the in-memory state, so a half-finished edit is not written every frame.
 function loadout_set(_arr) {
 	if(!is_array(_arr)) return false;
 	global.loadout = _arr;
-	if(variable_global_exists("meta") && is_struct(global.meta)){
+	/// A dev-only selection is temporary; never save the test loadout.
+	if(variable_global_exists("meta") && is_struct(global.meta)
+	&& !loadout_dev_mode()){
 		global.meta[$ "loadout"] = _arr;
 	}
 	return true;

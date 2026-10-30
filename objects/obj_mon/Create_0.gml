@@ -59,7 +59,8 @@ path_probe = path_add();
 
 //--------------------- get randomized spawn location
 var _count = instance_number(obj_spawn),
-    _rand = irandom(_count - 1);
+    _split = endless_is_active() && endless_spawn_split_active(get_item_value(STATINV.waves)),
+    _rand = _split ? endless_spawn_index(_count) : irandom(_count - 1);
 
 spawn_object = instance_find(obj_spawn,_rand);
 start_pos = array(spawn_object.x,spawn_object.y);

@@ -731,9 +731,15 @@ class GardenCardTests(unittest.TestCase):
         body = case.group(1)
         self.assertIn('"garden.node." + string(', body,
                       "the node cards are no longer declared by a loop")
-        # the loop's prefix ("garden.node.") is not a name on its own
-        return {n for n in re.findall(r'"(garden\.[A-Za-z0-9_.]+)"', body)
-                if not n.endswith(".")}
+        names = {n for n in re.findall(r'"(garden\.[A-Za-z0-9_.]+)"', body)
+                 if not n.endswith(".")}
+        # ui_meta_names emits these from loops, so expand their four concrete
+        # names just as the layout checker receives them at runtime.
+        if '"garden.tab." + string(_tab)' in body:
+            names.update(f"garden.tab.{i}" for i in range(4))
+        if '"garden.branch." + string(_tab)' in body:
+            names.update(f"garden.branch.{i}" for i in range(4))
+        return names
 
     def drawn(self):
         text = self.read(META_SCREEN_REL)
@@ -773,7 +779,8 @@ class GardenCardTests(unittest.TestCase):
 
     def test_the_grid_holds_six_numbers_in_two_columns_of_three(self):
         stats = self.read(TOWER_STATS_REL)
-        labels = re.findall(r'label\s*:\s*"([A-Z]+)"', stats)
+        combat = stats[stats.index("var _d = tower_data_at_level("):]
+        labels = re.findall(r'label\s*:\s*"([A-Z]+)"', combat)
         self.assertEqual(["DAMAGE", "RATE", "DPS", "RANGE", "TARGETS", "PRICE"],
                          labels)
 

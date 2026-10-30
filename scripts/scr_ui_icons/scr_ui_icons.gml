@@ -104,14 +104,16 @@ function icon_candy(_name) {
 	return -1;
 }
 
-/// A medal, by BADGE.  The art has seven medals and the enum has three, so the
-/// four that are not named yet fall through to the locked medal ON PURPOSE:
-/// showing the locked plate is honest, and showing the wrong medal is not.
-/// Growing BADGE is region-badges' job, and this switch grows with it.
+/// A medal, by BADGE. Every shipped badge has its own icon; invalid IDs fall
+/// back to the locked plate so the UI never borrows the wrong medal.
 function icon_badge(_badge) {
 	switch(_badge){
 		case BADGE.UNTOUCHED:    return spr_badge_untouched;
+		case BADGE.FRUGAL:       return spr_badge_frugal;
+		case BADGE.BOTANIST:     return spr_badge_botanist;
+		case BADGE.PURIST:       return spr_badge_purist;
 		case BADGE.EXTERMINATOR: return spr_badge_exterminator;
+		case BADGE.SPEED_GROWER: return spr_badge_speed_grower;
 		case BADGE.BRUTALIST:    return spr_badge_brutalist;
 	}
 	return spr_badge_locked;

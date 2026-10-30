@@ -164,6 +164,15 @@ function candy_stock_get(_id) {
 	return max(0,floor(_n));
 }
 
+/// Sum all recipe stock for the four-currency Garden HUD.
+function candy_stock_total() {
+	var _total=0, _all=candy_recipe_table();
+	for(var _i=0; _i<array_length(_all); _i++){
+		_total += candy_stock_get(_all[_i].id);
+	}
+	return _total;
+}
+
 function candy_stock_add(_id, _amount) {
 	if(!candy_recipe_unlocked(_id) || !is_real(_amount)) return 0;
 	var _n=floor(_amount);
@@ -469,4 +478,71 @@ function candy_pity_hud_draw(_alpha) {
 	draw_set_font(fnt_size16);
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
+}
+
+/// Draw the active candy countdowns on the live stage HUD. The pause panel
+/// remains the inventory and activation surface; this small readout makes each
+/// temporary effect's remaining time visible while the wave is running.
+function candy_run_hud_draw(_alpha) {
+	var _opacity = is_real(_alpha) ? clamp(_alpha,0,1) : 1;
+	if(_opacity <= 0.01) return false;
+
+	var _all = candy_recipe_table(),
+	    _active_ids = [];
+	for(var _i = 0; _i < array_length(_all); _i++){
+		var _id = _all[_i].id;
+		if(_id != "everlasting_gob" && candy_run_remaining(_id) > 0){
+			_active_ids[array_length(_active_ids)] = _id;
+		}
+	}
+	var _frozen = variable_global_exists("candy_freeze_waves")
+	             && is_real(global.candy_freeze_waves)
+	             ? max(0,floor(global.candy_freeze_waves)) : 0,
+	    _count = array_length(_active_ids) + (_frozen > 0 ? 1 : 0);
+	if(_count <= 0) return false;
+
+	var _x = 12,
+	    _y = 12,
+	    _w = 196,
+	    _row_h = 22,
+	    _header_h = 22,
+	    _h = _header_h + _count*_row_h + 8;
+	draw_set_alpha(_opacity*0.88);
+	draw_set_colour(make_colour_rgb(24,20,28));
+	draw_rectangle(_x,_y,_x+_w,_y+_h,false);
+	draw_set_alpha(_opacity);
+	draw_set_colour(c_white);
+	draw_rectangle(_x,_y,_x+_w,_y+_h,true);
+	draw_set_font(fnt_size12);
+	draw_set_halign(fa_left);
+	draw_set_valign(fa_middle);
+	draw_text_outline(_x+8,_y+11,"ACTIVE CANDY",c_lime,c_black,1);
+
+	for(var _j = 0; _j < array_length(_active_ids); _j++){
+		var _rid = _active_ids[_j],
+		    _recipe = candy_recipe_find(_rid),
+		    _remaining = candy_run_remaining(_rid),
+		    _row_y = _y+_header_h+_j*_row_h+_row_h*0.5;
+		if(!is_struct(_recipe)) continue;
+		draw_set_halign(fa_left);
+		draw_text_outline(_x+8,_row_y,
+		                  ui_clip_text(_recipe.label,_w-76),c_white,c_black,1);
+		draw_set_halign(fa_right);
+		draw_text_outline(_x+_w-8,_row_y,
+		                  string_format(_remaining,1,1)+"s",c_yellow,c_black,1);
+	}
+	if(_frozen > 0){
+		var _row_y = _y+_header_h+array_length(_active_ids)*_row_h+_row_h*0.5;
+		draw_set_halign(fa_left);
+		draw_text_outline(_x+8,_row_y,"Everlasting Gob",c_aqua,c_black,1);
+		draw_set_halign(fa_right);
+		draw_text_outline(_x+_w-8,_row_y,string(_frozen)+" wave(s)",c_aqua,c_black,1);
+	}
+
+	draw_set_alpha(1);
+	draw_set_colour(c_white);
+	draw_set_font(fnt_size16);
+	draw_set_halign(fa_left);
+	draw_set_valign(fa_top);
+	return true;
 }

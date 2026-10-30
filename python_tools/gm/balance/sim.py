@@ -20,8 +20,12 @@ things a ratio cannot express become measurable:
 * **the fire cycle is real.**  A tower walks idle -> attack -> return with the
   ``>=`` beats, the ``time_offset`` stagger and the 0.25s return animation, so it
   wastes swings on monsters that die mid-swing and on ones still emerging.
-* **the emerge reset.**  ``scr_zombie_emerge`` sets ``life = maxLife`` at frame
-  60, so every point of damage dealt during the first second is ERASED.
+* **the emerge.** Monsters are vulnerable while rising; ``scr_zombie_emerge``
+  does not restore life, and ``scr_zomb_step`` checks death before dispatching
+  the current state.
+* **combat effects.** Crit rolls and on-hit statuses come from the roster's
+  trait table. Slow, stun, root, burn, poison, bleed and vulnerability use a
+  seeded RNG so repeated runs are reproducible.
 * **terrain is a transient.**  ``z_climb`` starts at 10 and lerps 0.1 a frame
   toward the cell's height (``scr_zomb_pathSpeed``), so a monster's first second
   of walking is not at the speed its terrain implies.
@@ -63,16 +67,16 @@ WHAT IS NOT MODELLED, stated rather than discovered later:
 from __future__ import annotations
 
 import math
+import random
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from . import geometry, model, policy, tables, terrain
 from .geometry import Cell, Point
 from .model import Scene
-from .tables import Tower
+from .tables import HitStatus, Tower
 
 # ---- frame counts.  Each is owned by a script; none is invented here. -----
-EMERGE_FRAMES = 60          # scr_zombie_emerge: `if(state_time >= 60)`
 EMERGE_START_Z = 10.0       # scr_zombie_path: `z_climb = 10` on entry
 Z_CLIMB_LERP = 0.1          # scr_zomb_pathSpeed: `lerp(z_climb, ground, 0.1)`
 WATER_SLOW = 0.25           # scr_zomb_pathSpeed: `if(z_climb < 2) _spd = 0.25`
@@ -177,7 +181,8 @@ class SimTower:
     next_fire: float = 0.0         # nominal mode: the frame the next shot is due
     shots: int = 0                 # swings that dealt damage
     wasted: int = 0                # swings that achieved nothing
-    dealt: float = 0.0             # damage delivered, after the emerge erases it
+    dealt: float = 0.0             # effective HP removed, including status damage
+    tower_index: int = -1          # stable source id for status/DoT accounting
 
     @property
     def name(self) -> str:
@@ -209,7 +214,6 @@ class WaveResult:
     towers: int = 0
     shots: int = 0
     wasted: int = 0
-    erased_damage: float = 0.0
     money_end: float = 0.0        # the purse when the wave ended
     idle: float = 0.0             # money the top-of-wave plan could not spend
 
@@ -236,11 +240,11 @@ class Outcome:
     money_spent: float = 0.0
     start_money: float = 0.0       # the purse the stage opened with
     start_life: int = 0            # the hearts it opened with
+    setup_cost: float = 0.0        # fixed deployment investment, when benchmarked
     towers_built: int = 0
     towers: int = 0
     shots: int = 0
     wasted: int = 0
-    erased_damage: float = 0.0
     peak_alive: int = 0
     peak_in_range: int = 0         # the most monsters ONE tower ever saw at once
     walk_frames: List[int] = field(default_factory=list)
@@ -292,13 +296,26 @@ class SimMonster:
     state: str = "emerge"          # emerge | walk
     state_time: int = 0
     z_climb: float = 0.0
+    path_speed: float = 0.0
+    statuses: Dict[str, "SimStatus"] = field(default_factory=dict)
+    elite: bool = False
     alive: bool = True
     leaked: bool = False
     killed: bool = False
     death_frame: int = 0
-    damage_taken: float = 0.0      # damage applied since the last life reset
-    damage_erased: float = 0.0     # damage the emerge reset threw away
     walk_frames: int = 0
+
+
+@dataclass
+class SimStatus:
+    """One live status entry on a monster, matching ``scr_status``."""
+
+    kind: str
+    mult: float
+    amount: float
+    frames: int
+    stacks: int = 1
+    source_tower: int = -1
 
 
 class Sim:
@@ -328,7 +345,8 @@ class Sim:
                  route: Optional[Sequence[Point]] = None, fps: Optional[int] = None,
                  m: Optional[geometry.LevelMap] = None,
                  max_waves: Optional[int] = None,
-                 max_frames: int = 300000) -> None:
+                 max_frames: int = 300000, seed: int = 0,
+                 initial_placements: Sequence[Tuple[str, Cell]] = ()) -> None:
         t = scene.tables
         self.scene = scene
         self.fps = int(fps or t.constants.fps)
@@ -336,6 +354,9 @@ class Sim:
         self.spend = spend
         self.max_waves = max_waves
         self.max_frames = int(max_frames)
+        self.seed = int(seed)
+        self.rng = random.Random(self.seed)
+        self.initial_placements = tuple(initial_placements)
         self.ter = ter if ter is not None else terrain.Terrain(6.0, "uniform")
         self.diff = scene.difficulty
         self.const = t.constants
@@ -448,6 +469,102 @@ class Sim:
             self.out.peak_in_range = len(found)
         return found[:tw.targets]
 
+    def _deal_damage(self, monster: SimMonster, amount: float,
+                     source_tower: int = -1) -> float:
+        """Apply damage through the same vulnerability multiplier as the game."""
+        if not monster.alive or amount <= 0:
+            return 0.0
+        vuln = monster.statuses.get("vuln")
+        multiplier = 1.0
+        if vuln is not None and vuln.frames > 0:
+            multiplier += min(4.0, max(0.0, vuln.amount))
+        final = amount * multiplier
+        applied = min(final, max(0.0, monster.life))
+        monster.life -= final
+        if source_tower >= 0 and source_tower < len(self.towers):
+            self.towers[source_tower].dealt += applied
+        return applied
+
+    def _apply_status(self, monster: SimMonster, effect: HitStatus,
+                      source_tower: int) -> None:
+        """Apply one proc, matching status_apply's refresh/stack rules."""
+        if not monster.alive or monster.life <= 0:
+            return
+        frames = max(1, round(effect.seconds * self.fps))
+        status_class = "boss" if monster.boss else "elite" if monster.elite else "normal"
+        if status_class in ("boss", "elite") and effect.kind in (
+                "slow", "stun", "root"):
+            factor = self.scene.tables.status_cc.get(status_class, {}).get(
+                effect.kind, 1.0)
+            frames = max(1, round(frames * factor))
+
+        old = monster.statuses.get(effect.kind)
+        if old is None or old.frames <= 0:
+            monster.statuses[effect.kind] = SimStatus(
+                effect.kind, effect.mult, effect.amount, frames,
+                1, source_tower)
+            return
+
+        if effect.kind == "slow":
+            old.mult = min(old.mult, effect.mult)
+        if effect.kind == "poison":
+            old.stacks = min(old.stacks + 1, 5)
+        stronger = effect.amount >= old.amount
+        old.amount = max(old.amount, effect.amount)
+        if stronger:
+            old.source_tower = source_tower
+        if effect.kind == "burn":
+            old.frames += frames
+        else:
+            old.frames = max(old.frames, frames)
+
+    def _apply_hit(self, tower: SimTower, monster: SimMonster) -> None:
+        """One direct target hit, followed by its independent crit/status rolls."""
+        if not monster.alive:
+            return
+        hit = tower.hit
+        if self.rng.random() < tower.tower.crit_chance:
+            hit *= tower.tower.crit_damage
+        self._deal_damage(monster, hit, tower.tower_index)
+        if monster.life <= 0:
+            return
+        for effect in tower.tower.statuses:
+            if self.rng.random() < effect.chance:
+                self._apply_status(monster, effect, tower.tower_index)
+
+    @staticmethod
+    def _status_speed_multiplier(monster: SimMonster) -> float:
+        mult = 1.0
+        for status in monster.statuses.values():
+            if status.frames <= 0:
+                continue
+            if status.kind in ("stun", "root"):
+                return 0.0
+            if status.kind == "slow":
+                mult = min(mult, status.mult)
+        return min(1.0, max(0.0, mult))
+
+    def _tick_statuses(self, monster: SimMonster) -> None:
+        """One end-of-Step tick, including DoT and status expiration."""
+        expired = []
+        for kind, status in monster.statuses.items():
+            if status.frames <= 0:
+                expired.append(kind)
+                continue
+            if monster.alive and monster.life > 0:
+                amount = 0.0
+                if kind in ("burn", "poison"):
+                    amount = status.amount * (status.stacks if kind == "poison" else 1) / self.fps
+                elif kind == "bleed":
+                    amount = status.amount * abs(monster.path_speed)
+                if amount > 0:
+                    self._deal_damage(monster, amount, status.source_tower)
+            status.frames -= 1
+            if status.frames <= 0:
+                expired.append(kind)
+        for kind in expired:
+            monster.statuses.pop(kind, None)
+
     # -- the towers (scr_runState / scr_tower_*) ---------------------------
     def _step_towers(self) -> None:
         for tw in self.towers:
@@ -553,9 +670,7 @@ class Sim:
             for m in tw.target:
                 if not m.alive:
                     continue
-                m.life -= tw.hit
-                m.damage_taken += tw.hit        # erased if it is still emerging
-                tw.dealt += tw.hit
+                self._apply_hit(tw, m)
         if tw.state_time >= tw.swing_frame:
             if not tw.did_damage:
                 tw.wasted += 1                  # the target died before it landed
@@ -578,9 +693,7 @@ class Sim:
             return
         tw.shots += 1
         for m in tw.target:
-            m.life -= tw.hit
-            m.damage_taken += tw.hit
-            tw.dealt += tw.hit
+            self._apply_hit(tw, m)
         tw.next_fire = self.frame + self.cycle_obj.period(tw.rate)
 
     # -- the monsters (scr_zombie_*) ---------------------------------------
@@ -592,6 +705,9 @@ class Sim:
                 continue
             if not self._run_mon_state(m):
                 m.state_time += 1
+            # obj_mon/Step_0 calls status_tick() last, even after the life
+            # check requests DEATH and returns from scr_zomb_step().
+            self._tick_statuses(m)
         alive = sum(1 for m in self.monsters if m.alive)
         if self.cur is not None:
             self.cur.peak_alive = max(self.cur.peak_alive, alive)
@@ -600,16 +716,15 @@ class Sim:
 
     def _run_mon_state(self, m: SimMonster) -> bool:
         """One frame of a monster's state.  True if it changed state."""
+        # scr_zomb_step checks life before dispatching EMERGE or PATH. Damage
+        # dealt while a creature rises therefore persists and can kill it.
+        if m.life <= 0:
+            self._kill(m)
+            return True
+
         if m.state == "emerge":
-            # scr_zombie_emerge: grow for 60 frames, then RESTORE the life -
-            # which erases every point of damage dealt while it was emerging
-            if m.state_time >= EMERGE_FRAMES:
-                m.damage_erased += m.damage_taken
-                self.out.erased_damage += m.damage_taken
-                if self.cur is not None:
-                    self.cur.erased_damage += m.damage_taken
-                m.damage_taken = 0.0
-                m.life = m.max_life
+            # scr_zombie_emerge: the grow lasts 60 frames; life is not reset.
+            if m.state_time >= 60:
                 m.state, m.state_time = "walk", 0
                 return True
             return False
@@ -622,12 +737,10 @@ class Sim:
         m.z_climb += (self.ground_z - m.z_climb) * Z_CLIMB_LERP
         speed = terrain.walk_speed(m.z_climb, self.stat_waves(m.wave), m.speed,
                                    self.diff.speed)
-        m.dist += speed
+        m.path_speed = speed * self._status_speed_multiplier(m)
+        m.dist += m.path_speed
         m.x, m.y = self.track.at(m.dist)
         m.walk_frames += 1
-        if m.life <= 0:
-            self._kill(m)
-            return True
         if m.dist >= self.length:           # lose_life, at the despawn
             self._leak(m)
             return True
@@ -725,7 +838,6 @@ class Sim:
         out.money_spent = sum(w.spent for w in out.waves)
         out.truncated = bool(not out.failed and self.max_waves
                              and self.wave < self.scene.waves)
-
     # -- spending ----------------------------------------------------------
     def _buy(self) -> List[SimTower]:
         """What the purse buys right now, under ``self.spend``.
@@ -803,7 +915,7 @@ class Sim:
             # The MEAN is the expected cost of the stagger, and the steady-state
             # cycle length depends on it - the spread only de-syncs a row.
             time_offset=int(round(self.cycle_obj.offset_mean)),
-            mode=self.cycle)
+            mode=self.cycle, tower_index=len(self.towers))
         self.towers.append(tw)
         self._onboard[buy.cell] = tw
         return tw
@@ -823,6 +935,26 @@ class Sim:
         self.spawn_current = 0
         self.wave = 0
         self.cur: Optional[WaveResult] = None
+        setup_cost = 0.0
+        for name, cell in self.initial_placements:
+            if cell in self.built:
+                raise ValueError(f"duplicate initial tower cell: {cell}")
+            tower = self.scene.tables.tower(name)
+            price = float(tower.price)
+            level = self.scene.floor_level
+            dmg, rate, reach = self.scene.tables.data_at_level(
+                tower, level, self.scene.clover_damage, self.scene.clover_rate)
+            dps = self.scene.tables.delivered_dps_at_level(
+                tower, level, self.scene.clover_damage, self.scene.clover_rate,
+                targets=1)
+            multi = self.scene.tables.dps_at_level(
+                tower, level, self.scene.clover_damage, self.scene.clover_rate)
+            buy = policy.Buy(cell, tower, level, price, dps,
+                             self.cov.of(cell, reach), multi)
+            self._place(buy)
+            self.built.add(cell)
+            setup_cost += price
+        self.out.setup_cost = setup_cost
 
     def _step_level(self) -> None:
         """One frame of scr_level_step: apply a request, or advance a timer."""
@@ -916,3 +1048,49 @@ class Sim:
         self.spawn_current += 1          # scr_level_spawn: spawn_current++
         self.out.spawned += 1
         self.out.hp_total += cur.life
+
+
+def common_deployment_cells(scenes: Sequence[Scene], count: int = 4) -> List[Cell]:
+    """Choose repeatable cells reachable by every tower in every scene.
+
+    Loadout comparisons use the same four cells so they measure combat
+    effects instead of placement luck. The cells greedily cover the route using
+    the smallest range present in the compared loadouts, making each position
+    valid for every tower under test.
+    """
+    if not scenes or count <= 0:
+        return []
+    first = scenes[0]
+    route = first.longest_route()
+    if not route:
+        return []
+    ranges = []
+    for scene in scenes:
+        for tower in scene.loadout:
+            ranges.append(scene.tables.data_at_level(
+                tower, scene.floor_level, scene.clover_damage,
+                scene.clover_rate)[2])
+    if not ranges:
+        return []
+    reach = min(ranges)
+    m = geometry.load_map(first.tables.root, cell=first.tables.constants.cell)
+    candidates = geometry.slots(m, route, reach)
+    cov = policy.Coverage(m, route, geometry.polyline_length(route))
+    covered = frozenset()
+    chosen: List[Cell] = []
+    while candidates and len(chosen) < count:
+        cell = max(candidates, key=lambda c: len(cov.indices(c, reach) - covered))
+        marginal = cov.indices(cell, reach) - covered
+        if not marginal:
+            break
+        chosen.append(cell)
+        covered |= cov.indices(cell, reach)
+        candidates.remove(cell)
+    if len(chosen) != count:
+        raise ValueError(f"only {len(chosen)} common deploy cells for {count} towers")
+    samples = geometry.sample_points(route, 4.0)
+    def route_order(cell: Cell) -> int:
+        centre = m.centre_of(*cell)
+        return min(range(len(samples)), key=lambda i: math.dist(centre, samples[i]))
+    chosen.sort(key=route_order)
+    return chosen
