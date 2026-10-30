@@ -2004,7 +2004,7 @@
     },
     {
       "id": "garden-onboarding-tab-gates",
-      "title": "Hide Blood, Candy, and Mastery tabs until they can be used",
+      "title": "Gate Garden Book tabs at their progression milestones",
       "status": "doing",
       "owner": "cline",
       "awaiting": "none",
@@ -2013,7 +2013,7 @@
       "size": "S",
       "prio": 2,
       "needs": "Gate UI, input, and declared layout names using saved progression; follow goal.md §27.5.",
-      "notes": "Static review found the Garden Book always draws and accepts all four tabs. Blood/Candy should appear at first shard or saved purchase; Mastery should appear when Region 1 has been cleared and its first node is available. Also fall back safely if a session-only selected view becomes unavailable.",
+      "notes": "Static review found every Garden Book tab is always drawn and clickable. The Clover tree appears before the first clear, Blood and Candy before the first shard, and Mastery before Region 1 is cleared; only the currency strip is currently gated. Hide both rendering and hit targets until each milestone, keep layout declarations and checks in sync, and safely fall back if a selected view is unavailable.",
       "refs": [
         "goal.md",
         "scripts/scr_meta_screen/scr_meta_screen.gml",
