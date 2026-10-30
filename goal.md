@@ -637,7 +637,7 @@ Shards unlock recipes, buy permanent levels 1–10, and purchase stock:
 
 | Thing | What it is | Where it comes from |
 | --- | --- | --- |
-| 🍬 **Candy recipe** | permanent unlock of one candy type | 🩸 Blood Shards — 3 / 8 / 20 for tiers 1 / 2 / 3 |
+| 🍬 **Candy recipe** | permanent unlock of one candy type | 🩸 Blood Shards — 3 / 8 / 20 for tiers 1 / 2 / 3; 35 for each gated tier-4 rare recipe |
 | 🍬 **Candy level** | permanent power of that candy, **1 → 10** | 🩸 Blood Shards, on an escalating cost curve |
 | 🍬 **Candy stock** | the units you actually spend in a run | 🩸 Endless loot boxes, plus a shard shop at 1 shard = 5 candies |
 

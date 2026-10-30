@@ -566,7 +566,7 @@ After buying Crimson Garden, every fifth wave in campaign Region 6 becomes Night
 
 | Thing | What it is | Cost / source |
 | --- | --- | --- |
-| 🍬 **Recipe** | permanent unlock of one candy type | 3 / 8 / 20 shards for tiers 1 / 2 / 3 |
+| 🍬 **Recipe** | permanent unlock of one candy type | 3 / 8 / 20 shards for tiers 1 / 2 / 3; 35 shards for each gated tier-4 rare recipe (§6.5) |
 | 🍬 **Level** | permanent power of that candy, 1 → 10 | shards, escalating (§6.4) |
 | 🍬 **Stock** | the units actually spent in a run | Endless boxes, and a shard shop at 1 shard = 5 candies |
 

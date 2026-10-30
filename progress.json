@@ -831,10 +831,11 @@
       "size": "L",
       "prio": 3,
       "needs": "Reload with global.devMode = true and open Garden Book > Candy. Page all 10 recipes and test both rare gates; unlock, level, buy stock and duration, then relaunch to check saves. Confirm Everlasting Gob shows frozen waves rather than a seconds duration; Gummy Worm and Money Honey reach +28.5% at L10. In a stage activate candies from pause: expect META  [CANDY] recipe/level/stock/duration/activate/expired lines; the active HUD counts down only during live waves, repeat use adds time, Gob freezes active timers, Blood Orange shows pity progress, and Money Honey raises kill payouts. Clipped UI, wrong timer/effect, lost save, or absent logs falsifies it.",
-      "notes": "IMPLEMENTED IN CODE: ten recipes (eight standard, two gated rare), permanent unlocks and levels, shard stock bundles (5 per shard), clover duration track, Garden Book catalog/detail/actions, pause activation/status panel, live active-candy countdown HUD, active-wave timers, Gob timer freeze, and combat/status/pity/kill-money effects. Purchases save immediately. Endless loot-box stock rewards are implemented separately. Corrected the Gob detail row to show frozen wave count instead of a seconds duration, and synchronized Gummy Worm and Money Honey L10 documentation to the implemented +28.5% values. Remaining: GameMaker visual/runtime review.",
+      "notes": "IMPLEMENTED IN CODE: ten recipes (eight standard, two gated rare), permanent unlocks and levels, shard stock bundles (5 per shard), clover duration track, Garden Book catalog/detail/actions, pause activation/status panel, live active-candy countdown HUD, active-wave timers, Gob timer freeze, and combat/status/pity/kill-money effects. Purchases save immediately. Endless loot-box stock rewards are implemented separately. Corrected the Gob detail row to show frozen wave count instead of a seconds duration, and synchronized Gummy Worm and Money Honey L10 documentation to the implemented +28.5% values. Documentation synchronized: goal.md §16 and economy.md §6.1 now both include the two gated tier-4 rare recipes at 35 shards each. Remaining: GameMaker visual/runtime review.",
       "refs": [
         "economy.md",
-        "objects/obj_mon/Step_0.gml"
+        "objects/obj_mon/Step_0.gml",
+        "goal.md"
       ],
       "created": "2026-10-15",
       "updated": "2026-10-30",
@@ -3991,7 +3992,7 @@
     {
       "id": "zomb-attack-at-gate",
       "title": "Every rig carries an attack slot nobody plays: the gate is a place, not an enemy",
-      "status": "backlog",
+      "status": "done",
       "owner": "cline",
       "awaiting": "none",
       "area": "design",
@@ -3999,7 +4000,7 @@
       "size": "M",
       "prio": 3,
       "needs": "",
-      "notes": "The ten rigs arrived with walk/idle/attack/die, and scr_zomb_art plays three of them: walk while path_free, idle while blocked, die in scr_zomb_death. Slot 2 is never played, because a monster here does not fight - it walks to the gate and takes a life, and scr_zomb_updatePosition returns once dying. So either the slot stays decorative (art_descriptions.md section 3.2 now says so in as many words) or the gate grows a real engage step: stop on arrival, attack for N seconds, then lose the life. That is a design decision plus scr_level_wait/scr_zomb_death work, not a drawing job - and it moves the leak clock, so run gm balance sim on stage 1-1 before and after.",
+      "notes": "DECIDED 2026-10-30: Keep the zombie attack clip decorative and unplayed. The combat loop is that zombies walk to the gate and cause a leak; the gate is a destination, not a target. art_descriptions.md §3.2 records that contract. Adding an engage-and-attack phase would change leak timing and balance without a goal requirement, so the decorative slot is the intended behavior.",
       "refs": [
         "scripts/scr_zomb_art/scr_zomb_art.gml",
         "scripts/scr_zombie_path/scr_zombie_path.gml",
@@ -4007,8 +4008,8 @@
         "art_descriptions.md"
       ],
       "created": "2026-10-24",
-      "updated": "2026-10-24",
-      "done": null
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
     },
     {
       "id": "zomb-die-ground-offset",
@@ -5112,6 +5113,18 @@
       "who": "cline",
       "task": "stages-region-5",
       "what": "Marked complete after confirming all ten stage rows for this region in stage_data.gml; the source already contained its spawn mixes, boss pairs, and par cutoffs."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "candy-recipes",
+      "what": "Aligned the goal.md and economy.md recipe cost summaries with the implemented tier-4 rare recipes: 35 shards each, gated as specified in economy.md §6.5."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "zomb-attack-at-gate",
+      "what": "Closed the design decision: keep zombie attack clips decorative because zombies leak at the gate; the art brief already defines that behavior."
     }
   ]
 }
