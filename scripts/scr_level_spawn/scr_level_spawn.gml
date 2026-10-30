@@ -1,3 +1,28 @@
+/// Pick a room spawn point for this monster. Endless split waves keep their
+/// existing two-endpoint cursor; Jungle alternates those endpoints every
+/// monster, and reverses the first side each wave. Other regions stay random.
+function scr_level_spawn_point_index(_count) {
+	if(!is_real(_count) || _count < 1) return 0;
+	var _row = stage_current(),
+	    _wave = get_item_value(STATINV.waves);
+
+	if(endless_is_active() && endless_spawn_split_active(_wave)){
+		return endless_spawn_index(_count);
+	}
+
+	if(is_struct(_row) && variable_struct_exists(_row,"region")
+	&& _row.region == 4){
+		if(!variable_global_exists("jungle_spawn_cursor")
+		|| !is_real(global.jungle_spawn_cursor)) global.jungle_spawn_cursor = 0;
+		var _cursor = floor(global.jungle_spawn_cursor),
+		    _slot = (_cursor mod 2) == 0 ? 0 : _count - 1;
+		global.jungle_spawn_cursor = _cursor + 1;
+		return _slot;
+	}
+
+	return irandom(_count - 1);
+}
+
 /// @description  scr_level_spawn();  - spawn one wave
 function scr_level_spawn() {
 	/*
@@ -21,6 +46,21 @@ function scr_level_spawn() {
 	//--------------------------- choose the creature
 	if(level_state_time == 0){
 		wave_count++;
+		if(is_struct(_row) && variable_struct_exists(_row,"region")
+		&& _row.region == 4){
+			/// Start each wave from the opposite outer spawn; individual monsters
+			/// then alternate sides through the same room spawn list.
+			global.jungle_spawn_cursor = (wave_count - 1) mod 2;
+			var _spawn_count = instance_number(obj_spawn),
+			    _first_slot = (global.jungle_spawn_cursor mod 2) == 0
+			                  ? 0 : max(0,_spawn_count - 1),
+			    _first_spawn = instance_find(obj_spawn,_first_slot);
+			if(instance_exists(_first_spawn)){
+				scr_meta_log("REGION","Jungle alternating spawns wave=",wave_count,
+				             " first=",_first_slot," x=",round(_first_spawn.x),
+				             " y=",round(_first_spawn.y)," count=",_spawn_count);
+			}
+		}
 		if(endless_is_active()){
 			global.endless_wave = wave_count;
 			if(wave_count == 1 || wave_count mod 10 == 0){

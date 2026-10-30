@@ -2789,7 +2789,7 @@
     {
       "id": "region-mechanics",
       "title": "The five remaining region mechanics",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -2797,12 +2797,13 @@
       "size": "L",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.2 / goal.md 27.4. Zero new engine work BY DESIGN - every one reuses a system that already exists, which is only true once the statuses (Phase 2) and the endless modifiers (Phase 4) are in. This is the card that tests whether that claim was honest.",
+      "notes": "Current audit: Region 2 already refuses towers on water cells; Region 6 Blood Fields Night adds elite chance and shard pity fill. Goal.md 27.4 still needs Region 3 sandstorm range debuff, Region 4 alternating spawners, and Region 5 mid-path grave emergence. Starting with Jungle by reusing the room spawner list and existing wave spawn flow; the remaining two mechanics stay in this card.",
       "refs": [
         "scripts/region_data/region_data.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "region-zombies",
