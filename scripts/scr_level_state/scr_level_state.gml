@@ -403,8 +403,8 @@ function scr_level_exiting() {
 /// THE GUI IS NOT 960x540 ANY MORE (2026-10-21).  scr_ui_screen fixes the
 /// design HEIGHT at 540 and lets the width follow the window's aspect, so
 /// "60% of the GUI height" is still a fixed number of pixels on every screen,
-/// while the width is whatever the window happens to be.  Vertical placement
-/// is therefore still exact; horizontal placement is "centred on the GUI".
+/// while the width is whatever the window happens to be. The named
+/// `hud.complete` flex node supplies the full rectangle and its centre.
 ///
 /// THE ART, NOT THE CANVAS.  bck_level_complete_banner is 680x360 with the
 /// drawing inside 647x323 of it, so the canvas and the banner are not the same
@@ -425,8 +425,13 @@ function scr_level_complete_draw() {
 	var _spr = level_complete_banner_sprite();
 	if(!sprite_exists(_spr)) return;              /// LL-012
 
-	var _gw = display_get_gui_width(),
-	    _gh = display_get_gui_height(),
+	/// The named full-canvas node is the one source for the banner's centre
+	/// and height. If the tree is unavailable, preserve the GUI-sized fallback.
+	ui_hud_ensure();
+	var _canvas = ui_rect("hud", "hud.complete"),
+	    _cx = global.ui.w*0.5,
+	    _cy = global.ui.h*0.5,
+	    _height = global.ui.h,
 	    _t  = clamp(level_clear_time - level_clear_banner_delay(),
 	                0, level_clear_banner_seconds()),
 	    /// 80% -> 100% across the hold
@@ -439,22 +444,28 @@ function scr_level_complete_draw() {
 	    _aw = _r - _l,
 	    _ah = _bt - _tp;
 
+	if(array_length(_canvas) >= 4){
+		_cx = (_canvas[0] + _canvas[2])*0.5;
+		_cy = (_canvas[1] + _canvas[3])*0.5;
+		_height = _canvas[3] - _canvas[1];
+	}
+
 	/// a collapsed bbox (an empty frame, a manual box set to nothing) would
 	/// divide by zero - fall back to the whole canvas
 	if(_aw <= 0 || _ah <= 0){
-	    _l  = 0;
-	    _tp = 0;
-	    _aw = sprite_get_width(_spr);
-	    _ah = sprite_get_height(_spr);
+		_l  = 0;
+		_tp = 0;
+		_aw = sprite_get_width(_spr);
+		_ah = sprite_get_height(_spr);
 	}
 
-	var _s = (_gh * level_clear_banner_height() / max(_ah, 1)) * _k,
-	    /// the ART centre goes on the screen centre.  The canvas origin is
-	    /// at (xorigin,yorigin), so the offset is (art centre - origin) * s.
-	    _x = _gw*0.5 - (((_l + _aw*0.5)
-	                     - sprite_get_xoffset(_spr)) * _s),
-	    _y = _gh*0.5 - (((_tp + _ah*0.5)
-	                     - sprite_get_yoffset(_spr)) * _s),
+	var _s = (_height * level_clear_banner_height() / max(_ah, 1)) * _k,
+	    /// the ART centre goes on the named flex anchor. The canvas origin is
+	    /// at (xorigin,yorigin), so offset from art centre to origin by scale.
+	    _x = _cx - (((_l + _aw*0.5)
+	                - sprite_get_xoffset(_spr)) * _s),
+	    _y = _cy - (((_tp + _ah*0.5)
+	                - sprite_get_yoffset(_spr)) * _s),
 	    /// and it leaves WITH the fade rather than hanging over the black
 	    _alpha = 1 - clamp((level_clear_time - (level_clear_banner_delay()
 	                       + level_clear_banner_seconds())) / 0.25, 0, 1);

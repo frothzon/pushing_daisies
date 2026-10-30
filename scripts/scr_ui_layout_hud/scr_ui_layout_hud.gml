@@ -16,6 +16,9 @@ function ui_hud_tree() {
 			/// four 32px stat icons, 48px apart, top-right
 			{ name: "hud.stats", positionType: "absolute",
 			  right: 24, top: 24, width: 32, height: 176 },
+			/// full-canvas anchor for the Level Complete banner's art centre
+			{ name: "hud.complete", positionType: "absolute",
+			  left: 0, top: 0, width: "100%", height: "100%" },
 			/// selected tower card, with its range band and two action cells
 			{ name: "hud.tower", positionType: "absolute",
 			  left: 16, bottom: 16, width: 320, height: 188,
@@ -51,6 +54,7 @@ function ui_hud_check() {
 	    _specs = [
 		["hud.speed", 16, 16, 112, 64],
 		["hud.stats", _w-56, 24, _w-24, 200],
+		["hud.complete", 0, 0, _w, _h],
 		["hud.tower", 16, _h-204, 336, _h-16],
 		["hud.tower.range", 16, _h-170, 336, _h-108],
 		["hud.tower.actions", 26, _h-64, 326, _h-26]
@@ -70,7 +74,7 @@ function ui_hud_check() {
 			_ok = false;
 		}
 	}
-	if(_ok) ui_log("HUD", "layout OK canvas=", _w, "x", _h, " nodes=5");
+	if(_ok) ui_log("HUD", "layout OK canvas=", _w, "x", _h, " nodes=6");
 	return _ok;
 }
 

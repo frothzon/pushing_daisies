@@ -32,12 +32,13 @@
       "tower-ring-mastery-palette",
       "art-state-origins",
       "biome-tileset-wiring",
-      "ui-hud-flex"
-    ],
-    "next": [
+      "ui-hud-flex",
       "ui-flex-other-screens"
     ],
-    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, wired terrain atlas selection by biome, and moved the in-run HUD onto flex geometry. Runtime reviews are waiting on Rayu. Next code pass: anchor the Level Complete banner to the shared flex tree."
+    "next": [
+      "ui-palette-adopt"
+    ],
+    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, wired terrain atlas selection by biome, and moved the in-run HUD and Level Complete banner onto flex geometry. Runtime reviews are waiting on Rayu. Next code pass: consolidate remaining UI colours through ui_palette()."
   },
   "tasks": [
     {
@@ -3677,19 +3678,18 @@
     {
       "id": "ui-flex-other-screens",
       "title": "Place the Level Complete banner from flex geometry",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "3",
       "size": "M",
       "prio": 3,
-      "needs": "Port one screen per session onto scr_ui_layout_* the way the menu and the meta screens now are, starting with whichever reports a finding first.",
+      "needs": "Reload GameMaker with global.devMode=true and clear a stage. Expect the existing LEVEL COMPLETE banner line (80% to 100% over 3s) and UI [HUD] layout OK canvas=<w>x540 nodes=6; press F12 and confirm UI [dump] hud shows hud.complete from 0,0 to <w>,540. The banner art should remain centered and 60% of GUI height at windowed and fullscreen aspect. A shifted/cropped banner, UI [HUD] layout FAIL, or changed 3-second hold falsifies it.",
       "notes": "2026-10-30: Menu title/options already use ui_menu_tree, and the in-run HUD now uses ui_hud_tree (ui-hud-flex). Remaining screen piece: anchor the Level Complete banner’s existing art-bbox center and 60%-of-GUI-height scale to a named full-canvas flex node, preserving LL-055 timing. Options and HUD runtime review remains with Rayu.",
       "refs": [
         "scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml",
         "scripts/scr_level_state/scr_level_state.gml",
-        "scripts/scr_ui_flex/scr_ui_flex.gml",
         "objects/obj_ui/Step_0.gml"
       ],
       "created": "2026-10-21",
@@ -3750,7 +3750,7 @@
       "phase": "3",
       "size": "M",
       "prio": 2,
-      "needs": "Reload GameMaker and run a stage. Confirm stat icons stay upper-right, speed controls upper-left, and the selected tower card with Upgrade/Sell buttons stays bottom-left. Resize the window or toggle fullscreen, press F12, and inspect UI [dump] hud: expect 6 tree nodes and UI [HUD] layout OK with 5 named HUD rectangles. Their edges should stay 16px left/16px bottom for the card, 24px right for stats, and 16px top-left for speed controls. Try the speed buttons and Upgrade/Sell after resizing. A UI [HUD] layout FAIL line, overlap, stale position, or click miss falsifies it.",
+      "needs": "Reload GameMaker with global.devMode=true and run a stage. Confirm stat icons stay upper-right, speed controls upper-left, and the selected tower card with clickable Upgrade/Sell buttons stays bottom-left. Resize or toggle fullscreen and press F12: expect UI [HUD] layout OK canvas=<w>x540 nodes=6 and UI [dump] hud with 7 tree nodes. Try the speed buttons and Upgrade/Sell after resizing. Any UI [HUD] layout FAIL line, overlap, stale position, or click miss falsifies it.",
       "notes": "",
       "refs": [
         "scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml",
@@ -3758,7 +3758,8 @@
         "objects/_levelControl/Step_0.gml",
         "objects/_mainControl/Create_0.gml",
         "objects/_mainControl/Step_0.gml",
-        "objects/obj_ui/Step_0.gml"
+        "objects/obj_ui/Step_0.gml",
+        "scripts/scr_level_state/scr_level_state.gml"
       ],
       "created": "2026-10-21",
       "updated": "2026-10-30",
