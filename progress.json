@@ -31,12 +31,13 @@
       "tower-l5-signatures",
       "tower-ring-mastery-palette",
       "art-state-origins",
-      "biome-tileset-wiring"
-    ],
-    "next": [
+      "biome-tileset-wiring",
       "ui-hud-flex"
     ],
-    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, and wired terrain atlas selection to biome with a Graveyard dirt fallback. Runtime visual checks are waiting on Rayu. Next code pass: move the in-game HUD onto flex layout."
+    "next": [
+      "ui-flex-other-screens"
+    ],
+    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, wired terrain atlas selection by biome, and moved the in-run HUD onto flex geometry. Runtime reviews are waiting on Rayu. Next code pass: anchor the Level Complete banner to the shared flex tree."
   },
   "tasks": [
     {
@@ -3675,8 +3676,8 @@
     },
     {
       "id": "ui-flex-other-screens",
-      "title": "The other screens are still hand-placed: Options, Level Complete, HUD",
-      "status": "backlog",
+      "title": "Place the Level Complete banner from flex geometry",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -3684,13 +3685,15 @@
       "size": "M",
       "prio": 3,
       "needs": "Port one screen per session onto scr_ui_layout_* the way the menu and the meta screens now are, starting with whichever reports a finding first.",
-      "notes": "The meta screens are the model. These four still place themselves by hand and none of them is dumped by the layout gate, so a finding there would be found by a player rather than by gm layout check.",
+      "notes": "2026-10-30: Menu title/options already use ui_menu_tree, and the in-run HUD now uses ui_hud_tree (ui-hud-flex). Remaining screen piece: anchor the Level Complete banner’s existing art-bbox center and 60%-of-GUI-height scale to a named full-canvas flex node, preserving LL-055 timing. Options and HUD runtime review remains with Rayu.",
       "refs": [
-        "objects/obj_ui/Step_0.gml",
-        "scripts/scr_ui_flex/scr_ui_flex.gml"
+        "scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml",
+        "scripts/scr_level_state/scr_level_state.gml",
+        "scripts/scr_ui_flex/scr_ui_flex.gml",
+        "objects/obj_ui/Step_0.gml"
       ],
       "created": "2026-10-21",
-      "updated": "2026-10-21",
+      "updated": "2026-10-30",
       "done": null
     },
     {
