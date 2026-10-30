@@ -451,3 +451,22 @@ function candy_pause_draw() {
 	draw_set_colour(c_white);
 	draw_set_alpha(1);
 }
+
+
+/// Blood Orange makes its otherwise invisible pity benefit legible on the field.
+function candy_pity_hud_draw(_alpha) {
+	if(candy_active_magnitude("pity_fill") <= 0) return;
+	var _progress=min(shard_pity_get(),20000),
+	    _mult=1+blood_pity_fill_bonus(),
+	    _text="SHARD PITY "+string(round(_progress))+" / 20000   x"
+	          +string_format(_mult,1,2);
+	draw_set_alpha(is_real(_alpha) ? clamp(_alpha,0,1) : 1);
+	draw_set_font(fnt_size12);
+	draw_set_halign(fa_right);
+	draw_set_valign(fa_top);
+	draw_text_outline(display_get_gui_width()-12,12,_text,c_orange,c_black,1);
+	draw_set_alpha(1);
+	draw_set_font(fnt_size16);
+	draw_set_halign(fa_left);
+	draw_set_valign(fa_top);
+}
