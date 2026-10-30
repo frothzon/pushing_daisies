@@ -4,7 +4,8 @@
 /// ONE instance of each kind per monster.  That is the rule the whole file
 /// exists to enforce: status strength does not depend on how many towers were
 /// in range (goal.md 7-8). Slow keeps its strongest multiplier and longest
-/// duration; Burn keeps its strongest damage rate and adds proc durations.
+/// duration; Burn keeps its strongest damage rate and adds proc durations;
+/// Poison builds a capped number of damage stacks in one status entry.
 ///
 /// A monster's statuses live in ONE struct, `statuses`, keyed by the enum
 /// (as a string, because a struct key is a string).  Every function here
@@ -24,6 +25,15 @@ function status_enums() {
 	enum STATUS {
 		SLOW, STUN, BURN, POISON, ROOT, BLEED, VULN
 	};
+}
+
+/// Number of active poison stacks, defaulting safely for older status records.
+/// Poison is one status entry with bounded stacks, rather than N entries that
+/// make every reader and tint path ambiguous.
+function status_stack_count(_status) {
+	if(!is_struct(_status) || !variable_struct_exists(_status, "stacks")) return 1;
+	if(!is_real(_status.stacks)) return 1;
+	return clamp(round(_status.stacks), 1, 5);
 }
 
 /// A kind's name, for a log line.  A kind this build does not know prints as
@@ -86,8 +96,9 @@ function status_class_name(_class) {
 /// Apply (or REFRESH) one kind on one monster.
 ///
 /// `_mult` is a SPEED multiplier for SLOW; `_amount` is damage per second for
-/// BURN. A burn keeps the strongest rate and adds each proc's duration; other
-/// statuses keep their strongest effect and longest duration.
+/// BURN and damage per second per stack for POISON. Burn adds proc duration;
+/// Poison adds up to five stacks and refreshes duration; other statuses keep
+/// their strongest effect and longest duration.
 ///
 /// STALE ENTRIES ARE OVERWRITTEN, NOT REMOVED.  An expired status keeps its
 /// key and sits at frames <= 0, which every reader treats as "not there".
@@ -143,7 +154,7 @@ function status_apply(_mon, _kind, _mult, _frames, _amount) {
 		if(variable_struct_exists(statuses, _key)){
 			var _s = statuses[$ _key];
 			if(!is_struct(_s)){
-				_s = { kind: _kind, mult: _m, amount: _a, frames: _f };
+				_s = { kind: _kind, mult: _m, amount: _a, frames: _f, stacks: 1 };
 				statuses[$ _key] = _s;
 				_fresh = true;
 			} else if(!variable_struct_exists(_s, "frames")
@@ -153,6 +164,7 @@ function status_apply(_mon, _kind, _mult, _frames, _amount) {
 				_s.mult = _m;
 				_s.amount = _a;
 				_s.frames = _f;
+				_s.stacks = 1;
 				_fresh = true;
 			} else {
 				/// Slow keeps the strongest multiplier; Burn keeps the highest rate.
@@ -162,6 +174,10 @@ function status_apply(_mon, _kind, _mult, _frames, _amount) {
 						_old_mult = _s.mult;
 					}
 					_s.mult = min(_old_mult, _m);
+				}
+				if(_kind == STATUS.POISON){
+					/// Poison adds one stack per proc up to five, and refreshes time.
+					_s.stacks = min(status_stack_count(_s) + 1, 5);
 				}
 				var _old_amount = 0;
 				if(variable_struct_exists(_s, "amount") && is_real(_s.amount)){
@@ -210,13 +226,15 @@ function status_summary(_mon) {
 				|| !variable_struct_exists(_s, "frames")
 				|| !is_real(_s.frames) || _s.frames <= 0) continue;
 				_out += (_out == "" ? "" : ", ");
-				if(_s.kind == STATUS.BURN){
+				if(_s.kind == STATUS.BURN || _s.kind == STATUS.POISON){
 					var _amount = 0;
 					if(variable_struct_exists(_s, "amount") && is_real(_s.amount)){
 						_amount = _s.amount;
 					}
-					_out += status_name(_s.kind) + " " + string(_amount) + "dps "
-					      + string(_s.frames) + "f";
+					var _stacks = (_s.kind == STATUS.POISON) ? status_stack_count(_s) : 1;
+					_out += status_name(_s.kind) + " " + string(_amount * _stacks) + "dps";
+					if(_s.kind == STATUS.POISON) _out += " x" + string(_stacks);
+					_out += " " + string(_s.frames) + "f";
 				} else {
 					var _mult = 1;
 					if(variable_struct_exists(_s, "mult") && is_real(_s.mult)){
@@ -321,10 +339,13 @@ function status_tick() {
 	for(var _i = 0; _i < array_length(_names); _i++){
 		var _s = statuses[$ _names[_i]];
 		if(_s.frames <= 0) continue;
-		if(_s.kind == STATUS.BURN && _alive_for_dot){
+		if((_s.kind == STATUS.BURN || _s.kind == STATUS.POISON) && _alive_for_dot){
 			var _damage_per_second = 0;
-			if(variable_struct_exists(_s, "amount")){
-				if(is_real(_s.amount)) _damage_per_second = max(0, _s.amount);
+			if(variable_struct_exists(_s, "amount") && is_real(_s.amount)){
+				_damage_per_second = max(0, _s.amount);
+			}
+			if(_s.kind == STATUS.POISON){
+				_damage_per_second *= status_stack_count(_s);
 			}
 			if(_damage_per_second > 0){
 				/// Directly uses the amount pipeline: status ticks never roll crit.

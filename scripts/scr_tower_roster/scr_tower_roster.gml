@@ -51,7 +51,13 @@ function tower_roster() {
 		///      scr_towerData.
 		tower_entry("Chillip",
 		            [spr_chillip_idle_192x, spr_chillip_attack_192x, spr_chillip_return_192x],
-		             15, scr_towerData( 90,   8,   1.5, _eff_puff,   1), 30, 1)
+		             15, scr_towerData( 90,   8,   1.5, _eff_puff,   1), 30, 1),
+		tower_entry("Bindweed",
+		            [spr_bindweed_idle_192x, spr_bindweed_attack_192x, spr_bindweed_return_192x],
+		             40, scr_towerData( 70,   5,   1.0, _eff_puff,   2), 50, 1),
+		tower_entry("Belladonna Blitz",
+		            [spr_bella_idle_192x, spr_bella_attack_192x, spr_bella_return_192x],
+		             55, scr_towerData( 85,  12,   4.0, _eff_acid,   2), 150, 2)
 	];
 }
 
@@ -92,6 +98,16 @@ function tower_trait_table() {
 		  crit : 0.00,
 		  statuses : [
 			{ kind : STATUS.BURN, chance : 0.20, mult : 1.00, amount : 10, seconds : 3.0 }
+		  ] },
+		{ name : "Bindweed",
+		  crit : 0.00,
+		  statuses : [
+			{ kind : STATUS.ROOT, chance : 0.30, mult : 1.00, amount : 0, seconds : 1.0 }
+		  ] },
+		{ name : "Belladonna Blitz",
+		  crit : 0.00,
+		  statuses : [
+			{ kind : STATUS.POISON, chance : 0.20, mult : 1.00, amount : 3, seconds : 5.0 }
 		  ] }
 	];
 }

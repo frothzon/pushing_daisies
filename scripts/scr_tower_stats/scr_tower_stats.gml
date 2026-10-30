@@ -85,7 +85,8 @@ function tower_stat_note(_name) {
 				break;
 			case STATUS.POISON:
 				_part = "poison " + string(round(_e.chance*100)) + "% "
-				        + string(_e.amount) + "/s/" + string(_e.seconds) + "s";
+				        + string(_e.amount) + "/s per hit (max 5), "
+				        + string(_e.seconds) + "s";
 				break;
 			case STATUS.ROOT:
 				_part = "root " + string(round(_e.chance*100)) + "%/"

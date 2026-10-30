@@ -225,8 +225,8 @@ $122 / $128 / $247 measured above.
 
 ### 4.2 Placement prices (repriced 2026-10-13)
 
-**The six towers that exist, first, read straight off `scr_tower_roster()`** — the
-next six are the unbuilt half of the twelve-tower plan (roadmap 5.5) and are
+**The nine towers that exist, first, read straight off `scr_tower_roster()`** — the
+next three are the unbuilt half of the twelve-tower plan (roadmap 5.5) and are
 marked *planned*, so a number in this table can no longer be mistaken for a
 number in the game:
 
@@ -238,10 +238,10 @@ number in the game:
 | Pina Collider | **40** | 75 | 200 | 1 | 10 | **built** |
 | Cannon Tulip | **60** | 200 | 60 | 0.5 | 5 | **built** (25 🌱, gate 1) |
 | Meat Bulb | **80** | 90 | 250 | 0.75 | 1 | **built** (40 🌱, gate 1) |
-| Chillip | 30 | 90 | 8 | 2 | 3 | *planned* |
-| Bindweed | 40 | 70 | 5 | 1 | 2 | *planned* |
+| Chillip | **15** | 90 | 8 | 1.5 | 1 | **built** (30 🌱, gate 1) |
+| Bindweed | **40** | 70 | 5 | 1 | 2 | **built** (50 🌱, gate 1) |
 | Thornamental | 60 | 110 | 90 | 2 | 1 | *planned* |
-| Belladonna Blitz | 55 | 85 | 12 | 4 | 2 | *planned* |
+| Belladonna Blitz | **55** | 85 | 12 | 4 | 2 | **built** (150 🌱, gate 2) |
 | Kaboom Kalanchoe | 150 | 80 | 120 | 1 | 6 | *planned* |
 | Money Marigold | 35 | — | 0 | — | — | *planned* |
 
