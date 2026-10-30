@@ -34,12 +34,13 @@
       "biome-tileset-wiring",
       "ui-hud-flex",
       "ui-flex-other-screens",
-      "ui-palette-adopt"
-    ],
-    "next": [
+      "ui-palette-adopt",
       "dead-color-swap-shader"
     ],
-    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, wired terrain atlas selection by biome, moved the in-run HUD and Level Complete banner onto flex geometry, and centralized meta-screen colors without changing their RGB values. Runtime reviews are waiting on Rayu. Next code pass: resolve the two unused color-swap scripts."
+    "next": [
+      "hud-readability-and-strings"
+    ],
+    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, wired terrain atlas selection by biome, moved the in-run HUD and Level Complete banner onto flex geometry, centralized meta-screen colors without RGB changes, and removed the unused color-swap GML resources. Runtime reviews are waiting on Rayu. Next code pass: put remaining HUD text behind localisation-ready keys."
   },
   "tasks": [
     {
@@ -1154,7 +1155,7 @@
     {
       "id": "dead-color-swap-shader",
       "title": "Remove unused color-swap scripts with no shader",
-      "status": "doing",
+      "status": "done",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -1162,7 +1163,7 @@
       "size": "S",
       "prio": 3,
       "needs": "",
-      "notes": "2026-10-30: The two project-local script resources have no project callers and no matching color-swap shader. shd_scml_tint is a separate SCML tint pipeline. The legacy set_colorSwap_shader function also leaves shader state bound. Remove the dead project-local resources with python_tools/gm; keep the packaged extension manifest unchanged.",
+      "notes": "Removed the two uncalled project-local GMScript resources through gm.Project after backing them up. The project had no callers and no matching shader; the separate shd_scml_tint resource and packaged extension manifest remain untouched.",
       "refs": [
         "pushing_daisies_recovered.yyp",
         "extensions/Simple_Game_Engine/Simple_Game_Engine.yy",
@@ -1170,7 +1171,7 @@
       ],
       "created": "2026-10-15",
       "updated": "2026-10-30",
-      "done": null
+      "done": "2026-10-30"
     },
     {
       "id": "decide-github-push",
@@ -5076,6 +5077,12 @@
       "who": "cline",
       "task": "biome-tileset-wiring",
       "what": "Wired biome terrain styles into level startup: Swamp, Desert, Jungle, Blood Fields use their greyscale atlas and tint pair; Grass retains its existing elevation strata; Graveyard uses tinted dirt until its atlas is delivered. The top-soil cap remains dirt and startup logs biome/atlas/fallback. Static parsing and balance tables pass; awaiting visual review across regions."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "dead-color-swap-shader",
+      "what": "Removed the two uncalled project-local color-swap GMScript resources via gm.Project and deleted their folders after backing them up. The project has no callers or matching shader; kept the separate shd_scml_tint resource and packaged extension manifest unchanged. Round-trip and balance checks pass."
     }
   ]
 }
