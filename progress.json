@@ -20,12 +20,17 @@
   },
   "focus": {
     "now": [
-      "scml-status-tint",
-      "scml-water-visuals",
-      "scml-sprite-reads"
+      "tower-card-upgrade-preview",
+      "tower-panel-effective-rate",
+      "tower-card-status-line"
     ],
-    "next": [],
-    "note": "2026-10-28 (cline): SCML-custom imported (commit fa6f2a3) - the zombies collection, 15 entities x four clips (walk/idle/attack/die). Under scml-mon-rig, monsters now draw as Spriter rigs through ONE shared SpriterInterfaceSystem (scr_scml_rig): the rig seam answers SCML first and falls back to the sprite sheets loudly; the pose evaluates at 30hz staggered (the \"native 30fps\" headroom) while clocks and events stay at 60; the caller seconds still win (set_speed stretches the clip); the corpse is removed when its die clip reports playing == false; the facing mirror and the emerge growth ride one set_transform; _levelControl owns the single update, scr_level_boot resets and preloads, obj_mon/Destroy_0 removes the player. SEVEN of fifteen bank names differ from their SCML entities - an explicit name map plus a coverage test is the guard. 9 new tests, 346 expected 355. Awaiting rayu's devMode run (LL-008: reload the IDE first). Follow-up cards: scml-status-tint (parts draw c_white), scml-water-visuals (no crop/reflection hook), scml-sprite-reads (HP bar and shadows read the placeholder bbox). Follow-up 2026-10-29: the imported walk key arrays expose a runtime-only fix for the bent biped knees. Lower-leg angles move +45 degrees in walk only; visual review is pending. Rayu reviewed the +45-degree walk correction as about 50% better; the total offset is now +60 degrees for a second visual pass. Follow-up 2026-10-29: Rayu reports feet need counter-adjustment after the +60-degree leg change; child b_foot_* walk angles now counterrotate -60 degrees to preserve sole orientation. Latest correction 2026-10-29: remap actual hip-to-knee swing to +/-30 degrees from SCML straight down (270 degrees), map each knee bend to 0..30 degrees on its existing side, and counterrotate feet by the combined per-key changes. Follow-up implementation 2026-10-30: rig parts now receive status_tint through shd_scml_tint; GPU scissor splits above-water, submerged and reflected passes at water_sink; posed alpha bounds size HP bars and shadows. Three added content tests, 358 -> 361; project gates are green. All three cards await Rayu visual review after reloading GameMaker."
+    "next": [
+      "garden-nav",
+      "garden-trees",
+      "garden-currency-hud",
+      "candy-recipes"
+    ],
+    "note": "2026-10-30: Rayu set the full goal.md as the active objective. Current implementation pass: correct the in-run tower card (real next rung, delivered rate, trait line); then continue through Garden Book and the remaining goal.md phases. The project owner is away and will review/playtest after returning."
   },
   "tasks": [
     {
@@ -3273,41 +3278,41 @@
     {
       "id": "tower-card-status-line",
       "title": "The tower card says nothing about a status tower's status",
-      "status": "next",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "cline",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "2",
       "size": "S",
       "prio": 2,
-      "needs": "The card must name what the tower DOES - 'Slow x0.55 for 1.5s' - next to its numbers, read from tower_trait_table(), because a Chillip that only reads '12 DPS' looks like a worse Daisy.",
+      "needs": "Select Chillip and check that its trait line says it slows its target to 55% speed for 1.5s, fits above the buttons, and is absent on towers with no trait.",
       "notes": "FOUND 2026-10-20, the moment Chillip shipped: scr_drawTowerSelected draws range/damage/fire-rate/targets out of the data array, and the trait table is not read there at all, so the entire reason to buy a control tower is invisible at the moment of purchase (goal.md 15: a buff the player cannot perceive is a broken buff - and that applies to the BUYING, too). Small on its own, but it is the same card as tower-card-upgrade-preview, so do them together if the second one is still open.",
       "refs": [
         "scripts/scr_drawTowerSelected/scr_drawTowerSelected.gml",
         "scripts/scr_tower_roster/scr_tower_roster.gml"
       ],
       "created": "2026-10-20",
-      "updated": "2026-10-20",
+      "updated": "2026-10-30",
       "done": null
     },
     {
       "id": "tower-card-upgrade-preview",
       "title": "Tower card: preview the REAL next level, not a doubling",
-      "status": "next",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "cline",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "2",
       "size": "S",
       "prio": 1,
-      "needs": "scr_drawTowerSelected's preview must call tower_data_at_level(base, level+1) and show the rung's price, so the number under 'next' is the number the upgrade actually delivers.",
+      "needs": "Reload the project and select a tower in a stage. Compare the card's next-level DMG/RNG/RATE/DPS and rung price with the result of buying that upgrade; a mismatch means the preview is still wrong.",
       "notes": "FOUND 2026-10-20 while reading the card for the status work: scripts/scr_drawTowerSelected/scr_drawTowerSelected.gml computes the preview as damage*2.0 and range*1.05, which is a stale model from before the level ladder existed. The ladder is +8% damage and +3% range a rung (tower_levels.gml 1.08 / 1.03, ten rungs), so the card promises roughly twenty-five times the real gain - the player reads 'double damage', pays, and gets 1.08x. Same shape as LL-054 (the number the UI believed was not the number the game used). Fix by resolving the next level through the SAME resolver a placement uses, never by a literal multiplier.",
       "refs": [
         "scripts/scr_drawTowerSelected/scr_drawTowerSelected.gml",
         "scripts/tower_levels/tower_levels.gml"
       ],
       "created": "2026-10-20",
-      "updated": "2026-10-20",
+      "updated": "2026-10-30",
       "done": null
     },
     {
@@ -3487,21 +3492,22 @@
     {
       "id": "tower-panel-effective-rate",
       "title": "Tower panel: show the EFFECTIVE fire rate, not the nominal one",
-      "status": "next",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "cline",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "1",
       "size": "S",
       "prio": 2,
-      "needs": "Show the effective fire rate (period + return + stagger) on the tower panel, using the same formula the sim uses.",
+      "needs": "Select towers with different firing rates and check the card's RATE and DPS use the delivered cycle (fire period + return animation + that tower's stagger), not nominal rate.",
       "notes": "From reprice-decisions (2026-10-18, answer 2): the 0.25s return animation is charged on top of fire_rate, so a tower that says 3 shots/s actually lands 1/(1/3 + 0.25 + stagger). The number on the panel is therefore optimistic. Show the effective rate (or label the nominal one as \"while firing\") and keep the same formula the sim uses - fire-rate-vs-animation-length is where that formula lives.",
       "refs": [
         "scripts/tower_levels/tower_levels.gml",
         "scripts/scr_drawTowerSelected/scr_drawTowerSelected.gml"
       ],
       "created": "2026-10-18",
-      "updated": "2026-10-18"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "tower-ring-mastery-palette",
@@ -4871,6 +4877,12 @@
       "who": "cline",
       "task": "scml-sprite-reads",
       "what": "The current transformed alpha bounds of the posed SCML parts now size monster HP bars and shadow boxes instead of the 32x32 spr_mon placeholder. Added a content test."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "tower-card-upgrade-preview",
+      "what": "The in-run tower card now resolves the next rung through tower_data_at_level(), shows its actual price and DMG/RNG/effective RATE/DPS preview, displays the existing trait note, and includes return plus the selected tower's stagger in the displayed rate. Expanded the card while keeping its button grid anchored inside it. GML syntax/structure was inspected; awaiting Rayu's reload and playtest."
     }
   ]
 }

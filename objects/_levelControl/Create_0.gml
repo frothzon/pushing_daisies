@@ -180,7 +180,7 @@ tower_hovered = noone;
 /// area.  Because the loadout UI in Phase 1 is a fixed panel too, building it
 /// this way now means reusing the layout rather than rewriting it.
 tower_card_w = 320;
-tower_card_h = 148;
+tower_card_h = 188;
 tower_card_x = 16;
 tower_card_y = display_get_gui_height() - tower_card_h - 16;
 
