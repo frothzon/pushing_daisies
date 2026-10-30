@@ -117,8 +117,8 @@ if(_valid){
         tower_price_save[0] = tower_upgrade_price(tower_selection.base_price,
                                                  tower_selection.data[TOWER.level]);
         tower_price_save[1] = -tower_sell_refund(tower_selection.invested);
-        tower_text[0] = concat("Upgrade $",tower_price_save[0]);
-        tower_text[1] = concat("Sell $",tower_price_save[1]);
+        tower_text[0] = ui_text_format("tower_upgrade_button",{price:string(tower_price_save[0])});
+        tower_text[1] = ui_text_format("tower_sell_button",{refund:string(-tower_price_save[1])});
         scr_setMaxPrice();
         var _money = get_item_value(money);
         tower_price_check[0] = (tower_price_save[0] <= _money)
@@ -173,8 +173,8 @@ if(mouse_check_button_pressed(mb_left) && tower_timer > 10){
                                                       tower_selection.data[TOWER.level]);
             tower_price_save[1] = -tower_sell_refund(tower_selection.invested);
             /// reset text
-            tower_text[0] = concat("Upgrade $",tower_price_save[0]);
-            tower_text[1] = concat("Sell $",tower_price_save[1]);
+            tower_text[0] = ui_text_format("tower_upgrade_button",{price:string(tower_price_save[0])});
+            tower_text[1] = ui_text_format("tower_sell_button",{refund:string(-tower_price_save[1])});
             /// max tower level price
             scr_setMaxPrice();
             /// price check

@@ -40,7 +40,7 @@
     "next": [
       "hud-readability-and-strings"
     ],
-    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, wired terrain atlas selection by biome, moved the in-run HUD and Level Complete banner onto flex geometry, centralized meta-screen colors without RGB changes, and removed the unused color-swap GML resources. Runtime reviews are waiting on Rayu. Next code pass: put remaining HUD text behind localisation-ready keys."
+    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, wired terrain atlas selection by biome, moved the in-run HUD and Level Complete banner onto flex geometry, centralized meta-screen colors without RGB changes, and removed the unused color-swap GML resources. The HUD text catalog is now implemented; remaining work is in-game review after Rayu reloads GameMaker."
   },
   "tasks": [
     {
@@ -2139,15 +2139,15 @@
     {
       "id": "hud-readability-and-strings",
       "title": "Centralize player-facing HUD strings for localisation",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "6",
       "size": "S",
       "prio": 3,
-      "needs": "",
-      "notes": "2026-10-30: Build an English default string catalog with keyed lookups and placeholder substitution; migrate the HUD, tower-card, pause/candy and endless overlays without changing visible wording. Keep the sprite-font character-map constraint from LL-067 in mind.",
+      "needs": "Reload GameMaker and run a campaign stage with devMode enabled. Check the stat labels, selected-tower card, L3 path prompt, and Buy/Sell buttons, including a sale refund shown as a positive value. Open Garden Book > Candy and check its recipe, level, stock, and duration copy; pause and activate candy, then inspect the active timer and pity labels; reach an Endless box and check reward, conversion, reroll, and wave text. Confirm wording is unchanged and no text clips or displays a missing key. A clipped line, literal key, changed English value, or Sell $-N falsifies the review.",
+      "notes": "IMPLEMENTED: added a cached English key catalog and named placeholder formatting in scr_ui_text. Moved the in-run HUD labels, stage/pause messages, tower upgrade/sell buttons, tower stat and specialization previews, candy recipe names/descriptions and pause/shop/active HUD copy, plus Endless modifier, loot box, conversion, and HUD text behind keys. The 24 specialization names/descriptions now use keyed English entries. Sell now displays the positive refund amount while its internal signed value remains for affordability/accounting. English copy was preserved otherwise. Static GML parsing and project gates pass; runtime visual review remains.",
       "refs": [
         "roadmap.md",
         "goal.md"

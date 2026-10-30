@@ -194,8 +194,7 @@ function scr_level_clear() {
 			badges     : _earned
 		};
 
-		show_text     = "STAGE CLEAR   +" + string(_seeds) + " seeds   +"
-		                + string(_clovers) + " clovers" + _earned;
+		show_text     = ui_text_format("stage_clear", { seeds:string(_seeds), clovers:string(_clovers), badges:_earned });
 		level_cleared = false;
 
 		/// the run cursor moves on (schema v2): a retry after this comes back

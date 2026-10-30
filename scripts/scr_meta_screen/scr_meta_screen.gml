@@ -1119,7 +1119,7 @@ function meta_draw_garden() {
 
 	meta_title("Garden Book", _g.head_mid);
 	meta_currency_draw(_g.cur);
-	var _tab_labels=["Clovers","Blood","Candy","Mastery"];
+	var _tab_labels=["Clovers","Blood",ui_text("garden_tab_candy"),"Mastery"];
 	for(var _tab=0; _tab<min(4,array_length(_g.tabs)); _tab++){
 		meta_garden_tab_draw(_g.tabs[_tab],_tab_labels[_tab],_mode==_tab);
 	}
@@ -1136,7 +1136,7 @@ function meta_draw_garden() {
 			                     _branch_tab==_branch_index);
 		}
 	} else {
-		var _branch_name = _candy ? "Candy Recipes" : (_blood ? "Blood Alchemy" : "Garden Mastery"),
+		var _branch_name = _candy ? ui_text("garden_candy_recipes") : (_blood ? "Blood Alchemy" : "Garden Mastery"),
 		    _branch_icon = _candy ? icon_currency(CURRENCY.CANDY)
 		                         : (_blood ? icon_blood(1) : icon_mastery(max(1,min(5,tower_mastery()+1))));
 		meta_panel(_br[0],_br[1],_br[2]-_br[0],_br[3]-_br[1],_pal.panel,c_black);
@@ -1536,20 +1536,23 @@ function meta_garden_candy_percent(_value) {
 
 function meta_garden_candy_effect(_id, _level) {
 	var _mag = candy_magnitude(_id,_level);
-	if(!is_struct(_mag)) return "No effect data";
+	if(!is_struct(_mag)) return ui_text("garden_candy_no_effect");
 	switch(_id){
-		case "red_licorice": return "+"+meta_garden_candy_percent(_mag.damage)+" tower damage";
-		case "jawbreaker": return "+"+meta_garden_candy_percent(_mag.range)+" tower range";
-		case "gummy_worm": return "+"+meta_garden_candy_percent(_mag.slow)+" slow effectiveness";
-		case "sour_drop": return "+"+meta_garden_candy_percent(_mag.crit_chance)+" crit chance";
-		case "fireball": return "+"+meta_garden_candy_percent(_mag.burn_damage)+" burn damage";
-		case "frosted_flake": return "+"+meta_garden_candy_percent(_mag.fire_rate)+" fire rate";
-		case "blood_bonbon": return "+"+meta_garden_candy_percent(_mag.damage)+" damage, +"+meta_garden_candy_percent(_mag.crit_damage)+" crit damage";
-		case "everlasting_gob": return "Freeze active timers for "+string(_mag.freeze_waves)+" wave(s)";
-		case "blood_orange": return "+"+meta_garden_candy_percent(_mag.pity_fill)+" shard pity fill";
-		case "money_honey": return "+"+meta_garden_candy_percent(_mag.kill_money)+" kill money";
+		case "red_licorice": return ui_text_format("garden_candy_effect_damage",{value:meta_garden_candy_percent(_mag.damage)});
+		case "jawbreaker": return ui_text_format("garden_candy_effect_range",{value:meta_garden_candy_percent(_mag.range)});
+		case "gummy_worm": return ui_text_format("garden_candy_effect_slow",{value:meta_garden_candy_percent(_mag.slow)});
+		case "sour_drop": return ui_text_format("garden_candy_effect_crit",{value:meta_garden_candy_percent(_mag.crit_chance)});
+		case "fireball": return ui_text_format("garden_candy_effect_burn",{value:meta_garden_candy_percent(_mag.burn_damage)});
+		case "frosted_flake": return ui_text_format("garden_candy_effect_rate",{value:meta_garden_candy_percent(_mag.fire_rate)});
+		case "blood_bonbon": return ui_text_format("garden_candy_effect_bonbon",{
+		    damage:meta_garden_candy_percent(_mag.damage),
+		    crit_damage:meta_garden_candy_percent(_mag.crit_damage)
+		});
+		case "everlasting_gob": return ui_text_format("garden_candy_effect_gob",{waves:string(_mag.freeze_waves)});
+		case "blood_orange": return ui_text_format("garden_candy_effect_pity",{value:meta_garden_candy_percent(_mag.pity_fill)});
+		case "money_honey": return ui_text_format("garden_candy_effect_money",{value:meta_garden_candy_percent(_mag.kill_money)});
 	}
-	return "No effect data";
+	return ui_text("garden_candy_no_effect");
 }
 
 function meta_garden_candy_icon_draw(_id, _x, _y, _size) {
@@ -1559,7 +1562,7 @@ function meta_garden_candy_icon_draw(_id, _x, _y, _size) {
 		return;
 	}
 	var _colour = (_id == "blood_orange") ? c_orange : c_yellow,
-	    _tag = (_id == "blood_orange") ? "BO" : "MH";
+	    _tag = (_id == "blood_orange") ? ui_text("candy_fallback_bo") : ui_text("candy_fallback_mh");
 	draw_set_colour(_colour);
 	draw_circle(_x,_y,_size*0.40,false);
 	draw_set_colour(c_black);
@@ -1598,7 +1601,7 @@ function meta_garden_candy_list_draw(_nodes, _rects, _offset, _selected, _pal) {
 		ui_reg_text("label",_rc[0]+54,_rc[1]+9,_label,fa_left,fa_top);
 		draw_set_halign(fa_right);
 		draw_set_colour(_unlocked ? c_yellow : (_can ? c_lime : c_dkgray));
-		var _rank = _unlocked ? "L"+string(_level)+"/10" : "RECIPE";
+		var _rank = _unlocked ? ui_text_format("garden_candy_rank",{level:string(_level)}) : ui_text("garden_candy_recipe");
 		draw_text(_rc[2]-10,_rc[1]+9,_rank);
 		ui_reg_text("rank",_rc[2]-10,_rc[1]+9,_rank,fa_right,fa_top);
 		draw_set_font(fnt_size12);
@@ -1609,7 +1612,9 @@ function meta_garden_candy_list_draw(_nodes, _rects, _offset, _selected, _pal) {
 		ui_reg_text("desc",_rc[0]+54,_rc[1]+32,_desc,fa_left,fa_top);
 		draw_set_halign(fa_right);
 		draw_set_colour(_can ? c_lime : c_dkgray);
-		var _cost_txt = (_gate != "") ? "gated" : (_cost < 0 ? "maxed" : string(_cost)+" shards");
+		var _cost_txt = (_gate != "") ? ui_text("garden_candy_gated")
+		               : (_cost < 0 ? ui_text("garden_candy_maxed")
+		                  : ui_text_format("garden_candy_cost",{cost:string(_cost)}));
 		draw_text(_rc[2]-10,_rc[1]+32,_cost_txt);
 		ui_reg_text("cost",_rc[2]-10,_rc[1]+32,_cost_txt,fa_right,fa_top);
 	}
@@ -1654,29 +1659,33 @@ function meta_garden_candy_detail_draw(_g, _recipe) {
 	draw_set_font(fnt_size20);
 	meta_text(_w[0]+104,_w[1]+16,ui_clip_text(_recipe.label,_w[2]-_w[0]-116),c_white,fa_left);
 	draw_set_font(fnt_size16);
-	meta_text(_w[0]+104,_w[1]+48,"Tier "+string(_recipe.tier)+"  |  "+(_unlocked ? "Level "+string(_level)+"/10" : "Recipe locked"),c_yellow,fa_left);
+	var _status = _unlocked ? ui_text_format("garden_candy_status_level",{level:string(_level)}) : ui_text("garden_candy_status_locked");
+	meta_text(_w[0]+104,_w[1]+48,ui_text_format("garden_candy_tier_line",{tier:string(_recipe.tier),status:_status}),c_yellow,fa_left);
 	draw_set_font(fnt_size12);
 	meta_text(_w[0]+104,_w[1]+76,ui_clip_text(_mag,_w[2]-_w[0]-116),c_silver,fa_left);
-	meta_text(_w[0]+104,_w[1]+96,"Stock: "+string(_stock)+"  |  "+(_id == "everlasting_gob" ? "Freeze: "+string(_mag_data.freeze_waves)+" wave(s)" : "Duration: "+string(candy_duration_seconds())+"s"),c_silver,fa_left);
+	var _stock_line = (_id == "everlasting_gob")
+	                  ? ui_text_format("garden_candy_stock_freeze",{count:string(_stock),waves:string(_mag_data.freeze_waves)})
+	                  : ui_text_format("garden_candy_stock_duration",{count:string(_stock),duration:string(candy_duration_seconds())});
+	meta_text(_w[0]+104,_w[1]+96,_stock_line,c_silver,fa_left);
 	if(_gate != "") meta_text(_w[0]+104,_w[1]+116,ui_clip_text(_gate,_w[2]-_w[0]-116),c_orange,fa_left);
 
 	meta_panel(_s[0],_s[1],_s[2]-_s[0],_s[3]-_s[1],_pal.panel_base,c_black);
 	draw_set_font(fnt_size12);
-	var _head_text = _unlocked ? "Level "+string(_level)+" effect" : "Recipe details";
+	var _head_text = _unlocked ? ui_text_format("garden_candy_heading_level",{level:string(_level)}) : ui_text("garden_candy_heading_details");
 	meta_text(_head[0],_head[1]+5,_head_text,c_white,fa_left);
 	var _buy_cost = _unlocked ? candy_level_cost(_id) : candy_recipe_cost(_id),
 	    _buy_enabled = (_gate == "" && _buy_cost >= 0 && shards_get() >= _buy_cost),
-	    _buy_text = _unlocked ? (_buy_cost < 0 ? "Candy max level" : "Level up  "+string(_buy_cost)+" shards")
-	                          : (_gate != "" ? _gate : "Unlock recipe  "+string(_buy_cost)+" shards"),
+	    _buy_text = _unlocked ? (_buy_cost < 0 ? ui_text("garden_candy_buy_maxed") : ui_text_format("garden_candy_buy_level",{cost:string(_buy_cost)}))
+	                          : (_gate != "" ? _gate : ui_text_format("garden_candy_unlock",{cost:string(_buy_cost)})),
 	    _stock_enabled = _unlocked && shards_get() >= 1,
-	    _stock_text = _unlocked ? "Buy 5 stock  1 shard" : "Unlock recipe to buy stock",
+	    _stock_text = _unlocked ? ui_text("garden_candy_stock_buy") : ui_text("garden_candy_stock_locked"),
 	    _duration_enabled = (_duration_cost >= 0 && clovers_get() >= _duration_cost),
-	    _duration_text = (_duration_cost < 0) ? "Duration maxed +100%"
-	                    : "Duration +10%  "+string(_duration_cost)+" clovers";
+	    _duration_text = (_duration_cost < 0) ? ui_text("garden_candy_duration_maxed")
+	                    : ui_text_format("garden_candy_duration_buy",{cost:string(_duration_cost)});
 	meta_button_draw(_actions[0],_buy_text,_buy_enabled);
 	meta_button_draw(_actions[1],_stock_text,_stock_enabled);
 	meta_button_draw(_actions[2],_duration_text,_duration_enabled);
-	meta_text(_note[0],_note[1]+2,"Select a candy on the left; each purchase saves immediately.",c_silver,fa_left);
+	meta_text(_note[0],_note[1]+2,ui_text("garden_candy_note"),c_silver,fa_left);
 }
 
 function meta_garden_candy_action_hit(_g) {

@@ -44,11 +44,11 @@ function scr_drawBlurScreen() {
 	var _vig = -1;
 	if(state == scr_main_pause){
 	    _vig = bck_paused;
-	    pause_text  = "PAUSED";
+	    pause_text  = ui_text("pause_paused");
 	    pause_color = c_white;
 	} else if(state == scr_main_gameOver){
 	    _vig = bck_gameOver;
-	    pause_text  = "GAME OVER";
+	    pause_text  = ui_text("pause_game_over");
 	    pause_color = c_red;
 	}
 

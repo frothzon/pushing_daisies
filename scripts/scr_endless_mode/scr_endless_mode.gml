@@ -39,7 +39,7 @@ function endless_level_data() {
 		biome_name:"Endless", seeds:0, spawns:[0], bosses:[0,1],
 		par_spend:0, par_time:0, waves:endless_wave_cap(), boss_wave:0,
 		boss_every:0, endless:true,
-		label:function() { return "Endless"; },
+		label:function() { return ui_text("endless_name"); },
 		life_mult:function(_wave) { return 1; }
 	};
 }
@@ -83,16 +83,16 @@ function endless_modifier(_wave) {
 
 function endless_modifier_name(_modifier) {
 	switch(_modifier){
-		case ENDLESS_MOD.HP: return "Heavy Growth";
-		case ENDLESS_MOD.SPEED: return "Rush";
-		case ENDLESS_MOD.HARDENED: return "Hardened";
-		case ENDLESS_MOD.SPLIT_SPAWN: return "Two Spawn Points";
-		case ENDLESS_MOD.BOSS: return "Boss";
-		case ENDLESS_MOD.RANGE: return "Nightfall";
-		case ENDLESS_MOD.ELITE: return "Elite Horde";
-		case ENDLESS_MOD.FINAL_BOSS: return "Endless Boss";
+		case ENDLESS_MOD.HP: return ui_text("endless_mod_heavy_growth");
+		case ENDLESS_MOD.SPEED: return ui_text("endless_mod_rush");
+		case ENDLESS_MOD.HARDENED: return ui_text("endless_mod_hardened");
+		case ENDLESS_MOD.SPLIT_SPAWN: return ui_text("endless_mod_two_spawn_points");
+		case ENDLESS_MOD.BOSS: return ui_text("endless_mod_boss");
+		case ENDLESS_MOD.RANGE: return ui_text("endless_mod_nightfall");
+		case ENDLESS_MOD.ELITE: return ui_text("endless_mod_elite_horde");
+		case ENDLESS_MOD.FINAL_BOSS: return ui_text("endless_mod_boss_final");
 	}
-	return "No modifier";
+	return ui_text("endless_mod_none");
 }
 
 function endless_cycle(_wave) {
@@ -172,13 +172,13 @@ function endless_pick_tier(_box_number) {
 
 function endless_tier_name(_tier) {
 	switch(_tier){
-		case 0: return "Common";
-		case 1: return "Uncommon";
-		case 2: return "Rare";
-		case 3: return "Epic";
-		case 4: return "Legendary";
+		case 0: return ui_text("endless_tier_common");
+		case 1: return ui_text("endless_tier_uncommon");
+		case 2: return ui_text("endless_tier_rare");
+		case 3: return ui_text("endless_tier_epic");
+		case 4: return ui_text("endless_tier_legendary");
 	}
-	return "Unknown";
+	return ui_text("endless_tier_unknown");
 }
 
 function endless_array_has(_array, _value) {
@@ -260,19 +260,20 @@ function endless_offer_make(_tier, _box_number, _used_kinds) {
 		}
 		_candy_id = _candy[irandom(array_length(_candy)-1)];
 		var _recipe = candy_recipe_find(_candy_id);
-		_label = is_struct(_recipe) ? _recipe.label+" stock" : "Candy stock";
+		_label = is_struct(_recipe) ? ui_text_format("endless_candy_stock",{name:_recipe.label}) : ui_text("endless_label_candy_stock");
 	}
 	var _amount = max(1,round(irandom_range(_lo,_hi)*(1+0.15*_box_number)));
 
 	/// Preserve value after permanent sinks are all capped.
 	if(_kind == "seeds" && endless_towers_capped()){
 		_convert = true;
-		_label = "Seeds -> Clovers";
+		_label = ui_text("endless_label_seeds_to_clovers");
 	} else if(_kind == "clovers" && endless_meta_capped()){
 		_convert = true;
-		_label = "Clovers -> Shards";
+		_label = ui_text("endless_label_clovers_to_shards");
 	} else if(_kind != "candy" && _label == ""){
-		_label = string_upper(string_copy(_kind,1,1))+string_delete(_kind,1,1);
+		_label = _kind == "seeds" ? ui_text("endless_label_seeds")
+		        : (_kind == "clovers" ? ui_text("endless_label_clovers") : ui_text("endless_label_shards"));
 	}
 	return { tier:_tier, tier_name:endless_tier_name(_tier), kind:_kind,
 	         candy_id:_candy_id, amount:_amount, label:_label, convert:_convert };
@@ -416,8 +417,7 @@ function endless_box_draw() {
 	draw_set_halign(fa_center);
 	draw_set_valign(fa_middle);
 	draw_set_colour(c_white);
-	var _head = "ENDLESS LOOT BOX  #"+string(global.endless_box_count+1)
-	            +"  -  WAVE "+string(get_item_value(STATINV.waves));
+	var _head = ui_text_format("endless_box_heading",{box:string(global.endless_box_count+1),wave:string(get_item_value(STATINV.waves))});
 	draw_text(_w*0.5,_h*0.17,_head);
 	ui_reg_text("lootbox","heading",_w*0.5,_h*0.17,_head,fa_center,fa_middle);
 	for(var _i = 0; _i < array_length(_offers); _i++){
@@ -440,9 +440,9 @@ function endless_box_draw() {
 		if(sprite_exists(_icon)) icon_draw(_icon,(_r[0]+_r[2])*0.5,_cy,48,"endless_reward");
 		draw_set_font(fnt_size20);
 		draw_set_colour(c_white);
-		var _value = "+"+string(_offer.amount)+" "+_offer.label;
+		var _value = ui_text_format("endless_offer_amount",{amount:string(_offer.amount),label:_offer.label});
 		if(_offer.convert && _kind == "seeds"){
-			_value = "+"+string(_offer.amount)+" seeds -> +"+string(_offer.amount*2)+" clovers";
+			_value = ui_text_format("endless_seeds_to_clovers",{amount:string(_offer.amount),converted:string(_offer.amount*2)});
 		} else if(_offer.convert && _kind == "clovers"){
 			var _carry = variable_global_exists("meta") && is_struct(global.meta)
 			             && variable_struct_exists(global.meta,"endless_clover_shard_carry")
@@ -452,8 +452,8 @@ function endless_box_draw() {
 			    _whole = floor(_total/100),
 			    _remainder = _total mod 100;
 			_value = _whole > 0
-			         ? "+"+string(_whole)+" shards; meter "+string(_remainder)+"/100"
-			         : "Shard meter "+string(_total)+"/100";
+			         ? ui_text_format("endless_shards_meter_gain",{amount:string(_whole),remainder:string(_remainder)})
+			         : ui_text_format("endless_shards_meter",{amount:string(_total)});
 		}
 		draw_text((_r[0]+_r[2])*0.5,_r[3]-32,ui_clip_text(_value,_r[2]-_r[0]-12));
 		ui_reg_box("lootbox","offer."+string(_i),_r[0],_r[1],_r[2],_r[3]);
@@ -461,7 +461,7 @@ function endless_box_draw() {
 	}
 	var _rr = endless_box_reroll_rect(),
 	    _enabled = global.endless_box_rerolls > 0,
-	    _rlabel = _enabled ? "Re-roll offers (1 left)" : "Re-roll used";
+	    _rlabel = _enabled ? ui_text("endless_reroll_ready") : ui_text("endless_reroll_used");
 	draw_set_colour(_enabled ? make_colour_rgb(50,58,75) : make_colour_rgb(36,36,40));
 	draw_rectangle(_rr[0],_rr[1],_rr[2],_rr[3],false);
 	draw_set_colour(_enabled ? c_white : c_dkgray);
@@ -529,8 +529,7 @@ function endless_hud_draw() {
 	             && variable_struct_exists(global.meta,"endless_best_wave")
 	             && is_real(global.meta[$ "endless_best_wave"]))
 	            ? global.meta[$ "endless_best_wave"] : 0,
-	    _text = "ENDLESS  WAVE "+string(_wave)+"   REGION "+string(_region)
-	            +"   "+endless_modifier_name(_mod)+"   BEST "+string(_best);
+	    _text = ui_text_format("endless_hud",{wave:string(_wave),region:string(_region),modifier:endless_modifier_name(_mod),best:string(_best)});
 	draw_set_font(fnt_size12);
 	draw_set_halign(fa_right);
 	draw_set_valign(fa_top);

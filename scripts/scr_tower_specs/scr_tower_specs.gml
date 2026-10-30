@@ -37,144 +37,144 @@ function tower_spec_path(_key, _label, _description, _tiers) {
 function tower_spec_table() {
 	return [
 		{ tower : "Daisy Pusher", paths : [
-			tower_spec_path("bulldozer", "Bulldozer", "Pushes, stuns, and hits a wider line", [
+			tower_spec_path("bulldozer", ui_text("spec_bulldozer_name"), ui_text("spec_bulldozer_description"), [
 				tower_spec_tier(0,0,0,0,0,1,8,[tower_spec_status("stun",0.15,1,0,0.35)]),
 				tower_spec_tier(0,0,0,0,0,0,4,[tower_spec_status("stun",0.22,1,0,0.45)]),
 				tower_spec_tier(0,0,0,0,0,1,4,[tower_spec_status("stun",0.30,1,0,0.60)])
 			]),
-			tower_spec_path("rapid_bloom", "Rapid Bloom", "Faster volleys build into critical multi-shots", [
+			tower_spec_path("rapid_bloom", ui_text("spec_rapid_bloom_name"), ui_text("spec_rapid_bloom_description"), [
 				tower_spec_tier(0,0.12,0,0.04,0,0,0,[]),
 				tower_spec_tier(0,0.10,0,0.05,0,0,0,[]),
 				tower_spec_tier(0,0,0,0,0.25,1,0,[])
 			])
 		]},
 		{ tower : "Burning Ivy", paths : [
-			tower_spec_path("wildfire", "Wildfire", "Burn spreads longer and hotter", [
+			tower_spec_path("wildfire", ui_text("spec_wildfire_name"), ui_text("spec_wildfire_description"), [
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("burn",0.26,1,14,3.5)]),
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("burn",0.32,1,17,4.0)]),
 				tower_spec_tier(0.08,0,0,0,0,0,0,[tower_spec_status("burn",0.38,1,20,4.5)])
 			]),
-			tower_spec_path("wither_briar", "Wither Briar", "Exposes targets to follow-up damage", [
+			tower_spec_path("wither_briar", ui_text("spec_wither_briar_name"), ui_text("spec_wither_briar_description"), [
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("vulnerable",0.25,1,0.10,3)]),
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("vulnerable",0.32,1,0.15,4)]),
 				tower_spec_tier(0,0,0,0,0,1,0,[tower_spec_status("vulnerable",0.40,1,0.20,5)])
 			])
 		]},
 		{ tower : "Slender Mandrake", paths : [
-			tower_spec_path("barbed_fan", "Barbed Fan", "More targets bleed as they cross the thorns", [
+			tower_spec_path("barbed_fan", ui_text("spec_barbed_fan_name"), ui_text("spec_barbed_fan_description"), [
 				tower_spec_tier(0,0,0,0,0,1,0,[tower_spec_status("bleed",0.35,1,0.10,1)]),
 				tower_spec_tier(0.05,0,0,0,0,0,0,[tower_spec_status("bleed",0.45,1,0.15,1.25)]),
 				tower_spec_tier(0,0,0,0,0,1,0,[tower_spec_status("bleed",0.55,1,0.20,1.5)])
 			]),
-			tower_spec_path("deep_tangle", "Deep Tangle", "Roots hold fast and stay in range longer", [
+			tower_spec_path("deep_tangle", ui_text("spec_deep_tangle_name"), ui_text("spec_deep_tangle_description"), [
 				tower_spec_tier(0,0.08,0,0,0,0,0,[tower_spec_status("root",0.30,1,0,1.0)]),
 				tower_spec_tier(0,0.06,0,0,0,0,0,[tower_spec_status("root",0.42,1,0,1.35)]),
 				tower_spec_tier(0,0,0,0,0,1,0,[tower_spec_status("root",0.55,1,0,1.7)])
 			])
 		]},
 		{ tower : "Pina Collider", paths : [
-			tower_spec_path("shatterburst", "Shatterburst", "A heavier blast catches a wider group", [
+			tower_spec_path("shatterburst", ui_text("spec_shatterburst_name"), ui_text("spec_shatterburst_description"), [
 				tower_spec_tier(0.08,0,0,0,0,2,0,[]),
 				tower_spec_tier(0.08,0,0,0,0,1,0,[]),
 				tower_spec_tier(0.12,0,0,0,0,1,0,[tower_spec_status("stun",0.18,1,0,0.4)])
 			]),
-			tower_spec_path("long_reach", "Long Reach", "Covers more ground and weakens survivors", [
+			tower_spec_path("long_reach", ui_text("spec_long_reach_name"), ui_text("spec_long_reach_description"), [
 				tower_spec_tier(0,0,0.15,0,0,0,0,[tower_spec_status("vulnerable",0.20,1,0.10,2.5)]),
 				tower_spec_tier(0,0,0.10,0,0,0,0,[tower_spec_status("vulnerable",0.28,1,0.15,3.0)]),
 				tower_spec_tier(0.10,0,0,0,0,1,0,[tower_spec_status("vulnerable",0.35,1,0.20,3.5)])
 			])
 		]},
 		{ tower : "Cannon Tulip", paths : [
-			tower_spec_path("deadeye", "Deadeye", "Single shots hit harder and crit more often", [
+			tower_spec_path("deadeye", ui_text("spec_deadeye_name"), ui_text("spec_deadeye_description"), [
 				tower_spec_tier(0.08,0,0,0.08,0.20,0,0,[]),
 				tower_spec_tier(0.08,0,0,0.08,0.25,0,0,[]),
 				tower_spec_tier(0.12,0,0,0.10,0.30,0,0,[])
 			]),
-			tower_spec_path("grapeshot", "Grapeshot", "A wide volley slows several targets", [
+			tower_spec_path("grapeshot", ui_text("spec_grapeshot_name"), ui_text("spec_grapeshot_description"), [
 				tower_spec_tier(0,0,0,0,0,2,0,[tower_spec_status("slow",0.50,0.80,0,1.0)]),
 				tower_spec_tier(0,0,0.05,0,0,1,0,[tower_spec_status("slow",0.65,0.72,0,1.25)]),
 				tower_spec_tier(0,0,0,0,0,2,0,[tower_spec_status("slow",0.80,0.65,0,1.5)])
 			])
 		]},
 		{ tower : "Meat Bulb", paths : [
-			tower_spec_path("tenderizer", "Tenderizer", "Punishes exposed targets with crushing hits", [
+			tower_spec_path("tenderizer", ui_text("spec_tenderizer_name"), ui_text("spec_tenderizer_description"), [
 				tower_spec_tier(0.12,0,0,0.05,0,0,0,[tower_spec_status("vulnerable",0.30,1,0.15,2)]),
 				tower_spec_tier(0.10,0,0,0.05,0.15,0,0,[tower_spec_status("vulnerable",0.40,1,0.20,2.5)]),
 				tower_spec_tier(0.15,0,0,0.05,0.20,0,0,[tower_spec_status("vulnerable",0.50,1,0.25,3)])
 			]),
-			tower_spec_path("ripper", "Ripper", "A brutal strike leaves a moving wound", [
+			tower_spec_path("ripper", ui_text("spec_ripper_name"), ui_text("spec_ripper_description"), [
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("bleed",0.45,1,0.16,1)]),
 				tower_spec_tier(0.05,0,0,0,0,0,0,[tower_spec_status("bleed",0.55,1,0.22,1.25)]),
 				tower_spec_tier(0.10,0,0,0,0.10,0,0,[tower_spec_status("bleed",0.65,1,0.28,1.5)])
 			])
 		]},
 		{ tower : "Chillip", paths : [
-			tower_spec_path("deep_freeze", "Deep Freeze", "Slows harder, then roots chilled targets", [
+			tower_spec_path("deep_freeze", ui_text("spec_deep_freeze_name"), ui_text("spec_deep_freeze_description"), [
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("slow",1.0,0.48,0,1.5)]),
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("slow",1.0,0.42,0,1.75)]),
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("slow",1.0,0.38,0,2.0),tower_spec_status("root",0.20,1,0,0.6)])
 			]),
-			tower_spec_path("shattering_ice", "Shattering Ice", "Frozen foes take amplified follow-up hits", [
+			tower_spec_path("shattering_ice", ui_text("spec_shattering_ice_name"), ui_text("spec_shattering_ice_description"), [
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("vulnerable",0.25,1,0.10,2)]),
 				tower_spec_tier(0,0,0,0.04,0,0,0,[tower_spec_status("vulnerable",0.35,1,0.15,2.5)]),
 				tower_spec_tier(0,0,0,0.06,0.15,0,0,[tower_spec_status("vulnerable",0.45,1,0.20,3)])
 			])
 		]},
 		{ tower : "Bindweed", paths : [
-			tower_spec_path("barbed_lattice", "Barbed Lattice", "Rooted enemies bleed under repeated hits", [
+			tower_spec_path("barbed_lattice", ui_text("spec_barbed_lattice_name"), ui_text("spec_barbed_lattice_description"), [
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("bleed",0.30,1,0.10,1.0)]),
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("bleed",0.40,1,0.15,1.25)]),
 				tower_spec_tier(0,0,0,0,0,1,0,[tower_spec_status("bleed",0.50,1,0.20,1.5)])
 			]),
-			tower_spec_path("predatory_clutch", "Predatory Clutch", "Roots last longer and trigger more often", [
+			tower_spec_path("predatory_clutch", ui_text("spec_predatory_clutch_name"), ui_text("spec_predatory_clutch_description"), [
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("root",0.40,1,0,1.25)]),
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("root",0.55,1,0,1.6)]),
 				tower_spec_tier(0,0,0,0,0,1,0,[tower_spec_status("root",0.70,1,0,2.0)])
 			])
 		]},
 		{ tower : "Belladonna Blitz", paths : [
-			tower_spec_path("potent_venom", "Potent Venom", "Poison stacks inflict more damage", [
+			tower_spec_path("potent_venom", ui_text("spec_potent_venom_name"), ui_text("spec_potent_venom_description"), [
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("poison",0.20,1,4,5.0)]),
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("poison",0.30,1,5,5.5)]),
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("poison",0.40,1,6,6.0)])
 			]),
-			tower_spec_path("fever_bloom", "Fever Bloom", "Poisoned targets become vulnerable", [
+			tower_spec_path("fever_bloom", ui_text("spec_fever_bloom_name"), ui_text("spec_fever_bloom_description"), [
 				tower_spec_tier(0,0.08,0,0,0,0,0,[tower_spec_status("vulnerable",0.20,1,0.10,2)]),
 				tower_spec_tier(0,0.08,0,0,0,0,0,[tower_spec_status("vulnerable",0.28,1,0.15,2.5)]),
 				tower_spec_tier(0,0.08,0,0,0,1,0,[tower_spec_status("vulnerable",0.36,1,0.20,3)])
 			])
 		]},
 		{ tower : "Thornamental", paths : [
-			tower_spec_path("thornstorm", "Thornstorm", "Spreads bleeding thorns across a group", [
+			tower_spec_path("thornstorm", ui_text("spec_thornstorm_name"), ui_text("spec_thornstorm_description"), [
 				tower_spec_tier(0,0,0,0,0,1,0,[tower_spec_status("bleed",0.35,1,0.10,1)]),
 				tower_spec_tier(0,0,0,0,0,0,0,[tower_spec_status("bleed",0.45,1,0.15,1.25)]),
 				tower_spec_tier(0,0,0,0,0,1,0,[tower_spec_status("bleed",0.55,1,0.20,1.5)])
 			]),
-			tower_spec_path("skewering_bloom", "Skewering Bloom", "Focused strikes crit and expose targets", [
+			tower_spec_path("skewering_bloom", ui_text("spec_skewering_bloom_name"), ui_text("spec_skewering_bloom_description"), [
 				tower_spec_tier(0,0,0,0.08,0.20,0,0,[tower_spec_status("vulnerable",0.20,1,0.10,2)]),
 				tower_spec_tier(0,0,0,0.08,0.25,0,0,[tower_spec_status("vulnerable",0.28,1,0.15,2.5)]),
 				tower_spec_tier(0.10,0,0,0.10,0.30,0,0,[tower_spec_status("vulnerable",0.36,1,0.20,3)])
 			])
 		]},
 		{ tower : "Kaboom Kalanchoe", paths : [
-			tower_spec_path("firework_finale", "Firework Finale", "A hotter blast burns a larger crowd", [
+			tower_spec_path("firework_finale", ui_text("spec_firework_finale_name"), ui_text("spec_firework_finale_description"), [
 				tower_spec_tier(0.05,0,0,0,0,2,0,[tower_spec_status("burn",0.25,1,20,3.0)]),
 				tower_spec_tier(0.05,0,0,0,0,1,0,[tower_spec_status("burn",0.32,1,28,3.5)]),
 				tower_spec_tier(0.10,0,0,0,0,1,0,[tower_spec_status("burn",0.40,1,36,4.0)])
 			]),
-			tower_spec_path("smoke_ring", "Smoke Ring", "A lingering cloud slows survivors", [
+			tower_spec_path("smoke_ring", ui_text("spec_smoke_ring_name"), ui_text("spec_smoke_ring_description"), [
 				tower_spec_tier(0,0,0.10,0,0,1,0,[tower_spec_status("slow",0.55,0.75,0,1.0)]),
 				tower_spec_tier(0,0,0.08,0,0,1,0,[tower_spec_status("slow",0.70,0.65,0,1.25)]),
 				tower_spec_tier(0,0,0.08,0,0,1,0,[tower_spec_status("slow",0.85,0.55,0,1.5)])
 			])
 		]},
 		{ tower : "Money Marigold", paths : [
-			tower_spec_path("compound_interest", "Compound Interest", "Increases wave dividends", [
+			tower_spec_path("compound_interest", ui_text("spec_compound_interest_name"), ui_text("spec_compound_interest_description"), [
 				tower_spec_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),0.05),
 				tower_spec_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),0.05),
 				tower_spec_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),0.08)
 			]),
-			tower_spec_path("golden_harvest", "Golden Harvest", "Adds flat income each wave", [
+			tower_spec_path("golden_harvest", ui_text("spec_golden_harvest_name"), ui_text("spec_golden_harvest_description"), [
 				tower_spec_flat_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),1),
 				tower_spec_flat_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),1),
 				tower_spec_flat_income_tier(tower_spec_tier(0,0,0,0,0,0,0,[]),2)
@@ -539,13 +539,13 @@ function tower_spec_push_target(_target, _pixels) {
 
 function tower_spec_option_label(_tower_name, _index) {
 	var _paths = tower_spec_options(_tower_name);
-	if(!is_real(_index) || _index < 0 || _index >= array_length(_paths)) return "Unavailable";
+	if(!is_real(_index) || _index < 0 || _index >= array_length(_paths)) return ui_text("tower_choice_unavailable");
 	return _paths[_index].label;
 }
 
 function tower_spec_option_description(_tower_name, _index) {
 	var _paths = tower_spec_options(_tower_name);
-	if(!is_real(_index) || _index < 0 || _index >= array_length(_paths)) return "No path is defined";
+	if(!is_real(_index) || _index < 0 || _index >= array_length(_paths)) return ui_text("tower_choice_missing_path");
 	return _paths[_index].description;
 }
 
@@ -668,8 +668,8 @@ function tower_spec_choice_draw(_x, _y, _w, _tower_name, _cost, _level) {
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 	draw_text_outline(_x+8,_panel_y+5,
-	    _cost > 0 ? concat("Choose a path (free); L3 rung costs $",_cost)
-	              : "Choose a path (free)",c_lime,c_black,1);
+	    _cost > 0 ? ui_text_format("tower_choice_paid",{cost:string(_cost)})
+	              : ui_text("tower_choice_free"),c_lime,c_black,1);
 	draw_text_ext(_x+8,_panel_y+23,
 	    string_hash_to_newline(_left+"#"+_left_desc+"#Effects: "+_left_effects),
 	    2,_col_w);
@@ -701,33 +701,36 @@ function tower_spec_choice_effect_summary(_tower_name, _key, _level) {
 	for(var _i = 0; _i < array_length(_statuses); _i++){
 		var _effect = _statuses[_i], _label = "";
 		switch(_effect.kind){
-			case STATUS.SLOW: _label = "slow to "+string(round(_effect.mult*100))+"% speed/"+string_format(_effect.seconds,1,1)+"s"; break;
-			case STATUS.STUN: _label = "stun "+string(round(_effect.chance*100))+"%/"+string_format(_effect.seconds,1,1)+"s"; break;
-			case STATUS.BURN: _label = "burn "+string(round(_effect.chance*100))+"%, "+string(_effect.amount)+"/s"; break;
-			case STATUS.POISON: _label = "poison "+string(round(_effect.chance*100))+"%, "+string(_effect.amount)+"/s/stack"; break;
-			case STATUS.ROOT: _label = "root "+string(round(_effect.chance*100))+"%/"+string_format(_effect.seconds,1,1)+"s"; break;
-			case STATUS.BLEED: _label = "bleed "+string(round(_effect.chance*100))+"%, "+string_format(_effect.amount,1,2)+" dmg/px"; break;
-			case STATUS.VULN: _label = "vulnerable +"+string(round(_effect.amount*100))+"%/"+string_format(_effect.seconds,1,1)+"s"; break;
+			case STATUS.SLOW: _label = ui_text_format("tower_spec_slow",{speed:string(round(_effect.mult*100)),seconds:string_format(_effect.seconds,1,1)}); break;
+			case STATUS.STUN: _label = ui_text_format("tower_spec_stun",{chance:string(round(_effect.chance*100)),seconds:string_format(_effect.seconds,1,1)}); break;
+			case STATUS.BURN: _label = ui_text_format("tower_spec_burn",{chance:string(round(_effect.chance*100)),amount:string(_effect.amount)}); break;
+			case STATUS.POISON: _label = ui_text_format("tower_spec_poison",{chance:string(round(_effect.chance*100)),amount:string(_effect.amount)}); break;
+			case STATUS.ROOT: _label = ui_text_format("tower_spec_root",{chance:string(round(_effect.chance*100)),seconds:string_format(_effect.seconds,1,1)}); break;
+			case STATUS.BLEED: _label = ui_text_format("tower_spec_bleed",{chance:string(round(_effect.chance*100)),amount:string_format(_effect.amount,1,2)}); break;
+			case STATUS.VULN: _label = ui_text_format("tower_spec_vulnerable",{
+			    amount:string(round(_effect.amount*100)),
+			    seconds:string_format(_effect.seconds,1,1)
+		    }); break;
 		}
 		if(_label != "") _parts = tower_spec_choice_add(_parts,_label);
 	}
 
 	var _mods = tower_spec_modifiers(_tower_name,_key,_level);
-	if(_mods.damage != 0) _parts = tower_spec_choice_add(_parts,"damage +"+string(round(_mods.damage*100))+"%");
-	if(_mods.rate != 0) _parts = tower_spec_choice_add(_parts,"shots +"+string(round(_mods.rate*100))+"%");
-	if(_mods.range != 0) _parts = tower_spec_choice_add(_parts,"range +"+string(round(_mods.range*100))+"%");
-	if(_mods.crit != 0) _parts = tower_spec_choice_add(_parts,"crit +"+string(round(_mods.crit*100))+"%");
-	if(_mods.crit_damage != 0) _parts = tower_spec_choice_add(_parts,"crit dmg +"+string(round(_mods.crit_damage*100))+"%");
-	if(_mods.targets != 0) _parts = tower_spec_choice_add(_parts,"targets +"+string(round(_mods.targets)));
+	if(_mods.damage != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_damage",{value:string(round(_mods.damage*100))}));
+	if(_mods.rate != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_shots",{value:string(round(_mods.rate*100))}));
+	if(_mods.range != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_range",{value:string(round(_mods.range*100))}));
+	if(_mods.crit != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_crit",{value:string(round(_mods.crit*100))}));
+	if(_mods.crit_damage != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_crit_damage",{value:string(round(_mods.crit_damage*100))}));
+	if(_mods.targets != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_targets",{value:string(round(_mods.targets))}));
 	if(_mods.money != 0){
 		var _money_label = _tower_name == "Money Marigold"
-		                   ? "wave dividends +"+string(round(_mods.money*100))+"%"
-		                   : "kill money +"+string(round(_mods.money*100))+"%";
+		                   ? ui_text_format("tower_spec_wave_dividends",{value:string(round(_mods.money*100))})
+		                   : ui_text_format("tower_spec_kill_money",{value:string(round(_mods.money*100))});
 		_parts = tower_spec_choice_add(_parts,_money_label);
 	}
-	if(_mods.income != 0) _parts = tower_spec_choice_add(_parts,"+$"+string(round(_mods.income))+"/wave");
+	if(_mods.income != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_income",{value:string(round(_mods.income))}));
 	if(_mods.knockback != 0) _parts = tower_spec_choice_add(_parts,"push +"+string(round(_mods.knockback)));
-	return _parts == "" ? "No direct stat change" : _parts;
+	return _parts == "" ? ui_text("tower_spec_effect_none") : _parts;
 }
 
 /// Give the tier-three mechanic a visible signature label on the selected
@@ -735,24 +738,22 @@ function tower_spec_choice_effect_summary(_tower_name, _key, _level) {
 /// the source of truth for each path's displayed effect.
 function tower_spec_signature_summary(_tower_name, _key, _level, _summary) {
 	if(tower_spec_tier_limit(_level) < 3) return _summary;
-	var _signature = "SIG: ",
-	    _strength = 1+clover_specialization_bonus();
+	var _strength = 1+clover_specialization_bonus();
 	if(_tower_name == "Cannon Tulip" && _key == "deadeye")
-		return _signature + "crit ricochet " + string(round(50*_strength)) + "% dmg";
+		return ui_text_format("tower_sig_crit_ricochet",{value:string(round(50*_strength))});
 	if(_tower_name == "Burning Ivy" && _key == "wildfire")
-		return _signature + "burn spreads on death";
+		return ui_text("tower_sig_burn_spread");
 	if(_tower_name == "Meat Bulb" && _key == "tenderizer")
-		return _signature + "vulnerable hits +" + string(round(20*_strength)) + "%";
+		return ui_text_format("tower_sig_exposed",{value:string(round(20*_strength))});
 	if(_tower_name == "Meat Bulb" && _key == "ripper")
-		return _signature + "bleed grants +" + string(round(25*_strength)) + "% crit";
+		return ui_text_format("tower_sig_bleed_crit",{value:string(round(25*_strength))});
 	if(_tower_name == "Belladonna Blitz" && _key == "potent_venom")
-		return _signature + "5 stacks burst";
+		return ui_text("tower_sig_poison_burst");
 	if(_tower_name == "Money Marigold" && _key == "compound_interest")
-		return _signature + "+" + string_format(2*_strength,1,2) + "%/clear cap+"
-		       + string(round(20*_strength)) + "%";
+		return ui_text_format("tower_sig_compound_interest",{rate:string_format(2*_strength,1,2),cap:string(round(20*_strength))});
 	if(_tower_name == "Money Marigold" && _key == "golden_harvest")
-		return _signature + "bonus $" + string_format(5*_strength,1,2) + "/5th";
-	return _signature + _summary;
+		return ui_text_format("tower_sig_golden_harvest",{amount:string_format(5*_strength,1,2)});
+	return ui_text_format("tower_sig_prefix",{summary:_summary});
 }
 
 /// Add one compact item to a specialization preview.

@@ -67,7 +67,7 @@ function tower_stat_lines(_name) {
 /// has not shown anywhere yet is not an explanation.
 function tower_stat_note(_name) {
 	if(tower_trait_get(_name,"passive",false)){
-		return "Pays $1–3/wave through L5; +8% per level after that";
+		return ui_text("tower_trait_passive_note");
 	}
 	var _effects = tower_trait_statuses(_name),
 	    _out = "";
@@ -76,34 +76,25 @@ function tower_stat_note(_name) {
 		    _part = "";
 		switch(_e.kind){
 			case STATUS.SLOW:
-				_part = "slow to " + string(round(_e.mult*100)) + "% speed/"
-				        + string(_e.seconds) + "s";
+				_part = ui_text_format("tower_trait_slow",{speed:string(round(_e.mult*100)),seconds:string(_e.seconds)});
 				break;
 			case STATUS.STUN:
-				_part = "stun " + string(round(_e.chance*100)) + "%/"
-				        + string(_e.seconds) + "s";
+				_part = ui_text_format("tower_trait_stun",{chance:string(round(_e.chance*100)),seconds:string(_e.seconds)});
 				break;
 			case STATUS.BURN:
-				_part = "burn " + string(round(_e.chance*100)) + "% "
-				        + string(_e.amount) + "/s/" + string(_e.seconds) + "s";
+				_part = ui_text_format("tower_trait_burn",{chance:string(round(_e.chance*100)),amount:string(_e.amount),seconds:string(_e.seconds)});
 				break;
 			case STATUS.POISON:
-				_part = "poison " + string(round(_e.chance*100)) + "% "
-				        + string(_e.amount) + "/s per hit (max 5), "
-				        + string(_e.seconds) + "s";
+				_part = ui_text_format("tower_trait_poison",{chance:string(round(_e.chance*100)),amount:string(_e.amount),seconds:string(_e.seconds)});
 				break;
 			case STATUS.ROOT:
-				_part = "root " + string(round(_e.chance*100)) + "%/"
-				        + string(_e.seconds) + "s";
+				_part = ui_text_format("tower_trait_root",{chance:string(round(_e.chance*100)),seconds:string(_e.seconds)});
 				break;
 			case STATUS.BLEED:
-				_part = "bleed " + string(round(_e.chance*100)) + "% "
-				        + string(_e.amount) + "/px/" + string(_e.seconds) + "s";
+				_part = ui_text_format("tower_trait_bleed",{chance:string(round(_e.chance*100)),amount:string(_e.amount),seconds:string(_e.seconds)});
 				break;
 			case STATUS.VULN:
-				_part = "vulnerable " + string(round(_e.chance*100)) + "% +"
-				        + string(round(_e.amount*100)) + "% damage/"
-				        + string(_e.seconds) + "s";
+				_part = ui_text_format("tower_trait_vulnerable",{chance:string(round(_e.chance*100)),amount:string(round(_e.amount*100)),seconds:string(_e.seconds)});
 				break;
 		}
 		if(_part != "") _out += (_out == "" ? "" : "; ") + _part;
@@ -112,7 +103,7 @@ function tower_stat_note(_name) {
 
 	var _crit = tower_trait_get(_name, "crit", 0);
 	if(is_real(_crit) && _crit > 0){
-		return string(round(_crit*100)) + "% extra chance of a critical hit";
+		return ui_text_format("tower_trait_crit",{chance:string(round(_crit*100))});
 	}
 	return "";
 }

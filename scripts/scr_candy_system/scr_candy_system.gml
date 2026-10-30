@@ -13,16 +13,18 @@ function candy_recipe(_id, _label, _icon, _tier, _cost, _effect, _step, _desc, _
 
 function candy_recipe_table() {
 	return [
-		candy_recipe("red_licorice", "Red Licorice", "red_licorice", 1, 3, "damage", 0.01, "+10% tower damage", ""),
-		candy_recipe("jawbreaker", "Jawbreaker", "jawbreaker", 1, 3, "range", 0.01, "+10% tower range", ""),
-		candy_recipe("gummy_worm", "Gummy Worm", "gummy_worm", 1, 3, "slow", 0.015, "+15% slow effectiveness", ""),
-		candy_recipe("sour_drop", "Sour Drop", "sour_drop", 2, 8, "crit_chance", 0.005, "+10% crit chance", ""),
-		candy_recipe("fireball", "Fireball Candy", "fireball", 2, 8, "burn_damage", 0.02, "+20% burn damage", ""),
-		candy_recipe("frosted_flake", "Frosted Flake", "frosted_flake", 2, 8, "fire_rate", 0.01, "+10% fire rate", ""),
-		candy_recipe("blood_bonbon", "Blood Bonbon", "blood_bonbon", 3, 20, "blood_bonbon", 0.02, "+25% damage, +5% crit damage", ""),
-		candy_recipe("everlasting_gob", "Everlasting Gob", "everlasting_gob", 3, 20, "freeze", 1, "Freeze active candy timers for a wave", ""),
-		candy_recipe("blood_orange", "Blood Orange", "blood_orange", 4, 35, "pity_fill", 0.10, "+10% Blood Shard pity fill", "hemorrhagic_harvest"),
-		candy_recipe("money_honey", "Money Honey", "money_honey", 4, 35, "kill_money", 0.015, "+15% kill money", "region4")
+		candy_recipe("red_licorice", ui_text("candy_name_red_licorice"), "red_licorice", 1, 3, "damage", 0.01, ui_text("candy_desc_red_licorice"), ""),
+		candy_recipe("jawbreaker", ui_text("candy_name_jawbreaker"), "jawbreaker", 1, 3, "range", 0.01, ui_text("candy_desc_jawbreaker"), ""),
+		candy_recipe("gummy_worm", ui_text("candy_name_gummy_worm"), "gummy_worm", 1, 3, "slow", 0.015, ui_text("candy_desc_gummy_worm"), ""),
+		candy_recipe("sour_drop", ui_text("candy_name_sour_drop"), "sour_drop", 2, 8, "crit_chance", 0.005, ui_text("candy_desc_sour_drop"), ""),
+		candy_recipe("fireball", ui_text("candy_name_fireball"), "fireball", 2, 8, "burn_damage", 0.02, ui_text("candy_desc_fireball"), ""),
+		candy_recipe("frosted_flake", ui_text("candy_name_frosted_flake"), "frosted_flake", 2, 8, "fire_rate", 0.01, ui_text("candy_desc_frosted_flake"), ""),
+		candy_recipe("blood_bonbon", ui_text("candy_name_blood_bonbon"), "blood_bonbon", 3, 20, "blood_bonbon", 0.02, ui_text("candy_desc_blood_bonbon"), ""),
+		candy_recipe("everlasting_gob", ui_text("candy_name_everlasting_gob"), "everlasting_gob", 3, 20, "freeze", 1, ui_text("candy_desc_everlasting_gob"), ""),
+		candy_recipe("blood_orange", ui_text("candy_name_blood_orange"), "blood_orange",
+		             4, 35, "pity_fill", 0.10, ui_text("candy_desc_blood_orange"),
+		             "hemorrhagic_harvest"),
+		candy_recipe("money_honey", ui_text("candy_name_money_honey"), "money_honey", 4, 35, "kill_money", 0.015, ui_text("candy_desc_money_honey"), "region4")
 	];
 }
 
@@ -50,9 +52,9 @@ function candy_recipe_unlocked(_id) {
 /// Empty means the recipe's progression gate is open.
 function candy_recipe_gate_reason(_id) {
 	var _recipe=candy_recipe_find(_id);
-	if(!is_struct(_recipe)) return "unknown recipe";
-	if(_recipe.gate == "hemorrhagic_harvest" && blood_node_rank("hemorrhagic_harvest") <= 0) return "requires Hemorrhagic Harvest";
-	if(_recipe.gate == "region4" && !region_cleared(4)) return "requires Region 4 clear";
+	if(!is_struct(_recipe)) return ui_text("candy_gate_unknown");
+	if(_recipe.gate == "hemorrhagic_harvest" && blood_node_rank("hemorrhagic_harvest") <= 0) return ui_text("candy_gate_harvest");
+	if(_recipe.gate == "region4" && !region_cleared(4)) return ui_text("candy_gate_region4");
 	return "";
 }
 
@@ -421,10 +423,10 @@ function candy_pause_draw() {
 	draw_set_colour(c_white);
 	draw_set_font(fnt_size16);
 	draw_set_halign(fa_center);
-	draw_text(_w*0.5,_top+7,"CANDY  -  click to use; same candy adds time");
+	draw_text(_w*0.5,_top+7,ui_text("candy_pause_heading"));
 	if(array_length(_ids) == 0){
 		draw_set_font(fnt_size12);
-		draw_text(_w*0.5,_top+38,"Unlock candy recipes in the Garden Book.");
+		draw_text(_w*0.5,_top+38,ui_text("candy_pause_unlock_hint"));
 	} else {
 		for(var _i=0; _i<array_length(_ids); _i++){
 			var _id=_ids[_i],
@@ -449,18 +451,18 @@ function candy_pause_draw() {
 				draw_circle(_cx,_cy,14,false);
 				draw_set_colour(c_white);
 				draw_set_font(fnt_size12);
-				draw_text(_cx,_cy-7,_id == "blood_orange" ? "BO" : "MH");
+				draw_text(_cx,_cy-7,_id == "blood_orange" ? ui_text("candy_fallback_bo") : ui_text("candy_fallback_mh"));
 			}
 			draw_set_font(fnt_size12);
 			draw_set_halign(fa_left);
 			draw_set_colour(_usable ? c_white : c_silver);
 			draw_text(_r[0]+42,_r[1]+7,ui_clip_text(candy_recipe_find(_id).label,_r[2]-_r[0]-50));
 			draw_set_colour(_stock > 0 ? c_lime : c_silver);
-			draw_text(_r[2]-7,_r[1]+7,"x"+string(_stock));
+			draw_text(_r[2]-7,_r[1]+7,ui_text_format("candy_stock_count",{count:string(_stock)}));
 			draw_set_colour(c_silver);
 			var _status=(_id == "everlasting_gob")
-			            ? string(global.candy_freeze_waves)+" frozen wave(s)"
-			            : (_remaining > 0 ? string_format(_remaining,1,0)+"s left" : "ready");
+			            ? ui_text_format("candy_frozen_waves",{count:string(global.candy_freeze_waves)})
+			            : (_remaining > 0 ? ui_text_format("candy_seconds_left",{seconds:string_format(_remaining,1,0)}) : ui_text("candy_ready"));
 			draw_text(_r[0]+42,_r[1]+34,_status);
 		}
 	}
@@ -476,8 +478,7 @@ function candy_pity_hud_draw(_alpha) {
 	if(candy_active_magnitude("pity_fill") <= 0) return;
 	var _progress=min(shard_pity_get(),20000),
 	    _mult=1+blood_pity_fill_bonus(),
-	    _text="SHARD PITY "+string(round(_progress))+" / 20000   x"
-	          +string_format(_mult,1,2);
+	    _text=ui_text_format("candy_pity",{progress:string(round(_progress)),multiplier:string_format(_mult,1,2)});
 	draw_set_alpha(is_real(_alpha) ? clamp(_alpha,0,1) : 1);
 	draw_set_font(fnt_size12);
 	draw_set_halign(fa_right);
@@ -525,7 +526,7 @@ function candy_run_hud_draw(_alpha) {
 	draw_set_font(fnt_size12);
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_middle);
-	draw_text_outline(_x+8,_y+11,"ACTIVE CANDY",c_lime,c_black,1);
+	draw_text_outline(_x+8,_y+11,ui_text("candy_active_header"),c_lime,c_black,1);
 
 	for(var _j = 0; _j < array_length(_active_ids); _j++){
 		var _rid = _active_ids[_j],
@@ -538,14 +539,14 @@ function candy_run_hud_draw(_alpha) {
 		                  ui_clip_text(_recipe.label,_w-76),c_white,c_black,1);
 		draw_set_halign(fa_right);
 		draw_text_outline(_x+_w-8,_row_y,
-		                  string_format(_remaining,1,1)+"s",c_yellow,c_black,1);
+		                  ui_text_format("candy_seconds",{seconds:string_format(_remaining,1,1)}),c_yellow,c_black,1);
 	}
 	if(_frozen > 0){
 		var _row_y = _y+_header_h+array_length(_active_ids)*_row_h+_row_h*0.5;
 		draw_set_halign(fa_left);
-		draw_text_outline(_x+8,_row_y,"Everlasting Gob",c_aqua,c_black,1);
+		draw_text_outline(_x+8,_row_y,ui_text("candy_name_everlasting_gob"),c_aqua,c_black,1);
 		draw_set_halign(fa_right);
-		draw_text_outline(_x+_w-8,_row_y,string(_frozen)+" wave(s)",c_aqua,c_black,1);
+		draw_text_outline(_x+_w-8,_row_y,ui_text_format("candy_frozen_waves",{count:string(_frozen)}),c_aqua,c_black,1);
 	}
 
 	draw_set_alpha(1);

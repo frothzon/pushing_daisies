@@ -26,10 +26,10 @@ function scr_setup_statinv() {
 	frame_skip = 3;                 /// frame skip value
 	update_frame = frame_skip;      /// current frame index
 	//------------------------------------ Setup Static Items
-	points = create_static_item(spr_points,"Points");
-	money = create_static_item(spr_coin,"Money");
-	life = create_static_item(spr_heart,"Life");
-	waves = create_static_item(spr_wave,"Wave");
+	points = create_static_item(spr_points,ui_text("hud_points"));
+	money = create_static_item(spr_coin,ui_text("hud_money"));
+	life = create_static_item(spr_heart,ui_text("hud_life"));
+	waves = create_static_item(spr_wave,ui_text("hud_wave"));
 
 	//------------------------------------- Load File
 	/// The meta save belongs to scr_load_meta() now (roadmap 0.1).

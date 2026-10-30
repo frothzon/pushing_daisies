@@ -296,5 +296,5 @@ show_position = array(
     display_get_gui_width()*0.5,
     32
 );
-show_text = "Ready...";
+show_text = ui_text("stage_ready");
 
