@@ -37,12 +37,14 @@
       "ui-flex-other-screens",
       "ui-palette-adopt",
       "dead-color-swap-shader",
-      "perf-60-monsters"
+      "perf-60-monsters",
+      "garden-nav",
+      "garden-onboarding-tab-gates"
     ],
     "next": [
       "hud-readability-and-strings"
     ],
-    "note": "2026-10-30: The Up Next portrait fit is implemented and awaiting visual review. Continue the code-side goal work while the larger GameMaker review queue waits for Rayu; performance instrumentation still needs a target-machine measurement at 60 living monsters before texture groups change."
+    "note": "2026-10-30: Garden Book tabs now follow saved progression, and the Candy page keeps the full Seed Shop available; both are awaiting runtime review. Continue the code-side goal work while the larger GameMaker review queue waits for Rayu; performance instrumentation still needs a target-machine measurement at 60 living monsters before texture groups change."
   },
   "tasks": [
     {
@@ -1985,18 +1987,19 @@
     {
       "id": "garden-nav",
       "title": "Garden Book navigation: direct tabs for every view",
-      "status": "doing",
+      "status": "review",
       "owner": "both",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "3",
       "size": "M",
       "prio": 2,
-      "needs": null,
-      "notes": "STATIC AUDIT FOUND A REAL GAP: direct tab selection exists, but the Candy view draws Candy Shop in the right panel where the Seed Shop tower wall normally appears. The existing acceptance says the Seed Shop stays pinned beside every view, so the Candy view is not complete yet. Scope this card to retain access to Seed Shop while reviewing all Garden Book pages; runtime/layout review follows after the correction.",
+      "needs": "Reload with global.devMode=true and open Garden Book > Candy at 675px and 960px. Confirm the complete Seed Shop wall and plant card remain beside Candy. Unlock one tower from the wall, then select candies on both recipe pages, return to the list, and verify recipe, level, stock, and duration purchases save. F12 should show both panels inside the canvas with no layout findings. A missing shop interaction, clipped panel, or lost purchase falsifies the fix.",
+      "notes": "IMPLEMENTED: Candy now has a recipe list and focused detail/actions on the left, while the full Seed Shop wall and plant card stay on the right. The Seed Shop remains clickable from Candy, including tower unlocks and path reset. The detail/back and recipe-page controls are named flex nodes and invalidate the cached layout when the view changes. Awaiting GameMaker visual and save review.",
       "refs": [
         "objects/Menu/Step_0.gml",
-        "scripts/scr_meta_screen/scr_meta_screen.gml"
+        "scripts/scr_meta_screen/scr_meta_screen.gml",
+        "scripts/scr_ui_layout_meta/scr_ui_layout_meta.gml"
       ],
       "created": "2026-10-15",
       "updated": "2026-10-30",
@@ -2005,20 +2008,22 @@
     {
       "id": "garden-onboarding-tab-gates",
       "title": "Gate Garden Book tabs at their progression milestones",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "3",
       "size": "S",
       "prio": 2,
-      "needs": "Gate UI, input, and declared layout names using saved progression; follow goal.md §27.5.",
-      "notes": "Static review found every Garden Book tab is always drawn and clickable. The Clover tree appears before the first clear, Blood and Candy before the first shard, and Mastery before Region 1 is cleared; only the currency strip is currently gated. Hide both rendering and hit targets until each milestone, keep layout declarations and checks in sync, and safely fall back if a selected view is unavailable.",
+      "needs": "Reload with a fresh save before the first clear: World Map should hide Garden Book and campaign counters. After the first clear, Garden Book should show Clovers; after the first shard, Blood and Candy; after Region 1 clear, Mastery. Spend shards after a permanent Blood or Candy purchase and confirm its tabs stay visible at zero balance. F12 should report matching Garden/worldmap layout names and no hidden tab should respond to clicks. Any early tab, stale selected view, missing tab after unlock, or layout FAIL falsifies it.",
+      "notes": "IMPLEMENTED: saved progression gates the Garden Book entry and tabs: campaign clear for Clovers, shard or permanent Blood/Candy purchase for Blood and Candy, and Region 1 clear for Mastery. Draw, input, flex declarations, and expected layout names share the same predicates. The flex cache rebuilds when progression or view state changes, and stale selected views fall back to the first available tab. Awaiting fresh-save and runtime review.",
       "refs": [
         "goal.md",
+        "objects/Menu/Create_0.gml",
+        "objects/Menu/Step_0.gml",
         "scripts/scr_meta_screen/scr_meta_screen.gml",
         "scripts/scr_ui_layout_meta/scr_ui_layout_meta.gml",
-        "objects/Menu/Step_0.gml"
+        "scripts/scr_blood_tree/scr_blood_tree.gml"
       ],
       "created": "2026-10-30",
       "updated": "2026-10-30",
@@ -5191,6 +5196,18 @@
       "who": "cline",
       "task": "legacy-boss-art-cleanup",
       "what": "Removed all five unreferenced pre-restyle boss sprites through the GameMaker project toolkit after backing them up; updated the art inventory and corrected the old three-sprite tracker card."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "garden-nav",
+      "what": "Reworked Candy into a recipe list and focused detail/actions on the left; the full Seed Shop wall, plant stats, tower unlocks, and path reset remain accessible on the right. The named flex tree and cache signature cover list/detail reflow. Awaiting GameMaker review."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "garden-onboarding-tab-gates",
+      "what": "Gated the Garden Book entry and tabs by saved progression, with shared draw/input/layout predicates and flex cache invalidation. Stale view state falls back to an available tab. Awaiting fresh-save and runtime review."
     }
   ]
 }

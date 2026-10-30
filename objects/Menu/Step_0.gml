@@ -203,7 +203,8 @@ switch(menu_state){
                     } else {
                         print("MENU  stage ", _rgn, "-", _stg, " is locked");
                     }
-                } else if(meta_button_clicked(_wgeom.garden, true)){
+                } else if(meta_campaign_currency_unlocked()
+                          && meta_button_clicked(_wgeom.garden, true)){
                     scr_menu_changeState(MENU_STATE.GARDEN);
                 } else if(meta_button_clicked(_wgeom.endless, true)){
                     if(endless_is_unlocked()){
@@ -345,11 +346,12 @@ switch(menu_state){
                 _gclick = mouse_check_button_pressed(mb_left),
                 _mode = garden_view_mode(),
                 _candy_view = (_mode == 2),
-                _ghov = _candy_view ? -1 : meta_garden_shop_hit();
+                _ghov = meta_garden_shop_hit();
             if(_ghov >= 0) garden_focus = _ghov;
             var _garden_tab = -1;
             for(var _tab_check=0; _tab_check<array_length(_ggeom.tabs); _tab_check++){
-                if(_garden_tab < 0 && meta_button_clicked(_ggeom.tabs[_tab_check],true)){
+                if(_garden_tab < 0 && meta_garden_tab_unlocked(_tab_check)
+                && meta_button_clicked(_ggeom.tabs[_tab_check],true)){
                     _garden_tab = _tab_check;
                 }
             }
@@ -373,6 +375,7 @@ switch(menu_state){
                 if(_garden_tab >= 0){
                     global.garden_view_mode = _garden_tab;
                     global.garden_blood_view = (_garden_tab == 1);
+                    if(_garden_tab == 2) global.garden_candy_detail_open = false;
                     var _view_name = _garden_tab == 0 ? "Clover Tree"
                                    : (_garden_tab == 1 ? "Blood Alchemy"
                                      : (_garden_tab == 2 ? "Candy Shop" : "Garden Mastery"));
@@ -382,23 +385,50 @@ switch(menu_state){
                     global.garden_clover_page = 0;
                     print("MENU  clover branch -> ",clover_branch_name());
                 } else if(_candy_view){
-                    if(meta_button_clicked(_ggeom.page,true)){
-                        global.garden_candy_page = 1 - garden_candy_page_get();
-                        var _page_nodes = candy_recipe_table();
-                        global.garden_candy_focus = _page_nodes[global.garden_candy_page*5].id;
-                        print("MENU  candy page -> ",garden_candy_page_get()+1,"/2");
+                    var _shop = tower_roster();
+                    if(_ghov >= 0 && _ghov < array_length(_shop)){
+                        var _seed_name = _shop[_ghov].name;
+                        if(tower_unlock(_seed_name)){
+                            scr_playSound(snd_button,false);
+                            scr_save_meta();
+                            print("MENU  unlocked '",_seed_name,"' seeds left ",seeds_get());
+                        } else if(!tower_owned(_seed_name)){
+                            print("MENU  cannot unlock '",_seed_name,"' (cost ",
+                                  tower_unlock_cost(_seed_name),", have ",seeds_get(),")");
+                        }
+                    } else if(meta_button_clicked(_ggeom.page,true)){
+                        if(garden_candy_detail_open()){
+                            global.garden_candy_detail_open = false;
+                            print("MENU  candy recipes list");
+                        } else {
+                            global.garden_candy_page = 1 - garden_candy_page_get();
+                            var _page_nodes = candy_recipe_table();
+                            global.garden_candy_focus = _page_nodes[global.garden_candy_page*5].id;
+                            print("MENU  candy page -> ",garden_candy_page_get()+1,"/2");
+                        }
                     } else {
                         var _gnode = meta_garden_hit(),
                             _nodes = garden_visible_nodes(),
                             _offset = garden_candy_page_get()*5;
-                        if(_gnode >= 0 && _gnode < 5 && _offset+_gnode < array_length(_nodes)){
+                        if(!garden_candy_detail_open() && _gnode >= 0 && _gnode < 5
+                        && _offset+_gnode < array_length(_nodes)){
                             global.garden_candy_focus = _nodes[_offset+_gnode].id;
+                            global.garden_candy_detail_open = true;
                             print("MENU  candy selected ",global.garden_candy_focus);
                         } else {
                             var _action = meta_garden_candy_action_hit(_ggeom),
                                 _recipe = meta_garden_candy_selected(garden_candy_page_get()),
                                 _success = false;
-                            if(_action < 0 && meta_button_clicked(_ggeom.back,true)){
+                            if(_action < 0 && tower_spec_respec_cost(_focus_name) > 0
+                            && clovers_get() >= tower_spec_respec_cost(_focus_name)
+                            && meta_button_clicked(_ggeom.spec_respec,true)){
+                                var _spec_cost=tower_spec_respec_cost(_focus_name);
+                                if(tower_spec_respec(_focus_name)){
+                                    var _spec_saved=scr_save_meta();
+                                    print("MENU  respec specialization ",_focus_name,
+                                          " cost=",_spec_cost," saved=",_spec_saved);
+                                }
+                            } else if(_action < 0 && meta_button_clicked(_ggeom.back,true)){
                                 scr_menu_changeState(MENU_STATE.WORLD_MAP);
                             } else if(!is_struct(_recipe)){
                                 print("MENU  candy action refused: catalog unavailable");

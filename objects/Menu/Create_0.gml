@@ -35,6 +35,7 @@ if(!variable_global_exists("garden_blood_view")) global.garden_blood_view = fals
 if(!variable_global_exists("garden_view_mode")) global.garden_view_mode = garden_blood_view() ? 1 : 0;
 if(!variable_global_exists("garden_candy_page")) global.garden_candy_page = 0;
 if(!variable_global_exists("garden_candy_focus")) global.garden_candy_focus = "red_licorice";
+if(!variable_global_exists("garden_candy_detail_open")) global.garden_candy_detail_open = false;
 if(!variable_global_exists("garden_clover_branch")) global.garden_clover_branch = 1;
 if(!variable_global_exists("garden_clover_page")) global.garden_clover_page = 0;
 if(!variable_global_exists("endless_setup")) global.endless_setup = false;

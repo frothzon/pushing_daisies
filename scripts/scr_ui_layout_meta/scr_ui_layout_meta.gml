@@ -271,24 +271,30 @@ function ui_meta_cell(_rows, _cols, _max_h, _max_w) {
 function ui_meta_worldmap_tree() {
 	var _t     = ui_theme(),
 	    _avail = global.ui.w - 2*_t.margin,
-	    /// 96 for the labels, one gap on either side of the grid
 	    _cell  = clamp(floor((_avail - 96 - 3*_t.gap) / 10), 30, 62),
 	    _ch    = round(_cell*50/62),
 	    _gw    = _cell*10,
 	    _gh    = _ch*6,
-	    /// one width for all three exits, measured from the widest label
-	    _bw    = ui_meta_btn_w(["Garden Book", "Endless", "Title"]);
+	    _bw    = ui_meta_btn_w(["Garden Book", "Endless", "Title"]),
+	    _actions = [];
+
+	/// The Garden Book first becomes actionable after the first clear funds its
+	/// seed and clover systems. Removing the node also removes its hit target.
+	if(meta_campaign_currency_unlocked()){
+		_actions[array_length(_actions)] =
+			{ name: "worldmap.btn.garden", width: _bw, height: 40 };
+	}
+	_actions[array_length(_actions)] =
+		{ name: "worldmap.btn.endless", width: _bw, height: 40 };
+	_actions[array_length(_actions)] =
+		{ name: "worldmap.btn.title", width: _bw, height: 40 };
 
 	return { name: "worldmap", width: "100%", height: "100%",
 	         flexDirection: "column",
 	         paddingLeft: _t.margin, paddingRight: _t.margin,
 	         paddingTop: _t.margin,  paddingBottom: _t.margin,
 	         nodes: [
-			ui_meta_band("worldmap", [
-				{ name: "worldmap.btn.garden",  width: _bw, height: 40 },
-				{ name: "worldmap.btn.endless", width: _bw, height: 40 },
-				{ name: "worldmap.btn.title",   width: _bw, height: 40 }
-			]),
+			ui_meta_band("worldmap", _actions),
 			{ name: "worldmap.body", width: "100%", flexGrow: 1,
 			  flexDirection: "column", justifyContent: "center",
 			  alignItems: "center", gapRow: _t.gap,
@@ -299,8 +305,6 @@ function ui_meta_worldmap_tree() {
 					{ name: "worldmap.labels", width: 96, height: _gh },
 					{ name: "worldmap.grid",   width: _gw, height: _gh }
 				  ]},
-				/// The hover bar is a row of the body, so it cannot creep
-				/// into the grid when the cell size changes.
 				{ name: "worldmap.info", width: _gw + 96, height: 34 }
 			  ]}
 	         ]};
@@ -400,93 +404,124 @@ function ui_meta_garden_tree() {
 	    _n       = array_length(tower_roster()),
 	    _cols    = ui_meta_wall_cols(),
 	    _rows    = ui_meta_rows(_n, _cols),
-	    _nodes   = blood_tree_nodes(),
-	    /// the body's height, already net of the band, the footer and the
-	    /// currency strip (ui_meta_body_h)
 	    _nh      = ui_meta_body_h(),
 	    _leftmin = 260,
-	    /// everything in the right column that is NOT the wall: the
-	    /// seed-shop heading, the plant card under the wall, and the two
-	    /// row gaps between them.  Written as the SUM OF THE NODES it
-	    /// accounts for, so making the card taller takes room off the
-	    /// WALL instead of pushing the card out of the body.
 	    _rfixed  = UI_GARDEN_SHOPHDR_H + 4 + UI_GARDEN_STATS_H + 4,
-	    /// the Return button's width, from its own label
 	    _fw      = ui_meta_btn_w(["Return"]),
 	    _cell    = ui_meta_cell(_rows, _cols, _nh - _rfixed,
 	                            _avail - 20 - _leftmin),
+	    _mode    = garden_view_mode(),
+	    _tab_nodes = [],
 	    _cards   = [];
 
-	/// Four direct tabs switch the Garden Book's major views.
+	for(var _tab = 0; _tab < 4; _tab++){
+		if(meta_garden_tab_unlocked(_tab)){
+			_tab_nodes[array_length(_tab_nodes)] =
+				{ name: "garden.tab." + string(_tab), flexGrow: 1, flexBasis: 0, height: 30 };
+		}
+	}
 	_cards[0] = {
 		name: "garden.nav", width: "100%", height: 32,
 		flexDirection: "row", alignItems: "center", gapColumn: 4,
-		nodes: [
-			{ name: "garden.tab.0", flexGrow: 1, flexBasis: 0, height: 30 },
-			{ name: "garden.tab.1", flexGrow: 1, flexBasis: 0, height: 30 },
-			{ name: "garden.tab.2", flexGrow: 1, flexBasis: 0, height: 30 },
-			{ name: "garden.tab.3", flexGrow: 1, flexBasis: 0, height: 30 }
-		]
+		nodes: _tab_nodes
 	};
-	/// Direct sub-tabs choose one of the four clover branches.
-	_cards[1] = {
-		name: "garden.branch", width: "100%", height: 28,
-		flexDirection: "row", gapColumn: 4,
-		nodes: [
+
+	var _branch = { name: "garden.branch", width: "100%", height: 28 };
+	if(_mode == 0 && meta_garden_tab_unlocked(0)){
+		_branch.flexDirection = "row";
+		_branch.gapColumn = 4;
+		_branch.nodes = [
 			{ name: "garden.branch.0", flexGrow: 1, flexBasis: 0, height: 26 },
 			{ name: "garden.branch.1", flexGrow: 1, flexBasis: 0, height: 26 },
 			{ name: "garden.branch.2", flexGrow: 1, flexBasis: 0, height: 26 },
 			{ name: "garden.branch.3", flexGrow: 1, flexBasis: 0, height: 26 }
-		]
-	};
-	for(var _i = 0; _i < 5; _i++){
-		_cards[array_length(_cards)] =
-			{ name: "garden.node." + string(_i), width: "100%", height: 52 };
+		];
+	} else if(_mode == 2){
+		_branch.flexDirection = "row";
+		_branch.alignItems = "center";
+		_branch.gapColumn = 4;
+		_branch.nodes = [
+			{ name: "garden.branch.title", flexGrow: 1, flexBasis: 0, height: 26 },
+			{ name: "garden.page", width: 96, height: 24 }
+		];
+	} else if(_mode != 0){
+		_branch.flexDirection = "row";
+		_branch.nodes = [
+			{ name: "garden.branch.title", width: "100%", height: 26 }
+		];
+	} else {
+		_branch.nodes = [];
+	}
+	_cards[1] = _branch;
+
+	if(garden_candy_view() && garden_candy_detail_open()){
+		_cards[array_length(_cards)] = {
+			name: "garden.candy.detail", width: "100%", flexGrow: 1,
+			flexDirection: "column", gapRow: 6,
+			paddingLeft: 8, paddingRight: 8, paddingTop: 8, paddingBottom: 8,
+			nodes: [
+				{ name: "garden.candy.detail.head", width: "100%", height: 32 },
+				{ name: "garden.candy.detail.effect", width: "100%", height: 38 },
+				{ name: "garden.candy.detail.status", width: "100%", height: 22 },
+				{ name: "garden.candy.detail.stock", width: "100%", height: 20 },
+				{ name: "garden.candy.action.0", width: "100%", height: 34 },
+				{ name: "garden.candy.action.1", width: "100%", height: 34 },
+				{ name: "garden.candy.action.2", width: "100%", height: 34 },
+				{ name: "garden.candy.detail.note", width: "100%", flexGrow: 1 }
+			]
+		};
+	} else {
+		for(var _i = 0; _i < 5; _i++){
+			_cards[array_length(_cards)] =
+				{ name: "garden.node." + string(_i), width: "100%", height: 52 };
+		}
+	}
+
+	var _shop_nodes = [
+		{ name: "garden.shophdr.title", flexGrow: 1, flexBasis: 0, height: UI_GARDEN_SHOPHDR_H }
+	];
+	if(_mode != 2){
+		_shop_nodes[array_length(_shop_nodes)] =
+			{ name: "garden.page", width: 84, height: 22 };
 	}
 
 	return { name: "garden", width: "100%", height: "100%",
 	         flexDirection: "column",
 	         paddingLeft: _t.margin, paddingRight: _t.margin,
 	         paddingTop: _t.margin,  paddingBottom: _t.margin,
-
 	         nodes: [
-	         	ui_meta_band("garden", []),
-	         	{ name: "garden.body", width: "100%", flexGrow: 1,
-	         	  flexDirection: "row", gapColumn: 20,
-	         	  nodes: [
-	         	  	{ name: "garden.left", flexGrow: 1, flexBasis: 0,
-					flexDirection: "column", gapRow: 8,
-	         	  	  nodes: _cards },
-	         	  	{ name: "garden.right", width: _cell*_cols,
-	         	  	  flexDirection: "column", gapRow: 4,
-	         	  	  nodes: [
-				{ name: "garden.shophdr", width: "100%", height: UI_GARDEN_SHOPHDR_H,
-					flexDirection: "row", alignItems: "center", gapColumn: 8,
-					nodes: [
-						{ name: "garden.shophdr.title", flexGrow: 1, flexBasis: 0, height: UI_GARDEN_SHOPHDR_H },
-						{ name: "garden.page", width: 84, height: 22 }
-					] },
-	         	  	  	{ name: "garden.wall", width: _cell*_cols,
-	         	  	  	  height: _cell*_rows },
-	         	  	  	{ name: "garden.stats", width: "100%", height: UI_GARDEN_STATS_H,
-	         	  	  	  flexDirection: "column", gapRow: 4,
-	         	  	  	  paddingLeft: 8, paddingRight: 8,
-	         	  	  	  paddingTop: 8,  paddingBottom: 8,
-	         	  	  	  nodes: [
-	         	  	  	  	{ name: "garden.stats.head", width: "100%", height: 24 },
-	         	  	  	  	{ name: "garden.stats.grid", width: "100%", flexGrow: 1 },
-					{ name: "garden.stats.note", width: "100%", height: 16 },
-					{ name: "garden.stats.action", width: "100%", height: 20 }
-	         	  	  	  ]}
-	         	  	  ]}
-	         	  ]},
-	         	{ name: "garden.foot", width: "100%", height: UI_META_FOOT,
-	         	  flexDirection: "row", alignItems: "center",
-			justifyContent: "flex-end", gapColumn: 12,
-	         	  nodes: [
-				{ name: "garden.btn.branch_respec", width: 190, height: 52 },
-	         	  	{ name: "garden.btn.back", width: _fw, height: 52 }
-	         	  ]}
+	          ui_meta_band("garden", []),
+	          { name: "garden.body", width: "100%", flexGrow: 1,
+	            flexDirection: "row", gapColumn: 20,
+	            nodes: [
+	             { name: "garden.left", flexGrow: 1, flexBasis: 0,
+	               flexDirection: "column", gapRow: 8, nodes: _cards },
+	             { name: "garden.right", width: _cell*_cols,
+	               flexDirection: "column", gapRow: 4,
+	               nodes: [
+	                { name: "garden.shophdr", width: "100%", height: UI_GARDEN_SHOPHDR_H,
+	                  flexDirection: "row", alignItems: "center", gapColumn: 8,
+	                  nodes: _shop_nodes },
+	                { name: "garden.wall", width: _cell*_cols, height: _cell*_rows },
+	                { name: "garden.stats", width: "100%", height: UI_GARDEN_STATS_H,
+	                  flexDirection: "column", gapRow: 4,
+	                  paddingLeft: 8, paddingRight: 8,
+	                  paddingTop: 8, paddingBottom: 8,
+	                  nodes: [
+	                   { name: "garden.stats.head", width: "100%", height: 24 },
+	                   { name: "garden.stats.grid", width: "100%", flexGrow: 1 },
+	                   { name: "garden.stats.note", width: "100%", height: 16 },
+	                   { name: "garden.stats.action", width: "100%", height: 20 }
+	                  ]}
+	               ]}
+	            ]},
+	          { name: "garden.foot", width: "100%", height: UI_META_FOOT,
+	            flexDirection: "row", alignItems: "center",
+	            justifyContent: "flex-end", gapColumn: 12,
+	            nodes: [
+	             { name: "garden.btn.branch_respec", width: 190, height: 52 },
+	             { name: "garden.btn.back", width: _fw, height: 52 }
+	            ]}
 	         ]};
 }
 
@@ -553,26 +588,20 @@ function ui_meta_results_tree() {
 /// a width change is what makes a resize reflow instead of overflow.
 function ui_meta_ensure(_screen) {
 	ui_init();
-
-	if(!variable_struct_exists(global.ui, "meta_built")){
-		global.ui.meta_built = {};
-	}
-
+	if(!variable_struct_exists(global.ui,"meta_built")) global.ui.meta_built = {};
+	if(!variable_struct_exists(global.ui,"meta_state_built")) global.ui.meta_state_built = {};
 	var _key = string(_screen),
-	    _w   = global.ui.w;
-
-	if(variable_struct_exists(global.ui.meta_built, _key) &&
-	   global.ui.meta_built[$ _key] == _w &&
-	   variable_struct_exists(global.ui.tree, _key)){
-		return true;
-	}
-
+	    _w = global.ui.w,
+	    _state = ui_meta_state_key(_key),
+	    _same_width = variable_struct_exists(global.ui.meta_built,_key)
+	                  && global.ui.meta_built[$ _key] == _w,
+	    _same_state = variable_struct_exists(global.ui.meta_state_built,_key)
+	                  && global.ui.meta_state_built[$ _key] == _state;
+	if(_same_width && _same_state && variable_struct_exists(global.ui.tree,_key)) return true;
 	var _tree = ui_meta_tree(_key);
-	if(is_undefined(_tree)) return false;
-
-	if(!ui_flex_begin(_key, _tree)) return false;
-
+	if(is_undefined(_tree) || !ui_flex_begin(_key,_tree)) return false;
 	global.ui.meta_built[$ _key] = _w;
+	global.ui.meta_state_built[$ _key] = _state;
 	ui_meta_check(_key);
 	return true;
 }
@@ -594,13 +623,17 @@ function ui_meta_rect(_screen, _name) {
 /// reader asks for that does not exist is the bug this gate is for.
 function ui_meta_names(_screen) {
 	var _out = [],
-	    _key = string(_screen);
+	    _key = string(_screen),
+	    _tab = 0;
 
 	switch(_key){
 		case "worldmap":
 			_out = ["worldmap.head.info", "worldmap.head.title", "worldmap.head.acts",
-			        "worldmap.btn.garden", "worldmap.btn.endless", "worldmap.btn.title",
+			        "worldmap.btn.endless", "worldmap.btn.title",
 			        "worldmap.labels", "worldmap.grid", "worldmap.info"];
+			if(meta_campaign_currency_unlocked()){
+				_out[array_length(_out)] = "worldmap.btn.garden";
+			}
 			break;
 
 		case "deploy":
@@ -627,12 +660,34 @@ function ui_meta_names(_screen) {
 			        "garden.cur", "garden.btn.branch_respec", "garden.btn.back",
 			        "garden.stats", "garden.stats.head",
 			        "garden.stats.grid", "garden.stats.note", "garden.stats.action"];
-			for(var _tab = 0; _tab < 4; _tab++){
-				_out[array_length(_out)] = "garden.tab." + string(_tab);
-				_out[array_length(_out)] = "garden.branch." + string(_tab);
+			var _mode = garden_view_mode();
+			for(_tab = 0; _tab < 4; _tab++){
+				if(meta_garden_tab_unlocked(_tab)){
+					_out[array_length(_out)] = "garden.tab." + string(_tab);
+				}
 			}
-			for(var _c = 0; _c < 5; _c++){
-				_out[array_length(_out)] = "garden.node." + string(_c);
+			if(_mode == 0 && meta_garden_tab_unlocked(0)){
+				for(_tab = 0; _tab < 4; _tab++){
+					_out[array_length(_out)] = "garden.branch." + string(_tab);
+				}
+			} else if(_mode != 0){
+				_out[array_length(_out)] = "garden.branch.title";
+			}
+			_out[array_length(_out)] = "garden.page";
+			if(garden_candy_view() && garden_candy_detail_open()){
+				_out[array_length(_out)] = "garden.candy.detail";
+				_out[array_length(_out)] = "garden.candy.detail.head";
+				_out[array_length(_out)] = "garden.candy.detail.effect";
+				_out[array_length(_out)] = "garden.candy.detail.status";
+				_out[array_length(_out)] = "garden.candy.detail.stock";
+				_out[array_length(_out)] = "garden.candy.detail.note";
+				_out[array_length(_out)] = "garden.candy.action.0";
+				_out[array_length(_out)] = "garden.candy.action.1";
+				_out[array_length(_out)] = "garden.candy.action.2";
+			} else {
+				for(var _c = 0; _c < 5; _c++){
+					_out[array_length(_out)] = "garden.node." + string(_c);
+				}
 			}
 			break;
 
@@ -698,4 +753,16 @@ function ui_meta_check(_screen) {
 	if(array_length(_off)  > 0) ui_log("meta", "    off-canvas: ", string_join_ext(" ", _off));
 
 	return _bad;
+}
+
+function ui_meta_state_key(_screen) {
+	var _key = string(_screen);
+	if(_key == "worldmap") return string(meta_campaign_currency_unlocked());
+	if(_key == "garden"){
+		var _mode = garden_view_mode(), _out = string(_mode);
+		for(var _i = 0; _i < 4; _i++) _out += string(meta_garden_tab_unlocked(_i));
+		_out += garden_candy_detail_open() ? "D" : "L";
+		return _out;
+	}
+	return "static";
 }

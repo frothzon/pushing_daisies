@@ -94,12 +94,21 @@ function blood_content_unlocked() {
 
 /// Garden Book view state is session-only: Clover, Blood, Candy, then Mastery.
 function garden_view_mode() {
+	var _mode = 0;
 	if(variable_global_exists("garden_view_mode") && is_real(global.garden_view_mode)){
-		return clamp(floor(global.garden_view_mode),0,3);
+		_mode = clamp(floor(global.garden_view_mode),0,3);
+	} else if(variable_global_exists("garden_blood_view")
+	&& is_bool(global.garden_blood_view) && global.garden_blood_view){
+		_mode = 1;
 	}
-	/// Migrate the old session toggle without touching the save file.
-	if(variable_global_exists("garden_blood_view")
-	&& is_bool(global.garden_blood_view) && global.garden_blood_view) return 1;
+	if(meta_garden_tab_unlocked(_mode)) return _mode;
+	for(var _i = 0; _i < 4; _i++){
+		if(meta_garden_tab_unlocked(_i)){
+			global.garden_view_mode = _i;
+			global.garden_blood_view = (_i == 1);
+			return _i;
+		}
+	}
 	return 0;
 }
 
@@ -117,4 +126,9 @@ function garden_visible_nodes() {
 	if(garden_blood_view()) return blood_tree_nodes();
 	if(garden_mastery_view()) return clover_master_nodes();
 	return clover_nodes(clover_branch_key());
+}
+
+function garden_candy_detail_open() {
+	if(!variable_global_exists("garden_candy_detail_open")) return false;
+	return is_bool(global.garden_candy_detail_open) && global.garden_candy_detail_open;
 }

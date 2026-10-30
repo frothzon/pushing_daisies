@@ -487,8 +487,7 @@ function meta_tower_wall_rects(_x, _y, _cell, _cols) {
 /// cw/ch are DERIVED from the grid node's own size, so the six-by-ten division
 /// cannot disagree with the rectangle the map was given.
 function meta_worldmap_geom() {
-	var _g=ui_meta_rect("worldmap","worldmap.grid"),
-	    _c=meta_canvas_rect();
+	var _g=ui_meta_rect("worldmap","worldmap.grid"), _c=meta_canvas_rect();
 	if(array_length(_g)<4) _g=[_c[0]+96,_c[1]+56,_c[2],_c[3]-34];
 	return {
 		x0:_g[0], y0:_g[1], cw:(_g[2]-_g[0])/10, ch:(_g[3]-_g[1])/6,
@@ -497,7 +496,7 @@ function meta_worldmap_geom() {
 		info:ui_meta_rect("worldmap","worldmap.info"),
 		head_info:ui_meta_rect("worldmap","worldmap.head.info"),
 		head_mid:ui_meta_rect("worldmap","worldmap.head.title"),
-		garden:ui_meta_rect("worldmap","worldmap.btn.garden"),
+		garden:meta_campaign_currency_unlocked() ? ui_meta_rect("worldmap","worldmap.btn.garden") : [],
 		endless:ui_meta_rect("worldmap","worldmap.btn.endless"),
 		title:ui_meta_rect("worldmap","worldmap.btn.title"),
 		cur:ui_meta_rect("worldmap","worldmap.cur")
@@ -537,7 +536,7 @@ function meta_draw_worldmap() {
 
 	meta_title("World Map", _g.head_mid);
 	meta_currency_draw(_g.cur);
-	meta_button_draw(_g.garden, "Garden Book", true);
+	if(meta_campaign_currency_unlocked()) meta_button_draw(_g.garden, "Garden Book", true);
 	meta_button_draw(_g.endless, "Endless", endless_is_unlocked());
 	meta_button_draw(_g.title,  "Title",       true);
 
@@ -930,46 +929,66 @@ function meta_draw_deploy() {
 /// between node 0 and node 1 - the cards ARE a column, and a column's pitch is
 /// a fact about the column, not a number to remember.
 function meta_garden_geom() {
-	var _w    = ui_meta_rect("garden", "garden.wall"),
-	    _n0   = ui_meta_rect("garden", "garden.node.0"),
-	    _n1   = ui_meta_rect("garden", "garden.node.1"),
-	    _c    = meta_canvas_rect(),
-	    _cols = ui_meta_wall_cols();
+	var _w = ui_meta_rect("garden", "garden.wall"),
+	    _detail_open = garden_candy_view() && garden_candy_detail_open(),
+	    _n0 = _detail_open ? [] : ui_meta_rect("garden", "garden.node.0"),
+	    _n1 = _detail_open ? [] : ui_meta_rect("garden", "garden.node.1"),
+	    _c = meta_canvas_rect(),
+	    _cols = ui_meta_wall_cols(),
+	    _mode = garden_view_mode();
+	if(array_length(_w) < 4) _w = [_c[2]-448,_c[1]+62,_c[2],_c[3]-60];
+	if(array_length(_n0) < 4) _n0 = [_c[0],_c[1]+48,_c[2]-468,_c[1]+104];
+	if(array_length(_n1) < 4) _n1 = [_n0[0],_n0[3]+12,_n0[2],_n0[3]+68];
 
-	if(array_length(_w)  < 4) _w  = [_c[2] - 448, _c[1] + 62, _c[2], _c[3] - 60];
-	if(array_length(_n0) < 4) _n0 = [_c[0], _c[1] + 48, _c[2] - 468, _c[1] + 104];
-	if(array_length(_n1) < 4) _n1 = [_n0[0], _n0[3] + 12, _n0[2], _n0[3] + 68];
-
+	var _tab_rects = [
+		ui_meta_rect("garden","garden.tab.0"),
+		ui_meta_rect("garden","garden.tab.1"),
+		ui_meta_rect("garden","garden.tab.2"),
+		ui_meta_rect("garden","garden.tab.3")
+	],
+	    _branch_rects = [
+		ui_meta_rect("garden","garden.branch.0"),
+		ui_meta_rect("garden","garden.branch.1"),
+		ui_meta_rect("garden","garden.branch.2"),
+		ui_meta_rect("garden","garden.branch.3")
+	],
+	    _tabs = [], _branch_tabs = [];
+	for(var _tab = 0; _tab < 4; _tab++){
+		_tabs[_tab] = meta_garden_tab_unlocked(_tab) ? _tab_rects[_tab] : [];
+		_branch_tabs[_tab] = (_mode == 0 && meta_garden_tab_unlocked(0))
+		                     ? _branch_rects[_tab] : [];
+	}
+	var _actions = _detail_open
+	               ? [ui_meta_rect("garden","garden.candy.action.0"),
+	                  ui_meta_rect("garden","garden.candy.action.1"),
+	                  ui_meta_rect("garden","garden.candy.action.2")]
+	               : [];
 	return {
-		node_x : _n0[0], node_y : _n0[1],
-		node_w : _n0[2] - _n0[0], node_h : _n0[3] - _n0[1],
-		node_gap : _n1[1] - _n0[3],
-		wall_x : _w[0], wall_y : _w[1],
-		wall_cell : (_w[2] - _w[0]) / _cols, wall_cols : _cols,
-		wall     : _w,
-		back     : ui_meta_rect("garden", "garden.btn.back"),
-		branch   : ui_meta_rect("garden", "garden.branch"),
-		tabs     : [ui_meta_rect("garden", "garden.tab.0"),
-		            ui_meta_rect("garden", "garden.tab.1"),
-		            ui_meta_rect("garden", "garden.tab.2"),
-		            ui_meta_rect("garden", "garden.tab.3")],
-		branch_tabs: [ui_meta_rect("garden", "garden.branch.0"),
-		               ui_meta_rect("garden", "garden.branch.1"),
-		               ui_meta_rect("garden", "garden.branch.2"),
-		               ui_meta_rect("garden", "garden.branch.3")],
-		branch_respec: ui_meta_rect("garden", "garden.btn.branch_respec"),
-		clover_page: ui_meta_rect("garden", "garden.page"),
-		page     : ui_meta_rect("garden", "garden.page"),
-		stats     : ui_meta_rect("garden", "garden.stats"),
-		stats_head: ui_meta_rect("garden", "garden.stats.head"),
-		stats_grid: ui_meta_rect("garden", "garden.stats.grid"),
-		stats_note: ui_meta_rect("garden", "garden.stats.note"),
-		spec_respec: ui_meta_rect("garden", "garden.stats.action"),
-		shophdr  : ui_meta_rect("garden", "garden.shophdr"),
-		shophdr_title: ui_meta_rect("garden", "garden.shophdr.title"),
-		head_info: ui_meta_rect("garden", "garden.head.info"),
-		head_mid : ui_meta_rect("garden", "garden.head.title"),
-		cur      : ui_meta_rect("garden", "garden.cur")
+		node_x:_n0[0], node_y:_n0[1], node_w:_n0[2]-_n0[0], node_h:_n0[3]-_n0[1],
+		node_gap:_n1[1]-_n0[3], wall_x:_w[0], wall_y:_w[1],
+		wall_cell:(_w[2]-_w[0])/_cols, wall_cols:_cols, wall:_w,
+		back:ui_meta_rect("garden","garden.btn.back"),
+		branch:ui_meta_rect("garden","garden.branch"),
+		branch_title:(_mode != 0) ? ui_meta_rect("garden","garden.branch.title") : [],
+		tabs:_tabs, branch_tabs:_branch_tabs,
+		branch_respec:ui_meta_rect("garden","garden.btn.branch_respec"),
+		clover_page:ui_meta_rect("garden","garden.page"), page:ui_meta_rect("garden","garden.page"),
+		stats:ui_meta_rect("garden","garden.stats"),
+		stats_head:ui_meta_rect("garden","garden.stats.head"),
+		stats_grid:ui_meta_rect("garden","garden.stats.grid"),
+		stats_note:ui_meta_rect("garden","garden.stats.note"),
+		spec_respec:ui_meta_rect("garden","garden.stats.action"),
+		shophdr:ui_meta_rect("garden","garden.shophdr"),
+		shophdr_title:ui_meta_rect("garden","garden.shophdr.title"),
+		candy_detail:_detail_open ? ui_meta_rect("garden","garden.candy.detail") : [],
+		candy_head:_detail_open ? ui_meta_rect("garden","garden.candy.detail.head") : [],
+		candy_effect:_detail_open ? ui_meta_rect("garden","garden.candy.detail.effect") : [],
+		candy_status:_detail_open ? ui_meta_rect("garden","garden.candy.detail.status") : [],
+		candy_stock:_detail_open ? ui_meta_rect("garden","garden.candy.detail.stock") : [],
+		candy_note:_detail_open ? ui_meta_rect("garden","garden.candy.detail.note") : [],
+		candy_actions:_actions,
+		head_info:ui_meta_rect("garden","garden.head.info"),
+		head_mid:ui_meta_rect("garden","garden.head.title"), cur:ui_meta_rect("garden","garden.cur")
 	};
 }
 
@@ -984,11 +1003,11 @@ function meta_garden_tab_draw(_rect, _label, _selected) {
 }
 
 function meta_garden_node_rects() {
-	var _g = meta_garden_geom(),
-	    _out = [];
+	if(garden_candy_view() && garden_candy_detail_open()) return [];
+	var _g = meta_garden_geom(), _out = [];
 	for(var _i = 0; _i < 5; _i++){
 		var _y = _g.node_y + _i*(_g.node_h + _g.node_gap);
-		_out[_i] = [_g.node_x, _y, _g.node_x + _g.node_w, _y + _g.node_h];
+		_out[_i] = [_g.node_x,_y,_g.node_x+_g.node_w,_y+_g.node_h];
 	}
 	return _out;
 }
@@ -1158,35 +1177,49 @@ function meta_draw_garden() {
 	meta_currency_draw(_g.cur);
 	var _tab_labels=["Clovers","Blood",ui_text("garden_tab_candy"),"Mastery"];
 	for(var _tab=0; _tab<min(4,array_length(_g.tabs)); _tab++){
-		meta_garden_tab_draw(_g.tabs[_tab],_tab_labels[_tab],_mode==_tab);
+		if(meta_garden_tab_unlocked(_tab)){
+			meta_garden_tab_draw(_g.tabs[_tab],_tab_labels[_tab],_mode==_tab);
+		}
 	}
 
 	var _br = _g.branch;
 	if(array_length(_br) < 4){
 		_br = [_g.node_x, _g.node_y - 28, _g.node_x + _g.node_w, _g.node_y];
 	}
-	if(_mode == 0){
+	if(_mode == 0 && meta_garden_tab_unlocked(0)){
 		var _branch_labels=["Vitality","Offense","Growth","Harvest"],
 		    _branch_index=clover_branch_index();
 		for(var _branch_tab=0; _branch_tab<min(4,array_length(_g.branch_tabs)); _branch_tab++){
 			meta_garden_tab_draw(_g.branch_tabs[_branch_tab],_branch_labels[_branch_tab],
 			                     _branch_tab==_branch_index);
 		}
-	} else {
+	} else if(_mode != 0){
 		var _branch_name = _candy ? ui_text("garden_candy_recipes") : (_blood ? "Blood Alchemy" : "Garden Mastery"),
 		    _branch_icon = _candy ? icon_currency(CURRENCY.CANDY)
 		                         : (_blood ? icon_blood(1) : icon_mastery(max(1,min(5,tower_mastery()+1))));
 		meta_panel(_br[0],_br[1],_br[2]-_br[0],_br[3]-_br[1],_pal.panel,c_black);
-		icon_draw(_branch_icon, _br[0] + 16, (_br[1] + _br[3])*0.5, 24, "branch_icon");
-		meta_text(_br[0]+34,(_br[1]+_br[3])*0.5-8,_branch_name,c_white,fa_left);
+		icon_draw(_branch_icon,_br[0]+16,(_br[1]+_br[3])*0.5,24,"branch_icon");
+		var _branch_text_x = _br[0]+34,
+		    _branch_text_w = (_candy && array_length(_g.page)>=4)
+		                    ? _g.page[0]-_branch_text_x-6 : _br[2]-_branch_text_x-4;
+		meta_text(_branch_text_x,(_br[1]+_br[3])*0.5-8,
+		          ui_clip_text(_branch_name,_branch_text_w),c_white,fa_left);
+		if(_candy && array_length(_g.page)>=4){
+			var _page_label = garden_candy_detail_open() ? "Back"
+			                  : "Recipes "+string(_page+1)+"/2";
+			meta_button_draw(_g.page,_page_label,true);
+		}
 	}
 	draw_set_font(fnt_size12);
 
-	if(_candy && is_struct(_focus)){
-		meta_garden_candy_list_draw(_nodes, _rects, _offset, _focus.id, _pal);
+	if(_candy && garden_candy_detail_open() && is_struct(_focus)){
+		meta_garden_candy_detail_draw(_g,_focus);
+	} else if(_candy && is_struct(_focus)){
+		meta_garden_candy_list_draw(_nodes,_rects,_offset,_focus.id,_pal);
 	} else if(_candy){
 		for(var _ci = 0; _ci < min(5,array_length(_rects)); _ci++){
 			var _empty_rc = _rects[_ci];
+			if(array_length(_empty_rc)<4) continue;
 			meta_panel(_empty_rc[0],_empty_rc[1],_empty_rc[2]-_empty_rc[0],_empty_rc[3]-_empty_rc[1],_pal.panel,c_black);
 		}
 	} else {
@@ -1242,34 +1275,15 @@ function meta_draw_garden() {
 	    _shop_title = _g.shophdr_title;
 	if(array_length(_shh) < 4) _shh = [_g.wall_x, _g.wall_y - 30, _g.wall_x + 336, _g.wall_y];
 	if(array_length(_shop_title) < 4) _shop_title = _shh;
-	if(_candy){
-		draw_set_font(fnt_size16);
-		meta_text(_shop_title[0], _shop_title[1] + 3, "Candy Shop", c_white, fa_left);
-		var _page_rect = _g.page;
-		if(array_length(_page_rect) >= 4){
-			meta_button_draw(_page_rect, "Page " + string(_page + 1) + "/2", true);
-		}
-		if(is_struct(_focus)){
-			meta_garden_candy_detail_draw(_g, _focus);
-		} else {
-			meta_panel(_g.wall_x,_g.wall_y,_g.wall[2]-_g.wall_x,_g.wall[3]-_g.wall_y,_pal.panel_base,c_black);
-			draw_set_font(fnt_size12);
-			meta_text(_g.wall_x+12,_g.wall_y+12,"No candy recipes are configured.",c_silver,fa_left);
-		}
-	} else {
-		draw_set_font(fnt_size16);
-		draw_set_colour(c_white);
-		meta_text(_shop_title[0], _shop_title[1] + 3, "Seed Shop", c_white, fa_left);
-		if(_mode == 0){
-			var _node_page_rect=_g.page;
-			if(array_length(_node_page_rect) >= 4){
-				meta_button_draw(_node_page_rect, "Nodes " + string(_page+1) + "/2", true);
-			}
-		}
-		meta_draw_tower_wall(_g.wall_x, _g.wall_y, _g.wall_cell, _g.wall_cols, false);
-		if(_mastery) meta_garden_mastery_summary_draw(_g);
-		else meta_garden_stats_draw(_g);
+	draw_set_font(fnt_size16);
+	draw_set_colour(c_white);
+	meta_text(_shop_title[0],_shop_title[1]+3,"Seed Shop",c_white,fa_left);
+	if(_mode == 0 && array_length(_g.page)>=4){
+		meta_button_draw(_g.page,"Nodes "+string(_page+1)+"/2",true);
 	}
+	meta_draw_tower_wall(_g.wall_x,_g.wall_y,_g.wall_cell,_g.wall_cols,false);
+	if(_mastery) meta_garden_mastery_summary_draw(_g);
+	else meta_garden_stats_draw(_g);
 	var _branch_fee=clover_branch_respec_fee(clover_branch_key());
 	if(_mode == 0 && _branch_fee >= 0 && array_length(_g.branch_respec) >= 4){
 		meta_button_draw(_g.branch_respec,"Respec tree  fee "+string(_branch_fee),true);
@@ -1618,21 +1632,18 @@ function meta_garden_candy_list_draw(_nodes, _rects, _offset, _selected, _pal) {
 		var _idx = _offset + _i;
 		if(_idx >= array_length(_nodes) || _i >= array_length(_rects)) break;
 		var _n = _nodes[_idx], _rc = _rects[_i],
-		    _unlocked = candy_recipe_unlocked(_n.id),
-		    _level = candy_level_get(_n.id),
+		    _unlocked = candy_recipe_unlocked(_n.id), _level = candy_level_get(_n.id),
 		    _cost = _unlocked ? candy_level_cost(_n.id) : candy_recipe_cost(_n.id),
 		    _gate = candy_recipe_gate_reason(_n.id),
 		    _can = (_gate == "" && _cost >= 0 && shards_get() >= _cost),
-		    _hov = meta_in_rect(_rc,_m[0],_m[1]),
-		    _sel = (_n.id == _selected),
+		    _hov = meta_in_rect(_rc,_m[0],_m[1]), _sel = (_n.id == _selected),
 		    _cw = _rc[2]-_rc[0],
-		    _bg = (_sel || (_can && _hov)) ? _pal.panel_lit : _pal.panel;
+		    _bg = (_sel || (_can && _hov)) ? _pal.panel_lit : _pal.panel,
+		    _effect_text = _unlocked ? meta_garden_candy_effect(_n.id,_level) : _n.desc;
 		meta_panel(_rc[0],_rc[1],_cw,_rc[3]-_rc[1],_bg,
 		           _sel ? c_yellow : ((_can && _hov) ? c_lime : c_black));
 		meta_garden_candy_icon_draw(_n.id,_rc[0]+26,_rc[1]+(_rc[3]-_rc[1])*0.5,38);
-		draw_set_font(fnt_size16);
-		draw_set_colour(c_white);
-		draw_set_halign(fa_left);
+		draw_set_font(fnt_size16); draw_set_colour(c_white); draw_set_halign(fa_left);
 		var _label = ui_clip_text(_n.label,_cw-54-96);
 		draw_text(_rc[0]+54,_rc[1]+9,_label);
 		ui_reg_text("label",_rc[0]+54,_rc[1]+9,_label,fa_left,fa_top);
@@ -1641,17 +1652,15 @@ function meta_garden_candy_list_draw(_nodes, _rects, _offset, _selected, _pal) {
 		var _rank = _unlocked ? ui_text_format("garden_candy_rank",{level:string(_level)}) : ui_text("garden_candy_recipe");
 		draw_text(_rc[2]-10,_rc[1]+9,_rank);
 		ui_reg_text("rank",_rc[2]-10,_rc[1]+9,_rank,fa_right,fa_top);
-		draw_set_font(fnt_size12);
-		draw_set_halign(fa_left);
-		draw_set_colour(c_silver);
-		var _desc = ui_clip_text(_n.desc,_cw-54-84);
+		draw_set_font(fnt_size12); draw_set_halign(fa_left); draw_set_colour(c_silver);
+		var _desc = ui_clip_text(_effect_text,_cw-54-84);
 		draw_text(_rc[0]+54,_rc[1]+32,_desc);
 		ui_reg_text("desc",_rc[0]+54,_rc[1]+32,_desc,fa_left,fa_top);
-		draw_set_halign(fa_right);
-		draw_set_colour(_can ? c_lime : c_dkgray);
-		var _cost_txt = (_gate != "") ? ui_text("garden_candy_gated")
+		draw_set_halign(fa_right); draw_set_colour(_can ? c_lime : c_dkgray);
+		var _cost_txt = (_gate != "") ? _gate
 		               : (_cost < 0 ? ui_text("garden_candy_maxed")
 		                  : ui_text_format("garden_candy_cost",{cost:string(_cost)}));
+		_cost_txt = ui_clip_text(_cost_txt,_cw-54-84);
 		draw_text(_rc[2]-10,_rc[1]+32,_cost_txt);
 		ui_reg_text("cost",_rc[2]-10,_rc[1]+32,_cost_txt,fa_right,fa_top);
 	}
@@ -1659,70 +1668,70 @@ function meta_garden_candy_list_draw(_nodes, _rects, _offset, _selected, _pal) {
 }
 
 function meta_garden_candy_action_rects(_g) {
-	var _s = _g.stats;
-	if(array_length(_s) < 4) _s = [_g.wall_x,_g.wall_y,_g.wall_x+336,_g.wall_y+UI_GARDEN_STATS_H];
-	var _gr = _g.stats_grid;
-	if(array_length(_gr) < 4){
-		_gr = [ _s[0]+8, _s[1]+36, _s[2]-8, _s[3]-28 ];
-	}
-	var _row = (_gr[3]-_gr[1])/3;
-	return [
-		[_gr[0],_gr[1],_gr[2],_gr[1]+_row],
-		[_gr[0],_gr[1]+_row,_gr[2],_gr[1]+2*_row],
-		[_gr[0],_gr[1]+2*_row,_gr[2],_gr[3]]
-	];
+	if(!is_struct(_g) || !variable_struct_exists(_g,"candy_actions")
+	|| !is_array(_g.candy_actions)) return [];
+	return _g.candy_actions;
 }
 
 function meta_garden_candy_detail_draw(_g, _recipe) {
-	var _pal = ui_palette(),
-	    _w = _g.wall,
-	    _s = _g.stats,
-	    _head = _g.stats_head,
-	    _note = _g.stats_note,
-	    _id = _recipe.id,
-	    _unlocked = candy_recipe_unlocked(_id),
-	    _level = candy_level_get(_id),
-	    _gate = candy_recipe_gate_reason(_id),
-	    _mag = meta_garden_candy_effect(_id,max(1,_level)), _mag_data = candy_magnitude(_id,max(1,_level)),
-	    _stock = candy_stock_get(_id),
-	    _duration_cost = candy_duration_cost(),
-		    _actions = meta_garden_candy_action_rects(_g);
-	if(array_length(_w) < 4) _w = [_g.wall_x,_g.wall_y,_g.wall_x+336,_g.wall_y+180];
-	if(array_length(_s) < 4) _s = [_g.wall_x,_w[3],_g.wall_x+336,_w[3]+UI_GARDEN_STATS_H];
-	if(array_length(_head) < 4) _head = [_s[0]+8,_s[1]+8,_s[2]-8,_s[1]+32];
-	if(array_length(_note) < 4) _note = [_s[0]+8,_s[3]-24,_s[2]-8,_s[3]-8];
-	meta_panel(_w[0],_w[1],_w[2]-_w[0],_w[3]-_w[1],_pal.panel_base,c_black);
-	meta_garden_candy_icon_draw(_id,_w[0]+52,(_w[1]+_w[3])*0.5,76);
-	draw_set_font(fnt_size20);
-	meta_text(_w[0]+104,_w[1]+16,ui_clip_text(_recipe.label,_w[2]-_w[0]-116),c_white,fa_left);
-	draw_set_font(fnt_size16);
-	var _status = _unlocked ? ui_text_format("garden_candy_status_level",{level:string(_level)}) : ui_text("garden_candy_status_locked");
-	meta_text(_w[0]+104,_w[1]+48,ui_text_format("garden_candy_tier_line",{tier:string(_recipe.tier),status:_status}),c_yellow,fa_left);
-	draw_set_font(fnt_size12);
-	meta_text(_w[0]+104,_w[1]+76,ui_clip_text(_mag,_w[2]-_w[0]-116),c_silver,fa_left);
-	var _stock_line = (_id == "everlasting_gob")
-	                  ? ui_text_format("garden_candy_stock_freeze",{count:string(_stock),waves:string(_mag_data.freeze_waves)})
-	                  : ui_text_format("garden_candy_stock_duration",{count:string(_stock),duration:string(candy_duration_seconds())});
-	meta_text(_w[0]+104,_w[1]+96,_stock_line,c_silver,fa_left);
-	if(_gate != "") meta_text(_w[0]+104,_w[1]+116,ui_clip_text(_gate,_w[2]-_w[0]-116),c_orange,fa_left);
+	if(!is_struct(_g) || !is_struct(_recipe)) return;
+	var _detail = _g.candy_detail, _head = _g.candy_head,
+	    _effect_rect = _g.candy_effect, _status_rect = _g.candy_status,
+	    _stock_rect = _g.candy_stock, _note = _g.candy_note,
+	    _id = _recipe.id, _unlocked = candy_recipe_unlocked(_recipe.id),
+	    _level = candy_level_get(_recipe.id), _gate = candy_recipe_gate_reason(_recipe.id),
+	    _stock = candy_stock_get(_recipe.id), _mag_data = candy_magnitude(_recipe.id,max(1,_level)),
+	    _duration_cost = candy_duration_cost(), _actions = meta_garden_candy_action_rects(_g),
+	    _pal = ui_palette();
+	if(array_length(_detail)<4 || array_length(_head)<4
+	|| array_length(_effect_rect)<4 || array_length(_status_rect)<4
+	|| array_length(_stock_rect)<4 || array_length(_note)<4
+	|| array_length(_actions)<3) return;
 
-	meta_panel(_s[0],_s[1],_s[2]-_s[0],_s[3]-_s[1],_pal.panel_base,c_black);
+	meta_panel(_detail[0],_detail[1],_detail[2]-_detail[0],_detail[3]-_detail[1],_pal.panel_base,c_black);
+	meta_garden_candy_icon_draw(_id,_head[0]+18,(_head[1]+_head[3])*0.5,30);
+	draw_set_font(fnt_size16);
+	meta_text(_head[0]+42,_head[1]+5,ui_clip_text(_recipe.label,_head[2]-_head[0]-48),c_white,fa_left);
 	draw_set_font(fnt_size12);
-	var _head_text = _unlocked ? ui_text_format("garden_candy_heading_level",{level:string(_level)}) : ui_text("garden_candy_heading_details");
-	meta_text(_head[0],_head[1]+5,_head_text,c_white,fa_left);
+	var _effect = meta_garden_candy_effect(_id,max(1,_level));
+	meta_text(_effect_rect[0]+2,_effect_rect[1]+7,
+	          ui_clip_text(_effect,_effect_rect[2]-_effect_rect[0]-4),_pal.ink,fa_left);
+	var _status = _unlocked
+	              ? ui_text_format("garden_candy_tier_line",{
+	                    tier:string(_recipe.tier),
+	                    status:ui_text_format("garden_candy_status_level",{level:string(_level)})})
+	              : ui_text_format("garden_candy_tier_line",{
+	                    tier:string(_recipe.tier),status:ui_text("garden_candy_status_locked")});
+	if(_gate != "") _status = _gate;
+	meta_text(_status_rect[0]+2,_status_rect[1]+3,
+	          ui_clip_text(_status,_status_rect[2]-_status_rect[0]-4),
+	          (_gate != "") ? c_orange : c_yellow,fa_left);
+	var _stock_line = !_unlocked ? ui_text("garden_candy_stock_locked")
+	                  : (_id == "everlasting_gob"
+	                     ? ui_text_format("garden_candy_stock_freeze",{
+	                           count:string(_stock),waves:string(_mag_data.freeze_waves)})
+	                     : ui_text_format("garden_candy_stock_duration",{
+	                           count:string(_stock),duration:string(candy_duration_seconds())}));
+	meta_text(_stock_rect[0]+2,_stock_rect[1]+2,
+	          ui_clip_text(_stock_line,_stock_rect[2]-_stock_rect[0]-4),c_silver,fa_left);
+
 	var _buy_cost = _unlocked ? candy_level_cost(_id) : candy_recipe_cost(_id),
 	    _buy_enabled = (_gate == "" && _buy_cost >= 0 && shards_get() >= _buy_cost),
-	    _buy_text = _unlocked ? (_buy_cost < 0 ? ui_text("garden_candy_buy_maxed") : ui_text_format("garden_candy_buy_level",{cost:string(_buy_cost)}))
-	                          : (_gate != "" ? _gate : ui_text_format("garden_candy_unlock",{cost:string(_buy_cost)})),
+	    _buy_text = _unlocked
+	                ? (_buy_cost < 0 ? ui_text("garden_candy_buy_maxed")
+	                   : ui_text_format("garden_candy_buy_level",{cost:string(_buy_cost)}))
+	                : (_gate != "" ? _gate
+	                   : ui_text_format("garden_candy_unlock",{cost:string(_buy_cost)})),
 	    _stock_enabled = _unlocked && shards_get() >= 1,
 	    _stock_text = _unlocked ? ui_text("garden_candy_stock_buy") : ui_text("garden_candy_stock_locked"),
 	    _duration_enabled = (_duration_cost >= 0 && clovers_get() >= _duration_cost),
 	    _duration_text = (_duration_cost < 0) ? ui_text("garden_candy_duration_maxed")
-	                    : ui_text_format("garden_candy_duration_buy",{cost:string(_duration_cost)});
+	                      : ui_text_format("garden_candy_duration_buy",{cost:string(_duration_cost)});
 	meta_button_draw(_actions[0],_buy_text,_buy_enabled);
 	meta_button_draw(_actions[1],_stock_text,_stock_enabled);
 	meta_button_draw(_actions[2],_duration_text,_duration_enabled);
-	meta_text(_note[0],_note[1]+2,ui_text("garden_candy_note"),c_silver,fa_left);
+	meta_text(_note[0]+2,_note[1]+2,
+	          ui_clip_text(ui_text("garden_candy_note"),_note[2]-_note[0]-4),c_silver,fa_left);
 }
 
 function meta_garden_candy_action_hit(_g) {
@@ -1731,4 +1740,16 @@ function meta_garden_candy_action_hit(_g) {
 		if(meta_in_rect(_rects[_i],_m[0],_m[1])) return _i;
 	}
 	return -1;
+}
+
+function meta_garden_tab_unlocked(_tab) {
+	if(!is_real(_tab)) return false;
+	switch(floor(_tab)){
+		case 0: return meta_campaign_currency_unlocked();
+		case 1: return meta_shard_currency_unlocked();
+		case 2: return meta_shard_currency_unlocked();
+		/// The first mastery node is actionable after Region 1 is cleared.
+		case 3: return region_cleared(1);
+	}
+	return false;
 }
