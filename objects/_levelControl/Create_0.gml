@@ -162,6 +162,17 @@ level_tower_type_count = 0;
 level_towers_placed = 0;
 level_elapsed_seconds = 0;
 
+/// Phase 6: dev-only frame-time sampling at 60 live monsters / wave 40.
+perf_watch = {
+	active:false,
+	probe_us:0,
+	wait_us:0,
+	sample_us:0,
+	steps:0,
+	worst_us:0,
+	missed:0
+};
+
 /// calculate position to draw towers
 var _x = 16,
     _y = display_get_gui_height()-80;

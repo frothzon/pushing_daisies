@@ -41,7 +41,7 @@
     "next": [
       "hud-readability-and-strings"
     ],
-    "note": "2026-10-30: Phase 6 performance pass. Regions 2–6 are now authored, so the original “measure before adding art” timing has passed. The current project has 494 sprite resources in one Default texture group; root-frame images total about 182.7 MiB of raw RGBA texels before atlas packing. Adding dev-only wave-40/60-live telemetry to measure frame time and status load on Rayu’s target machine before deciding whether texture-group splits or runtime optimizations are needed."
+    "note": "2026-10-30: Phase 6 performance instrumentation is in place. 494 sprite resources currently share Default, with 182.7 MiB of source-frame RGBA area before packing. Awaiting target-machine measurements at wave 40 with 60 living monsters before changing texture groups or the status hot path; the other focus items are queued for Rayu review."
   },
   "tasks": [
     {
@@ -2657,17 +2657,21 @@
     {
       "id": "perf-60-monsters",
       "title": "Performance: 60 monsters with statuses, sprite memory, texture groups",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "6",
       "size": "M",
       "prio": 2,
-      "needs": "",
-      "notes": "roadmap 6.3. The project is at ~130 sprites and v1 adds ~100, and every status adds per-instance work per monster. Measure at wave 40 with 60 alive BEFORE regions 2-6 are authored, because that is when the answer is still cheap to act on.",
+      "needs": "Close and reload GameMaker (LL-008), set global.devMode=true, enter Endless, and reach wave 40 with at least 60 living monsters. Hold that population for 15 seconds at normal speed and capture three or more PERF W40+ lines: start, then five-second samples with target_fps=60, avg_fps, worst_ms, slow5pct, alive>=60, statused, and effects. If possible, repeat at 3x and include target_fps=180 lines. If the population is below 60, PERF W40+ waiting must report the live count. Report visible frame drops and, if GameMaker Profiler exposes it, resident texture memory; all 494 sprite resources currently share Default. A missing sample at 60+, a runtime error, or sustained average below 57fps falsifies the performance gate. Do not split texture groups until runtime measurements justify it.",
+      "notes": "STATIC AUDIT 2026-10-30: 494 registered sprite resources all use texture group Default; 2,701 root-frame PNGs cover 182.7 MiB of raw RGBA texels before atlas packing (39.4 MiB compressed on disk). Linux and Windows texture pages are 2048x2048. Added dev-only scr_perf_watch: after wave 40 it waits for at least 60 non-dying obj_mon instances, then reports five-second windows with target_fps, avg_fps, worst_ms, slow5pct (frames over budget by more than 5%), alive, statused, and effects. Population scans run once per second while waiting and once per five-second sample while measuring. These source-image totals do not equal runtime VRAM use. No texture-group split or status-loop optimization is justified until the target-machine run is measured.",
       "refs": [
-        "roadmap.md"
+        "roadmap.md",
+        "scripts/scr_perf_watch/scr_perf_watch.gml",
+        "objects/_levelControl/Create_0.gml",
+        "objects/_levelControl/Step_0.gml",
+        "pushing_daisies_recovered.yyp"
       ],
       "created": "2026-10-18",
       "updated": "2026-10-30",

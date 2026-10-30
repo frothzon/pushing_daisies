@@ -6,6 +6,17 @@
 /// failed stage still has corpses playing their falls.  A no-op whenever
 /// no player exists (the menu, the first frame of a boot).
 zomb_scml_update();
+
+/// Sample only in developer runs, with the controller-owned wave value
+/// present and numeric. The probe has no effect in ordinary runs.
+if(variable_global_exists("devMode") && global.devMode
+&& variable_instance_exists(id, "perf_watch") && is_struct(perf_watch)
+&& variable_instance_exists(id, "waves") && is_array(waves)
+&& array_length(waves) > 4
+&& is_real(waves[3]) && is_real(waves[4])){
+	scr_perf_watch_step(perf_watch, get_item_value(waves),
+	                    delta_time, game_get_speed(gamespeed_fps));
+}
 if(!variable_global_exists("ui")){
 	ui_hud_sync_level();
 } else if(!variable_instance_exists(id, "hud_layout_gen")

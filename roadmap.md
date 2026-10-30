@@ -597,7 +597,7 @@ The full 60-stage campaign is completable, and the `economy.md` §9 checkpoints 
 | --- | --- | --- |
 | 6.1 | **Retune from logs**, in the `economy.md` §10 order | one number at a time; difficulty multipliers last |
 | 6.2 | **Onboarding pass** — does a fresh player reach stage 5 unaided? | `goal.md` §27.5 is the script |
-| 6.3 | **Performance** — status overhead with 60 monsters, sprite memory and texture groups | the project is at 126 sprites and v1 adds ~100 |
+| 6.3 | **Performance** — status overhead with 60 monsters, sprite memory and texture groups | Current audit: 494 registered sprites all use `Default`; root frame images total 182.7 MiB raw RGBA before atlas packing. Dev-only `PERF W40+` windows measure five seconds at 60+ live monsters; decide on texture-group splits from target-machine results. |
 | 6.4 | **Audio and feel** — hit feedback, kill feedback, screen shake budget | |
 | 6.5 | **Readability** — the HUD shows four meta currencies and money; the player must never wonder which is which | |
 | 6.6 | **Localization-ready strings** | cheap now, expensive later |
@@ -634,7 +634,7 @@ A brand-new player reaches stage 5 without being told anything, and an Endless r
 | **A stage takes hours to author** | medium | the 30-minute rule (§9.3); fix the schema, not the stages |
 | **One tower dominates every loadout** | medium | Phase 2's gate; rebalance numbers, not the plan |
 | **Scope creep back to "20-ish towers"** | high | the cut order exists precisely for this |
-| **Sprite memory / frame rate** | medium | texture groups, and measure at wave 40 with 60 monsters in Phase 6 |
+| **Sprite memory / frame rate** | medium | all 494 sprites currently share `Default`; measure wave-40 frame time and resident texture memory on target hardware before splitting groups or optimizing status work |
 | **A currency becomes inert** | medium | Phase 3's "nothing is inert" gate, checked by walking the whole loop as a player |
 
 ---
