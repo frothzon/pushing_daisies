@@ -25,13 +25,14 @@
       "tower-card-upgrade-preview",
       "combat-specs",
       "candy-recipes",
+      "candy-fast-forward-timer",
       "combat-gate-two-loadouts",
       "tower-l5-signatures"
     ],
     "next": [
       "par-reauthor"
     ],
-    "note": "2026-10-30: The three-loadout Normal coverage sweep is complete: 180/180 instant-buy runs cleared, covering all 60 rows with three builds each. R4/R5/R6 curves are 18/16/10; 30/30 ceiling-fit stage rows clear. Seven badge awards and map icons are implemented; Frugal/Speed remain provisional until par reauthoring. Upgrade, specialization, Candy and combat-gate changes still await runtime review."
+    "note": "2026-10-30: Three-loadout Normal coverage is complete: 180/180 instant-buy runs cleared, covering all 60 rows with three builds each. R4/R5/R6 curves are 18/16/10; Frugal/Speed medians await par reauthoring. Fixed Candy's speed-dependent timer so duration is counted in normal game frames and handed it to Rayu for runtime review. Upgrade-card, specialization, remaining Candy behavior and combat gates still await runtime review."
   },
   "tasks": [
     {
@@ -786,6 +787,28 @@
       "created": "2026-10-18",
       "updated": "2026-10-18",
       "done": "2026-10-18"
+    },
+    {
+      "id": "candy-fast-forward-timer",
+      "title": "Candy duration must track game frames under fast-forward",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "4",
+      "size": "S",
+      "prio": 1,
+      "needs": "After reloading GameMaker, activate the same stocked candy on a normal-speed run and at 3x speed. Compare live game frames/waves covered, not wall-clock seconds: both must consume one candy for the same frame count, repeated use must add frames, pause and Everlasting Gob must freeze them, and the HUD must show the remaining frames as seconds. A candy lasting three times as many waves at 3x falsifies the fix.",
+      "notes": "Fixed the timer unit mismatch: active candies store remaining game frames at the normal 60fps baseline; one live Step consumes one frame regardless of the accelerated 180fps setting. The HUD still displays seconds. Same-type use adds base-frame duration; pause prevents Steps and Everlasting Gob still halts the tick. Static GML function parsing passed; live GameMaker speed and freeze behavior still need Rayu's reloaded playtest.",
+      "refs": [
+        "goal.md",
+        "economy.md",
+        "scripts/scr_candy_system/scr_candy_system.gml",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "candy-recipes",
@@ -5001,6 +5024,12 @@
       "who": "cline",
       "task": "loadout-stage-coverage",
       "what": "Completed 180 deterministic Normal instant-buy time-step simulations: three distinct four-tower loadouts on each of 60 stage rows, all 180 clearing with 20 lives and zero leaks. The builds may use later-unlocked towers on replay, as goal.md permits. This proves model coverage, not a GameMaker run or a first-clear starter-only guarantee; par median work can proceed."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "candy-fast-forward-timer",
+      "what": "Changed active candy timers from fractional wall-clock seconds per Step to an integer-like count of normal-speed game frames. Fast-forward now consumes the same number of game frames and waves rather than stretching a candy to three times the wave time; pause and Everlasting Gob still suspend Steps. The HUD converts stored frames back to seconds. Static GML parsing passed; awaiting reloaded GameMaker review."
     }
   ]
 }

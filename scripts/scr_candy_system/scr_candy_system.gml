@@ -1,6 +1,10 @@
 /// @description Candy recipes, permanent levels, stock and duration track (economy.md §6).
 /// Combat activation and its live-wave timers are wired by the run-effects pass.
 
+/// Candy durations are game-frame durations at normal speed. Fast-forward runs
+/// more Steps per second, but one Step still consumes one frame from the effect.
+#macro CANDY_BASE_FRAME_HZ 60
+
 /// Recipe record: effect values and costs are the economy table's source.
 function candy_recipe(_id, _label, _icon, _tier, _cost, _effect, _step, _desc, _gate) {
 	return { id:_id, label:_label, icon:_icon, tier:_tier, cost:_cost,
@@ -221,13 +225,18 @@ function candy_run_active_map() {
 	return global.candy_active;
 }
 
-function candy_run_remaining(_id) {
+function candy_run_remaining_frames(_id) {
 	var _active=candy_run_active_map();
 	if(!is_string(_id) || !variable_struct_exists(_active,_id)) return 0;
 	var _entry=_active[$ _id];
-	if(!is_struct(_entry) || !variable_struct_exists(_entry,"remaining")
-	|| !is_real(_entry.remaining)) return 0;
-	return max(0,_entry.remaining);
+	if(!is_struct(_entry) || !variable_struct_exists(_entry,"remaining_frames")
+	|| !is_real(_entry.remaining_frames)) return 0;
+	return max(0,_entry.remaining_frames);
+}
+
+/// The HUD speaks seconds; the stored timer remains a count of game frames.
+function candy_run_remaining(_id) {
+	return candy_run_remaining_frames(_id) / CANDY_BASE_FRAME_HZ;
 }
 
 /// Add same-axis candy bonuses. Each type contributes its level-set magnitude
@@ -239,8 +248,8 @@ function candy_active_magnitude(_field) {
 		var _id=_all[_i].id;
 		if(_id == "everlasting_gob" || !variable_struct_exists(_active,_id)) continue;
 		var _entry=_active[$ _id];
-		if(!is_struct(_entry) || !variable_struct_exists(_entry,"remaining")
-		|| !is_real(_entry.remaining) || _entry.remaining <= 0) continue;
+		if(!is_struct(_entry) || !variable_struct_exists(_entry,"remaining_frames")
+		|| !is_real(_entry.remaining_frames) || _entry.remaining_frames <= 0) continue;
 		var _level=variable_struct_exists(_entry,"level") && is_real(_entry.level)
 		           ? _entry.level : candy_level_get(_id),
 		    _mag=candy_magnitude(_id,_level);
@@ -300,35 +309,35 @@ function candy_run_activate(_id) {
 	}
 
 	var _active=candy_run_active_map(),
-	    _remaining=candy_run_remaining(_id),
-	    _duration=candy_duration_seconds();
-	_active[$ _id] = { remaining:_remaining+_duration, level:_level };
+	    _remaining_frames=candy_run_remaining_frames(_id),
+	    _duration_frames=round(candy_duration_seconds()*CANDY_BASE_FRAME_HZ),
+	    _next_frames=_remaining_frames+_duration_frames;
+	_active[$ _id] = { remaining_frames:_next_frames, level:_level };
 	global.candy_stats_dirty = true;
 	scr_meta_log("CANDY","activate ",_recipe.label," level=",_level,
-	             " add=",_duration,"s remaining=",_remaining+_duration,"s");
+	             " add=",_duration_frames/CANDY_BASE_FRAME_HZ,
+	             "s remaining=",_next_frames/CANDY_BASE_FRAME_HZ,"s");
 	return true;
 }
 
-/// Tick in game-time seconds, only while a wave has live enemies/spawns.
-/// Dividing by the current FPS keeps fast-forward from consuming more game time;
-/// pause deactivates this owner, so no timer reaches here while paused.
+/// Tick one game frame, only while a wave has live enemies/spawns.
+/// The stored count is based on normal-speed frames, so 3x fast-forward does
+/// not stretch a candy across three times as many waves. Pause stops this owner.
 function candy_run_tick() {
 	if(!variable_global_exists("candy_wave_live") || !global.candy_wave_live) return;
 	if(global.candy_freeze_waves > 0
 	&& global.candy_freeze_active_wave == global.candy_current_wave) return;
-	var _fps=max(1,game_get_speed(gamespeed_fps)),
-	    _step=1/_fps,
-	    _active=candy_run_active_map(),
+	var _active=candy_run_active_map(),
 	    _keys=variable_struct_get_names(_active),
 	    _expired=false;
 	for(var _i=0; _i<array_length(_keys); _i++){
 		var _id=_keys[_i],
 		    _entry=_active[$ _id];
-		if(!is_struct(_entry) || !variable_struct_exists(_entry,"remaining")
-		|| !is_real(_entry.remaining) || _entry.remaining <= 0) continue;
-		_entry.remaining=max(0,_entry.remaining-_step);
+		if(!is_struct(_entry) || !variable_struct_exists(_entry,"remaining_frames")
+		|| !is_real(_entry.remaining_frames) || _entry.remaining_frames <= 0) continue;
+		_entry.remaining_frames=max(0,_entry.remaining_frames-1);
 		_active[$ _id]=_entry;
-		if(_entry.remaining <= 0){
+		if(_entry.remaining_frames <= 0){
 			_expired=true;
 			scr_meta_log("CANDY","expired ",_id);
 		}
