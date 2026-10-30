@@ -2138,22 +2138,22 @@
     },
     {
       "id": "hud-readability-and-strings",
-      "title": "HUD strings: localisable text (the layout half moved to garden-currency-hud)",
-      "status": "backlog",
-      "owner": "both",
+      "title": "Centralize player-facing HUD strings for localisation",
+      "status": "doing",
+      "owner": "cline",
       "awaiting": "none",
       "area": "code",
       "phase": "6",
       "size": "S",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 6.5/6.6. goal.md four currencies are deliberately distinct; on screen they must be distinguishable at a glance and in a pause readout. Localisation-ready strings are cheap now (one table, no sentences built by concatenation) and expensive after 60 stages of text.  SPLIT 2026-10-19: the readability/layout half now lives in garden-currency-hud (phase 3), because that is where the four currencies are first drawn together. What is left here is the string half - every player-facing string in one place, so localisation is a translation table rather than a hunt through Draw events.",
+      "notes": "2026-10-30: Build an English default string catalog with keyed lookups and placeholder substitution; migrate the HUD, tower-card, pause/candy and endless overlays without changing visible wording. Keep the sprite-font character-map constraint from LL-067 in mind.",
       "refs": [
         "roadmap.md",
         "goal.md"
       ],
       "created": "2026-10-18",
-      "updated": "2026-10-19",
+      "updated": "2026-10-30",
       "done": null
     },
     {
