@@ -1985,20 +1985,42 @@
     {
       "id": "garden-nav",
       "title": "Garden Book navigation: direct tabs for every view",
-      "status": "review",
-      "owner": "cline",
-      "awaiting": "rayu",
+      "status": "doing",
+      "owner": "both",
+      "awaiting": "none",
       "area": "code",
       "phase": "3",
       "size": "M",
       "prio": 2,
-      "needs": "Reload GameMaker and open Garden Book. Click Clovers, Blood, Candy, and Mastery directly; in Clovers, click Vitality, Offense, Growth, and Harvest directly. Confirm each selection changes its content, the Seed Shop remains visible beside it, and Candy pages through all 10 recipes. Expect MENU garden tab / clover branch lines and no UI missing-rectangle finding; a wrong view, stale content, or cycle-only navigation falsifies it.",
-      "notes": "IMPLEMENTED: four direct top-level tabs switch among Clover, Blood, Candy, and Mastery; four direct sub-tabs choose Vitality, Offense, Growth, and Harvest. The Seed Shop remains pinned in the side panel, with the Garden Book on one screen. Awaiting GameMaker runtime/layout review.",
+      "needs": null,
+      "notes": "STATIC AUDIT FOUND A REAL GAP: direct tab selection exists, but the Candy view draws Candy Shop in the right panel where the Seed Shop tower wall normally appears. The existing acceptance says the Seed Shop stays pinned beside every view, so the Candy view is not complete yet. Scope this card to retain access to Seed Shop while reviewing all Garden Book pages; runtime/layout review follows after the correction.",
       "refs": [
         "objects/Menu/Step_0.gml",
         "scripts/scr_meta_screen/scr_meta_screen.gml"
       ],
       "created": "2026-10-15",
+      "updated": "2026-10-30",
+      "done": null
+    },
+    {
+      "id": "garden-onboarding-tab-gates",
+      "title": "Hide Blood, Candy, and Mastery tabs until they can be used",
+      "status": "doing",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "3",
+      "size": "S",
+      "prio": 2,
+      "needs": "Gate UI, input, and declared layout names using saved progression; follow goal.md §27.5.",
+      "notes": "Static review found the Garden Book always draws and accepts all four tabs. Blood/Candy should appear at first shard or saved purchase; Mastery should appear when Region 1 has been cleared and its first node is available. Also fall back safely if a session-only selected view becomes unavailable.",
+      "refs": [
+        "goal.md",
+        "scripts/scr_meta_screen/scr_meta_screen.gml",
+        "scripts/scr_ui_layout_meta/scr_ui_layout_meta.gml",
+        "objects/Menu/Step_0.gml"
+      ],
+      "created": "2026-10-30",
       "updated": "2026-10-30",
       "done": null
     },
