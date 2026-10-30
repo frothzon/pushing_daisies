@@ -29,12 +29,11 @@
       "candy-fast-forward-timer",
       "combat-gate-two-loadouts",
       "tower-l5-signatures",
-      "tower-ring-mastery-palette"
-    ],
-    "next": [
+      "tower-ring-mastery-palette",
       "art-state-origins"
     ],
-    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Named the mastery ring extension through L10 and documented the absolute-level palette. Both are awaiting Rayu’s reloaded GameMaker review. Next code pass: audit zombie sprite state origins against the rig and transitions."
+    "next": [],
+    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette and corrected the stale sprite-origin diagnosis after the frame audit. Thresholds, palette, and title/in-game origin transitions await Rayu’s reloaded GameMaker review."
   },
   "tasks": [
     {
@@ -262,22 +261,23 @@
     {
       "id": "art-state-origins",
       "title": "Sprite state origins: the art jumps when a monster changes state",
-      "status": "next",
-      "owner": "cline",
-      "awaiting": "cline",
+      "status": "review",
+      "owner": "both",
+      "awaiting": "rayu",
       "area": "art",
       "phase": "2",
       "size": "S",
       "prio": 2,
-      "needs": "Re-scope before touching anything: the numbers this card was written from (grumble walk 150 -> attack 170) are canvas y-origins on canvases of different size, not misalignment. Measured 2026-10-24 from the frame PNGs, every state of every rig stands within 5 px of its walk, art-relative to its own origin. What is left is a 3-5 px POSE disagreement at the switch (grumble idle +4 vs walk +7, sub-zero idle +2 vs walk +7), visible only on the title screen where obj_titleZomb is drawn at scale 1.0 - so decide: re-cut those few idle sheets by 3-5 px, or accept it. Do NOT re-origin any die sheet: the fall pivots on the origin and frame 0 already stands on it (LL-078).",
-      "notes": "Measured 2026-10-19 across the state sheets: a tower drifts 1-3 px between idle/walk/attack, a monster 14-23 px (grumble walk 150 -> attack 170, tusk 151 -> 173, zero 145 -> 167, professor 159 -> 182). RE-MEASURED 2026-10-24 from the frame PNGs instead of canvas coordinates: those figures compare y-origins across canvases of different SIZE (grumble walk 140x160 at yorigin 150, attack 232x195 at yorigin 170), so they are not a drift at all - art-relative to its own origin the same four creatures stand at grumble +7/+4/+3/+3 (walk/idle/attack/die), tusk +7/+4/+5/+6, zero +7/+2/+3/+2, professor +9/+6/+4. Across all fifteen rigs and all four slots the worst disagreement with the walk is 5 px. The title zombie is drawn at scale 1.0 in rm_menu, so the hop the eye saw is 3 px (idle -> walk), not 16. Die sheets are correct and must not be re-origined (LL-078).",
+      "needs": "After reload, watch Grumble-Mulch on the title screen switch idle↔walk, then watch one in-game zombie switch idle/walk and die. Confirm the feet stay visually within about 5 art pixels of the same ground line and there is no large 20 px hop. If a transition exceeds that, report the creature and clip; do not change die origins to compensate.",
+      "notes": "Closed the stale diagnosis: the former 20–23 px numbers compared y-origin coordinates across differently sized sheets. The 2026-10-24 corrected frame audit measured art-relative ground contact within 5 px across all 15 rigs/four states; title-screen Grumble idle→walk differs by 3 px. Decision: accept this measured pose difference and make no origin edits. Current primary animation path is SCML with a shared character root. See art_descriptions.md §4.8 and LL-078.",
       "refs": [
-        "sprites/spr_grumble_walk/spr_grumble_walk.yy",
-        "sprites/spr_grumble_attack/spr_grumble_attack.yy",
-        "objects/obj_titleZomb/Step_0.gml"
+        "art_descriptions.md",
+        "scripts/scr_scml_rig/scr_scml_rig.gml",
+        "objects/obj_titleZomb/Step_0.gml",
+        "lessons_learned.md#ll-078"
       ],
       "created": "2026-10-19",
-      "updated": "2026-10-24",
+      "updated": "2026-10-30",
       "done": null
     },
     {
@@ -5047,6 +5047,12 @@
       "who": "cline",
       "task": "tower-ring-mastery-palette",
       "what": "Named and finalized the Garden Mastery ring hues at L6-L10 (indigo, violet, magenta, rose, gold), increased RGB separation for the existing additive rest opacity, and documented that rings stay keyed to absolute level. Static GML parse passed; awaiting reloaded GameMaker visual review."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "art-state-origins",
+      "what": "Corrected the stale 20-23 px origin diagnosis in art_descriptions.md: the old values compared different canvas sizes; the corrected art-relative audit has at most 5 px across the zombie rigs and a 3 px Grumble idle/walk difference. Accepted the small pose offset and made no runtime or die-origin shifts; awaiting visual review."
     }
   ]
 }

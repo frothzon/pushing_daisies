@@ -38,7 +38,7 @@ never hand-tuned. The title-screen zombie is the rigged Grumble-Mulch
 | `art-biome-tiles` | backlog | **only the Graveyard atlas** — the 18 props arrived 2026-10-21; the other four biomes already have greyscale atlases (§4.3) | small |
 | `art-garden-book` | **done 2026-10-21** | every icon arrived (36); the screens that show the rest are their own cards | — |
 | `art-level-complete` | **done 2026-10-21** | the banner arrived and is drawn at 1:1 (§4.5) | — |
-| `art-state-origins` | next | **no drawing** — per-state y-origins (§4.8) | no |
+| `art-state-origins` | **review** | **no drawing** — visual check of the accepted ≤5 px ground-contact differences (§4.8); the former 20–23 px diagnosis compared different canvas sizes | no |
 | `portrait-draw-fit` | backlog | **no drawing** unless frameless busts are chosen (§4.6) | optional |
 | `legacy-boss-art-cleanup` | backlog | **no drawing** — five unused sprites to delete (§4.7) | no |
 
@@ -59,8 +59,10 @@ Verified by opening the files, not by listing names:
   Thornamental, Kaboom Kalanchoe, and Money Marigold. The support Marigold uses
   its idle trio and income sparkle; its attack animation is not a combat action.
 * **Monster rigs, 4 states × 16 frames** — Grumble-Mulch, Dome-Alone,
-  Professor-Cerebrisk, plus the two bosses Tusk-A-Lot and Sub-Zero. Each state
-  has its **own canvas size** (that is the origin bug, §4.8).
+  Professor-Cerebrisk, plus the two bosses Tusk-A-Lot and Sub-Zero. Legacy
+  sheet canvases differ by state; that alone is not a ground shift. The current
+  primary rigs are SCML with a shared character root; the corrected pose audit
+  is in §4.8.
 * **Portraits, 314×314** — five: grumble, dome, cerebrisk, tusk, zero. Rusted
   gold frame, painterly rim light, vignetted background.
 * **Terrain atlases, 128×128 × 17 frames, greyscale** — grass, dirt, sand,
@@ -182,8 +184,9 @@ attack must **read as a recoil/fire**, not just a different pose: the tower is
 
 ### 3.2 Monsters — one canvas per character, feet on one row
 
-The current rigs break this rule, which is why the art jumps between states
-(§4.8). **New rigs must not repeat it.** For each new character:
+The older sheet-era measurements compared `yorigin` values across differently
+sized canvases and overstated the pose jump (§4.8). **New sheet rigs must still
+share one canvas and ground row.** For each new character:
 
 | Field | Value |
 | --- | --- |
@@ -762,35 +765,41 @@ game changed (they were referenced nowhere).
 
 ---
 
-### 4.8 `art-state-origins` — no drawing; the numbers, and the rule
+### 4.8 `art-state-origins` — accept the measured pose offsets; never shift the fall
 
-**What is wrong.** Each state sheet of a monster was drawn on its own canvas, so
-the **y-origin** (the ground contact) differs between states. When the game
-switches idle→walk→attack the body jumps:
+**The original diagnosis was wrong.** The 2026-10-19 table compared `yorigin`
+values across state sheets with different canvas sizes and called the resulting
+20–23 px coordinate difference a body jump. Those values were not comparable.
+LL-078 requires measuring the painted ground contact relative to that frame's
+own origin.
 
-| Creature | idle/walk y-origin | attack y-origin | jump |
-| --- | --- | --- | --- |
-| Grumble-Mulch | 150 | 170 | 20 px |
-| Tusk-A-Lot | 151 | 173 | 22 px |
-| Sub-Zero | 145 | 167 | 22 px |
-| Professor-Cerebrisk | 159 | 182 | 23 px |
-| Towers | — | — | 1–3 px |
+**Corrected measurement (2026-10-24).** Across all 15 rigs and all four states,
+the worst ground-contact disagreement against the walk pose is 5 art pixels.
+Representative measurements (`lowest painted row - origin`, in walk / idle /
+attack / die order):
 
-On the title screen that is a ~40 px sprite dropping 20 px — it reads as a
-glitch, and it is entirely in the **origin data**, not in the art.
+| Creature | Art-relative ground contact |
+| --- | --- |
+| Grumble-Mulch | +7 / +4 / +3 / +3 px |
+| Tusk-A-Lot | +7 / +4 / +5 / +6 px |
+| Sub-Zero | +7 / +2 / +3 / +2 px |
 
-**The fix (code, cline):** set each state sheet's y-origin to the ground contact
-of its own frames, keep the x-origin, using `gm set-path` on the sprite's
-`xorigin`/`yorigin` — **never by hand** (LL-009). Then verify with one body pixel
-keeping the same screen y through idle→walk→attack→idle at `devMode`.
+The title-screen Grumble-Mulch changes idle→walk by 3 art pixels at the
+sheet-era scale. **Decision: accept this small pose difference; do not re-origin
+or redraw the states for this card.** A crouched-looking walk is a joint-pose
+issue in the SCML rig, separate from this ground-contact check.
 
-**The rule for every new drawing:** one canvas per character, feet on one row,
-one origin for all states (§3.2). A drawing that puts each state on its own
-canvas recreates this bug by hand.
+The playable rigs are now primarily SCML (`scripts/scr_scml_rig`), where the
+character root is shared across clips. The four-slot sprite-sheet fallback
+still uses one canvas and a fixed origin (120,190) for every state. In either
+path, compare feet against the root, never canvas coordinates. `obj_mon/Draw_0`
+keeps the origin on the ground line; no per-frame draw-time y correction is
+allowed (LL-078).
 
-**Note on redrawing:** if a state sheet is ever redrawn, align the feet to the
-existing walk sheet's ground row rather than to the canvas bottom; that is how
-the origin fix stays fixed.
+**Never re-origin a die pose to solve a walk transition.** The fall pivots on
+the origin and its first frame already stands on it (LL-078). If a future rig
+exceeds the 5 px pose allowance, identify the exact creature and clip first;
+correct that clip's anchor or art only after measuring its own frames.
 
 ---
 
