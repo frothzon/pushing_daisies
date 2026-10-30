@@ -23,6 +23,8 @@ if(keyboard_check_pressed(vk_f11)){
 if(keyboard_check_pressed(vk_f12)){
 	ui_check_forget();
 	ui_log("GEOM", "F12 - layout dumps re-armed");
+	ui_hud_check();
+	ui_dump("hud");
 }
 
 if(ui_screen_poll()){
@@ -35,6 +37,8 @@ if(ui_screen_poll()){
 	/// Step event.  That may be one frame later than this, depending on
 	/// instance order, which is why nothing here moves an instance directly.
 	ui_flex_refresh_all();
+	ui_hud_check();
 	ui_screen_log();
 	ui_dump("menu");
+	ui_dump("hud");
 }

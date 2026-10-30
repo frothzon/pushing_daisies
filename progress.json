@@ -3740,16 +3740,23 @@
     {
       "id": "ui-hud-flex",
       "title": "Move the in-game HUD onto flex nodes (stat card, tower card, speed buttons)",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "3",
       "size": "M",
       "prio": 2,
-      "needs": "",
+      "needs": "Reload GameMaker and run a stage. Confirm stat icons stay upper-right, speed controls upper-left, and the selected tower card with Upgrade/Sell buttons stays bottom-left. Resize the window or toggle fullscreen, press F12, and inspect UI [dump] hud: expect 6 tree nodes and UI [HUD] layout OK with 5 named HUD rectangles. Their edges should stay 16px left/16px bottom for the card, 24px right for stats, and 16px top-left for speed controls. Try the speed buttons and Upgrade/Sell after resizing. A UI [HUD] layout FAIL line, overlap, stale position, or click miss falsifies it.",
       "notes": "",
-      "refs": [],
+      "refs": [
+        "scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml",
+        "objects/_levelControl/Create_0.gml",
+        "objects/_levelControl/Step_0.gml",
+        "objects/_mainControl/Create_0.gml",
+        "objects/_mainControl/Step_0.gml",
+        "objects/obj_ui/Step_0.gml"
+      ],
       "created": "2026-10-21",
       "updated": "2026-10-30",
       "done": null

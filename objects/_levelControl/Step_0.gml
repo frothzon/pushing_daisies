@@ -6,6 +6,12 @@
 /// failed stage still has corpses playing their falls.  A no-op whenever
 /// no player exists (the menu, the first frame of a boot).
 zomb_scml_update();
+if(!variable_global_exists("ui")){
+	ui_hud_sync_level();
+} else if(!variable_instance_exists(id, "hud_layout_gen")
+|| hud_layout_gen != global.ui.gen){
+	ui_hud_sync_level();
+}
 if((variable_instance_exists(id,"level_state") && level_state==LEVEL_STATE.LOOT)
 || (variable_instance_exists(id,"level_state_next") && level_state_next==LEVEL_STATE.LOOT)){
     scr_level_step();

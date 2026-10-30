@@ -7,6 +7,7 @@ frame_skip = false;
 frame = 0;
 
 speed_buttons = create_display_grid(16,16,48,48,2,1);
+ui_hud_sync_main();
 
 current_button_state = 3;
 /// the STAGE UI opacity, mirrored from _levelControl every Step (LL-055).

@@ -222,6 +222,7 @@ tower_card_range_rect = array(tower_card_x, tower_card_y+34, tower_card_x+tower_
 /// decal that filled the whole circle - a ring needs less than a wash to carry
 /// the same information, but more than 0.15 to be seen at all.
 tower_range_alpha = 0.25;
+ui_hud_sync_level();
 
 //---------------- setup buttons
 tower_price_save = array(

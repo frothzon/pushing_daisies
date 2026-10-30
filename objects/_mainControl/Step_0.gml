@@ -1,5 +1,11 @@
 /// @description  run state machine
 scr_runState(scr_main_startup);
+if(!variable_global_exists("ui")){
+	ui_hud_sync_main();
+} else if(!variable_instance_exists(id, "hud_layout_gen")
+|| hud_layout_gen != global.ui.gen){
+	ui_hud_sync_main();
+}
 
 /// ---- the STAGE UI opacity (LL-055) ----------------------------------
 /// The speed and pause buttons are part of the STAGE UI, and the clear
