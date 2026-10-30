@@ -793,7 +793,7 @@
       "size": "L",
       "prio": 3,
       "needs": "",
-      "notes": "ART IS IN (2026-10-21): all eight candy sprites, 64x64 - scr_ui_icons.icon_candy(name) maps the sprite suffix to the sprite. Red licorice, jawbreaker, gummy worm, sour drop, fireball, frosted flake, blood bonbon, everlasting gob. Implementation is starting from economy.md §§6.1-6.5: recipes, levels, stock, active effects, and timer rules.",
+      "notes": "ART IS IN (2026-10-21): all eight standard candy sprites, 64x64 - scr_ui_icons.icon_candy(name) maps these. DATA LAYER IMPLEMENTED: all eight standard recipes plus Blood Orange and Money Honey, tier costs/gates, shard level costs/effects, stock helpers and the 10-rank clover duration track. Still open in this card: recipe/level/stock UI, active candy consumption and duration timers, live effects wired into towers/statuses/shard pity/kill money, and persistence/runtime review.",
       "refs": [
         "economy.md",
         "objects/obj_mon/Step_0.gml"

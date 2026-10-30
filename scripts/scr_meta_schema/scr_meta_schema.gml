@@ -24,6 +24,7 @@ function scr_meta_default() {
 		clovers      : 0,
 		shards       : 0,
 		candy        : {},      /// recipe name -> stock
+	candy_recipes: {},      /// recipe name -> permanently unlocked
 
 		/// ---- content ----
 		towers       : {},      /// tower name -> true

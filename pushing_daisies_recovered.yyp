@@ -1239,6 +1239,7 @@
     {"id":{"name":"scr_tower_specs","path":"scripts/scr_tower_specs/scr_tower_specs.yy",},},
     {"id":{"name":"scr_meta_shards","path":"scripts/scr_meta_shards/scr_meta_shards.yy",},},
     {"id":{"name":"scr_blood_tree","path":"scripts/scr_blood_tree/scr_blood_tree.yy",},},
+    {"id":{"name":"scr_candy_system","path":"scripts/scr_candy_system/scr_candy_system.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",
