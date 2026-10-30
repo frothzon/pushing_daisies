@@ -52,18 +52,22 @@ function scr_tower_shoot() {
 	    shot_crit_multiplier = max(1, _base_crit_damage
 	                                  + tower_trait_get(name, "crit_damage", 0));
 
-	    /// ---- and the STATUS this swing will land (scr_status) ------------
+	    /// ---- and the STATUSES this swing will land (scr_status) --------
 	    /// Read from the trait table ONCE, at the shot, and COPIED onto the
 	    /// tower: the strike lands several frames later, in a different call
 	    /// of this script, so a local would be gone by then - and a trait
 	    /// re-read at the strike could describe a tower the player sold in
 	    /// between.  Locked at the shot for exactly the reason shot_damage is
 	    /// (LL-054): a swing that has started is committed.
-	    shot_status        = tower_trait_get(name, "status",  -1);
-	    shot_status_mult   = tower_trait_get(name, "mult",     1);
-	    shot_status_frames = status_frames(tower_trait_get(name, "seconds", 0));
-	    shot_status_chance = clamp(tower_trait_get(name, "status_chance", 0), 0, 1);
-	    shot_status_amount = max(0, tower_trait_get(name, "amount", 0));
+	    var _status_specs = tower_trait_statuses(name);
+	    shot_statuses = [];
+	    for(var _ss = 0; _ss < array_length(_status_specs); _ss++){
+	        var _spec = _status_specs[_ss];
+	        shot_statuses[_ss] = {
+	            kind : _spec.kind, chance : _spec.chance, mult : _spec.mult,
+	            frames : status_frames(_spec.seconds), amount : _spec.amount
+	        };
+	    }
 	    target       = noone;   /// acquire fresh - never inherit normal's single pick
 	    did_damage   = false;
 	    did_particles = false;
@@ -153,14 +157,26 @@ function scr_tower_shoot() {
 	    /// effect of a hit.  `target` can hold instances that have died since
 	    /// the swing started - status_apply guards, so the loop does not have
 	    /// to (LL-012).
-	    if(shot_status >= 0 && shot_status_frames > 0
-	    && shot_status_chance > 0){
-	        for(var _s = 0; _s < array_length(target); _s++){
-	            var _status_target = target[_s];
-	            if(scr_isValidInstance(_status_target)
-	            && random(1) < shot_status_chance){
-	                status_apply(_status_target, shot_status, shot_status_mult,
-	                             shot_status_frames, shot_status_amount);
+	    if(is_array(shot_statuses)){
+	        for(var _si = 0; _si < array_length(shot_statuses); _si++){
+	            var _effect = shot_statuses[_si];
+	            if(!is_struct(_effect)
+	            || !variable_struct_exists(_effect, "kind")
+	            || !variable_struct_exists(_effect, "chance")
+	            || !variable_struct_exists(_effect, "frames")) continue;
+	            if(!is_real(_effect.chance) || _effect.chance <= 0
+	            || !is_real(_effect.frames) || _effect.frames <= 0) continue;
+	            for(var _s = 0; _s < array_length(target); _s++){
+	                var _status_target = target[_s];
+	                if(scr_isValidInstance(_status_target)
+	                && random(1) < _effect.chance){
+	                    var _effect_mult = variable_struct_exists(_effect, "mult")
+	                                       && is_real(_effect.mult) ? _effect.mult : 1,
+	                        _effect_amount = variable_struct_exists(_effect, "amount")
+	                                         && is_real(_effect.amount) ? _effect.amount : 0;
+	                    status_apply(_status_target, _effect.kind, _effect_mult,
+	                                 _effect.frames, _effect_amount);
+	                }
 	            }
 	        }
 	    }

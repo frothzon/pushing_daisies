@@ -907,7 +907,7 @@
     {
       "id": "combat-resistances",
       "title": "Resistance columns on the monster data",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -922,7 +922,8 @@
         "scripts/scr_setupSpawning/scr_setupSpawning.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "combat-specs",
@@ -1029,7 +1030,7 @@
     {
       "id": "combat-status-stun",
       "title": "Status 3: stun - the first status that gates a behaviour",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -1043,7 +1044,8 @@
         "objects/obj_mon/Step_0.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "curve-cap-lower",

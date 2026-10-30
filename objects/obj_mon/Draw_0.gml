@@ -57,6 +57,20 @@ if(zomb_scml_draw(zomb_rig())){
 }
 
 
+/// An elite is a named variant, not just a hidden health multiplier.
+if(variable_instance_exists(id, "data") && is_array(data)
+&& array_length(data) > MON.combat_class
+&& data[MON.combat_class] == MON_CLASS.ELITE
+&& array_length(data) > MON.life && data[MON.life] > 0){
+    draw_set_font(fnt_size12);
+    draw_set_halign(fa_center);
+    draw_set_valign(fa_middle);
+    draw_text_outline(x, y-42, "ELITE", c_yellow, c_black, 1);
+    draw_set_halign(fa_left);
+    draw_set_valign(fa_top);
+    draw_set_font(fnt_size16);
+}
+
 /// debug
 /// (an EXISTENCE GUARD, not politeness: sprite_get_name on -1 is FATAL, and a
 /// monster that has not been given art yet - or a rig with no walk slot - can

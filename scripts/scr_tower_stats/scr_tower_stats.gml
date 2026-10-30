@@ -65,24 +65,44 @@ function tower_stat_lines(_name) {
 /// ("55% speed for 1.5s") rather than as a status id, because a name the game
 /// has not shown anywhere yet is not an explanation.
 function tower_stat_note(_name) {
-	if(!is_string(_name)) return "";
-
-	var _t = tower_trait_find(_name);
-	if(!is_struct(_t)) return "";
-
-	var _status = tower_trait_get(_name, "status", -1),
-	    _seconds = tower_trait_get(_name, "seconds", 0);
-	if(_status == STATUS.SLOW){
-		var _m = tower_trait_get(_name, "mult", 1);
-		return "slows its target to " + string(round(_m*100)) + "% for " +
-		       string(_seconds) + "s";
+	var _effects = tower_trait_statuses(_name),
+	    _out = "";
+	for(var _i = 0; _i < array_length(_effects); _i++){
+		var _e = _effects[_i],
+		    _part = "";
+		switch(_e.kind){
+			case STATUS.SLOW:
+				_part = "slow to " + string(round(_e.mult*100)) + "% speed/"
+				        + string(_e.seconds) + "s";
+				break;
+			case STATUS.STUN:
+				_part = "stun " + string(round(_e.chance*100)) + "%/"
+				        + string(_e.seconds) + "s";
+				break;
+			case STATUS.BURN:
+				_part = "burn " + string(round(_e.chance*100)) + "% "
+				        + string(_e.amount) + "/s/" + string(_e.seconds) + "s";
+				break;
+			case STATUS.POISON:
+				_part = "poison " + string(round(_e.chance*100)) + "% "
+				        + string(_e.amount) + "/s/" + string(_e.seconds) + "s";
+				break;
+			case STATUS.ROOT:
+				_part = "root " + string(round(_e.chance*100)) + "%/"
+				        + string(_e.seconds) + "s";
+				break;
+			case STATUS.BLEED:
+				_part = "bleed " + string(round(_e.chance*100)) + "% "
+				        + string(_e.amount) + "/s/" + string(_e.seconds) + "s";
+				break;
+			case STATUS.VULN:
+				_part = "vulnerable " + string(round(_e.chance*100)) + "%/"
+				        + string(_e.seconds) + "s";
+				break;
+		}
+		if(_part != "") _out += (_out == "" ? "" : "; ") + _part;
 	}
-	if(_status == STATUS.BURN){
-		var _chance = tower_trait_get(_name, "status_chance", 0),
-		    _damage = tower_trait_get(_name, "amount", 0);
-		return string(round(_chance*100)) + "% chance to burn for " +
-		       string(_damage) + " damage/s for " + string(_seconds) + "s";
-	}
+	if(_out != "") return _out;
 
 	var _crit = tower_trait_get(_name, "crit", 0);
 	if(is_real(_crit) && _crit > 0){

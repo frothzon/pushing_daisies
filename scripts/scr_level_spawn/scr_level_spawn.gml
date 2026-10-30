@@ -120,12 +120,26 @@ function scr_level_spawn() {
 	        with(_inst){
 	            mon_rig_dress(rig);
 	        }
+	        var _elite_chance = 0.05,  /// initial tuning point; review after play
+	            _is_elite = !is_boss_wave && random(1) < _elite_chance;
 	        _inst.data = array_duplicate(_mon);
+	        _inst.data[MON.combat_class] = is_boss_wave ? MON_CLASS.BOSS
+	                                      : (_is_elite ? MON_CLASS.ELITE : MON_CLASS.NORMAL);
+	        if(_is_elite){
+	            /// Elites are tougher and slightly faster: 1.5x health plus 1.1x speed
+	            /// makes the variant distinct without overwhelming the route.
+	            _inst.data[MON.life] = ceil(_inst.data[MON.life] * 1.5);
+	            _inst.data[MON.maxLife] = _inst.data[MON.life];
+	            _inst.data[MON.speed] *= 1.10;
+	            scr_meta_log("LEVEL", "ELITE ", _inst.data[MON.name],
+	                         " hp x1.5 speed x1.10 class=elite");
+	        }
 	        /// the FULL size this monster grows to.  The emerge starts at
 	        /// nothing and scales 0.00 -> 1.00 of this, because the crawl
 	        /// sprite that used to play on spawn is gone.  0.25 keeps a
 	        /// monster to about one 32px grid cell; bosses are twice that.
 	        _inst.base_scale = is_boss_wave ? 0.5 : 0.25;
+	        if(_is_elite) _inst.base_scale *= 1.15;
 	        _inst.image_xscale = 0;
 	        _inst.image_yscale = 0;
 	        /// modify life for the wave and the difficulty

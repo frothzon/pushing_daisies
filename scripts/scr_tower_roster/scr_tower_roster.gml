@@ -82,21 +82,17 @@ function tower_data_copy(_name) {
 /// defaults for towers without a row.
 function tower_trait_table() {
 	return [
-		/// name            crit  status         chance  mult   amount  seconds
 		{ name : "Chillip",
 		  crit : 0.00,
-		  status : STATUS.SLOW,
-		  status_chance : 1.00,
-		  mult : 0.55,
-		  amount : 0,
-		  seconds : 1.5 },
+		  statuses : [
+			{ kind : STATUS.SLOW, chance : 1.00, mult : 0.55, amount : 0, seconds : 1.5 },
+			{ kind : STATUS.STUN, chance : 0.05, mult : 1.00, amount : 0, seconds : 1.0 }
+		  ] },
 		{ name : "Burning Ivy",
 		  crit : 0.00,
-		  status : STATUS.BURN,
-		  status_chance : 0.20,
-		  mult : 1.00,
-		  amount : 10,
-		  seconds : 3.0 }
+		  statuses : [
+			{ kind : STATUS.BURN, chance : 0.20, mult : 1.00, amount : 10, seconds : 3.0 }
+		  ] }
 	];
 }
 
@@ -121,6 +117,43 @@ function tower_trait_get(_name, _key, _default) {
 	if(!is_string(_key)) return _default;
 	if(!variable_struct_exists(_t, _key)) return _default;
 	return _t[$ _key];
+}
+
+/// Normalized on-hit effects for one tower. Enum kinds are validated by
+/// switch, never is_real (LL-083); every numeric field has a safe default.
+function tower_trait_statuses(_name) {
+	var _raw = tower_trait_get(_name, "statuses", []),
+	    _out = [];
+	if(!is_array(_raw)) return _out;
+	for(var _i = 0; _i < array_length(_raw); _i++){
+		var _s = _raw[_i];
+		if(!is_struct(_s) || !variable_struct_exists(_s, "kind")) continue;
+		var _known = false;
+		switch(_s.kind){
+			case STATUS.SLOW:   _known = true; break;
+			case STATUS.STUN:   _known = true; break;
+			case STATUS.BURN:   _known = true; break;
+			case STATUS.POISON: _known = true; break;
+			case STATUS.ROOT:   _known = true; break;
+			case STATUS.BLEED:  _known = true; break;
+			case STATUS.VULN:   _known = true; break;
+		}
+		if(!_known) continue;
+		var _chance = variable_struct_exists(_s, "chance") && is_real(_s.chance)
+		              ? clamp(_s.chance, 0, 1) : 0,
+		    _mult = variable_struct_exists(_s, "mult") && is_real(_s.mult)
+		            ? clamp(_s.mult, 0, 4) : 1,
+		    _amount = variable_struct_exists(_s, "amount") && is_real(_s.amount)
+		              ? max(0, _s.amount) : 0,
+		    _seconds = variable_struct_exists(_s, "seconds") && is_real(_s.seconds)
+		               ? max(0, _s.seconds) : 0;
+		if(_chance <= 0 || _seconds <= 0) continue;
+		_out[array_length(_out)] = {
+			kind : _s.kind, chance : _chance, mult : _mult,
+			amount : _amount, seconds : _seconds
+		};
+	}
+	return _out;
 }
 
 /// The roster indices that make up the current loadout, in loadout order.

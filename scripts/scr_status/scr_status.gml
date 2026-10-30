@@ -50,6 +50,39 @@ function status_frames(_seconds) {
 	return max(1, round(_seconds * _fps));
 }
 
+/// The retained control duration for each monster class (goal.md 7).
+/// DoT and damage amplification are unaffected by these control columns.
+function status_cc_frames(_kind, _class, _frames) {
+	var _scale = 1;
+	switch(_class){
+		case MON_CLASS.ELITE:
+			switch(_kind){
+				case STATUS.SLOW: _scale = 0.60; break;
+				case STATUS.STUN: _scale = 0.50; break;
+				case STATUS.ROOT: _scale = 0.60; break;
+			}
+			break;
+		case MON_CLASS.BOSS:
+			switch(_kind){
+				case STATUS.SLOW: _scale = 0.40; break;
+				case STATUS.STUN: _scale = 0.25; break;
+				case STATUS.ROOT: _scale = 0.30; break;
+			}
+			break;
+	}
+	return max(1, round(_frames * _scale));
+}
+
+/// A safe class label for status instrumentation.
+function status_class_name(_class) {
+	switch(_class){
+		case MON_CLASS.NORMAL: return "zombie";
+		case MON_CLASS.ELITE:  return "elite";
+		case MON_CLASS.BOSS:   return "boss";
+	}
+	return "unknown";
+}
+
 /// Apply (or REFRESH) one kind on one monster.
 ///
 /// `_mult` is a SPEED multiplier for SLOW; `_amount` is damage per second for
@@ -79,19 +112,23 @@ function status_apply(_mon, _kind, _mult, _frames, _amount) {
 	if(!_known || !is_real(_frames)) return false;
 
 	/// A strike can kill a target before its on-hit status loop runs. Check
-	/// life only inside with() (AGENTS rule 6), so corpses never gain effects.
-	var _alive = false;
+	/// life and the target class only inside with() (AGENTS rule 6).
+	var _alive = false,
+	    _class = MON_CLASS.NORMAL;
 	with(_mon){
 		if(variable_instance_exists(id, "data") && is_array(data)
 		&& array_length(data) > MON.life && is_real(data[MON.life])
 		&& data[MON.life] > 0){
 			_alive = true;
+			if(array_length(data) > MON.combat_class){
+				_class = data[MON.combat_class];
+			}
 		}
 	}
 	if(!_alive) return false;
 
 	var _m = is_real(_mult) ? clamp(_mult, 0, 4) : 1,
-	    _f = max(1, round(_frames)),
+	    _f = status_cc_frames(_kind, _class, max(1, round(_frames))),
 	    _a = is_real(_amount) ? max(0, _amount) : 0,
 	    _key = string(_kind),
 	    _fresh = false;
@@ -144,10 +181,11 @@ function status_apply(_mon, _kind, _mult, _frames, _amount) {
 
 	if(_kind == STATUS.BURN){
 		print("STAT  ", status_name(_kind), " ", _a, " damage/s for ", _f,
-		      "f on ", _mon, " (", _fresh ? "new" : "refresh", ") now ",
-		      status_summary(_mon));
+		      "f on ", _mon, " class=", status_class_name(_class),
+		      " (", _fresh ? "new" : "refresh", ") now ", status_summary(_mon));
 	} else {
-		print("STAT  ", status_name(_kind), " x", _m, " for ", _f, "f on ", _mon,
+		print("STAT  ", status_name(_kind), " x", _m, " for ", _f,
+		      "f on ", _mon, " class=", status_class_name(_class),
 		      " (", _fresh ? "new" : "refresh", ") now ", status_summary(_mon));
 	}
 	return true;
@@ -227,21 +265,35 @@ function status_tint() {
 	if(!is_real(status_count) || status_count <= 0) return c_white;
 	if(!variable_instance_exists(id, "statuses") || !is_struct(statuses)) return c_white;
 
-	var _names = variable_struct_get_names(statuses);
+	/// A stun must remain visually distinct when the same Chillip hit also
+	/// left a slow active. Explicit priority beats struct insertion order.
+	var _best_priority = 0,
+	    _best_tint = c_white,
+	    _names = variable_struct_get_names(statuses);
 	for(var _i = 0; _i < array_length(_names); _i++){
 		var _s = statuses[$ _names[_i]];
-		if(_s.frames <= 0) continue;
+		if(!is_struct(_s)
+		|| !variable_struct_exists(_s, "kind")
+		|| !variable_struct_exists(_s, "frames")
+		|| !is_real(_s.frames) || _s.frames <= 0) continue;
+
+		var _priority = 0,
+		    _tint = c_white;
 		switch(_s.kind){
-			case STATUS.SLOW:   return merge_colour(c_white, c_aqua,   0.55);
-			case STATUS.STUN:   return merge_colour(c_white, c_yellow, 0.55);
-			case STATUS.ROOT:   return merge_colour(c_white, c_dkgray, 0.55);
-			case STATUS.BURN:   return merge_colour(c_white, c_orange, 0.55);
-			case STATUS.POISON: return merge_colour(c_white, c_lime,   0.55);
-			case STATUS.BLEED:  return merge_colour(c_white, c_red,    0.55);
-			case STATUS.VULN:   return merge_colour(c_white, c_purple, 0.55);
+			case STATUS.SLOW:   _priority = 1; _tint = merge_colour(c_white, c_aqua,   0.55); break;
+			case STATUS.ROOT:   _priority = 3; _tint = merge_colour(c_white, c_dkgray, 0.55); break;
+			case STATUS.BURN:   _priority = 4; _tint = merge_colour(c_white, c_orange, 0.55); break;
+			case STATUS.POISON: _priority = 4; _tint = merge_colour(c_white, c_lime,   0.55); break;
+			case STATUS.BLEED:  _priority = 4; _tint = merge_colour(c_white, c_red,    0.55); break;
+			case STATUS.VULN:   _priority = 5; _tint = merge_colour(c_white, c_purple, 0.55); break;
+			case STATUS.STUN:   _priority = 9; _tint = merge_colour(c_white, c_yellow, 0.55); break;
+		}
+		if(_priority > _best_priority){
+			_best_priority = _priority;
+			_best_tint = _tint;
 		}
 	}
-	return c_white;
+	return _best_tint;
 }
 
 /// One step of the clock, on the CALLING monster, from obj_mon/Step_0's last

@@ -29,6 +29,7 @@ function scr_makeMonster() {
 	/// both readers guard on it (LL-012).
 	_arr[MON.debree]   = 0;
 	_arr[MON.portrait] = -1;
+	_arr[MON.combat_class] = MON_CLASS.NORMAL;
 
 	return(_arr);
 

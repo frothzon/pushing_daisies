@@ -56,16 +56,10 @@ shot_damage = 0;
 shot_crit_chance = 0.05;
 shot_crit_multiplier = 1.50;
 
-/// ---- the status THIS swing will land (scr_tower_shoot) --------------
-/// Defaults, for the same reason base_data is undefined: the creator
-/// assigns `name` AFTER instance_create, so a swing that began during
-/// placement would find no trait row - and reading a never-written
-/// variable is a fatal error, not a zero (LL-002).  -1 = "no status".
-shot_status        = -1;
-shot_status_mult   = 1;
-shot_status_frames = 0;
-shot_status_chance = 0;
-shot_status_amount = 0;
+/// ---- the statuses THIS swing will land (scr_tower_shoot) -----------
+/// The creator assigns `name` AFTER instance_create, so this starts empty
+/// until a named tower locks its trait effects at the start of a swing.
+shot_statuses = [];
 frame_number = 0;
 
 /// ---- the ATTACK TIMER (LL-054) -------------------------------------
