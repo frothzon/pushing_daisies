@@ -594,12 +594,13 @@ not seam.
 
 ### 4.4 `art-garden-book` — the icon set for every meta screen
 
-**What the game does today.** The Garden Book, the world map and the Deploy
-screen are drawn from **flat rectangles and text** in `scr_meta_screen`. The
-handful of sprites they touch are `spr_button` and `spr_title_image`; the tower
-wall draws actual tower sprites. There are **no currency icons, no tree nodes,
-no candy icons, no medals** — the card is asking for a whole visual vocabulary,
-not a replacement set.
+**What the game does today.** Garden Book, world map and Deploy panels still use
+flat rectangles and text, while icons supply their visual vocabulary. The repo
+now contains **38 meta-screen icons**: four currencies, four clover branches,
+two node pips, five mastery nodes, five Blood Alchemy tiers, ten candy recipes,
+and seven medals plus the locked plate. The tower wall draws the actual tower
+sprites. This brief records the silhouettes and sizes those delivered assets
+follow.
 
 **How it is laid out** (GUI 960×540), so the art sizes itself to these slots:
 
@@ -610,8 +611,8 @@ not a replacement set.
   tower sprites already;
 * one primary button per screen — the existing `spr_button` is fine.
 
-**The set to draw.** Names and counts are facts from `economy.md` / `goal.md`;
-the visual one-liners are proposals.
+**The icon set.** Names and counts are facts from `economy.md` / `goal.md`;
+the one-liners record the intended silhouette for each delivered icon.
 
 **1. Currencies — four icons at 24×24** (they appear side by side in one line
 and must not be confusable):
@@ -640,7 +641,7 @@ badges.
 (an open maw), Blood Moon (a moon with a bite out of it), Crimson Garden (a red
 flower on a black stem).
 
-**5. Candy — eight icons at 64×64**, one per recipe, distinct by silhouette:
+**5. Candy — ten icons at 64×64**, one per recipe, distinct by silhouette:
 
 | Candy | Idea |
 | --- | --- |
@@ -652,6 +653,8 @@ flower on a black stem).
 | Frosted Flake | a six-point snowflake candy, icy blue |
 | Blood Bonbon | a dark chocolate dome with a red drip and a bite |
 | Everlasting Gob | a swirled lollipop with a tiny clock face |
+| Blood Orange | a glossy orange jelly wedge with a dark-red citrus center |
+| Money Honey | an amber honey-drop bonbon with a small gold coin inset |
 
 **6. Badges — seven medals at 64×64** plus **one empty/locked medal**. The save
 stores one boolean per (region, stage, badge), so these seven are reused across

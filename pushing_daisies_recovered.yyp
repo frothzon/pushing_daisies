@@ -1232,6 +1232,8 @@
     {"id":{"name":"scr_perf_watch","path":"scripts/scr_perf_watch/scr_perf_watch.yy",},},
     {"id":{"name":"spr_sandblasted_portrait","path":"sprites/spr_sandblasted_portrait/spr_sandblasted_portrait.yy",},},
     {"id":{"name":"spr_shroud_portrait","path":"sprites/spr_shroud_portrait/spr_shroud_portrait.yy",},},
+    {"id":{"name":"spr_blood_orange","path":"sprites/spr_blood_orange/spr_blood_orange.yy",},},
+    {"id":{"name":"spr_money_honey","path":"sprites/spr_money_honey/spr_money_honey.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",

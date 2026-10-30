@@ -100,6 +100,8 @@ function icon_candy(_name) {
 		case "frosted_flake":   return spr_frosted_flake;
 		case "blood_bonbon":    return spr_blood_bonbon;
 		case "everlasting_gob": return spr_everlasting_gob;
+		case "blood_orange":    return spr_blood_orange;
+		case "money_honey":     return spr_money_honey;
 	}
 	return -1;
 }

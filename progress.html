@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Pushing Daisies — progress</title>
-<meta name="progress-sha" content="01660e58941f3efe">
+<meta name="progress-sha" content="3f07314f3cd5f918">
 <meta name="generator" content="python -m gm progress build">
 <style>
 :root{
@@ -921,18 +921,22 @@ footer{margin-top:34px;color:var(--dim);font-size:11.5px}
       "id": "candy-recipes",
       "title": "Candy: recipes, levels 1-10, duration instead of stacking",
       "status": "review",
-      "owner": "cline",
+      "owner": "both",
       "awaiting": "rayu",
       "area": "code",
       "phase": "4",
       "size": "L",
       "prio": 3,
-      "needs": "Reload with global.devMode = true and open Garden Book > Candy. Page all 10 recipes and test both rare gates; unlock, level, buy stock and duration, then relaunch to check saves. Confirm Everlasting Gob shows frozen waves rather than a seconds duration; Gummy Worm and Money Honey reach +28.5% at L10. In a stage activate candies from pause: expect META  [CANDY] recipe/level/stock/duration/activate/expired lines; the active HUD counts down only during live waves, repeat use adds time, Gob freezes active timers, Blood Orange shows pity progress, and Money Honey raises kill payouts. Clipped UI, wrong timer/effect, lost save, or absent logs falsifies it.",
-      "notes": "IMPLEMENTED IN CODE: ten recipes (eight standard, two gated rare), permanent unlocks and levels, shard stock bundles (5 per shard), clover duration track, Garden Book catalog/detail/actions, pause activation/status panel, live active-candy countdown HUD, active-wave timers, Gob timer freeze, and combat/status/pity/kill-money effects. Purchases save immediately. Endless loot-box stock rewards are implemented separately. Corrected the Gob detail row to show frozen wave count instead of a seconds duration, synchronized Gummy Worm and Money Honey L10 documentation to the implemented +28.5% values, documented both tier-4 rare recipes at 35 shards, and corrected the §6.4 sink total to 950 shards for all ten recipes. Remaining: GameMaker visual/runtime review.",
+      "needs": "Reload with global.devMode = true and open Garden Book > Candy. Page all 10 recipes and confirm Blood Orange and Money Honey show their custom icons in the list and details, with no BO/MH fallback initials. Test both rare gates, unlock/level/stock/duration purchases, then relaunch and check saves. Confirm Gob displays frozen waves; Gummy Worm and Money Honey reach +28.5% at L10. In a stage activate candies from pause: timers should tick only during live waves, repeated use adds time, Gob freezes them, Blood Orange shows pity progress, and Money Honey raises kill payouts. Missing art, clipped UI, wrong timer/effect, lost save, or absent logs falsifies it.",
+      "notes": "IMPLEMENTED IN CODE: ten recipes, permanent unlocks and levels, shard stock bundles (5 per shard), clover duration track, Garden Book catalog/detail/actions, pause activation/status panel, active-candy HUD, live-wave timers, Gob freeze, and combat/status/pity/kill-money effects. Purchases save immediately; Endless box stock rewards are wired separately. Added dedicated transparent 64x64 Blood Orange and Money Honey icons, wired both in icon_candy(), and updated the art brief from eight to ten recipe icons. Remaining: GameMaker visual/runtime review.",
       "refs": [
         "economy.md",
-        "objects/obj_mon/Step_0.gml",
-        "goal.md"
+        "goal.md",
+        "art_descriptions.md",
+        "scripts/scr_candy_system/scr_candy_system.gml",
+        "scripts/scr_ui_icons/scr_ui_icons.gml",
+        "sprites/spr_blood_orange/spr_blood_orange.yy",
+        "sprites/spr_money_honey/spr_money_honey.yy"
       ],
       "created": "2026-10-15",
       "updated": "2026-10-30",
