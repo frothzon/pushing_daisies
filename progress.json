@@ -20,6 +20,8 @@
   },
   "focus": {
     "now": [
+      "region-4-6-difficulty",
+      "region-badges",
       "tower-card-upgrade-preview",
       "combat-specs",
       "candy-recipes",
@@ -27,10 +29,9 @@
       "tower-l5-signatures"
     ],
     "next": [
-      "garden-nav",
-      "garden-respec"
+      "par-reauthor"
     ],
-    "note": "2026-10-30: Upgrade-card and Candy flows are implemented; GameMaker runtime review remains. The reproducible Phase 2 gate now passes: control ties DPS on fast-wave lives, and DPS clears the high-HP case much faster; GameMaker runtime review remains. All 24 L5 tier-3 effects are surfaced; added direct signatures for Deadeye, Wildfire, Tenderizer, Ripper, Potent Venom and both Money Marigold paths. Runtime review remains."
+    "note": "2026-10-30: Normal ceiling sim reproduces late-region leakouts; candidate clean endpoints are R4=18, R5=16, R6=10 on stages 1/5/10, pending validation across all ten. Seven badges now award through run counters and display saved medal icons; Frugal/Speed par values are still provisional. Upgrade-card, specialization, Candy and two-loadout combat implementations are in the Rayu runtime review queue."
   },
   "tasks": [
     {
@@ -2672,36 +2673,36 @@
     {
       "id": "region-4-6-difficulty",
       "title": "Regions 4-6 leak under the tester's ceiling policy, and region 6 runs out of life",
-      "status": "backlog",
-      "owner": "cline",
-      "awaiting": "none",
-      "area": "data",
-      "phase": "5",
-      "size": "M",
-      "prio": 2,
-      "needs": "",
-      "notes": "Measured 2026-10-24 on the authored 60 rows, gm balance sim --region R --stage 1 --spend ceiling: region 1 no leaks, region 2 no leaks, region 3 no leaks, region 4 2 leaks from wave 14 with 18 of 20 lives left, region 5 10 leaks from wave 11 with 10 lives left, region 6 20 leaks from wave 9 and 0 lives (a game over, waves scaling to 12143hp by wave 14). The rows follow region 1's shape and region_data's existing curve, so the lever is the curve_end and the new creatures' life, not the authoring. The tester's greedy is weaker than a player, so a few leaks is a warning rather than a verdict - but a stage that empties the life counter is worth a look before regions 4-6 are called finished.",
-      "refs": [
-        "scripts/stage_data/stage_data.gml",
-        "scripts/region_data/region_data.gml",
-        "python_tools/gm/balance/model.py"
-      ],
-      "created": "2026-10-24",
-      "updated": "2026-10-24",
-      "done": null
-    },
-    {
-      "id": "region-badges",
-      "title": "All seven badge types across all 60 stages",
       "status": "doing",
       "owner": "cline",
       "awaiting": "cline",
       "area": "data",
       "phase": "5",
       "size": "M",
+      "prio": 2,
+      "needs": "Use the balance fitter and time-step simulator to choose region 4-6 curve_end values; validate stages 1, 5 and 10 first, then all ten Normal stages before editing region_data. Keep the Hard/Brutal gate in view and document the resulting assumptions.",
+      "notes": "REPRODUCED 2026-10-30: current Normal ceiling-policy stage 1 holds clean in Regions 1-3, leaks 1 in Region 4, leaks 5 in Region 5, and loses all 20 lives by wave 14 in Region 6. Fitter plus time-step checks on representative stages 1/5/10: Region 4 curve_end=18 clears clean (20 leaks 2 on stage 10); Region 5 curve_end=16 clears clean (18 leaks 1 on stage 10); Region 6 curve_end=10 clears clean (11-12 leak on stage 10, 13 leaks 8, 14-15 lose). Validate each candidate across all ten stages before changing the table.",
+      "refs": [
+        "scripts/stage_data/stage_data.gml",
+        "scripts/region_data/region_data.gml",
+        "python_tools/gm/balance/model.py"
+      ],
+      "created": "2026-10-24",
+      "updated": "2026-10-30",
+      "done": null
+    },
+    {
+      "id": "region-badges",
+      "title": "All seven badge types across all 60 stages",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "data",
+      "phase": "5",
+      "size": "M",
       "prio": 3,
-      "needs": "Implement Botanist, Purist, Frugal, and Speed Grower alongside the existing three badges; track placements, gross run spend, actual lives lost, and clear time, and connect all seven medal icons to saved per-stage awards.",
-      "notes": "ART IS IN (2026-10-21): seven medals plus a locked plate, 64x64. BADGE still has three members, so scr_ui_icons.icon_badge() falls through to the locked plate for the other four - growing the enum is this card's first job.",
+      "needs": "Reload GameMaker with global.devMode=true. Clear a Normal stage without losing lives using exactly one tower type, then replay using four distinct types; confirm Untouched, Purist and Botanist. Clear Brutal and a clean Normal stage for Brutalist and Exterminator, then hover a cleared map tile: all seven medal icons must reflect the saved per-stage awards and persist after relaunch. Verify Frugal and Speed Grower read the Deploy thresholds; those values are provisional until par-reauthor, so do not judge attainability yet. Missing or incorrect awards, icons or persistence falsifies the implementation.",
+      "notes": "IMPLEMENTED IN CODE: preserved the original save IDs, added counters for gross run spend, successful tower placements/types, actual lives lost, and active-stage seconds; awards all seven medals on clear and saves by region/stage. The map hover now displays all seven actual medal sprites tinted from that stage's saved awards. Frugal and Speed Grower use the stage row values and show them in Deploy; those copied thresholds remain provisional until par-reauthor is completed. Awaiting GameMaker runtime and visual review.",
       "refs": [
         "scripts/scr_badges/scr_badges.gml",
         "scripts/stage_data/stage_data.gml"

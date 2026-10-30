@@ -587,8 +587,10 @@ function meta_draw_worldmap() {
 		           make_colour_rgb(20, 20, 24), c_black);
 
 		draw_set_font(fnt_size16);
-		var _tx = _bar[0] + 8,
-		    _ty = _bar[1] + ((_bar[3] - _bar[1]) - string_height("Ag"))*0.5,
+		var _show_badges = !is_undefined(_lvl) && stage_cleared(_hr,_hs),
+		    _tx = _bar[0] + 8,
+		    _ty = _show_badges ? _bar[1] + 2
+		                       : _bar[1] + ((_bar[3] - _bar[1]) - string_height("Ag"))*0.5,
 		    _tw = (_bar[2] - _bar[0]) - 16,
 		    _msg;
 
@@ -598,7 +600,7 @@ function meta_draw_worldmap() {
 			_msg = _lvl.label() +
 			       "   waves " + string(_lvl.waves) +
 			       "   seeds " + string(_lvl.seeds) +
-			       (stage_cleared(_hr, _hs) ? "   cleared" : "");
+			       (_show_badges ? "   cleared" : "");
 		} else {
 			_msg = "Locked - clear the stage before it";
 		}
@@ -609,6 +611,36 @@ function meta_draw_worldmap() {
 		meta_text(_tx, _ty, ui_clip_text(_msg, _tw),
 		          is_undefined(_lvl) ? c_dkgray :
 		          (stage_unlocked(_hr, _hs) ? c_white : c_silver), fa_left);
+
+		/// Cleared nodes expose the seven actual medal sprites, tinted from the
+		/// saved per-stage award map. The small squares in the grid remain the
+		/// at-a-glance count; this strip makes each earned medal identifiable.
+		if(_show_badges){
+			draw_set_font(fnt_size12);
+			draw_set_colour(c_silver);
+			draw_set_halign(fa_left);
+			draw_set_valign(fa_top);
+			var _label_x = _bar[0] + 8,
+			    _label_y = _bar[1] + 19,
+			    _badge_x = _bar[0] + 62,
+			    _badge_y = _bar[1] + 26;
+			draw_text(_label_x,_label_y,"Badges");
+			ui_reg_text("badges.label",_label_x,_label_y,"Badges",fa_left,fa_top);
+			for(var _bi = 0; _bi < badge_count(); _bi++){
+				var _badge = badge_display_at(_bi),
+				    _spr = icon_badge(_badge),
+				    _scale = ui_art_scale(_spr,12,12),
+				    _tone = badge_has(_hr,_hs,_badge) ? c_white : make_colour_rgb(64,64,64);
+			if(_scale > 0){
+				ui_art_draw(_spr,_badge_x + 6,_badge_y,_scale,_tone,1,
+				            concat("worldmap.badge.",_hr,".",_hs,".",_bi));
+			}
+			_badge_x += 16;
+			}
+			draw_set_font(fnt_size16);
+			draw_set_colour(c_white);
+			draw_set_valign(fa_top);
+		}
 	}
 }
 
