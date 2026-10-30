@@ -63,6 +63,13 @@ if(_ui > 0.01 && scr_isValidInstance(tower_selection)){
     draw_set_font(fnt_size16);
     for_dgrid(tower_dgrid,scr_drawTowerMod);
     draw_set_font(fnt_size16);
+    if(tower_spec_pending){
+        with(tower_selection){
+            tower_spec_choice_draw(other.tower_card_x,other.tower_card_y,
+                                   other.tower_card_w,tower_spec_self_name(),
+                                   other.tower_price_save[0]);
+        }
+    }
 }
 
 /// the curve diagnostic panel (card curve-diagnostic) - the curve and the

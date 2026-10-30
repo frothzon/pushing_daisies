@@ -108,7 +108,11 @@ function tower_trait_table() {
 		  crit : 0.00,
 		  statuses : [
 			{ kind : STATUS.POISON, chance : 0.20, mult : 1.00, amount : 3, seconds : 5.0 }
-		  ] }
+		  ] },
+		{ name : "Money Marigold",
+		  crit : 0.00,
+		  money : 0.15,
+		  statuses : [] }
 	];
 }
 

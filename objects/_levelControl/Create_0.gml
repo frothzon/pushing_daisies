@@ -97,7 +97,9 @@ for(var _ti = 0; _ti < array_length(_load); _ti++){
     /// (goal.md 4).  The BASE data rides along on the entry as well,
     /// because a rung is measured against the base and an upgrade has to
     /// be able to re-resolve exactly the way a placement did.
-    var _data = tower_data_at_level(_entry.data, _floor, _dmg_bonus, _rate_bonus);
+    var _data = tower_data_at_level(_entry.data, _floor, _dmg_bonus, _rate_bonus),
+        _spec = tower_spec_saved(_entry.name);
+    _data = tower_spec_apply_data(_entry.name, _spec, _floor, _data);
 
     tower_array[_armed] = array(_entry.sprites, _entry.name, _entry.price,
                                 _data, _entry.data);
@@ -163,6 +165,7 @@ tower_point = array(
 tower_selection = noone;
 tower_menu_selection = -1;
 tower_menu_hover = -1;
+tower_spec_pending = false; /// true while the L3 branch choice is open
 
 /// The tower the POINTER is over, or noone.  ONE place answers that question
 /// (LL-021): Step_0 sets it exactly where the hover is decided, and the

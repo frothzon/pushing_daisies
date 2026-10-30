@@ -88,26 +88,29 @@ var _valid = scr_isValidInstance(tower_selection);
 if(_valid){
     var _mouse = points_to_gui(mouse_x,mouse_y,0);
     tower_menu_hover = dgrid_get_index(tower_dgrid,_mouse[0],_mouse[1]);
-    /// update sporadically
-    if(chance(0.1) || tower_timer == 0){
-        /// the next rung's price: a fixed multiple of the tower's BASE
-        /// price, and the refund is 60% of everything invested
-        /// (economy.md 4.3).  -1 means "at the cap", the sentinel the price
-        /// check and scr_setMaxPrice() already understand.
+    if(tower_spec_pending){
+        var _ctx = tower_spec_choice_context(tower_selection),
+            _cost = _ctx.cost,
+            _affordable = (_ctx.level >= 3) || (_cost >= 0 && _cost <= get_item_value(money));
+        tower_price_save[0] = _cost;
+        tower_price_save[1] = _cost;
+        tower_text[0] = tower_spec_option_label(_ctx.name,0);
+        tower_text[1] = tower_spec_option_label(_ctx.name,1);
+        tower_price_check[0] = _affordable;
+        tower_price_check[1] = _affordable;
+    } else if(chance(0.1) || tower_timer == 0){
+        /// The next rung is priced against BASE cost; sale refunds include
+        /// placement and every rung (economy.md 4.3).
         tower_price_save[0] = tower_upgrade_price(tower_selection.base_price,
                                                  tower_selection.data[TOWER.level]);
         tower_price_save[1] = -tower_sell_refund(tower_selection.invested);
-        
-        /// reset text
         tower_text[0] = concat("Upgrade $",tower_price_save[0]);
         tower_text[1] = concat("Sell $",tower_price_save[1]);
-        
-        /// max tower level price
         scr_setMaxPrice();
-        
-        /// price check
         var _money = get_item_value(money);
-        tower_price_check[0] = (tower_price_save[0] <= _money) && (tower_selection.data[TOWER.level]<tower_max_level) && tower_price_save[0] != -1;
+        tower_price_check[0] = (tower_price_save[0] <= _money)
+                               && (tower_selection.data[TOWER.level] < tower_max_level)
+                               && tower_price_save[0] != -1;
         tower_price_check[1] = (tower_price_save[1] <= _money);
     }
 }
@@ -140,6 +143,8 @@ if(mouse_check_button_pressed(mb_left) && tower_timer > 10){
         };
         if(_best != noone){
             tower_selection = _best;
+            tower_spec_pending = false;
+            with(_best){ other.tower_spec_pending = tower_spec_needs_choice(); }
             print("Selected Tower: ",_best);
         }
         
@@ -167,7 +172,21 @@ if(mouse_check_button_pressed(mb_left) && tower_timer > 10){
             tower_price_check[1] = (tower_price_save[1] <= _money);
         }
     } else if(tower_menu_hover == -1){
+        tower_spec_pending = false;
         tower_selection = noone;
+    } else if(tower_spec_pending){
+        var _choice = tower_spec_choose_instance(tower_selection,tower_menu_hover);
+        if(is_struct(_choice)){
+            tower_spec_pending = false;
+            float_text_gui(tower_display[0],tower_display[1],
+                           concat(_choice.label," chosen"),c_yellow);
+            if(_choice.cost > 0){
+                float_text_gui(tower_display[0],tower_display[1]+32,
+                               concat("Damage + ",round(_choice.damage_delta)),c_yellow);
+            }
+        } else {
+            print("TOWER  specialization choice refused: tower, path, or L3 funds invalid");
+        }
     } else {
         /// menu is here
         tower_menu_selection = tower_menu_hover;
@@ -181,67 +200,84 @@ if(mouse_check_button_pressed(mb_left) && tower_timer > 10){
             // from (tower_levels.gml, economy.md 4.4).
             if(tower_price_check[0] && is_array(tower_selection.base_data)){
                 var _after = min(tower_selection.data[TOWER.level] + 1, tower_max_level),
-                    _data  = tower_data_at_level(tower_selection.base_data, _after,
-                                                clover_damage_bonus(),
-                                                clover_firerate_bonus());
-                if(is_array(_data)){
-                    var _dmg = _data[TOWER.damage] - tower_selection.data[TOWER.damage],
-                        _rng = _data[TOWER.range]  - tower_selection.data[TOWER.range];
+                    _tower_name = "", _spec_key = "";
+                with(tower_selection){
+                    if(variable_instance_exists(id,"name") && is_string(name)) _tower_name = name;
+                    if(variable_instance_exists(id,"specialization") && is_string(specialization)) _spec_key = specialization;
+                }
+                if(_after >= 3 && _spec_key == ""){
+                    tower_spec_pending = true;
+                    var _affordable = tower_price_save[0] >= 0
+                                      && tower_price_save[0] <= get_item_value(money);
+                    tower_price_save[1] = tower_price_save[0];
+                    tower_text[0] = tower_spec_option_label(_tower_name,0);
+                    tower_text[1] = tower_spec_option_label(_tower_name,1);
+                    tower_price_check[0] = _affordable;
+                    tower_price_check[1] = _affordable;
+                } else {
+                    var _data = tower_data_at_level(tower_selection.base_data, _after,
+                                                   clover_damage_bonus(),
+                                                   clover_firerate_bonus());
+                    _data = tower_spec_apply_data(_tower_name,_spec_key,_after,_data);
+                    if(is_array(_data)){
+                        var _dmg = _data[TOWER.damage] - tower_selection.data[TOWER.damage],
+                            _rng = _data[TOWER.range]  - tower_selection.data[TOWER.range];
 
-                    tower_selection.data = _data;
+                        tower_selection.data = _data;
 
-                    /// ---- the level cue is the RING, not the size --------
-                    /// The size used to be written here, as
-                    /// lerp(0.25, 0.70, level/10) - which made an upgrade the
-                    /// one purchase in the game that made the thing you
-                    /// bought look SMALLER.  A tower is PLACED at draw_scale
-                    /// 0.5 (obj_tower/Create_0), so L2 came out at 0.34 and
-                    /// the tower did not get back to 0.5 until L10; even the
-                    /// cap only reached 0.475.  draw_scale is set once, at
-                    /// creation, and NOTHING writes it again - the level
-                    /// rides on the outline colour instead, which is legible
-                    /// at any level and cannot be broken by a ladder change
-                    /// (choose-upgrade-scale, tower_level_outline).
-                    ///
-                    /// What is left here is the TINT, still normalised by a
-                    /// FIXED 10 and never by the current cap, so a tower
-                    /// placed at floor 6 does not look like one placed at
-                    /// floor 3 (goal.md 4, rule 3).  Whether the tint STAYS
-                    /// now that the ring carries the level is
-                    /// tower-level-palette - it is a second level signal and
-                    /// a second signal is a second thing to keep true.
-                    var _frac = tower_selection.data[TOWER.level]/10;
-                    tower_selection.image_blend = merge_colour(c_gray,c_white,_frac);
+                        /// ---- the level cue is the RING, not the size --------
+                        /// The size used to be written here, as
+                        /// lerp(0.25, 0.70, level/10) - which made an upgrade the
+                        /// one purchase in the game that made the thing you
+                        /// bought look SMALLER.  A tower is PLACED at draw_scale
+                        /// 0.5 (obj_tower/Create_0), so L2 came out at 0.34 and
+                        /// the tower did not get back to 0.5 until L10; even the
+                        /// cap only reached 0.475.  draw_scale is set once, at
+                        /// creation, and NOTHING writes it again - the level
+                        /// rides on the outline colour instead, which is legible
+                        /// at any level and cannot be broken by a ladder change
+                        /// (choose-upgrade-scale, tower_level_outline).
+                        ///
+                        /// What is left here is the TINT, still normalised by a
+                        /// FIXED 10 and never by the current cap, so a tower
+                        /// placed at floor 6 does not look like one placed at
+                        /// floor 3 (goal.md 4, rule 3).  Whether the tint STAYS
+                        /// now that the ring carries the level is
+                        /// tower-level-palette - it is a second level signal and
+                        /// a second signal is a second thing to keep true.
+                        var _frac = tower_selection.data[TOWER.level]/10;
+                        tower_selection.image_blend = merge_colour(c_gray,c_white,_frac);
 
-                    /// one line per purchase, so a reload reports the ring the
-                    /// tower just earned (LL-011).  -1 is level 1, which has
-                    /// no ring by design.
-                    var _lv    = tower_selection.data[TOWER.level],
-                        _ring  = tower_level_outline(_lv),
-                        _rtext = ((_ring == -1)
-                                  ? "none"
-                                  : concat("rgb(", color_get_red(_ring),   ",",
-                                           color_get_green(_ring), ",",
-                                           color_get_blue(_ring),  ")"));
-                    print("TOWER  level ", _lv, " ring ", _rtext);
+                        /// one line per purchase, so a reload reports the ring the
+                        /// tower just earned (LL-011).  -1 is level 1, which has
+                        /// no ring by design.
+                        var _lv    = tower_selection.data[TOWER.level],
+                            _ring  = tower_level_outline(_lv),
+                            _rtext = ((_ring == -1)
+                                      ? "none"
+                                      : concat("rgb(", color_get_red(_ring),   ",",
+                                               color_get_green(_ring), ",",
+                                               color_get_blue(_ring),  ")"));
+                        print("TOWER  level ", _lv, " ring ", _rtext);
 
-                    float_text_gui(tower_display[0],tower_display[1],concat("Damage + ",round(_dmg)),c_yellow);
-                    float_text_gui(tower_display[0],tower_display[1]+32,concat("Range + ",round(_rng)),c_yellow);
-                    print("Purchase ",-tower_price_save[0]);
-                    add_item_value(money,-tower_price_save[0]);
-                    print(get_item_value(money));
+                        float_text_gui(tower_display[0],tower_display[1],concat("Damage + ",round(_dmg)),c_yellow);
+                        float_text_gui(tower_display[0],tower_display[1]+32,concat("Range + ",round(_rng)),c_yellow);
+                        print("Purchase ",-tower_price_save[0]);
+                        add_item_value(money,-tower_price_save[0]);
+                        print(get_item_value(money));
 
-                    /// remember what has been put in, so selling refunds
-                    /// 60% of EVERYTHING (economy.md 4.3)
-                    tower_selection.invested += tower_price_save[0];
+                        /// remember what has been put in, so selling refunds
+                        /// 60% of EVERYTHING (economy.md 4.3)
+                        tower_selection.invested += tower_price_save[0];
 
-                    /// reset tower text
-                    tower_selection.tower_string = scr_dataToString(tower_selection.data);
+                        /// reset tower text
+                        tower_selection.tower_string = scr_dataToString(tower_selection.data);
 
-                    /// reset tower light
-                    with(tower_selection.tower_light){
-                        var _them = other.tower_selection;
-                        scr_scale_sprite(_them.data[TOWER.range]*2,_them.data[TOWER.range]*2);
+                        /// reset tower light
+                        with(tower_selection.tower_light){
+                            var _them = other.tower_selection;
+                            scr_scale_sprite(_them.data[TOWER.range]*2,_them.data[TOWER.range]*2);
+                        }
                     }
                 }
             }
@@ -255,6 +291,7 @@ if(mouse_check_button_pressed(mb_left) && tower_timer > 10){
             print("Refund ", _refund);
             add_item_value(money, _refund);
             instance_destroy(tower_selection);
+            tower_spec_pending = false;
             tower_menu_selection = -1;
             tower_selection = noone;
 

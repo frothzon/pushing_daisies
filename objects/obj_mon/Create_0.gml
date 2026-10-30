@@ -88,6 +88,7 @@ data = scr_makeMonster(0,0,0,0,0,0);
 damage_timer = irandom(3)*game_get_speed(gamespeed_fps);
 damage_amount = 0;
 damage_critical_amount = 0;
+last_hit_tower_money_bonus = 0; /// fraction applied to the kill payout if this hit secures it
 
 /// climb
 z_climb = 0;

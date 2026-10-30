@@ -48,9 +48,16 @@ function scr_tower_shoot() {
 	    if(array_length(data) > TOWER.crit_damage){
 	        if(is_real(data[TOWER.crit_damage])) _base_crit_damage = data[TOWER.crit_damage];
 	    }
-	    shot_crit_chance = clamp(_base_crit + tower_trait_get(name, "crit", 0), 0, 1);
+	    var _spec_key = variable_instance_exists(id,"specialization")
+	                    && is_string(specialization) ? specialization : "",
+	        _spec_mods = tower_spec_modifiers(name,_spec_key,data[TOWER.level]);
+	    shot_crit_chance = clamp(_base_crit + tower_trait_get(name, "crit", 0)
+	                                      + _spec_mods.crit, 0, 1);
 	    shot_crit_multiplier = max(1, _base_crit_damage
-	                                  + tower_trait_get(name, "crit_damage", 0));
+	                                  + tower_trait_get(name, "crit_damage", 0)
+	                                  + _spec_mods.crit_damage);
+	    shot_knockback = max(0,_spec_mods.knockback);
+	    shot_money_bonus = clamp(tower_trait_get(name,"money",0)+_spec_mods.money,0,1);
 
 	    /// ---- and the STATUSES this swing will land (scr_status) --------
 	    /// Read from the trait table ONCE, at the shot, and COPIED onto the
@@ -59,7 +66,7 @@ function scr_tower_shoot() {
 	    /// re-read at the strike could describe a tower the player sold in
 	    /// between.  Locked at the shot for exactly the reason shot_damage is
 	    /// (LL-054): a swing that has started is committed.
-	    var _status_specs = tower_trait_statuses(name);
+	    var _status_specs = tower_spec_shot_statuses(name,_spec_key,data[TOWER.level]);
 	    shot_statuses = [];
 	    for(var _ss = 0; _ss < array_length(_status_specs); _ss++){
 	        var _spec = _status_specs[_ss];
@@ -142,6 +149,8 @@ function scr_tower_shoot() {
 	            var _hit_damage = shot_damage,
 	                _is_critical = (shot_crit_chance > 0)
 	                               && (random(1) < shot_crit_chance);
+	            if(shot_knockback > 0) tower_spec_push_target(_hit,shot_knockback);
+	            tower_spec_record_money_source(_hit,shot_money_bonus);
 	            if(_is_critical){
 	                _hit_damage *= shot_crit_multiplier;
 	            }

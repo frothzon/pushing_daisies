@@ -17,7 +17,7 @@ function scr_drawTowerMod(argument0, argument1) {
 	//------------ get grid positions
 	var _box = dgrid_get_cell(_dg,_i);
 
-	if(!tower_price_check[_i] && _i == 0){
+	if(!tower_price_check[_i]){
 	    draw_sprite_stretched_ext(btn_tower,_i,_box[0],_box[1],_box[2],_box[3],c_red,1);
 	} else if(tower_menu_hover == _i){
 	    draw_sprite_stretched_ext(btn_tower,_i,_box[0],_box[1],_box[2],_box[3],c_yellow,1);

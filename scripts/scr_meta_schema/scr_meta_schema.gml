@@ -37,6 +37,7 @@ function scr_meta_default() {
 		clover_nodes : {},      /// clover tree node -> rank
 		blood_nodes  : {},      /// blood tree node -> rank
 		candy_levels : {},      /// recipe name -> level 1..10
+		specializations : {},  /// tower name -> free L3 path choice
 		candy_duration : 0,     /// candy duration track purchases 0..10
 
 		/// ---- long term counters ----

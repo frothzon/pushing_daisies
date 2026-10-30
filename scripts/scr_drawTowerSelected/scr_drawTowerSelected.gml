@@ -31,6 +31,7 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 
 	var _data = data,
 	    _name = variable_instance_exists(id, "name") && is_string(name) ? name : "Tower",
+	    _spec_key = variable_instance_exists(id,"specialization") && is_string(specialization) ? specialization : "",
 	    _level = _data[TOWER.level],
 	    _dmg = _data[TOWER.damage],
 	    _range = _data[TOWER.range],
@@ -48,8 +49,9 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 	if(array_length(_data) > TOWER.crit_damage){
 		if(is_real(_data[TOWER.crit_damage])) _crit_multiplier_base = _data[TOWER.crit_damage];
 	}
-	var _crit_chance = clamp(_crit_base + tower_trait_get(_name, "crit", 0), 0, 1),
-	    _crit_multiplier = max(1, _crit_multiplier_base + tower_trait_get(_name, "crit_damage", 0)),
+	var _spec_mods = tower_spec_modifiers(_name,_spec_key,_level),
+	    _crit_chance = clamp(_crit_base + tower_trait_get(_name, "crit", 0) + _spec_mods.crit, 0, 1),
+	    _crit_multiplier = max(1, _crit_multiplier_base + tower_trait_get(_name, "crit_damage", 0) + _spec_mods.crit_damage),
 	    _crit_factor = 1 + _crit_chance * (_crit_multiplier - 1);
 
 	if(variable_instance_exists(id, "anim_seconds") && is_array(anim_seconds)
@@ -70,7 +72,7 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 		                                     clover_damage_bonus(),
 		                                     clover_firerate_bonus());
 		if(is_array(_candidate) && array_length(_candidate) > TOWER.targets){
-			_next_data = _candidate;
+			_next_data = tower_spec_apply_data(_name,_spec_key,_level+1,_candidate);
 		} else {
 			_can_upgrade = false;
 		}
@@ -84,9 +86,10 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 	if(array_length(_next_data) > TOWER.crit_damage){
 		if(is_real(_next_data[TOWER.crit_damage])) _next_crit_multiplier_base = _next_data[TOWER.crit_damage];
 	}
-	var _next_eff_rate = _fps / max(1, tower_cycle_frames(_next_data[TOWER.fire_rate], _return_seconds) + _stagger),
-	    _next_crit_chance = clamp(_next_crit_base + tower_trait_get(_name, "crit", 0), 0, 1),
-	    _next_crit_multiplier = max(1, _next_crit_multiplier_base + tower_trait_get(_name, "crit_damage", 0)),
+	var _next_spec_mods = tower_spec_modifiers(_name,_spec_key,_can_upgrade ? _level+1 : _level),
+	    _next_eff_rate = _fps / max(1, tower_cycle_frames(_next_data[TOWER.fire_rate], _return_seconds) + _stagger),
+	    _next_crit_chance = clamp(_next_crit_base + tower_trait_get(_name, "crit", 0) + _next_spec_mods.crit, 0, 1),
+	    _next_crit_multiplier = max(1, _next_crit_multiplier_base + tower_trait_get(_name, "crit_damage", 0) + _next_spec_mods.crit_damage),
 	    _current_dps = _dmg * _current_eff_rate * _crit_factor,
 	    _next_dps = _next_data[TOWER.damage] * _next_eff_rate
 	                * (1 + _next_crit_chance * (_next_crit_multiplier - 1));
@@ -136,10 +139,17 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 		draw_text_outline(_x+12, _y+100, "NEXT RUNG UNAVAILABLE", c_gray, c_black, 1);
 	}
 
-	var _trait = tower_stat_note(_name);
-	if(_trait != ""){
-		draw_text_outline(_x+12, _y+120, concat("TRAIT  ", _trait),
-		                   c_white, c_black, 1);
+	var _spec_path = tower_spec_find(_name,_spec_key);
+	if(is_struct(_spec_path)){
+		draw_text_outline(_x+12, _y+120,
+		    concat("SPEC  ",_spec_path.label,"  T",tower_spec_tier_limit(_level)),
+		    c_aqua,c_black,1);
+	} else {
+		var _trait = tower_stat_note(_name);
+		if(_trait != ""){
+			draw_text_outline(_x+12, _y+120, concat("TRAIT  ", _trait),
+			                   c_white, c_black, 1);
+		}
 	}
 
 	draw_set_halign(fa_left);

@@ -55,11 +55,14 @@ anim_reported = array(false, false, false);
 shot_damage = 0;
 shot_crit_chance = 0.05;
 shot_crit_multiplier = 1.50;
+shot_knockback = 0;
+shot_money_bonus = 0;
 
 /// ---- the statuses THIS swing will land (scr_tower_shoot) -----------
 /// The creator assigns `name` AFTER instance_create, so this starts empty
 /// until a named tower locks its trait effects at the start of a swing.
 shot_statuses = [];
+specialization = ""; /// saved path key; no path is active before L3
 frame_number = 0;
 
 /// ---- the ATTACK TIMER (LL-054) -------------------------------------

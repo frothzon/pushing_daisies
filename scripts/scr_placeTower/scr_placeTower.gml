@@ -19,6 +19,7 @@ function scr_placeTower(argument0) {
 	            _sprites = _tower[0];
         
 	        _tObj.name = _tower[1];
+        _tObj.specialization = tower_spec_saved(_tObj.name);
 	        _tObj.sprite_index = _sprites[0];
 	        /// The BASE stats and the BASE price go on the tower as well as the
 	        /// resolved ones: a rung is measured against the base, and a rung's
