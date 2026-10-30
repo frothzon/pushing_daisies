@@ -20,6 +20,7 @@
   },
   "focus": {
     "now": [
+      "par-reauthor",
       "region-4-6-difficulty",
       "region-badges",
       "tower-card-upgrade-preview",
@@ -30,9 +31,9 @@
       "tower-l5-signatures"
     ],
     "next": [
-      "par-reauthor"
+      "tower-ring-mastery-palette"
     ],
-    "note": "2026-10-30: Three-loadout Normal coverage is complete: 180/180 instant-buy runs cleared, covering all 60 rows with three builds each. R4/R5/R6 curves are 18/16/10; Frugal/Speed medians await par reauthoring. Fixed Candy's speed-dependent timer so duration is counted in normal game frames and handed it to Rayu for runtime review. Upgrade-card, specialization, remaining Candy behavior and combat gates still await runtime review."
+    "note": "2026-10-30: Re-authored Frugal/Speed Grower cutoffs for all 60 stages from 540 seeded Normal instant-buy clears (9 per row; all 20 lives, 0 leaks); handed thresholds to Rayu for Deploy/badge runtime review. Three-loadout coverage remains complete. R4/R5/R6 curves are 18/16/10. Upgrade-card, specialization, remaining Candy behavior and combat gates still await GameMaker review. Mastery is implemented; the L6-L10 ring palette remains provisional and its old tracker rationale is stale."
   },
   "tasks": [
     {
@@ -2598,18 +2599,19 @@
     {
       "id": "par-reauthor",
       "title": "Re-author par_spend and par_time for 15-60 wave stages",
-      "status": "next",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "cline",
+      "awaiting": "rayu",
       "area": "data",
       "phase": "2",
       "size": "M",
       "prio": 2,
-      "needs": "After loadout-stage-coverage identifies three progression-legal clean builds per stage, sample seeded Normal clears and author par_spend below 50% of median gross spend plus a reachable par_time; publish both in Deploy. Exclude failures and record the policy and sample size.",
-      "notes": "The old R2-R6 par values are copied from Region 1 and cannot remain authoritative. R4-R6 now have Normal ceiling-policy clears on all ten stages at curve_end 18/16/10, but the instant-buyer default starter build still fails many late rows. Stage-10 progression builds give clean examples, not per-stage medians. First establish three progression-legal clear builds per row; then use only clean runs to derive medians and thresholds.",
+      "needs": "After returning, reload GameMaker with global.devMode=true. Check Deploy thresholds on early, middle, and late stages in each region; confirm the old copied 40-90 values are gone and the displayed pairs match stage_data. Clear one Normal stage under both exclusive cutoffs and inspect META [BADGE] earned and META [LEVEL] CLEAR badges lines. Frugal must award only when gross spend < par_spend; Speed Grower only when level_elapsed_seconds < par_time. A stale value, clipped Deploy text, award at/over either cutoff, or missing qualifying award falsifies the check.",
+      "notes": "Re-authored all 60 stage rows from 540 deterministic seeded Normal instant-buy, real-cycle runs: 3 replay-eligible builds x 3 seeds per stage, at fixed terrain z=6, with no candy/specialization/mastery. All 540 cleared with 20 lives and zero leaks. Failures and leaky clears are excluded. Per stage: par_spend = ceil(median gross spend / 2), used as an exclusive cutoff so Frugal's strict less-than remains below half the median; par_time = smallest integer second strictly above the nearest-rank p75 clear time. Elapsed frames begin at first wave spawn, matching level_elapsed_seconds and excluding deploy countdown. Thresholds span $80-$379 and 201-941 seconds. This is a first-pass model estimate using mean-field creature stats, not player telemetry or live GameMaker evidence.",
       "refs": [
         "scripts/stage_data/stage_data.gml",
-        "scripts/scr_badges/scr_badges.gml"
+        "scripts/scr_badges/scr_badges.gml",
+        "economy.md"
       ],
       "created": "2026-10-05",
       "updated": "2026-10-30",
@@ -5030,6 +5032,12 @@
       "who": "cline",
       "task": "candy-fast-forward-timer",
       "what": "Changed active candy timers from fractional wall-clock seconds per Step to an integer-like count of normal-speed game frames. Fast-forward now consumes the same number of game frames and waves rather than stretching a candy to three times the wave time; pause and Everlasting Gob still suspend Steps. The HUD converts stored frames back to seconds. Static GML parsing passed; awaiting reloaded GameMaker review."
+    },
+    {
+      "date": "2026-10-30",
+      "task": "par-reauthor",
+      "what": "Re-authored all 60 Frugal/Speed Grower thresholds from 540 seeded Normal instant-buy model clears: 9 samples per stage from 3 replay-eligible four-tower loadouts x 3 seeds; 540/540 cleared with 20 lives and 0 leaks. par_spend is an exclusive cutoff at ceil(median gross spend / 2); par_time is the next whole second strictly above nearest-rank p75. Updated stage_data and economy.md. Model limits and exact runtime review steps are recorded on the card.",
+      "who": "cline"
     }
   ]
 }

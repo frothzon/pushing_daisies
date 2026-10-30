@@ -716,12 +716,14 @@ One medal per badge per stage, stored in the save. **No art in v1** — the reco
 | Badge | Condition | Notes |
 | --- | --- | --- |
 | 🏅 **Untouched** | finish with 20/20 lives | the clean clear |
-| 🏅 **Frugal** | total spend ≤ the stage's `par_spend` | `par_spend` is authored per stage in `stage_data` and shown in the Deploy briefing, so it is a target the player can *see* rather than a secret |
+| 🏅 **Frugal** | total gross spend < the stage's `par_spend` | `par_spend` is an exclusive cutoff authored per stage in `stage_data` and shown in Deploy |
 | 🏅 **Botanist** | place all 4 loadout tower types | interacts with `goal.md` §3.1 |
 | 🏅 **Purist** | place exactly 1 tower type | **first clear only**, so it cannot be farmed with a degenerate loadout |
 | 🏅 **Exterminator** | no zombie reaches the despawn point | |
 | 🏅 **Speed Grower** | finish under the stage's `par_time` | authored per stage |
 | 🏅 **Brutalist** | complete the stage on Brutal | the difficulty badge |
+
+**Threshold method (2026-10-30).** Each stage uses nine seeded Normal model clears: three replay-eligible four-tower loadouts, each run with three seeds. The 540 sampled runs all cleared with 20 lives and no leaks; failures and leaky clears are excluded from the calculation. `par_spend` is `ceil(median gross spend / 2)`. Frugal awards only when spend is *strictly below* that exclusive integer cutoff, so the requirement remains below half the median. `par_time` is the smallest whole-second cutoff strictly above the nearest-rank 75th-percentile clear time. The model uses the real fire cycle, instant buying, fixed terrain z=6, and elapsed frames from first wave spawn through clear; this matches `level_elapsed_seconds`, which excludes the deploy countdown. These are model-derived first-pass thresholds, not player telemetry; the simulator uses mean-field creature stats and does not model candy, specializations, or mastery.
 
 **Total available:** 7 × 60 stages = **420 medals**, plus 6 region-completion medals (one per boss) = **426**.
 

@@ -64,11 +64,12 @@ function stage_row(_region, _stage, _seeds, _spawns, _bosses, _par, _time){
 ///                    alternating through the region exactly as region 1's
 ///                    rows do.  The finale is the creature the region is
 ///                    named for.
-///   par_spend/time   COPIED from region 1 on purpose.  Those thresholds are
-///                    stale for 15-60 wave stages in EVERY region and
-///                    re-authoring them is roadmap 5.6 - so a new region
-///                    inherits the one stale curve instead of inventing a
-///                    second one that is stale in a different way.
+///   par                per-row badge thresholds from the seeded Normal
+///                    sample in economy.md §8 (2026-10-30): three replay-
+///                    eligible four-tower builds x three seeds; failures and
+///                    leaky clears excluded. `par_spend` is the exclusive
+///                    cutoff at half median gross spend; `par_time` is the
+///                    exclusive whole-second cutoff above p75 clear time.
 ///
 /// EVERY STAGE NAMES TWO BOSSES (LL-060): `bosses` is [mid, end].  The mid
 /// one arrives on `boss_wave` (derived: waves div 2), the end one on the
@@ -78,73 +79,72 @@ function stage_row(_region, _stage, _seeds, _spawns, _bosses, _par, _time){
 /// has two boss creatures, so the pairs alternate; 1-10 keeps Tusk-A-Lot
 /// (index 0) as its FINALE, which is the region boss it always was.
 ///
-/// `par_spend` / `par_time` are still the OLD values, authored for 5-10 wave
-/// stages, and every region now carries a copy of them.  They must be
-/// re-authored for 15-60 waves before the Frugal and Speed Grower badges mean
-/// anything - see roadmap 5.6.
+/// Par thresholds use the Normal model sample described in economy.md §8;
+/// the Frugal and Speed Grower badges compare their measurements against the
+/// exclusive cutoffs authored on each row.
 function stage_data() {
 	///          region stg seeds spawns    [mid,end] par  time
 	return [
-		stage_row(1,  1,  3, [0],           [0,1],     40,  90),
-		stage_row(1,  2,  3, [0],           [0,1],     45,  90),
-		stage_row(1,  3,  3, [0,1],         [1,0],     50, 110),
-		stage_row(1,  4,  4, [0,1],         [0,1],     55, 110),
-		stage_row(1,  5,  4, [0,1,2],       [1,0],     60, 130),
-		stage_row(1,  6,  4, [0,1,2,3],     [0,1],     65, 130),
-		stage_row(1,  7,  5, [0,1,2,3],     [1,0],     70, 150),
-		stage_row(1,  8,  5, [0,1,2,3],     [0,1],     75, 150),
-		stage_row(1,  9,  5, [0,1,2,3],     [1,0],     80, 170),
-		stage_row(1, 10,  8, [0,1,2,3],     [1,0],     90, 200),
-		stage_row(2,  1,  5, [4],           [1,0],     40,  90),
-		stage_row(2,  2,  5, [4],           [1,0],     45,  90),
-		stage_row(2,  3,  5, [4,3],         [0,1],     50, 110),
-		stage_row(2,  4,  6, [4,3],         [1,0],     55, 110),
-		stage_row(2,  5,  6, [4,3,0],       [0,1],     60, 130),
-		stage_row(2,  6,  6, [4,3,0],       [1,0],     65, 130),
-		stage_row(2,  7,  7, [4,3,0],       [0,1],     70, 150),
-		stage_row(2,  8,  7, [4,3,0],       [1,0],     75, 150),
-		stage_row(2,  9,  7, [4,3,0],       [0,1],     80, 170),
-		stage_row(2, 10, 10, [4,3,0],       [0,1],     90, 200),
-		stage_row(3,  1,  8, [5],           [2,1],     40,  90),
-		stage_row(3,  2,  8, [5],           [2,1],     45,  90),
-		stage_row(3,  3,  8, [5,4],         [1,2],     50, 110),
-		stage_row(3,  4,  9, [5,4],         [2,1],     55, 110),
-		stage_row(3,  5,  9, [5,4,1],       [1,2],     60, 130),
-		stage_row(3,  6,  9, [5,4,1],       [2,1],     65, 130),
-		stage_row(3,  7, 10, [5,4,1],       [1,2],     70, 150),
-		stage_row(3,  8, 10, [5,4,1],       [2,1],     75, 150),
-		stage_row(3,  9, 10, [5,4,1],       [1,2],     80, 170),
-		stage_row(3, 10, 13, [5,4,1],       [1,2],     90, 200),
-		stage_row(4,  1, 11, [6],           [3,2],     40,  90),
-		stage_row(4,  2, 11, [6],           [3,2],     45,  90),
-		stage_row(4,  3, 11, [6,5],         [2,3],     50, 110),
-		stage_row(4,  4, 12, [6,5],         [3,2],     55, 110),
-		stage_row(4,  5, 12, [6,5,4],       [2,3],     60, 130),
-		stage_row(4,  6, 12, [6,5,4],       [3,2],     65, 130),
-		stage_row(4,  7, 13, [6,5,4],       [2,3],     70, 150),
-		stage_row(4,  8, 13, [6,5,4],       [3,2],     75, 150),
-		stage_row(4,  9, 13, [6,5,4],       [2,3],     80, 170),
-		stage_row(4, 10, 16, [6,5,4],       [2,3],     90, 200),
-		stage_row(5,  1, 15, [7],           [4,3],     40,  90),
-		stage_row(5,  2, 15, [7],           [4,3],     45,  90),
-		stage_row(5,  3, 15, [7,6],         [3,4],     50, 110),
-		stage_row(5,  4, 16, [7,6],         [4,3],     55, 110),
-		stage_row(5,  5, 16, [7,6,5],       [3,4],     60, 130),
-		stage_row(5,  6, 16, [7,6,5],       [4,3],     65, 130),
-		stage_row(5,  7, 17, [7,6,5],       [3,4],     70, 150),
-		stage_row(5,  8, 17, [7,6,5],       [4,3],     75, 150),
-		stage_row(5,  9, 17, [7,6,5],       [3,4],     80, 170),
-		stage_row(5, 10, 20, [7,6,5],       [3,4],     90, 200),
-		stage_row(6,  1, 20, [8],           [5,4],     40,  90),
-		stage_row(6,  2, 20, [8],           [5,4],     45,  90),
-		stage_row(6,  3, 20, [8,7],         [4,5],     50, 110),
-		stage_row(6,  4, 21, [8,7],         [5,4],     55, 110),
-		stage_row(6,  5, 21, [8,7,6],       [4,5],     60, 130),
-		stage_row(6,  6, 21, [8,7,6],       [5,4],     65, 130),
-		stage_row(6,  7, 22, [8,7,6],       [4,5],     70, 150),
-		stage_row(6,  8, 22, [8,7,6],       [5,4],     75, 150),
-		stage_row(6,  9, 22, [8,7,6],       [4,5],     80, 170),
-		stage_row(6, 10, 25, [8,7,6],       [4,5],     90, 200),
+		stage_row(1,  1,  3, [0],           [0,1],     80, 232),
+		stage_row(1,  2,  3, [0],           [0,1],    121, 294),
+		stage_row(1,  3,  3, [0,1],         [1,0],    219, 367),
+		stage_row(1,  4,  4, [0,1],         [0,1],    304, 436),
+		stage_row(1,  5,  4, [0,1,2],       [1,0],    377, 442),
+		stage_row(1,  6,  4, [0,1,2,3],     [0,1],    379, 529),
+		stage_row(1,  7,  5, [0,1,2,3],     [1,0],    379, 606),
+		stage_row(1,  8,  5, [0,1,2,3],     [0,1],    379, 681),
+		stage_row(1,  9,  5, [0,1,2,3],     [1,0],    379, 776),
+		stage_row(1, 10,  8, [0,1,2,3],     [1,0],    379, 861),
+		stage_row(2,  1,  5, [4],           [1,0],    117, 263),
+		stage_row(2,  2,  5, [4],           [1,0],    189, 336),
+		stage_row(2,  3,  5, [4,3],         [0,1],    244, 351),
+		stage_row(2,  4,  6, [4,3],         [1,0],    342, 421),
+		stage_row(2,  5,  6, [4,3,0],       [0,1],    379, 478),
+		stage_row(2,  6,  6, [4,3,0],       [1,0],    379, 550),
+		stage_row(2,  7,  7, [4,3,0],       [0,1],    379, 622),
+		stage_row(2,  8,  7, [4,3,0],       [1,0],    379, 703),
+		stage_row(2,  9,  7, [4,3,0],       [0,1],    379, 787),
+		stage_row(2, 10, 10, [4,3,0],       [0,1],    379, 872),
+		stage_row(3,  1,  8, [5],           [2,1],    139, 201),
+		stage_row(3,  2,  8, [5],           [2,1],    225, 256),
+		stage_row(3,  3,  8, [5,4],         [1,2],    289, 359),
+		stage_row(3,  4,  9, [5,4],         [2,1],    379, 423),
+		stage_row(3,  5,  9, [5,4,1],       [1,2],    379, 506),
+		stage_row(3,  6,  9, [5,4,1],       [2,1],    379, 577),
+		stage_row(3,  7, 10, [5,4,1],       [1,2],    379, 657),
+		stage_row(3,  8, 10, [5,4,1],       [2,1],    379, 737),
+		stage_row(3,  9, 10, [5,4,1],       [1,2],    379, 825),
+		stage_row(3, 10, 13, [5,4,1],       [1,2],    379, 908),
+		stage_row(4,  1, 11, [6],           [3,2],    175, 305),
+		stage_row(4,  2, 11, [6],           [3,2],    289, 396),
+		stage_row(4,  3, 11, [6,5],         [2,3],    379, 358),
+		stage_row(4,  4, 12, [6,5],         [3,2],    379, 428),
+		stage_row(4,  5, 12, [6,5,4],       [2,3],    379, 521),
+		stage_row(4,  6, 12, [6,5,4],       [3,2],    379, 600),
+		stage_row(4,  7, 13, [6,5,4],       [2,3],    379, 683),
+		stage_row(4,  8, 13, [6,5,4],       [3,2],    379, 767),
+		stage_row(4,  9, 13, [6,5,4],       [2,3],    379, 853),
+		stage_row(4, 10, 16, [6,5,4],       [2,3],    379, 941),
+		stage_row(5,  1, 15, [7],           [4,3],    174, 207),
+		stage_row(5,  2, 15, [7],           [4,3],    289, 254),
+		stage_row(5,  3, 15, [7,6],         [3,4],    374, 357),
+		stage_row(5,  4, 16, [7,6],         [4,3],    374, 430),
+		stage_row(5,  5, 16, [7,6,5],       [3,4],    379, 468),
+		stage_row(5,  6, 16, [7,6,5],       [4,3],    379, 534),
+		stage_row(5,  7, 17, [7,6,5],       [3,4],    379, 604),
+		stage_row(5,  8, 17, [7,6,5],       [4,3],    379, 678),
+		stage_row(5,  9, 17, [7,6,5],       [3,4],    379, 757),
+		stage_row(5, 10, 20, [7,6,5],       [3,4],    379, 833),
+		stage_row(6,  1, 20, [8],           [5,4],    259, 276),
+		stage_row(6,  2, 20, [8],           [5,4],    374, 356),
+		stage_row(6,  3, 20, [8,7],         [4,5],    369, 329),
+		stage_row(6,  4, 21, [8,7],         [5,4],    369, 393),
+		stage_row(6,  5, 21, [8,7,6],       [4,5],    374, 493),
+		stage_row(6,  6, 21, [8,7,6],       [5,4],    374, 567),
+		stage_row(6,  7, 22, [8,7,6],       [4,5],    374, 641),
+		stage_row(6,  8, 22, [8,7,6],       [5,4],    374, 724),
+		stage_row(6,  9, 22, [8,7,6],       [4,5],    374, 802),
+		stage_row(6, 10, 25, [8,7,6],       [4,5],    374, 881),
 	];
 }
 
