@@ -336,40 +336,55 @@ switch(menu_state){
             if(_ghov >= 0) garden_focus = _ghov;
 
             if(_gclick){
-                var _gnode = meta_garden_hit();
-                if(_gnode >= 0){
-                    var _nodes = clover_nodes();
-                    if(_gnode < array_length(_nodes)){
-                        var _nid = _nodes[_gnode].id;
-                        if(clover_buy(_nid)){
+                if(meta_button_clicked(_ggeom.view, true)){
+                    global.garden_blood_view = !garden_blood_view();
+                    print("MENU  garden view -> ",
+                          garden_blood_view() ? "Blood Alchemy" : "Clover Tree");
+                } else {
+                    var _gnode = meta_garden_hit(),
+                        _nodes = garden_visible_nodes();
+                    if(_gnode >= 0 && _gnode < array_length(_nodes)){
+                        var _nid = _nodes[_gnode].id,
+                            _blood_view = garden_blood_view(),
+                            _bought = _blood_view ? blood_node_buy(_nid) : clover_buy(_nid);
+                        if(_bought){
                             scr_playSound(snd_button, false);
                             scr_save_meta();
-                            print("MENU  bought ", _nid,
-                                  " rank ", clover_rank(_nid),
-                                  " clovers left ", clovers_get());
+                            if(_blood_view){
+                                print("MENU  unlocked blood node ", _nid,
+                                      " shards left ", shards_get());
+                            } else {
+                                print("MENU  bought ", _nid,
+                                      " rank ", clover_rank(_nid),
+                                      " clovers left ", clovers_get());
+                            }
+                        } else if(_blood_view){
+                            print("MENU  cannot buy blood node ", _nid,
+                                  " (next cost ", blood_node_cost(_nid),
+                                  ", have ", shards_get(), " shards; previous tier required)");
                         } else {
                             print("MENU  cannot buy ", _nid,
                                   " (next rank ", clover_cost(_nid),
                                   ", have ", clovers_get(), ")");
                         }
-                    }
-                } else {
-                    var _shop = _ghov,
-                        _all  = tower_roster();
-                    if(_shop >= 0 && _shop < array_length(_all)){
-                        var _sname = _all[_shop].name;
-                        if(tower_unlock(_sname)){
-                            scr_playSound(snd_button, false);
-                            scr_save_meta();
-                            print("MENU  unlocked '", _sname,
-                                  "' seeds left ", seeds_get());
-                        } else if(!tower_owned(_sname)){
-                            print("MENU  cannot unlock '", _sname,
-                                  "' (cost ", tower_unlock_cost(_sname),
-                                  ", have ", seeds_get(), ")");
+                    } else {
+                        var _shop = _ghov,
+                            _all  = tower_roster();
+                        if(_shop >= 0 && _shop < array_length(_all)){
+                            var _sname = _all[_shop].name;
+                            if(tower_unlock(_sname)){
+                                scr_playSound(snd_button, false);
+                                scr_save_meta();
+                                print("MENU  unlocked '", _sname,
+                                      "' seeds left ", seeds_get());
+                            } else if(!tower_owned(_sname)){
+                                print("MENU  cannot unlock '", _sname,
+                                      "' (cost ", tower_unlock_cost(_sname),
+                                      ", have ", seeds_get(), ")");
+                            }
+                        } else if(meta_button_clicked(_ggeom.back, true)){
+                            scr_menu_changeState(MENU_STATE.WORLD_MAP);
                         }
-                    } else if(meta_button_clicked(_ggeom.back, true)){
-                        scr_menu_changeState(MENU_STATE.WORLD_MAP);
                     }
                 }
             }

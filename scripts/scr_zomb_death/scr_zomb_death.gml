@@ -36,9 +36,16 @@ function scr_zomb_death() {
 	add_item_value(STATINV.money, _pay);
 	var _points = floor(sqrt(data[MON.maxLife]))+1;
 	add_item_value(STATINV.points,_points);
-	var _is_boss = array_length(data) > MON.combat_class
-	               && data[MON.combat_class] == MON_CLASS.BOSS;
-	shard_on_kill(_is_boss);
+	var _class = array_length(data) > MON.combat_class
+	             ? data[MON.combat_class] : MON_CLASS.NORMAL,
+	    _is_boss = (_class == MON_CLASS.BOSS),
+	    _is_elite = (_class == MON_CLASS.ELITE),
+	    _wave_fill_bonus = 0;
+	with(_levelControl){
+		if(variable_instance_exists(id,"shard_wave_bonus")
+		&& is_real(shard_wave_bonus)) _wave_fill_bonus = shard_wave_bonus;
+	}
+	shard_on_kill(_is_boss,_is_elite,_wave_fill_bonus);
 	float_text(x,y-32,concat("+",_points," Pts"),c_ltgray);
 
 	/// Log the paid amount and named die slot. Missing slots remain visible in

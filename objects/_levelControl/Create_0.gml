@@ -166,6 +166,7 @@ tower_selection = noone;
 tower_menu_selection = -1;
 tower_menu_hover = -1;
 tower_spec_pending = false; /// true while the L3 branch choice is open
+shard_wave_bonus = 0; /// Blood Moon: additive pity fill while this wave is live
 
 /// The tower the POINTER is over, or noone.  ONE place answers that question
 /// (LL-021): Step_0 sets it exactly where the hover is decided, and the

@@ -836,6 +836,7 @@ function meta_garden_geom() {
 		wall     : _w,
 		back     : ui_meta_rect("garden", "garden.btn.back"),
 		branch   : ui_meta_rect("garden", "garden.branch"),
+		view     : ui_meta_rect("garden", "garden.view"),
 		stats     : ui_meta_rect("garden", "garden.stats"),
 		stats_head: ui_meta_rect("garden", "garden.stats.head"),
 		stats_grid: ui_meta_rect("garden", "garden.stats.grid"),
@@ -849,9 +850,8 @@ function meta_garden_geom() {
 
 function meta_garden_node_rects() {
 	var _g = meta_garden_geom(),
-	    _nodes = clover_nodes(),
 	    _out = [];
-	for(var _i = 0; _i < array_length(_nodes); _i++){
+	for(var _i = 0; _i < 5; _i++){
 		var _y = _g.node_y + _i*(_g.node_h + _g.node_gap);
 		_out[_i] = [_g.node_x, _y, _g.node_x + _g.node_w, _y + _g.node_h];
 	}
@@ -978,13 +978,15 @@ function meta_garden_stats_draw(_g) {
 }
 function meta_draw_garden() {
 	var _g     = meta_garden_geom(),
-	    _nodes = clover_nodes(),
+	    _nodes = garden_visible_nodes(),
+	    _blood = garden_blood_view(),
 	    _rects = meta_garden_node_rects(),
 	    _m     = points_to_gui(mouse_x, mouse_y, 0),
 	    _pal   = ui_palette();
 
 	meta_title("Garden Book", _g.head_mid);
 	meta_currency_draw(_g.cur);
+	meta_button_draw(_g.view, _blood ? "Clover Tree" : "Blood Tree", true);
 
 	/// ---- the Offense branch.  The heading and its icon share the column's
 	/// first row: the old heading sat 30 units ABOVE node 0 in a 56px gutter
@@ -1000,17 +1002,16 @@ function meta_draw_garden() {
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 
-	var _bh = string_height("Ag");
-	/// the icon is CENTRED at _br[0]+16, and it registers the rect it actually
-	/// drew: the hand-typed box that used to sit here claimed 16..50 while the
-	/// icon was painted at 1..31, so the gate was judging a rectangle that
-	/// existed nowhere on screen (LL-071)
-	icon_draw(icon_branch(BRANCH.OFFENSE), _br[0] + 16, (_br[1] + _br[3])*0.5, 32,
+	var _bh = string_height("Ag"),
+	    _branch_name = _blood ? "Blood Alchemy" : "Offense",
+	    _branch_icon = _blood ? icon_blood(1) : icon_branch(BRANCH.OFFENSE);
+	/// icon_draw registers the ART rectangle it paints (LL-071).
+	icon_draw(_branch_icon, _br[0] + 16, (_br[1] + _br[3])*0.5, 32,
 	          "branch_icon");
 
-	draw_text(_br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5, "Offense");
+	draw_text(_br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5, _branch_name);
 	ui_reg_text("heading", _br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5,
-	            "Offense", fa_left, fa_top);
+	            _branch_name, fa_left, fa_top);
 	draw_set_font(fnt_size12);
 
 	for(var _i = 0; _i < array_length(_nodes); _i++){
@@ -1018,10 +1019,12 @@ function meta_draw_garden() {
 
 		var _n    = _nodes[_i],
 		    _rc   = _rects[_i],
-		    _rank = clover_rank(_n.id),
+		    _rank = _blood ? blood_node_rank(_n.id) : clover_rank(_n.id),
 		    _max  = (_rank >= _n.ranks),
-		    _cost = clover_cost(_n.id),
-		    _can  = (!_max && clovers_get() >= _cost),
+		    _cost = _blood ? blood_node_cost(_n.id) : clover_cost(_n.id),
+		    _available = !_blood || blood_node_unlocked(_n.id),
+		    _funds = _blood ? shards_get() : clovers_get(),
+		    _can  = (_available && !_max && _cost >= 0 && _funds >= _cost),
 		    _hov  = meta_in_rect(_rc, _m[0], _m[1]),
 		    _cw   = _rc[2] - _rc[0];
 
@@ -1035,7 +1038,9 @@ function meta_draw_garden() {
 		/// maxed (scr_ui_icons) - then the text 54px in, clear of it.  Both
 		/// text rows move together: a label indented and a description not
 		/// would put the pip through the description.
-		icon_draw(icon_node(_max), _rc[0] + 26, _rc[1] + 28, 40, "node_icon");
+		var _node_icon = _blood ? icon_blood(_n.tier) : icon_node(_max);
+		icon_draw(_node_icon, _rc[0] + 26, _rc[1] + 28, 40,
+		          _blood ? "blood_node_icon" : "node_icon");
 
 		draw_set_font(fnt_size16);
 		draw_set_colour(c_white);
@@ -1053,7 +1058,9 @@ function meta_draw_garden() {
 		/// font per row is what keeps two columns on the same baseline.
 		draw_set_halign(fa_right);
 		draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
-		var _rank_txt = "rank " + string(_rank) + "/" + string(_n.ranks);
+		var _rank_txt = _blood
+		                 ? (_max ? "owned" : "Tier " + string(_n.tier))
+		                 : "rank " + string(_rank) + "/" + string(_n.ranks);
 		draw_text(_rc[2] - 10, _rc[1] + 10, _rank_txt);
 		ui_reg_text("rank", _rc[2] - 10, _rc[1] + 10, _rank_txt, fa_right, fa_top);
 		draw_set_halign(fa_left);
@@ -1066,7 +1073,9 @@ function meta_draw_garden() {
 
 		draw_set_halign(fa_right);
 		draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
-		var _cost_txt = _max ? "maxed" : (string(_cost) + " clovers");
+		var _cost_txt = _max ? (_blood ? "unlocked" : "maxed")
+		                 : (!_available ? "locked"
+		                   : string(_cost) + (_blood ? " shards" : " clovers"));
 		draw_text(_rc[2] - 10, _rc[1] + 32, _cost_txt);
 		ui_reg_text("cost", _rc[2] - 10, _rc[1] + 32, _cost_txt, fa_right, fa_top);
 		draw_set_halign(fa_left);

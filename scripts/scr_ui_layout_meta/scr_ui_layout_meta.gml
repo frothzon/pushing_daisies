@@ -401,7 +401,7 @@ function ui_meta_garden_tree() {
 	    _n       = array_length(tower_roster()),
 	    _cols    = ui_meta_wall_cols(),
 	    _rows    = ui_meta_rows(_n, _cols),
-	    _nodes   = clover_nodes(),
+	    _nodes   = blood_tree_nodes(),
 	    /// the body's height, already net of the band, the footer and the
 	    /// currency strip (ui_meta_body_h)
 	    _nh      = ui_meta_body_h(),
@@ -421,8 +421,17 @@ function ui_meta_garden_tree() {
 	/// the branch heading is a ROW of the column, not a text 30px above
 	/// node 0: with node 0 at the top of the body there is nothing above it
 	/// to draw into, and its 36px icon needs the row to be that tall
-	_cards[0] = { name: "garden.branch", width: "100%", height: 36 };
-	for(var _i = 0; _i < array_length(_nodes); _i++){
+	_cards[0] = {
+		name: "garden.nav", width: "100%", height: 36,
+		flexDirection: "row", alignItems: "center", gapColumn: 4,
+		nodes: [
+			{ name: "garden.branch", flexGrow: 1, flexBasis: 0, height: 36 },
+			{ name: "garden.view", width: 108, height: 30 }
+		]
+	};
+	/// Keep all five node rectangles in the tree in either view. The visible
+	/// node data changes, but the layout remains stable when the tab is clicked.
+	for(var _i = 0; _i < 5; _i++){
 		_cards[array_length(_cards)] =
 			{ name: "garden.node." + string(_i), width: "100%", height: 56 };
 	}
@@ -599,12 +608,11 @@ function ui_meta_names(_screen) {
 			/// and not declared, so renaming one was invisible to this check -
 			/// which is the one thing it exists to catch.
 			_out = ["garden.head.info", "garden.head.title", "garden.head.acts",
-			        "garden.wall", "garden.branch", "garden.shophdr",
+			        "garden.wall", "garden.branch", "garden.view", "garden.shophdr",
 			        "garden.cur", "garden.btn.back",
 			        "garden.stats", "garden.stats.head",
 			        "garden.stats.grid", "garden.stats.note"];
-			var _nd = clover_nodes();
-			for(var _c = 0; _c < array_length(_nd); _c++){
+			for(var _c = 0; _c < 5; _c++){
 				_out[array_length(_out)] = "garden.node." + string(_c);
 			}
 			break;

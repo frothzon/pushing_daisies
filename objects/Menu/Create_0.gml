@@ -31,6 +31,7 @@ results_leaving = false;
 /// the card at the moment the player tried to read it.  Only hovering a
 /// different cell moves it; leaving the screen does not clear it.
 garden_focus = -1;
+if(!variable_global_exists("garden_blood_view")) global.garden_blood_view = false;
 
 /// state machine (plain switch - see the Step event)
 menu_state      = -1;                    /// set on the first step

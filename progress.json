@@ -20,14 +20,14 @@
   },
   "focus": {
     "now": [
-      "blood-tree"
+      "candy-recipes"
     ],
     "next": [
-      "candy-recipes",
       "garden-trees",
-      "garden-master-nodes"
+      "garden-master-nodes",
+      "garden-mastery-panel"
     ],
-    "note": "2026-10-30: Shard pity and guaranteed boss drops are implemented and awaiting runtime review. Adding the permanent Blood Tree next, then the recipes, stock, and active candy effects."
+    "note": "2026-10-30: Blood Shard drops and Blood Alchemy are ready for runtime review; implementing candy recipes, shard levels, stock, and wave-timed effects next. Clover tree branches and mastery purchase UI remain after candy."
   },
   "tasks": [
     {
@@ -721,15 +721,15 @@
     {
       "id": "blood-tree",
       "title": "The blood tree: five tiers, nodes in -kills required",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "4",
       "size": "L",
       "prio": 3,
-      "needs": "",
-      "notes": "ART IS IN (2026-10-21): five tier icons, 48x48 - scr_ui_icons.icon_blood(tier) 1-5 in spend order (Magnet, Hemorrhagic Harvest, Crimson Appetite, Blood Moon, Crimson Garden). NOTE: spr_blood_magnet and spr_blood_moon have origin (0,0), not (24,24); icon_draw() subtracts the origin so they still centre, but a direct draw_sprite would be half a tile off.",
+      "needs": "Reload the project with global.devMode=true. In Garden Book > Blood Alchemy, confirm five tier icons and sequential locks. With enough shards, buy tiers in order; expect META [SHARD] blood node ... and a saved balance. During combat, Blood Moon logs fill_bonus=1, elite kills show extra_chance=10.00%, and with Magnet + Harvest the effective pity should advance by 1.35 per kill (2.35 during a Blood Moon wave). A boss still guarantees +1 and resets pity. A mismatch in lock order, these values, or persistence falsifies the implementation.",
+      "notes": "IMPLEMENTED: five one-time Blood Alchemy nodes at 2/4/8/12/20 shards. Magnet and Harvest add 10% and 25% effective pity progress; Crimson Appetite currently uses a 10% elite extra-drop chance; Blood Moon rolls 10% per wave and doubles pity fill for that wave. Crimson Garden persists a blood_content_unlocked gate; the region-6 content that consumes it remains on blood-fields-modifier. Numeric chances for the two unspecified nodes are tuning assumptions. Blood tier icons are displayed in the Garden Book.",
       "refs": [
         "economy.md",
         "scripts/scr_meta_schema/scr_meta_schema.gml"
@@ -785,7 +785,7 @@
     {
       "id": "candy-recipes",
       "title": "Candy: recipes, levels 1-10, duration instead of stacking",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -793,13 +793,13 @@
       "size": "L",
       "prio": 3,
       "needs": "",
-      "notes": "ART IS IN (2026-10-21): all eight candy sprites, 64x64 - scr_ui_icons.icon_candy(name) maps the sprite suffix to the sprite. Red licorice, jawbreaker, gummy worm, sour drop, fireball, frosted flake, blood bonbon, everlasting gob.",
+      "notes": "ART IS IN (2026-10-21): all eight candy sprites, 64x64 - scr_ui_icons.icon_candy(name) maps the sprite suffix to the sprite. Red licorice, jawbreaker, gummy worm, sour drop, fireball, frosted flake, blood bonbon, everlasting gob. Implementation is starting from economy.md §§6.1-6.5: recipes, levels, stock, active effects, and timer rules.",
       "refs": [
         "economy.md",
         "objects/obj_mon/Step_0.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-21",
+      "updated": "2026-10-30",
       "done": null
     },
     {

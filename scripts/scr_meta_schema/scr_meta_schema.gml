@@ -41,7 +41,7 @@ function scr_meta_default() {
 		candy_duration : 0,     /// candy duration track purchases 0..10
 
 		/// ---- long term counters ----
-		shard_pity   : 0,       /// kills since the last blood shard
+		shard_pity   : 0,       /// effective pity kill-equivalents since the last shard
 
 		/// ---- where the run is (v2) ----
 		/// A FIXED RECORD, not an open map: a populated struct, so
