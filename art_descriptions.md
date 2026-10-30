@@ -71,11 +71,14 @@ Verified by opening the files, not by listing names:
   veined ground), already in the repo and already the right format. See §4.3 —
   this contradicts the card.
 * **Props** — `bck_fence` (128×128), `bck_house` (128×128), `bck_debree_blood`
-  (288×32 gore strip, used by every zombie death), `spr_graves` (4 tombstones,
-  64×64), `bck_water` + `bck_waves` (water shader), `spr_tower_grass` (48×48).
+  (288×32 gore strip, used by every zombie death), four `spr_headstone_*`
+  variants (64×64), `spr_gravestone_cross` (128×128), `spr_graveyard_crypt`
+  (256×256), `bck_water` + `bck_waves` (water shader), and `spr_tower_grass`
+  (48×48).
 * **UI** — `spr_icon` (64×64, 2 frames), `spr_button` (36×36), `spr_coin`,
-  `spr_heart`, `spr_flower`, `spr_timer`, `spr_level_complete` (placeholder).
-  Everything else in the Garden Book and world map is **rectangles and text**.
+  `spr_heart`, `spr_flower`, `spr_timer`, and `bck_level_complete_banner`
+  (680×360). Everything else in the Garden Book and world map is **rectangles
+  and text**.
 
 If a brief below overlaps something on this list, the list wins — correct the
 board, don't redraw.
@@ -550,9 +553,9 @@ So the actual art job is:
      barrel, heat-shimmer is code, not art.
    * *Jungle:* root arches, hanging vines, a broken flagstone, an overgrown
      statue.
-   * *Graveyard:* **redraw the tombstones** — `spr_graves` is four flat grey
-     pre-restyle stones (64×64) used as the spawn decoration; region 5 needs
-     proper headstones, a crypt face and a leaning cross in the house style.
+   * *Graveyard:* four house-style headstones, a crypt, and a leaning cross
+     have been delivered and wired into the biome prop table. The route graves
+     use the same 64×64 headstone variants; no tombstone redraw remains.
    * *Blood Fields:* the fence (`bck_fence`) and gore strip
      (`bck_debree_blood`) already exist; what is missing is red meadow grass and
      a quarantine-fence variant.
@@ -672,38 +675,14 @@ text the code will also draw.
 
 ---
 
-### 4.5 `art-level-complete` — one banner, authored at the size it is seen
+### 4.5 `art-level-complete` — banner shipped
 
-**What the game does today.** `spr_level_complete` is a 200×100 placeholder
-containing thin outlined `LEVEL COMPLETE` lettering (165×62 of art), blown up
-until its art is 60 % of the 540 px port — i.e. ~324 px tall, a 5× upscale of a
-thin line. It reads as a placeholder because it is one.
-
-**Draw this.** A hand-lettered, cartoon banner that reads instantly through a
-fade-out:
-
-* **"LEVEL COMPLETE"** in the game's chunky lettering — thick dark outline,
-  cream/ivory fill, a warm gold highlight band across the top third, a deep
-  green drop shadow. The lettering is the subject; it may curve slightly.
-* A **daisy growing through the lettering** (stem behind the `L`, one flower
-  head breaking above the word), and two or three vines/leaves holding the
-  letters together. This is the visual rhyme with the title screen and the final
-  boss.
-* **A few petals blowing off to one side**, which gives the composition
-  movement and stops it reading as a sign.
-* Background: **transparent**. The banner sits over live gameplay; a plate or
-  panel behind it would fight the fade.
-
-**Do not** use thin gold filigree, small text, or a busy background: it is
-scaled 80 %→100 % over three seconds and fades out in a quarter second, and all
-of that detail dies in the fade.
-
-**Spec:** canvas 680×360, art bbox **648×324**, origin **middle-centre**,
-`bboxMode` automatic, no animation (§3.6).
-
-**Acceptance.** On a stage clear, the banner appears centred, the art is 324 px
-tall, the lettering is still cropped/faded cleanly at 80 %, and there is no
-visible upscale blur.
+**Shipped 2026-10-21.** The 680×360 `bck_level_complete_banner` replaced the
+200×100 placeholder. `scr_level_complete_draw()` fits the visible art to 60 %
+of the GUI height and centers it by its art bounds. On a clear it grows from
+80 % to 100 % over three seconds before the results transition. The drawing
+brief is complete; runtime legibility remains on the `level-complete-banner`
+review card.
 
 ---
 
@@ -807,9 +786,10 @@ correct that clip's anchor or art only after measuring its own frames.
 ### 4.9 Towers — all roster trios integrated
 
 All 12 roster towers use dedicated 192×192 idle / attack / return trios under
-the names in `scr_tower_roster()`. Cannon Tulip and Meat Bulb no longer borrow
-the old `spr_t3_*` / `spr_t4_*` art. Chillip, Bindweed, Thornamental, and
-Belladonna Blitz use the completed trios already in the project.
+the names in `scr_tower_roster()`. The unused legacy `spr_t3_*` / `spr_t4_*`
+resources have been removed after confirming no runtime references. Chillip,
+Bindweed, Thornamental, and Belladonna Blitz use the completed trios already in
+the project.
 
 **Kaboom Kalanchoe** (slot 10) uses `spr_kaboom_*`, launches
 `spr_kalanchoe_bud_projectile`, bursts with `spr_kalanchoe_fire_burst`, and

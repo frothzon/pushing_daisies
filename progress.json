@@ -108,22 +108,27 @@
     {
       "id": "art-cleanup-unreferenced",
       "title": "Four sprite sets the art drop left unreferenced",
-      "status": "backlog",
+      "status": "done",
       "owner": "both",
       "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "S",
       "prio": 3,
-      "needs": "In the IDE, delete or repurpose spr_level_complete (the 200x100 placeholder), spr_t3_idle/attack/return, spr_t4_idle/attack/return and spr_graves - 2026-10-21 replaced all four uses. Also set spr_blood_magnet and spr_blood_moon origin to 24,24. Keeping them is a rollback path; deleting them is LL-023's rule.",
-      "notes": "",
+      "needs": "",
+      "notes": "REMOVED 2026-10-30 via gm.Project after a full project text-reference scan and a /tmp backup: spr_level_complete, spr_t3_idle/attack/return, spr_t4_idle/attack/return, and spr_graves. The banner is bck_level_complete_banner; the four route headstones and Graveyard props use spr_headstone_*; the 12 tower trios are all named in scr_tower_roster. Kept spr_blood_magnet and spr_blood_moon at their authored top-left origins: ui_art_draw centers the visible art rectangle and handles each origin, so forcing 24,24 is unnecessary and would only change the asset metadata.",
       "refs": [
+        "pushing_daisies_recovered.yyp",
         "scripts/scr_level_state/scr_level_state.gml",
-        "scripts/scr_tower_roster/scr_tower_roster.gml"
+        "scripts/scr_tower_roster/scr_tower_roster.gml",
+        "objects/obj_spawn/Create_0.gml",
+        "scripts/scr_biome_props/scr_biome_props.gml",
+        "scripts/scr_ui_icons/scr_ui_icons.gml",
+        "scripts/scr_ui_image/scr_ui_image.gml"
       ],
       "created": "2026-10-21",
-      "updated": "2026-10-21",
-      "done": null
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
     },
     {
       "id": "art-descriptions",
@@ -192,12 +197,12 @@
       "size": "S",
       "prio": 1,
       "needs": "",
-      "notes": "spr_level_complete is a 200x100 placeholder (art bbox 165x62, origin middle-centre). The code measures the ART bbox, scales it so the art is 60% of the port height at full size and centres the art on the screen, so a redraw keeps its size and position whatever padding it carries - but keep bboxMode automatic, because a manual box becomes the measurement. Keep the origin at middle-centre to match what is already drawn.",
+      "notes": "SHIPPED 2026-10-21: the 680x360 bck_level_complete_banner replaced the 200x100 placeholder. The draw code measures the visible art bounds, centers the banner, and sizes it to 60% of GUI height. The level-clear code review card owns the remaining runtime visual check.",
       "refs": [
-        "sprites/spr_level_complete/spr_level_complete.yy"
+        "sprites/bck_level_complete_banner/bck_level_complete_banner.yy"
       ],
       "created": "2026-10-18",
-      "updated": "2026-10-21",
+      "updated": "2026-10-30",
       "done": "2026-10-21"
     },
     {
@@ -2105,7 +2110,7 @@
       "size": "S",
       "prio": 1,
       "needs": "Reload and hover a plant: the 32x32 cell it stands on lights up faintly, its level prints above its head (white, black outline), and a 3px white ring at 25% appears around it for its range - all additive, all hover-driven. The old soft range decal is gone, and so is the range appearing from a CLICK. Four things to call: is the ring right at 25% (knob is tower_range_alpha in _levelControl/Create_0); is 3px the thickness you want; is the cell faint enough now; and should hovering the card's range band still ring the SELECTED tower - it does today so the band is not a dead affordance, and it is one line to drop.",
-      "notes": "THE CELL, not the art.  A tower's footprint is ONE 32x32 cell (LL-027) while its art is up to 96px across at draw_scale 0.5, so the square under a plant is the grid it is standing on - which is also the cell a click selects.  It comes from grid_col/grid_row, the indices the tower itself blocked in Create_0, so the highlight cannot drift from the grid (LL-021).  DRAWN IN Draw_73, which is the level's Post Draw AND already the grid's own layer: it brightens bck_drawGrid additively at 0.5 while a tower is being placed, so the highlight is the grid brightening rather than a second thing laid over it.  That layer draws OVER every instance, which is why the square tints the plant's lower pixels too; drawing it under the art instead is not an event swap but a DEPTH question (it must be over the ground and under the towers), so it is left as a look decision rather than guessed.  ONE place answers 'which tower is the pointer over': Step_0 sets tower_hovered exactly where the hover is decided, and the flag it already set for the tower's own Draw is read from the same line - so the cell, the level and the glow cannot name different towers.  The LEVEL is drawn with bm_normal, because a black outline adds NOTHING under additive blending and the number would come out as bare white (LL-046).  Its height comes from the sprite's bbox top MINUS its origin, which is LL-047: sprite_get_bbox_top() is measured from the sprite CANVAS, not the origin, and every tower sprite puts its origin at the plant's feet (spr_t3_idle: bbox_top 3, yorigin 75, so -72 - the first version printed the number across the stem).  Guarded end to end because a draw path must not throw (LL-002): a control object that outlived its level, or a tower that exists but has not been handed its data yet, draws nothing at all.  CHANGED THE SAME DAY, after the first look at it (2026-10-15): the cell was HALVED - _fill 0.20 -> 0.10, _edge 0.45 -> 0.25 - because it was competing with the new ring for the same attention.  The spr_towerRange decal was RETIRED: it filled the whole circle with a soft wash at 15% and was driven by tower_selection, so a CLICK covered a large part of the garden and the ground under it stopped being readable.  In its place the range is a 3px additive white RING at tower_range_alpha (0.25, raised from 0.15), drawn for the HOVERED tower - three draw_circle calls, because draw_circle draws a 1px outline and takes no width argument, and it is the same call the placement circle already uses (obj_tower_edit/Draw_0).  The ring reads the same _hov as the cell and the level, so all three cannot name different towers (LL-021); the guard above them now tests max(TOWER.level, TOWER.range) - the LAST field the block reaches for - so reordering the enum cannot turn a guard into a crash.  ONE EXCEPTION KEPT ON PURPOSE: while the pointer is over the card's range band, the SELECTED tower is ringed, because the band exists to name a tower's reach and would otherwise promise something it no longer delivers.  NOTE FOR THE OWNER: spr_towerRange is now referenced by nothing but the project's resource list - it has not been deleted, so the decal can be brought back, and it can be retired with it if you prefer; that decision is not worth a card of its own.",
+      "notes": "THE CELL, not the art.  A tower's footprint is ONE 32x32 cell (LL-027) while its art is up to 96px across at draw_scale 0.5, so the square under a plant is the grid it is standing on - which is also the cell a click selects.  It comes from grid_col/grid_row, the indices the tower itself blocked in Create_0, so the highlight cannot drift from the grid (LL-021).  DRAWN IN Draw_73, which is the level's Post Draw AND already the grid's own layer: it brightens bck_drawGrid additively at 0.5 while a tower is being placed, so the highlight is the grid brightening rather than a second thing laid over it.  That layer draws OVER every instance, which is why the square tints the plant's lower pixels too; drawing it under the art instead is not an event swap but a DEPTH question (it must be over the ground and under the towers), so it is left as a look decision rather than guessed.  ONE place answers 'which tower is the pointer over': Step_0 sets tower_hovered exactly where the hover is decided, and the flag it already set for the tower's own Draw is read from the same line - so the cell, the level and the glow cannot name different towers.  The LEVEL is drawn with bm_normal, because a black outline adds NOTHING under additive blending and the number would come out as bare white (LL-046).  Its height comes from the sprite's bbox top MINUS its origin, which is LL-047: sprite_get_bbox_top() is measured from the sprite CANVAS, not the origin, and every tower sprite puts its origin at the plant's feet (spr_pina_idle_192x: bbox_top 88, yorigin 163, so -75 - the first version printed the number across the stem).  Guarded end to end because a draw path must not throw (LL-002): a control object that outlived its level, or a tower that exists but has not been handed its data yet, draws nothing at all.  CHANGED THE SAME DAY, after the first look at it (2026-10-15): the cell was HALVED - _fill 0.20 -> 0.10, _edge 0.45 -> 0.25 - because it was competing with the new ring for the same attention.  The spr_towerRange decal was RETIRED: it filled the whole circle with a soft wash at 15% and was driven by tower_selection, so a CLICK covered a large part of the garden and the ground under it stopped being readable.  In its place the range is a 3px additive white RING at tower_range_alpha (0.25, raised from 0.15), drawn for the HOVERED tower - three draw_circle calls, because draw_circle draws a 1px outline and takes no width argument, and it is the same call the placement circle already uses (obj_tower_edit/Draw_0).  The ring reads the same _hov as the cell and the level, so all three cannot name different towers (LL-021); the guard above them now tests max(TOWER.level, TOWER.range) - the LAST field the block reaches for - so reordering the enum cannot turn a guard into a crash.  ONE EXCEPTION KEPT ON PURPOSE: while the pointer is over the card's range band, the SELECTED tower is ringed, because the band exists to name a tower's reach and would otherwise promise something it no longer delivers.  NOTE FOR THE OWNER: spr_towerRange is now referenced by nothing but the project's resource list - it has not been deleted, so the decal can be brought back, and it can be retired with it if you prefer; that decision is not worth a card of its own.",
       "refs": [
         "objects/_levelControl/Draw_73.gml",
         "objects/_levelControl/Step_0.gml",
@@ -2113,7 +2118,7 @@
         "lessons_learned.md"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-18",
+      "updated": "2026-10-30",
       "done": "2026-10-18"
     },
     {
@@ -2337,16 +2342,16 @@
       "phase": "1",
       "size": "M",
       "prio": 1,
-      "needs": "Clear a stage and watch the last four seconds: the stage UI fades, the camera pulls back to the whole garden, then spr_level_complete grows from 80% to 100% exactly centred for 3.0s (60% of the port height at full size) before the results screen. The log must show LEVEL COMPLETE banner: 80% -> 100% over 3s.",
+      "needs": "Reload GameMaker and clear a stage. Confirm the bck_level_complete_banner grows from 80% to 100% centered for 3.0 seconds before results. Expect LEVEL COMPLETE banner: 80% -> 100% over 3s.",
       "notes": "SCR_LEVEL_CLEAR is a real sequence now (LL-055), driven by delta_time so fast-forward (room_speed 180) cannot turn 3 seconds into 1. Entry: every wave is already stopped (CLEAR never calls scr_level_spawn), the build ghost, the tower card, the Up Next box and the wave banner are removed, input is off (Step_0 returns early), and the UI fades out in 0.35s through one level_ui_alpha read by Draw_64, list_opacity and _mainControl speed buttons. The camera flies out over 0.8s (smoothstep) to the largest view of the ROOM that keeps the port aspect - 1820x1024 for rm_test - keeping the centre, with wheel and drag suppressed while a stage is ending. At 0.70s the banner appears at 80% and grows to 100% over exactly 3.00s, then fades with the 0.8s fade to rm_menu (which opens RESULTS). The banner is drawn in Draw GUI and sized from the sprite automatic bbox, not the canvas: 60% of display_get_gui_height() (the port is 960x540) measured on the ART, positioned by the ART centre, so a redraw with different padding lands identically. Beat lengths are one function each (level_clear_ui_seconds/zoom_seconds/banner_delay/banner_seconds/banner_from/banner_height).",
       "refs": [
         "scripts/scr_level_state/scr_level_state.gml",
         "objects/_levelControl/Draw_64.gml",
         "objects/_levelControl/Step_0.gml",
-        "sprites/spr_level_complete/spr_level_complete.yy"
+        "sprites/bck_level_complete_banner/bck_level_complete_banner.yy"
       ],
       "created": "2026-10-18",
-      "updated": "2026-10-18",
+      "updated": "2026-10-30",
       "done": "2026-10-18"
     },
     {
@@ -5125,6 +5130,12 @@
       "who": "cline",
       "task": "zomb-attack-at-gate",
       "what": "Closed the design decision: keep zombie attack clips decorative because zombies leak at the gate; the art brief already defines that behavior."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "art-cleanup-unreferenced",
+      "what": "Removed eight unreferenced legacy sprites after backing them up and checking the project manifest and source references. Preserved blood-tree icon origins because the shared UI image drawer accounts for each sprite origin."
     }
   ]
 }

@@ -1242,7 +1242,7 @@ nothing written - fix the values above and try again
 * **"N% of the viewport" has to say WHICH rectangle** - port, GUI, canvas or art - and the answer should be the one the player can see.
 * **A fade is only as wide as its alpha reaches**: `draw_set_alpha` is overridden by `draw_sprite_*_ext`'s own alpha argument.
 
-**Files.** `scripts/scr_level_state`, `objects/_levelControl/{Create_0,Step_0,Draw_64}.gml`, `objects/_mainControl/{Create_0,Step_0}.gml`, `scripts/{scr_drawSpdBtns,scr_view_zoom,scr_view_idle}`, `sprites/spr_level_complete`.
+**Files.** `scripts/scr_level_state`, `objects/_levelControl/{Create_0,Step_0,Draw_64}.gml`, `objects/_mainControl/{Create_0,Step_0}.gml`, `scripts/{scr_drawSpdBtns,scr_view_zoom,scr_view_idle}`, `sprites/bck_level_complete_banner`.
 
 ---
 
@@ -1320,7 +1320,7 @@ nothing written - fix the values above and try again
 * One function, `scr_depth_y(y)` in `scripts/scr_setDepth` (which held a dead GM8 `depth = (room_height-y) >> 2` - note the direction: a larger y gave a LARGER depth, i.e. behind). `depth = -60 - y/32`, plus a 1e-5 tie-break from `id`, and a second entry point `scr_depth_band()` with no `id` for log lines.
 * **"Sorted" needs one formula, not one value per class.** If two object types pick their own depth expression, the relationship between them is decided by arithmetic nobody wrote down.
 * **An actor's depth is a VIEW of its position, so it is re-derived when the position changes.** Set it in the Step event that runs in every state, not in the state scripts - a monster in its emerge or death animation is on screen too.
-* **Sort by the origin, and make sure the origin IS the feet.** `spr_grumble_walk` is 160 tall with `yorigin 150`, `spr_daisy_idle_192x` is 192 with `yorigin 158`, `spr_graves` is 64 with `yorigin 53` - all three stand on their origin, which is why one formula works for all of them. A sprite with a centre origin needs half its height added, and that is a different formula.
+* **Sort by the origin, and make sure the origin IS the feet.** `spr_grumble_walk` is 160 tall with `yorigin 150`, `spr_daisy_idle_192x` is 192 with `yorigin 158`, `spr_headstone_round` is 64 with `yorigin 53` - all three stand on their origin, which is why one formula works for all of them. A sprite with a centre origin needs half its height added, and that is a different formula.
 * **A quantised depth ties.** The plants' `y>>5` put everything in the same 32px row at one depth; the float `y/32` is what lets a zombie stand BETWEEN two plants instead of sharing their plane.
 * **Two instances at equal depth are drawn in creation order**, which for a queue of monsters is an order that changes as they jostle - a flicker. The tie-break must be smaller than the depth difference between two pixels of ground (1/32), or it reorders real positions instead of breaking ties.
 

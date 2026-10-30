@@ -4,7 +4,7 @@
 so it lives in the IDE's Notes browser. It is **not** shipped with the game and is
 not read by any code at runtime.*
 
-*Last updated: 2026-10-04 · GameMaker Studio 2 · converted from GameMaker 8*
+*Historical snapshot last updated: 2026-10-04 · filenames and numbers below may predate the current code; use the project's live roster and data tables for current values.*
 
 Companion documents:
 

@@ -3,19 +3,8 @@ action_inherited();
 
 image_single = irandom(3);
 
-/// THE GRAVE ART (2026-10-21).  Four headstones replace the four frames of
-/// spr_graves, so this is a drop-in and not a redesign: same 64x64 canvas,
-/// origin (31,53) against the old (29,53), and an art bottom 3px lower - all
-/// far inside the 16px offset below.
-///
-/// Chosen ONCE, here, rather than switched per frame in Draw_0: the picture
-/// cannot change while the stage runs, so deciding it every step would be four
-/// sprite lookups a frame for an answer that is already known.
-///
-/// spr_gravestone_cross (128) and spr_graveyard_crypt (256) are NOT used here.
-/// Against a 64px stone they are a scale decision, which belongs to the props
-/// system with its own sizes (biome-props), not to a straight swap that would
-/// put a headstone twice the size of its neighbours in a starter graveyard.
+/// Pick a 64x64 headstone once per spawner so its picture stays stable.
+/// The cross and crypt use their authored sizes in the biome-prop system.
 grave_spr = choose(spr_headstone_cracked, spr_headstone_flower,
                    spr_headstone_obelisk, spr_headstone_round);
 
