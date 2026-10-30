@@ -100,6 +100,8 @@ and add its row to the index.
 | [LL-081](#ll-081) | A dying monster still draws `spr_*_walk` - the Draw print says `state: DIE` and `Sprite-ind: spr_grumble_walk` - with **nothing in the log to say which link of the art chain is wrong**, and every fix attempt is a guess | FIXED |
 | [LL-082](#ll-082) | **Every monster spawns with one sprite for both its walk and its death** - a 32x32 still, the same picture for every creature and every state, while fifteen rigs of real art sit unused; `Sprite-ind: spr_mon` in the Draw print and no error | FIXED |
 | [LL-083](#ll-083) | The boot trace says **`RIG   walker N <creature> slots=4 walk=none idle=none attack=none die=none` for every creature** while the art sits in the bank row - every monster wears the one-frame `spr_mon` for walk AND death, `is_real()` on an enum slot answered false, and no error anywhere; the second hit of LL-034's landmine, and the diagnosis was sitting unread in the run log | FIXED |
+| [LL-084](#ll-084) | The new Spriter zombies look **squat** even though scale normalization says the rig is 2–3× larger than its sheet | FIXED |
+| [LL-085](#ll-085) | Biped Spriter zombies still look **crouched while walking**: the walk plays, but the knees stay folded | WATCH |
 
 ---
 
@@ -1846,6 +1848,44 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 
 ---
 
+<a name="ll-084"></a>
+## LL-084 — The scale fix measured transparent part canvases, so the Spriter zombies looked squat
+
+**Look for.** Rigged zombies look too short or squat after the SCML scale fix, even though every creature has a valid Spriter player and the fix is meant to match the old walk-sheet height.
+
+**Cause.** `get_part_world()` reports each part sprite's full canvas `width` and `height` (`sprite_get_width/height`), and the normalizer treated those rectangles as centered on the joint. Imported part images carry large transparent margins: Grumble-Mulch's `pelvis_art`, for example, is a 94×103 canvas with an automatic painted bbox at x=3..88, y=58..99. Counting that padding inflates the measured rig footprint, so `sheet_height / rig_height` produces a scale that's too small for the visible pixels.
+
+**Rule.**
+
+* For these one-frame Spriter part sprites, measure `sprite_get_bbox_*()` and transform the painted rectangle from the part's actual SCML pivot through its sampled scale and angle. Do not use the full canvas as the visible bounds, and do not treat a joint pivot as the rectangle centre.
+* Keep the resulting scale uniform on the whole rig. That preserves authored proportions while matching the visible art height to the legacy walk sheet.
+* Compare the measured `rig=` height and `fix=` in `META [SCML] normalize` with the on-screen creature. A plausible number is not proof that the pixels being measured are the pixels being drawn.
+
+**Files.** `scripts/scr_scml_rig/scr_scml_rig.gml`, `scripts/scr_scml_spriter_interface_system/scr_scml_spriter_interface_system.gml`, `sprites/spr_scmlsi_5173b77a_pelvis_art_237feb3a/spr_scmlsi_5173b77a_pelvis_art_237feb3a.yy`.
+
+**See also.** [LL-078](#ll-078), [LL-071](#ll-071), [LL-012](#ll-012)
+
+---
+
+<a name="ll-085"></a>
+## LL-085 — The Spriter walk keys keep the knees folded even when the rig is scaled correctly
+
+**Look for.** Grumble-Mulch and other biped Spriter zombies play the walk cycle but keep a crouched silhouette; the lower-leg joints are visibly bent through the stride.
+
+**Cause.** The authored local transforms are embedded in the imported walk timeline key arrays. The original SCML source is unavailable, but the runtime definition still contains those keys. A scale correction can match the art height, but it cannot change a crouched pose. A persistent set_bone_transform override would replace the sampled pose and freeze that joint walk motion. Also, a raw bone rotation is not the limb's direction: the knee joint offset and parent rotation contribute to the hip-to-knee angle, while the ankle offset contributes to the knee bend. Changing either leg angle changes the world angle inherited by the child foot.
+
+**Rule.**
+
+* Clone the described runtime definition and pair upper-leg, lower-leg, foot, and pelvis keys by timestamp. In SCML's upward-Y coordinate system, measure the hip-to-knee direction from the joint vector and map the full walk swing to 30° either side of straight down (270°). Map knee bend to 0° through 30° in its existing direction. This preserves key timing and the stride's motion while limiting the pose.
+* Counterrotate each child `b_foot_*` key by the combined upper- and lower-leg angle changes at that timestamp. The foot keeps its world orientation while the ankle follows the reshaped stride. Leave idle, attack, and die alone.
+* Match only conventional biped `b_leg_*` / `b_leg_*_lower` / `b_foot_*` pairs. Rigs with a mass, chain, or root instead of knees have different anatomy and must not receive a leg correction by name accident.
+* Keep the per-entity META [SCML] walk leg angle clamp line, including changed bone and key counts, and inspect title Grumble and stage walkers after reloading GameMaker. The log proves the key arrays were changed; only the animation on screen proves the pose looks right.
+
+**Files.** scripts/scr_scml_rig/scr_scml_rig.gml, scripts/scr_scml_spriter_interface_system/Spriter_Interface_System.md.
+
+**See also.** [LL-084](#ll-084), [LL-081](#ll-081), [LL-072](#ll-072)
+
+---
 ## Adding an entry
 
 Use the next free `LL-0NN`, add an index row, and keep the same four fields:
