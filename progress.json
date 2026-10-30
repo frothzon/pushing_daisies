@@ -3876,8 +3876,8 @@
     },
     {
       "id": "ui-palette-adopt",
-      "title": "ui_palette() exists; the colour literals are still spread over six files",
-      "status": "backlog",
+      "title": "Route meta-screen colors through ui_palette() without restyling",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -3885,13 +3885,13 @@
       "size": "M",
       "prio": 3,
       "needs": "Replace the remaining make_colour_rgb literals with ui_palette() keys, one screen at a time.",
-      "notes": "Cosmetic and independent of the layout work, which is why it was NOT folded into ui-meta-flex: a restyle mixed into a reflow is two changes that cannot be told apart when one of them looks wrong.",
+      "notes": "2026-10-30: The remaining direct RGB literals are in five meta-screen draw helpers. Add semantic ui_palette() keys for the missing exact colors and read them from local palette values; do not change RGB values or gameplay/effect colors.",
       "refs": [
         "scripts/scr_ui_text/scr_ui_text.gml",
         "scripts/scr_meta_screen/scr_meta_screen.gml"
       ],
       "created": "2026-10-21",
-      "updated": "2026-10-21",
+      "updated": "2026-10-30",
       "done": null
     },
     {
