@@ -120,11 +120,20 @@ function ui_clip_text(_text, _maxw) {
 function ui_palette() {
 	return {
 		bg:         make_colour_rgb(24, 26, 30),   /// the results panel
+		panel_base: make_colour_rgb(20, 20, 24),   /// inset panel surface
 		panel:      make_colour_rgb(40, 40, 48),   /// a normal card
 		panel_dark: make_colour_rgb(24, 24, 28),   /// an empty / inert card
 		panel_lit:  make_colour_rgb(64, 104, 56),  /// selected, hovered
 		slot:       make_colour_rgb(48, 52, 44),   /// a filled loadout slot
-		hover:      make_colour_rgb(72, 72, 88),   /// a hovered button
+		hover:          make_colour_rgb(72, 72, 88),   /// a hovered button
+		button:         make_colour_rgb(46, 46, 56),   /// an idle action button
+		button_disabled: make_colour_rgb(26, 26, 30),   /// unavailable action
+		stage_seen:     make_colour_rgb(28, 28, 34),   /// authored, still locked
+		stage_open:     make_colour_rgb(52, 56, 70),   /// available stage
+		stage_clear:    make_colour_rgb(46, 92, 50),   /// cleared stage
+		stage_hover:    make_colour_rgb(84, 92, 120),  /// hovered open stage
+		ink_disabled:  make_colour_rgb(64, 64, 64),   /// inactive badge ink
+		mastery_max:    make_colour_rgb(48, 40, 28),   /// completed mastery
 		ink:        c_white,
 		ink_soft:   c_ltgray,
 		ink_dim:    c_dkgray,

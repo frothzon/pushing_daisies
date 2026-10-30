@@ -33,12 +33,13 @@
       "art-state-origins",
       "biome-tileset-wiring",
       "ui-hud-flex",
-      "ui-flex-other-screens"
-    ],
-    "next": [
+      "ui-flex-other-screens",
       "ui-palette-adopt"
     ],
-    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, wired terrain atlas selection by biome, and moved the in-run HUD and Level Complete banner onto flex geometry. Runtime reviews are waiting on Rayu. Next code pass: consolidate remaining UI colours through ui_palette()."
+    "next": [
+      "dead-color-swap-shader"
+    ],
+    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, wired terrain atlas selection by biome, moved the in-run HUD and Level Complete banner onto flex geometry, and centralized meta-screen colors without changing their RGB values. Runtime reviews are waiting on Rayu. Next code pass: resolve the two unused color-swap scripts."
   },
   "tasks": [
     {
@@ -3877,15 +3878,15 @@
     {
       "id": "ui-palette-adopt",
       "title": "Route meta-screen colors through ui_palette() without restyling",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "3",
       "size": "M",
       "prio": 3,
-      "needs": "Replace the remaining make_colour_rgb literals with ui_palette() keys, one screen at a time.",
-      "notes": "2026-10-30: The remaining direct RGB literals are in five meta-screen draw helpers. Add semantic ui_palette() keys for the missing exact colors and read them from local palette values; do not change RGB values or gameplay/effect colors.",
+      "needs": "Reload GameMaker with global.devMode=true and open World Map, Deploy, and Garden Book. Confirm locked/seen/open/cleared/hovered stage colors, normal/hover/disabled buttons, selected/locked tower cards, and max mastery panels match the existing look. Expect complete UI [GEOM] begin/end dumps and no findings from gm layout check. Any color drift, reflow, missing end line, or layout finding falsifies it.",
+      "notes": "2026-10-30: All direct meta-screen RGB constructors now resolve through semantic ui_palette() keys across the World Map, Deploy, and Garden Book draw helpers. The audit confirms all 13 distinct meta colors are unchanged; no geometry or gameplay/effect colors were touched.",
       "refs": [
         "scripts/scr_ui_text/scr_ui_text.gml",
         "scripts/scr_meta_screen/scr_meta_screen.gml"

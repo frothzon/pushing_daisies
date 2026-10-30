@@ -287,7 +287,8 @@ function meta_currency_draw(_r) {
 /// the text does not need, the text block is a measured line height, and the
 /// reason is bottom-aligned - so no two lines can touch whatever the cell is.
 function meta_draw_tower_wall(_x, _y, _cell, _cols, _reason) {
-	var _all = tower_roster(),
+	var _pal = ui_palette(),
+	    _all = tower_roster(),
 	    _out = [];
 
 	if(is_undefined(_reason)) _reason = true;
@@ -309,9 +310,9 @@ function meta_draw_tower_wall(_x, _y, _cell, _cols, _reason) {
 		    _w        = _cell - 6,
 		    _h        = _cell - 6;
 
-		var _bg = make_colour_rgb(40, 40, 48);
-		if(_selected) _bg = make_colour_rgb(64, 104, 56);
-		if(!_unlocked) _bg = make_colour_rgb(24, 24, 28);
+		var _bg = _pal.panel;
+		if(_selected) _bg = _pal.panel_lit;
+		if(!_unlocked) _bg = _pal.panel_dark;
 		meta_panel(_cx, _cy, _w, _h, _bg, _selected ? c_lime : c_black);
 
 		/// the reason only exists when it is asked for AND the tower is
@@ -370,12 +371,13 @@ function meta_draw_tower_wall(_x, _y, _cell, _cols, _reason) {
 ///
 /// Returns whether the button is hovered, for a caller that wants to say more.
 function meta_button_draw(_r, _text, _enabled) {
-	var _m   = points_to_gui(mouse_x, mouse_y, 0),
+	var _pal = ui_palette(),
+	    _m   = points_to_gui(mouse_x, mouse_y, 0),
 	    _hov = meta_in_rect(_r, _m[0], _m[1]) && _enabled;
 
-	var _bg = make_colour_rgb(46, 46, 56);
-	if(_enabled && _hov) _bg = make_colour_rgb(72, 72, 88);
-	if(!_enabled)        _bg = make_colour_rgb(26, 26, 30);
+	var _bg = _pal.button;
+	if(_enabled && _hov) _bg = _pal.hover;
+	if(!_enabled)        _bg = _pal.button_disabled;
 	meta_panel(_r[0], _r[1], _r[2] - _r[0], _r[3] - _r[1], _bg,
 	           _enabled ? c_silver : c_black);
 
@@ -491,9 +493,10 @@ function meta_worldmap_hit() {
 }
 
 function meta_draw_worldmap() {
-	var _g  = meta_worldmap_geom(),
-	    _rc = meta_worldmap_rects(),
-	    _m  = points_to_gui(mouse_x, mouse_y, 0);
+	var _pal = ui_palette(),
+	    _g   = meta_worldmap_geom(),
+	    _rc  = meta_worldmap_rects(),
+	    _m   = points_to_gui(mouse_x, mouse_y, 0);
 
 	meta_title("World Map", _g.head_mid);
 	meta_currency_draw(_g.cur);
@@ -534,11 +537,11 @@ function meta_draw_worldmap() {
 
 			/// done is green, open is grey-blue, locked is very dark, and a
 			/// node with no level is darkest of all
-			var _bg = make_colour_rgb(20, 20, 24);
-			if(_has)  _bg = make_colour_rgb(28, 28, 34);
-			if(_open) _bg = make_colour_rgb(52, 56, 70);
-			if(_done) _bg = make_colour_rgb(46, 92, 50);
-			if(_open && _hov) _bg = make_colour_rgb(84, 92, 120);
+			var _bg = _pal.panel_base;
+			if(_has)  _bg = _pal.stage_seen;
+			if(_open) _bg = _pal.stage_open;
+			if(_done) _bg = _pal.stage_clear;
+			if(_open && _hov) _bg = _pal.stage_hover;
 
 			meta_panel(_rect[0], _rect[1], _rect[2]-_rect[0], _rect[3]-_rect[1],
 			           _bg, (_hov && _open) ? c_white : c_black);
@@ -584,7 +587,7 @@ function meta_draw_worldmap() {
 			_bar = [_g.x0, _g.y0 + 6*_g.ch + 4, _g.x0 + 460, _g.y0 + 6*_g.ch + 34];
 		}
 		meta_panel(_bar[0], _bar[1], _bar[2] - _bar[0], _bar[3] - _bar[1],
-		           make_colour_rgb(20, 20, 24), c_black);
+		           _pal.panel_base, c_black);
 
 		draw_set_font(fnt_size16);
 		var _show_badges = !is_undefined(_lvl) && stage_cleared(_hr,_hs),
@@ -630,7 +633,7 @@ function meta_draw_worldmap() {
 				var _badge = badge_display_at(_bi),
 				    _spr = icon_badge(_badge),
 				    _scale = ui_art_scale(_spr,12,12),
-				    _tone = badge_has(_hr,_hs,_badge) ? c_white : make_colour_rgb(64,64,64);
+				    _tone = badge_has(_hr,_hs,_badge) ? c_white : _pal.ink_disabled;
 			if(_scale > 0){
 				ui_art_draw(_spr,_badge_x + 6,_badge_y,_scale,_tone,1,
 				            concat("worldmap.badge.",_hr,".",_hs,".",_bi));
@@ -1018,7 +1021,7 @@ function meta_garden_stats_draw(_g) {
 
 	var _pal = ui_palette();
 	meta_panel(_s[0], _s[1], _s[2] - _s[0], _s[3] - _s[1],
-	           make_colour_rgb(20, 20, 24), c_black);
+	           _pal.panel_base, c_black);
 
 	if(!is_struct(_it)){
 		draw_set_font(fnt_size12);
@@ -1080,9 +1083,9 @@ function meta_garden_stats_draw(_g) {
 	draw_set_font(fnt_size16);
 }
 function meta_garden_mastery_summary_draw(_g) {
-	var _s=_g.stats, _h=_g.stats_head, _gr=_g.stats_grid, _nt=_g.stats_note;
+	var _pal=ui_palette(), _s=_g.stats, _h=_g.stats_head, _gr=_g.stats_grid, _nt=_g.stats_note;
 	if(array_length(_s)<4 || array_length(_h)<4 || array_length(_gr)<4 || array_length(_nt)<4) return;
-	meta_panel(_s[0],_s[1],_s[2]-_s[0],_s[3]-_s[1],make_colour_rgb(20,20,24),c_black);
+	meta_panel(_s[0],_s[1],_s[2]-_s[0],_s[3]-_s[1],_pal.panel_base,c_black);
 	draw_set_font(fnt_size16);
 	meta_text(_h[0],_h[1]+2,"Garden Mastery  "+string(tower_mastery())+"/5",c_white,fa_left);
 	draw_set_font(fnt_size12);
@@ -1164,7 +1167,7 @@ function meta_draw_garden() {
 			    _cw = _rc[2] - _rc[0],
 			    _bg = _pal.panel;
 			if(_can && _hov) _bg = _pal.panel_lit;
-			if(_max) _bg = make_colour_rgb(48, 40, 28);
+			if(_max) _bg = _pal.mastery_max;
 			meta_panel(_rc[0], _rc[1], _cw, _rc[3] - _rc[1], _bg,
 			           (_can && _hov) ? c_lime : c_black);
 			var _node_icon = _blood ? icon_blood(_n.tier) : (_mastery ? icon_mastery(_n.rank) : icon_node(_max));
@@ -1212,7 +1215,7 @@ function meta_draw_garden() {
 		if(is_struct(_focus)){
 			meta_garden_candy_detail_draw(_g, _focus);
 		} else {
-			meta_panel(_g.wall_x,_g.wall_y,_g.wall[2]-_g.wall_x,_g.wall[3]-_g.wall_y,make_colour_rgb(20,20,24),c_black);
+			meta_panel(_g.wall_x,_g.wall_y,_g.wall[2]-_g.wall_x,_g.wall[3]-_g.wall_y,_pal.panel_base,c_black);
 			draw_set_font(fnt_size12);
 			meta_text(_g.wall_x+12,_g.wall_y+12,"No candy recipes are configured.",c_silver,fa_left);
 		}
@@ -1629,7 +1632,8 @@ function meta_garden_candy_action_rects(_g) {
 }
 
 function meta_garden_candy_detail_draw(_g, _recipe) {
-	var _w = _g.wall,
+	var _pal = ui_palette(),
+	    _w = _g.wall,
 	    _s = _g.stats,
 	    _head = _g.stats_head,
 	    _note = _g.stats_note,
@@ -1645,7 +1649,7 @@ function meta_garden_candy_detail_draw(_g, _recipe) {
 	if(array_length(_s) < 4) _s = [_g.wall_x,_w[3],_g.wall_x+336,_w[3]+UI_GARDEN_STATS_H];
 	if(array_length(_head) < 4) _head = [_s[0]+8,_s[1]+8,_s[2]-8,_s[1]+32];
 	if(array_length(_note) < 4) _note = [_s[0]+8,_s[3]-24,_s[2]-8,_s[3]-8];
-	meta_panel(_w[0],_w[1],_w[2]-_w[0],_w[3]-_w[1],make_colour_rgb(20,20,24),c_black);
+	meta_panel(_w[0],_w[1],_w[2]-_w[0],_w[3]-_w[1],_pal.panel_base,c_black);
 	meta_garden_candy_icon_draw(_id,_w[0]+52,(_w[1]+_w[3])*0.5,76);
 	draw_set_font(fnt_size20);
 	meta_text(_w[0]+104,_w[1]+16,ui_clip_text(_recipe.label,_w[2]-_w[0]-116),c_white,fa_left);
@@ -1656,7 +1660,7 @@ function meta_garden_candy_detail_draw(_g, _recipe) {
 	meta_text(_w[0]+104,_w[1]+96,"Stock: "+string(_stock)+"  |  "+(_id == "everlasting_gob" ? "Freeze: "+string(_mag_data.freeze_waves)+" wave(s)" : "Duration: "+string(candy_duration_seconds())+"s"),c_silver,fa_left);
 	if(_gate != "") meta_text(_w[0]+104,_w[1]+116,ui_clip_text(_gate,_w[2]-_w[0]-116),c_orange,fa_left);
 
-	meta_panel(_s[0],_s[1],_s[2]-_s[0],_s[3]-_s[1],make_colour_rgb(20,20,24),c_black);
+	meta_panel(_s[0],_s[1],_s[2]-_s[0],_s[3]-_s[1],_pal.panel_base,c_black);
 	draw_set_font(fnt_size12);
 	var _head_text = _unlocked ? "Level "+string(_level)+" effect" : "Recipe details";
 	meta_text(_head[0],_head[1]+5,_head_text,c_white,fa_left);
