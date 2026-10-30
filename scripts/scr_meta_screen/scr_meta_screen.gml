@@ -836,6 +836,7 @@ function meta_garden_geom() {
 		wall     : _w,
 		back     : ui_meta_rect("garden", "garden.btn.back"),
 		branch   : ui_meta_rect("garden", "garden.branch"),
+		clover_page: ui_meta_rect("garden", "garden.page"),
 		page     : ui_meta_rect("garden", "garden.page"),
 		view     : ui_meta_rect("garden", "garden.view"),
 		stats     : ui_meta_rect("garden", "garden.stats"),
@@ -977,21 +978,44 @@ function meta_garden_stats_draw(_g) {
 
 	draw_set_font(fnt_size16);
 }
+function meta_garden_mastery_summary_draw(_g) {
+	var _s=_g.stats, _h=_g.stats_head, _gr=_g.stats_grid, _nt=_g.stats_note;
+	if(array_length(_s)<4 || array_length(_h)<4 || array_length(_gr)<4 || array_length(_nt)<4) return;
+	meta_panel(_s[0],_s[1],_s[2]-_s[0],_s[3]-_s[1],make_colour_rgb(20,20,24),c_black);
+	draw_set_font(fnt_size16);
+	meta_text(_h[0],_h[1]+2,"Garden Mastery  "+string(tower_mastery())+"/5",c_white,fa_left);
+	draw_set_font(fnt_size12);
+	meta_text(_gr[0],_gr[1],"Arrive at level "+string(tower_floor()),c_silver,fa_left);
+	meta_text(_gr[0],_gr[1]+16,"Tower cap "+string(tower_cap()),c_silver,fa_left);
+	var _nodes=clover_master_nodes(), _rank=tower_mastery();
+	if(_rank >= array_length(_nodes)){
+		meta_text(_nt[0],_nt[1]+2,"Mastery is complete.",c_yellow,fa_left);
+	} else {
+		var _next=_nodes[_rank], _cost=clover_master_node_cost(_next.id),
+		    _gate=clover_master_node_unlocked(_next.id)
+		           ? "Next node ready"
+		           : "Clear Region "+string(_next.region)+" to unlock";
+		meta_text(_nt[0],_nt[1]+2,_gate+"  "+string(_cost)+" clovers",_gate=="Next node ready" ? c_lime : c_silver,fa_left);
+	}
+	draw_set_font(fnt_size16);
+}
+
 function meta_draw_garden() {
 	var _g      = meta_garden_geom(),
 	    _mode   = garden_view_mode(),
 	    _blood  = (_mode == 1),
 	    _candy  = (_mode == 2),
+	    _mastery= (_mode == 3),
 	    _nodes  = garden_visible_nodes(),
 	    _rects  = meta_garden_node_rects(),
-	    _page   = _candy ? garden_candy_page_get() : 0,
-	    _offset = _candy ? _page*5 : 0,
+	    _page   = _candy ? garden_candy_page_get() : (_mode == 0 ? clover_page_get() : 0),
+	    _offset = (_candy || _mode == 0) ? _page*5 : 0,
 	    _pal    = ui_palette(),
 	    _focus  = _candy ? meta_garden_candy_selected(_page) : undefined;
 
 	meta_title("Garden Book", _g.head_mid);
 	meta_currency_draw(_g.cur);
-	var _next_view = _mode == 0 ? "Blood Tree" : (_mode == 1 ? "Candy Shop" : "Clover Tree");
+	var _next_view = _mode == 0 ? "Blood Tree" : (_mode == 1 ? "Candy Shop" : (_mode == 2 ? "Mastery" : "Clover Tree"));
 	meta_button_draw(_g.view, _next_view, true);
 
 	var _br = _g.branch;
@@ -1003,9 +1027,9 @@ function meta_draw_garden() {
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 	var _bh = string_height("Ag"),
-	    _branch_name = _candy ? "Candy Recipes" : (_blood ? "Blood Alchemy" : "Offense"),
+	    _branch_name = _candy ? "Candy Recipes" : (_blood ? "Blood Alchemy" : (_mastery ? "Mastery" : clover_branch_name()+" >")),
 	    _branch_icon = _candy ? icon_currency(CURRENCY.CANDY)
-	                         : (_blood ? icon_blood(1) : icon_branch(BRANCH.OFFENSE));
+	                         : (_blood ? icon_blood(1) : (_mastery ? icon_mastery(max(1,min(5,tower_mastery()+1))) : icon_branch(clover_branch_icon())));
 	icon_draw(_branch_icon, _br[0] + 16, (_br[1] + _br[3])*0.5, 32, "branch_icon");
 	var _branch_label = ui_clip_text(_branch_name,max(20,_br[2]-_br[0]-44));
 	draw_text(_br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5, _branch_label);
@@ -1022,13 +1046,13 @@ function meta_draw_garden() {
 		}
 	} else {
 		var _m = points_to_gui(mouse_x, mouse_y, 0);
-		for(var _i = 0; _i < array_length(_nodes); _i++){
-			if(_i >= array_length(_rects)) break;
-			var _n = _nodes[_i], _rc = _rects[_i],
-			    _rank = _blood ? blood_node_rank(_n.id) : clover_rank(_n.id),
-			    _max = (_rank >= _n.ranks),
-			    _cost = _blood ? blood_node_cost(_n.id) : clover_cost(_n.id),
-			    _available = !_blood || blood_node_unlocked(_n.id),
+		for(var _i = 0; _i < array_length(_rects); _i++){
+			if(_offset + _i >= array_length(_nodes)) break;
+			var _n = _nodes[_offset + _i], _rc = _rects[_i],
+			    _rank = _blood ? blood_node_rank(_n.id) : (_mastery ? (_n.rank <= tower_mastery() ? 1 : 0) : clover_rank(_n.id)),
+			    _max = _mastery ? (_rank > 0) : (_rank >= _n.ranks),
+			    _cost = _blood ? blood_node_cost(_n.id) : (_mastery ? clover_master_node_cost(_n.id) : clover_cost(_n.id)),
+			    _available = _blood ? blood_node_unlocked(_n.id) : (_mastery ? clover_master_node_unlocked(_n.id) : true),
 			    _funds = _blood ? shards_get() : clovers_get(),
 			    _can = (_available && !_max && _cost >= 0 && _funds >= _cost),
 			    _hov = meta_in_rect(_rc, _m[0], _m[1]),
@@ -1038,8 +1062,8 @@ function meta_draw_garden() {
 			if(_max) _bg = make_colour_rgb(48, 40, 28);
 			meta_panel(_rc[0], _rc[1], _cw, _rc[3] - _rc[1], _bg,
 			           (_can && _hov) ? c_lime : c_black);
-			var _node_icon = _blood ? icon_blood(_n.tier) : icon_node(_max);
-			icon_draw(_node_icon, _rc[0] + 26, _rc[1] + 28, 40, _blood ? "blood_node_icon" : "node_icon");
+			var _node_icon = _blood ? icon_blood(_n.tier) : (_mastery ? icon_mastery(_n.rank) : icon_node(_max));
+			icon_draw(_node_icon, _rc[0] + 26, _rc[1] + 28, 40, _blood ? "blood_node_icon" : (_mastery ? "mastery_node_icon" : "node_icon"));
 			draw_set_font(fnt_size16);
 			draw_set_colour(c_white);
 			draw_set_halign(fa_left);
@@ -1049,7 +1073,8 @@ function meta_draw_garden() {
 			draw_set_halign(fa_right);
 			draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
 			var _rank_txt = _blood ? (_max ? "owned" : "Tier " + string(_n.tier))
-			                 : "rank " + string(_rank) + "/" + string(_n.ranks);
+			                 : (_mastery ? (_max ? "owned" : "Mastery " + string(_n.rank))
+			                   : "rank " + string(_rank) + "/" + string(_n.ranks));
 			draw_text(_rc[2] - 10, _rc[1] + 10, _rank_txt);
 			ui_reg_text("rank", _rc[2] - 10, _rc[1] + 10, _rank_txt, fa_right, fa_top);
 			draw_set_font(fnt_size12);
@@ -1059,8 +1084,8 @@ function meta_draw_garden() {
 			ui_reg_text("desc", _rc[0] + 54, _rc[1] + 32, _dsc, fa_left, fa_top);
 			draw_set_halign(fa_right);
 			draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
-			var _cost_txt = _max ? (_blood ? "unlocked" : "maxed")
-			                 : (!_available ? "locked"
+			var _cost_txt = _max ? (_blood ? "unlocked" : (_mastery ? "owned" : "maxed"))
+			                 : (!_available ? (_mastery ? (_n.rank > tower_mastery()+1 ? "buy prior node" : "clear Region " + string(_n.region)) : "locked")
 			                   : string(_cost) + (_blood ? " shards" : " clovers"));
 			draw_text(_rc[2] - 10, _rc[1] + 32, _cost_txt);
 			ui_reg_text("cost", _rc[2] - 10, _rc[1] + 32, _cost_txt, fa_right, fa_top);
@@ -1088,8 +1113,15 @@ function meta_draw_garden() {
 		draw_set_font(fnt_size16);
 		draw_set_colour(c_white);
 		meta_text(_shh[0], _shh[1] + 3, "Seed Shop", c_white, fa_left);
+		if(_mode == 0){
+			var _node_page_rect=_g.page;
+			if(array_length(_node_page_rect) >= 4){
+				meta_button_draw(_node_page_rect, "Nodes " + string(_page+1) + "/2", true);
+			}
+		}
 		meta_draw_tower_wall(_g.wall_x, _g.wall_y, _g.wall_cell, _g.wall_cols, false);
-		meta_garden_stats_draw(_g);
+		if(_mastery) meta_garden_mastery_summary_draw(_g);
+		else meta_garden_stats_draw(_g);
 	}
 	meta_button_draw(_g.back, "Return", true);
 }

@@ -60,18 +60,14 @@ function difficulty_name(_d) {
 /// Seeds for clearing a stage: base x difficulty, full on a first clear and a
 /// quarter of that on a repeat (economy.md 2.1).
 function stage_seed_reward(_row, _difficulty, _first_clear) {
-	if(is_undefined(_row))   return 0;
-	if(!is_struct(_row))     return 0;
-	if(!variable_struct_exists(_row, "seeds")) return 0;
+	if(is_undefined(_row)) return 0;
+	if(!is_struct(_row) || !variable_struct_exists(_row,"seeds")) return 0;
 
-	var _rows = difficulty_data();
-	_difficulty = clamp(_difficulty, 0, array_length(_rows) - 1);
-
-	var _seeds = _row.seeds * _rows[_difficulty].seeds;
-	if(!_first_clear){
-	    _seeds = max(1, floor(_seeds * 0.25));
-	}
-	return floor(_seeds);
+	var _rows=difficulty_data();
+	_difficulty=clamp(_difficulty,0,array_length(_rows)-1);
+	var _seeds=_row.seeds*_rows[_difficulty].seeds;
+	if(!_first_clear) _seeds=max(1,floor(_seeds*0.25));
+	return floor(_seeds*(1+clover_seed_reward_bonus()));
 }
 
 /// ---- what a kill PAYS -----------------------------------------------------

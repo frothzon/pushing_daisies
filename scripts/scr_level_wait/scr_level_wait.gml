@@ -40,6 +40,15 @@ function scr_level_wait() {
 	    if(!wave_preview_shown){
 	        wave_preview_shown = true;
 	        candy_run_wave_end(wave_count);
+	        var _regen=clover_wave_regen(wave_count);
+	        if(_regen > 0){
+	            var _life_now=get_item_value(STATINV.life),
+	                _life_max=variable_instance_exists(id,"clover_life_max")
+	                          && is_real(clover_life_max) ? clover_life_max : 20;
+	            set_item_value(STATINV.life,min(_life_max,_life_now+_regen));
+	            scr_meta_log("CLOVER","wave ",wave_count," regeneration +",
+	                         min(_regen,max(0,_life_max-_life_now))," life");
+	        }
 	        if(is_struct(next_pick) && next_pick.index >= 0){
 	            scr_wave_preview(next_pick);
 	        }

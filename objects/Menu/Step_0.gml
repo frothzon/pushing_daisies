@@ -335,10 +335,11 @@ switch(menu_state){
 
             if(_gclick){
                 if(meta_button_clicked(_ggeom.view,true)){
-                    global.garden_view_mode = (_mode + 1) mod 3;
+                    global.garden_view_mode = (_mode + 1) mod 4;
                     global.garden_blood_view = (global.garden_view_mode == 1);
                     var _view_name = global.garden_view_mode == 0 ? "Clover Tree"
-                                   : (global.garden_view_mode == 1 ? "Blood Alchemy" : "Candy Shop");
+                                   : (global.garden_view_mode == 1 ? "Blood Alchemy"
+                                     : (global.garden_view_mode == 2 ? "Candy Shop" : "Garden Mastery"));
                     print("MENU  garden view -> ",_view_name);
                 } else if(_candy_view){
                     if(meta_button_clicked(_ggeom.page,true)){
@@ -383,19 +384,31 @@ switch(menu_state){
                             }
                         }
                     }
+                } else if(_mode == 0 && meta_button_clicked(_ggeom.branch,true)){
+                    clover_branch_cycle();
+                    print("MENU  clover branch -> ",clover_branch_name());
+                } else if(_mode == 0 && meta_button_clicked(_ggeom.clover_page,true)){
+                    clover_page_cycle();
+                    print("MENU  clover page -> ",clover_page_get()+1,"/2");
                 } else {
                     var _gnode = meta_garden_hit(),
-                        _nodes = garden_visible_nodes();
-                    if(_gnode >= 0 && _gnode < array_length(_nodes)){
-                        var _nid = _nodes[_gnode].id,
+                        _nodes = garden_visible_nodes(),
+                        _offset = (_mode == 0) ? clover_page_get()*5 : 0;
+                    if(_gnode >= 0 && _gnode < 5 && _offset+_gnode < array_length(_nodes)){
+                        var _nid = _nodes[_offset+_gnode].id,
                             _blood_view = (_mode == 1),
-                            _bought = _blood_view ? blood_node_buy(_nid) : clover_buy(_nid);
+                            _mastery_view = (_mode == 3),
+                            _bought = _blood_view ? blood_node_buy(_nid)
+                                      : (_mastery_view ? clover_master_node_buy(_nid) : clover_buy(_nid));
                         if(_bought){
                             scr_playSound(snd_button,false);
                             scr_save_meta();
                             if(_blood_view){
                                 print("MENU  unlocked blood node ",_nid,
                                       " shards left ",shards_get());
+                            } else if(_mastery_view){
+                                print("MENU  bought ",_nid," cap ",tower_cap(),
+                                      " floor ",tower_floor()," clovers left ",clovers_get());
                             } else {
                                 print("MENU  bought ",_nid,
                                       " rank ",clover_rank(_nid),
@@ -405,6 +418,11 @@ switch(menu_state){
                             print("MENU  cannot buy blood node ",_nid,
                                   " (next cost ",blood_node_cost(_nid),
                                   ", have ",shards_get()," shards; previous tier required)");
+                        } else if(_mastery_view){
+                            var _mn=clover_master_node_find(_nid);
+                            print("MENU  cannot buy ",_nid," cost ",clover_master_node_cost(_nid),
+                                  " clovers ",clovers_get(),
+                                  " region_gate=",is_struct(_mn) ? _mn.region : 0);
                         } else {
                             print("MENU  cannot buy ",_nid,
                                   " (next rank ",clover_cost(_nid),

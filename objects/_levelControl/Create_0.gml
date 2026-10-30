@@ -49,7 +49,7 @@ set_item_value(points,0);
 /// set starting money.  economy.md 4.1 raises the base from 15 to 25 (a
 /// rung costs less than a doubling now), and the difficulty column scales
 /// it - Brutal starts with a quarter more.
-set_item_value(money, round(25 * difficulty_start_money_mult()));
+set_item_value(money, round(25 * difficulty_start_money_mult()) + clover_starting_money_bonus());
 
 /// The part of a kill payout a whole-dollar purse has not paid yet.  Money is a
 /// count, so the difficulty column cannot be applied by rounding - round(1 x
@@ -59,7 +59,12 @@ set_item_value(money, round(25 * difficulty_start_money_mult()));
 money_carry = 0;
 
 /// set starting life
+var _life_bonus = clover_max_life_bonus();
+clover_life_max = 20 + _life_bonus;
+clover_life_loss_carry = 0;
+clover_boss_saves_remaining = clover_boss_saves();
 set_item_value(life,20);
+add_item_value(STATINV.life,_life_bonus);
 
 /// set starting wave.  This item is the CURRENT wave, so it is 0 until
 /// wave 1 begins and `add_item_value(waves,1)` in scr_level_spawn raises

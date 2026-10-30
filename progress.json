@@ -20,14 +20,16 @@
   },
   "focus": {
     "now": [
-      "candy-recipes"
-    ],
-    "next": [
       "garden-trees",
       "garden-master-nodes",
       "garden-mastery-panel"
     ],
-    "note": "2026-10-30: Candy catalog, purchases, and run effects are implemented and awaiting Rayu runtime review. Implementing the four full clover branches next; after that, mastery purchases/panel, Endless loot boxes and Candy stock rewards, and the Region 6 Blood Fields consumer remain."
+    "next": [
+      "endless-mode",
+      "endless-loot-box",
+      "blood-fields-modifier"
+    ],
+    "note": "2026-10-30: Candy shop/effects, four clover branches, and mastery purchases/panel are implemented in code and awaiting Rayu runtime review. Next: Endless mode and loot-box candy stock rewards, then the Region 6 Blood Fields gate/modifier."
   },
   "tasks": [
     {
@@ -1889,15 +1891,15 @@
     {
       "id": "garden-master-nodes",
       "title": "The five master nodes: cap 6 to 10",
-      "status": "backlog",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "3",
       "size": "M",
       "prio": 2,
-      "needs": "",
-      "notes": "PARTIAL: tower_cap() and tower_floor() already read the saved mastery rank and maintain the four-rung gap. The five purchase nodes are not implemented: costs, region gates, purchase/save flow, and Garden Book UI are missing. economy.md §3.3 specifies costs 120/260/500/900/1500 clovers and region 1-5 gates.",
+      "needs": "After a full Region 1 clear, reload and open Garden Book > Garden Mastery. Confirm node I becomes purchasable, buying it persists mastery 1 and changes new towers to floor 2/cap 6; node II must stay gated until Region 2 is cleared. If the purchase, region gate, or cap/floor change fails, send the MENU/CLOVER log lines.",
+      "notes": "IMPLEMENTED IN CODE: five sequential account-wide nodes cost 120/260/500/900/1500 clovers before Growth discounts, each requires clearing its matching region, and purchase updates saved mastery.",
       "refs": [
         "economy.md",
         "scripts/tower_levels/tower_levels.gml"
@@ -1909,15 +1911,15 @@
     {
       "id": "garden-mastery-panel",
       "title": "The mastery panel: where a tower arrives and how far it can go",
-      "status": "backlog",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "3",
       "size": "M",
       "prio": 3,
-      "needs": "",
-      "notes": "ART IS IN: icon_mastery(1..5) maps the five 48x48 icons. The Garden Book mastery panel itself is absent; it still needs to show current cap/floor, the next gated node, cost, and purchase state.",
+      "needs": "Reload and open Garden Book > Garden Mastery. Confirm the panel shows current arrival level, tower cap, and the next node cost/region gate; after buying a node, the displayed floor and cap should both rise by one.",
+      "notes": "IMPLEMENTED IN CODE: the mastery panel reads saved floor/cap and shows the next node, discounted cost, and matching region gate. Awaiting runtime layout review.",
       "refs": [
         "scripts/tower_levels/tower_levels.gml",
         "objects/Menu/Step_0.gml"
@@ -1989,15 +1991,15 @@
     {
       "id": "garden-trees",
       "title": "Clover trees: all four, 10 nodes x 5 ranks",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "3",
       "size": "L",
       "prio": 2,
-      "needs": "",
-      "notes": "CURRENT WORK: expand the existing two-node Offense proof into four branches, ten nodes each, five ranks each, with one unified resolver and Garden Book branch/page UI. economy.md lists ten node costs totaling 473; implementation interprets each entry as that node rank price and repeats it for its five ranks, so buying rank 1 across the branch costs the specified 473. Magnitudes not fully specified in goal.md/economy.md will be recorded as tuning assumptions.",
+      "needs": "Reload GameMaker, open Garden Book, and cycle through all four clover branches and both pages. Confirm ten nodes appear per branch, a purchase raises the displayed rank and saves after returning to the map. Check one Offense purchase changes a tower stat and one Growth purchase reduces the displayed in-run upgrade price. Missing branches, stale stats, or a reload that loses a rank falsifies the implementation.",
+      "notes": "IMPLEMENTED IN CODE: four 10-node branches, five ranks each, page/branch navigation, node purchases, and effects for tower stats, prices, income, seeds, lives, leaks, regeneration, and specialization. economy.md §3.2 records the chosen mappings where the design left ranks unspecified. Awaiting GameMaker runtime review.",
       "refs": [
         "scripts/scr_clover_tree/scr_clover_tree.gml",
         "scripts/scr_meta_clovers/scr_meta_clovers.gml",

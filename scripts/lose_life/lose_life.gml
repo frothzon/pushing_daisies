@@ -7,8 +7,23 @@ function lose_life() {
 	/// destroy path
 	path_delete(myPath);
 
-	/// remove life points
-	add_item_value(STATINV.life,-1);
+	/// Vitality can save boss leaks and carries fractional leak prevention.
+	var _life_loss=1;
+	with(_levelControl){
+		var _saved_boss = is_boss_wave
+		                  && variable_instance_exists(id,"clover_boss_saves_remaining")
+		                  && clover_boss_saves_remaining > 0;
+		if(_saved_boss){
+			clover_boss_saves_remaining--;
+			_life_loss=0;
+		} else {
+			if(!variable_instance_exists(id,"clover_life_loss_carry")) clover_life_loss_carry=0;
+			clover_life_loss_carry += clover_life_loss_reduction();
+			_life_loss = floor(clover_life_loss_carry);
+			clover_life_loss_carry -= _life_loss;
+		}
+	}
+	if(_life_loss > 0) add_item_value(STATINV.life,-_life_loss);
 
 	/// ---- A LEAK PAYS HALF (decided 2026-10-18, economy.md 4.5) --------
 	/// It used to pay NOTHING, so a leak cost a life AND the income the

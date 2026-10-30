@@ -37,9 +37,10 @@ function tower_level_range(_level)    { return tower_level_row(_level)[3]; }
 /// save; a save without the key - or a corrupt one - is mastery 0.
 function tower_mastery() {
 	if(!variable_global_exists("meta") || !is_struct(global.meta)) return 0;
-	var _m = global.meta[$ "mastery"];
+	if(!variable_struct_exists(global.meta,"mastery")) return 0;
+	var _m=global.meta[$ "mastery"];
 	if(!is_real(_m)) return 0;
-	return clamp(_m, 0, 5);
+	return clamp(floor(_m),0,5);
 }
 
 /// The ceiling a tower can be taken to, and the level it ARRIVES at.
@@ -72,20 +73,16 @@ function tower_rung_cost(_rung) {
 /// Returns -1 at (or past) the cap: the sentinel the price check in
 /// `_levelControl/Step_0.gml` and `scr_setMaxPrice()` already understand.
 function tower_upgrade_price(_base_price, _level) {
-	/// every read is guarded - a fatal unset-variable read here would take
-	/// the whole Step event with it (LL-002)
 	if(!is_real(_base_price) || !is_real(_level)) return -1;
-
-	/// nothing left to buy at the garden's ceiling
 	if(_level >= tower_cap()) return -1;
 
 	var _rung = round(_level) - tower_floor() + 1,
 	    _cost = tower_rung_cost(_rung);
 	if(_cost < 0) return -1;
 
-	/// whole dollars, so the number on the card is the number charged
-	/// (the old upgrade price was round(price * 0.50); economy.md 4.3)
-	return round(_base_price * _cost);
+	var _discount=clover_upgrade_discount();
+	if(!is_real(_discount)) _discount=0;
+	return round(_base_price*_cost*(1-clamp(_discount,0,0.25)));
 }
 
 /// Selling refunds 60% of EVERYTHING invested - the placement and every rung
@@ -111,6 +108,13 @@ function tower_data_at_level(_base, _level, _clover_dmg, _clover_rate) {
 	_out[TOWER.fire_rate] = _base[TOWER.fire_rate] * (1 + _clover_rate) * tower_level_firerate(_level);
 	_out[TOWER.range]     = _base[TOWER.range]                          * tower_level_range(_level);
 	_out[TOWER.level]     = _level;
+
+	if(array_length(_out) > TOWER.crit_chance && is_real(_out[TOWER.crit_chance])){
+		_out[TOWER.crit_chance] = clamp(_out[TOWER.crit_chance]+clover_crit_chance_bonus(),0,1);
+	}
+	if(array_length(_out) > TOWER.crit_damage && is_real(_out[TOWER.crit_damage])){
+		_out[TOWER.crit_damage] += clover_crit_damage_bonus();
+	}
 
 	/// Active candies use additive bonuses on shared axes; re-resolution when
 	/// one starts/expires keeps placed towers and the selected-card preview equal.

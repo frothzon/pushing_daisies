@@ -257,6 +257,13 @@ function tower_spec_modifiers(_tower_name, _key, _level) {
 			}
 		}
 	}
+	var _strength=1+clover_specialization_bonus();
+	_out.damage *= _strength;
+	_out.rate *= _strength;
+	_out.range *= _strength;
+	_out.crit *= _strength;
+	_out.crit_damage *= _strength;
+	_out.money *= _strength;
 	return _out;
 }
 

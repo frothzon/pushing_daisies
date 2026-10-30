@@ -120,9 +120,16 @@ One branch at rank 1 across all 10 nodes: **473 ☘️**. All four branches: **1
 | Tree | Nodes 1–5 | Nodes 6–10 |
 | --- | --- | --- |
 | 🌿 **Vitality** | +1 max life per rank (to 25) | −life-loss penalty, regen per wave, boss survival, +1 more life, +2 more life |
-| ⚔️ **Offense** | +2% tower damage per rank (to +10%) | +1% fire rate per rank, +1% crit chance, +5% crit damage, +2% more damage, +3% more damage |
-| 🌱 **Growth** | −5% upgrade cost per rank (to −25%) | +15% in-run money from kills, a third spec tier at L4, −10% master node cost, −20% master node cost, +2 starting money |
+| ⚔️ **Offense** | +0.4% tower damage per rank across nodes 1–5 (10% together) | +1% fire rate per rank, +1% crit chance per rank, +5% crit damage per rank, +2% and +3% damage per rank on nodes 9–10 |
+| 🌱 **Growth** | −1% upgrade cost per rank across nodes 1–5 (25% together) | +3% kill money per rank, a third spec tier at L4, −10%/−20% mastery-node discounts, +2 starting money per rank |
 | 💰 **Harvest** | +1% zombie money per rank | +starting money, +boss reward %, +5% seeds, +10% seeds, +15% seeds |
+
+**Implementation mapping (2026-10-30).** The design names the effects but does not assign each one across all ten nodes and five ranks. The ten listed prices are the fixed price of each node rank; they repeat for that node’s five ranks. Rank 1 across a branch therefore costs 473 ☘, and a fully ranked branch costs 2,365 ☘. These are first-pass tuning values.
+
+- **Vitality:** nodes 1–5 grant +1 max life per rank; node 6 reduces life loss by 5% per rank (cap 25%); node 7 restores one life per rank every fifth wave; node 8 saves one boss leak per rank per stage (cap 5); nodes 9 and 10 grant +1 and +2 max life per rank. A full branch adds 40 max life to the base 20.
+- **Offense:** nodes 1–5 grant +0.4% damage per rank (10% together); node 6 grants +1% attack speed per rank; node 7 grants +1% crit chance per rank; node 8 grants +5% crit damage per rank; nodes 9 and 10 grant +2% and +3% damage per rank.
+- **Growth:** nodes 1–5 grant 1% upgrade discount per rank (25% together); node 6 grants +3% kill money per rank; node 7 unlocks specialization tier 3 at L4 and adds 1% specialization stat strength per rank; nodes 8 and 9 discount mastery nodes by 2% and 4% per rank (30% together); node 10 grants +2 starting money per rank.
+- **Harvest:** nodes 1–5 grant +1% kill money per rank; node 6 grants +1 starting money per rank; node 7 grants +5% boss reward per rank; nodes 8–10 grant +1%, +2%, and +3% seed reward per rank. Money bonuses share one additive axis.
 
 ### 3.3 The five master nodes (priced separately, outside the 473 totals)
 

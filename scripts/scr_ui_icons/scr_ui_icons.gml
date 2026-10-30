@@ -37,9 +37,7 @@ function icon_currency(_kind) {
 	return -1;
 }
 
-/// A clover branch icon.  Offense is the only branch with nodes (Phase 1), so
-/// it is the only one on screen - the other three are content for the trees
-/// that roadmap 1.7 still owes, and their art is waiting.
+/// A clover branch icon. The Garden Book cycles all four permanent branches.
 function icon_branch(_branch) {
 	switch(_branch){
 		case BRANCH.VITALITY: return spr_vitality;
