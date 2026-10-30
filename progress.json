@@ -20,16 +20,14 @@
   },
   "focus": {
     "now": [
-      "garden-trees",
-      "garden-master-nodes",
-      "garden-mastery-panel"
+      "endless-mode",
+      "endless-wave-modifiers"
     ],
     "next": [
-      "endless-mode",
       "endless-loot-box",
       "blood-fields-modifier"
     ],
-    "note": "2026-10-30: Candy shop/effects, four clover branches, and mastery purchases/panel are implemented in code and awaiting Rayu runtime review. Next: Endless mode and loot-box candy stock rewards, then the Region 6 Blood Fields gate/modifier."
+    "note": "2026-10-30: Implementing Endless entry, wave loop/modifiers, and loot-box reward flow under Phase 4. Clover/mastery and candy systems remain in Rayu runtime review."
   },
   "tasks": [
     {
@@ -1409,7 +1407,7 @@
     {
       "id": "endless-mode",
       "title": "Endless mode: entry, box spacing, the 90-wave cycle",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -1423,12 +1421,13 @@
         "objects/Menu/Step_0.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "endless-wave-modifiers",
       "title": "Global wave modifiers, and two alternating spawn points",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -1442,7 +1441,8 @@
         "objects/obj_spawn/Create_0.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "fadeout-retry-noop",
