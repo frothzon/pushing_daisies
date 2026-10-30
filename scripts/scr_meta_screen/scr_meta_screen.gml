@@ -836,6 +836,7 @@ function meta_garden_geom() {
 		wall     : _w,
 		back     : ui_meta_rect("garden", "garden.btn.back"),
 		branch   : ui_meta_rect("garden", "garden.branch"),
+		page     : ui_meta_rect("garden", "garden.page"),
 		view     : ui_meta_rect("garden", "garden.view"),
 		stats     : ui_meta_rect("garden", "garden.stats"),
 		stats_head: ui_meta_rect("garden", "garden.stats.head"),
@@ -977,134 +978,122 @@ function meta_garden_stats_draw(_g) {
 	draw_set_font(fnt_size16);
 }
 function meta_draw_garden() {
-	var _g     = meta_garden_geom(),
-	    _nodes = garden_visible_nodes(),
-	    _blood = garden_blood_view(),
-	    _rects = meta_garden_node_rects(),
-	    _m     = points_to_gui(mouse_x, mouse_y, 0),
-	    _pal   = ui_palette();
+	var _g      = meta_garden_geom(),
+	    _mode   = garden_view_mode(),
+	    _blood  = (_mode == 1),
+	    _candy  = (_mode == 2),
+	    _nodes  = garden_visible_nodes(),
+	    _rects  = meta_garden_node_rects(),
+	    _page   = _candy ? garden_candy_page_get() : 0,
+	    _offset = _candy ? _page*5 : 0,
+	    _pal    = ui_palette(),
+	    _focus  = _candy ? meta_garden_candy_selected(_page) : undefined;
 
 	meta_title("Garden Book", _g.head_mid);
 	meta_currency_draw(_g.cur);
-	meta_button_draw(_g.view, _blood ? "Clover Tree" : "Blood Tree", true);
+	var _next_view = _mode == 0 ? "Blood Tree" : (_mode == 1 ? "Candy Shop" : "Clover Tree");
+	meta_button_draw(_g.view, _next_view, true);
 
-	/// ---- the Offense branch.  The heading and its icon share the column's
-	/// first row: the old heading sat 30 units ABOVE node 0 in a 56px gutter
-	/// to the left of it, and with node 0 at the top of the body there is no
-	/// gutter and nothing above to draw into.
 	var _br = _g.branch;
 	if(array_length(_br) < 4){
 		_br = [_g.node_x, _g.node_y - 36, _g.node_x + _g.node_w, _g.node_y];
 	}
-
 	draw_set_font(fnt_size16);
 	draw_set_colour(c_white);
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
-
 	var _bh = string_height("Ag"),
-	    _branch_name = _blood ? "Blood Alchemy" : "Offense",
-	    _branch_icon = _blood ? icon_blood(1) : icon_branch(BRANCH.OFFENSE);
-	/// icon_draw registers the ART rectangle it paints (LL-071).
-	icon_draw(_branch_icon, _br[0] + 16, (_br[1] + _br[3])*0.5, 32,
-	          "branch_icon");
-
-	draw_text(_br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5, _branch_name);
+	    _branch_name = _candy ? "Candy Recipes" : (_blood ? "Blood Alchemy" : "Offense"),
+	    _branch_icon = _candy ? icon_currency(CURRENCY.CANDY)
+	                         : (_blood ? icon_blood(1) : icon_branch(BRANCH.OFFENSE));
+	icon_draw(_branch_icon, _br[0] + 16, (_br[1] + _br[3])*0.5, 32, "branch_icon");
+	var _branch_label = ui_clip_text(_branch_name,max(20,_br[2]-_br[0]-44));
+	draw_text(_br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5, _branch_label);
 	ui_reg_text("heading", _br[0] + 38, _br[1] + ((_br[3] - _br[1]) - _bh)*0.5,
-	            _branch_name, fa_left, fa_top);
+	            _branch_label, fa_left, fa_top);
 	draw_set_font(fnt_size12);
 
-	for(var _i = 0; _i < array_length(_nodes); _i++){
-		if(_i >= array_length(_rects)) break;
+	if(_candy && is_struct(_focus)){
+		meta_garden_candy_list_draw(_nodes, _rects, _offset, _focus.id, _pal);
+	} else if(_candy){
+		for(var _ci = 0; _ci < min(5,array_length(_rects)); _ci++){
+			var _empty_rc = _rects[_ci];
+			meta_panel(_empty_rc[0],_empty_rc[1],_empty_rc[2]-_empty_rc[0],_empty_rc[3]-_empty_rc[1],_pal.panel,c_black);
+		}
+	} else {
+		var _m = points_to_gui(mouse_x, mouse_y, 0);
+		for(var _i = 0; _i < array_length(_nodes); _i++){
+			if(_i >= array_length(_rects)) break;
+			var _n = _nodes[_i], _rc = _rects[_i],
+			    _rank = _blood ? blood_node_rank(_n.id) : clover_rank(_n.id),
+			    _max = (_rank >= _n.ranks),
+			    _cost = _blood ? blood_node_cost(_n.id) : clover_cost(_n.id),
+			    _available = !_blood || blood_node_unlocked(_n.id),
+			    _funds = _blood ? shards_get() : clovers_get(),
+			    _can = (_available && !_max && _cost >= 0 && _funds >= _cost),
+			    _hov = meta_in_rect(_rc, _m[0], _m[1]),
+			    _cw = _rc[2] - _rc[0],
+			    _bg = _pal.panel;
+			if(_can && _hov) _bg = _pal.panel_lit;
+			if(_max) _bg = make_colour_rgb(48, 40, 28);
+			meta_panel(_rc[0], _rc[1], _cw, _rc[3] - _rc[1], _bg,
+			           (_can && _hov) ? c_lime : c_black);
+			var _node_icon = _blood ? icon_blood(_n.tier) : icon_node(_max);
+			icon_draw(_node_icon, _rc[0] + 26, _rc[1] + 28, 40, _blood ? "blood_node_icon" : "node_icon");
+			draw_set_font(fnt_size16);
+			draw_set_colour(c_white);
+			draw_set_halign(fa_left);
+			var _lab = ui_clip_text(_n.label, _cw - 54 - 96);
+			draw_text(_rc[0] + 54, _rc[1] + 10, _lab);
+			ui_reg_text("label", _rc[0] + 54, _rc[1] + 10, _lab, fa_left, fa_top);
+			draw_set_halign(fa_right);
+			draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
+			var _rank_txt = _blood ? (_max ? "owned" : "Tier " + string(_n.tier))
+			                 : "rank " + string(_rank) + "/" + string(_n.ranks);
+			draw_text(_rc[2] - 10, _rc[1] + 10, _rank_txt);
+			ui_reg_text("rank", _rc[2] - 10, _rc[1] + 10, _rank_txt, fa_right, fa_top);
+			draw_set_font(fnt_size12);
+			draw_set_colour(c_silver);
+			var _dsc = ui_clip_text(_n.desc, _cw - 54 - 84);
+			draw_text(_rc[0] + 54, _rc[1] + 32, _dsc);
+			ui_reg_text("desc", _rc[0] + 54, _rc[1] + 32, _dsc, fa_left, fa_top);
+			draw_set_halign(fa_right);
+			draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
+			var _cost_txt = _max ? (_blood ? "unlocked" : "maxed")
+			                 : (!_available ? "locked"
+			                   : string(_cost) + (_blood ? " shards" : " clovers"));
+			draw_text(_rc[2] - 10, _rc[1] + 32, _cost_txt);
+			ui_reg_text("cost", _rc[2] - 10, _rc[1] + 32, _cost_txt, fa_right, fa_top);
+			draw_set_halign(fa_left);
+		}
+	}
 
-		var _n    = _nodes[_i],
-		    _rc   = _rects[_i],
-		    _rank = _blood ? blood_node_rank(_n.id) : clover_rank(_n.id),
-		    _max  = (_rank >= _n.ranks),
-		    _cost = _blood ? blood_node_cost(_n.id) : clover_cost(_n.id),
-		    _available = !_blood || blood_node_unlocked(_n.id),
-		    _funds = _blood ? shards_get() : clovers_get(),
-		    _can  = (_available && !_max && _cost >= 0 && _funds >= _cost),
-		    _hov  = meta_in_rect(_rc, _m[0], _m[1]),
-		    _cw   = _rc[2] - _rc[0];
-
-		var _bg = _pal.panel;
-		if(_can && _hov) _bg = _pal.panel_lit;
-		if(_max)         _bg = make_colour_rgb(48, 40, 28);
-		meta_panel(_rc[0], _rc[1], _cw, _rc[3] - _rc[1], _bg,
-		           (_can && _hov) ? c_lime : c_black);
-
-		/// the node's pip - bronze while it has ranks left, gold once it is
-		/// maxed (scr_ui_icons) - then the text 54px in, clear of it.  Both
-		/// text rows move together: a label indented and a description not
-		/// would put the pip through the description.
-		var _node_icon = _blood ? icon_blood(_n.tier) : icon_node(_max);
-		icon_draw(_node_icon, _rc[0] + 26, _rc[1] + 28, 40,
-		          _blood ? "blood_node_icon" : "node_icon");
-
+	var _shh = _g.shophdr;
+	if(array_length(_shh) < 4) _shh = [_g.wall_x, _g.wall_y - 30, _g.wall_x + 336, _g.wall_y];
+	if(_candy){
+		draw_set_font(fnt_size16);
+		meta_text(_shh[0], _shh[1] + 3, "Candy Shop", c_white, fa_left);
+		var _page_rect = _g.page;
+		if(array_length(_page_rect) >= 4){
+			meta_button_draw(_page_rect, "Page " + string(_page + 1) + "/2", true);
+		}
+		if(is_struct(_focus)){
+			meta_garden_candy_detail_draw(_g, _focus);
+		} else {
+			meta_panel(_g.wall_x,_g.wall_y,_g.wall[2]-_g.wall_x,_g.wall[3]-_g.wall_y,make_colour_rgb(20,20,24),c_black);
+			draw_set_font(fnt_size12);
+			meta_text(_g.wall_x+12,_g.wall_y+12,"No candy recipes are configured.",c_silver,fa_left);
+		}
+	} else {
 		draw_set_font(fnt_size16);
 		draw_set_colour(c_white);
-		draw_set_halign(fa_left);
-
-		/// clipped against what the RANK leaves, not against the card: the
-		/// rank is right-aligned in the same row, so a long label would run
-		/// through it on a narrow card (263 wide at 675)
-		var _lab = ui_clip_text(_n.label, _cw - 54 - 96);
-		draw_text(_rc[0] + 54, _rc[1] + 10, _lab);
-		ui_reg_text("label", _rc[0] + 54, _rc[1] + 10, _lab, fa_left, fa_top);
-
-		/// the rank shares the LABEL's row, so it is drawn at the label's
-		/// size; the cost shares the DESCRIPTION's row, at its size.  One
-		/// font per row is what keeps two columns on the same baseline.
-		draw_set_halign(fa_right);
-		draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
-		var _rank_txt = _blood
-		                 ? (_max ? "owned" : "Tier " + string(_n.tier))
-		                 : "rank " + string(_rank) + "/" + string(_n.ranks);
-		draw_text(_rc[2] - 10, _rc[1] + 10, _rank_txt);
-		ui_reg_text("rank", _rc[2] - 10, _rc[1] + 10, _rank_txt, fa_right, fa_top);
-		draw_set_halign(fa_left);
-
-		draw_set_font(fnt_size12);
-		draw_set_colour(c_silver);
-		var _dsc = ui_clip_text(_n.desc, _cw - 54 - 84);
-		draw_text(_rc[0] + 54, _rc[1] + 32, _dsc);
-		ui_reg_text("desc", _rc[0] + 54, _rc[1] + 32, _dsc, fa_left, fa_top);
-
-		draw_set_halign(fa_right);
-		draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
-		var _cost_txt = _max ? (_blood ? "unlocked" : "maxed")
-		                 : (!_available ? "locked"
-		                   : string(_cost) + (_blood ? " shards" : " clovers"));
-		draw_text(_rc[2] - 10, _rc[1] + 32, _cost_txt);
-		ui_reg_text("cost", _rc[2] - 10, _rc[1] + 32, _cost_txt, fa_right, fa_top);
-		draw_set_halign(fa_left);
+		meta_text(_shh[0], _shh[1] + 3, "Seed Shop", c_white, fa_left);
+		meta_draw_tower_wall(_g.wall_x, _g.wall_y, _g.wall_cell, _g.wall_cols, false);
+		meta_garden_stats_draw(_g);
 	}
-
-	/// ---- the seed shop.  Seeds buy content and nothing else.
-	var _shh = _g.shophdr;
-	if(array_length(_shh) < 4){
-		_shh = [_g.wall_x, _g.wall_y - 30, _g.wall_x + 336, _g.wall_y];
-	}
-
-	draw_set_font(fnt_size16);
-	draw_set_colour(c_white);
-	meta_text(_shh[0], _shh[1] + 3, "Seed Shop", c_white, fa_left);
-
-	/// no reason line in a shop cell: the plant card under the wall says what
-	/// the selected tower does AND what it costs, and at 90 units a cell
-	/// cannot hold a sprite, a two-line name and a third line without the
-	/// three of them touching
-	meta_draw_tower_wall(_g.wall_x, _g.wall_y, _g.wall_cell, _g.wall_cols, false);
-
-	/// ---- the plant card: the highlighted cell's numbers, its trait and
-	/// its buy line.  It reads `garden_focus` (Menu/Create_0), which is
-	/// STICKY, so the card does not blank out while the player moves the
-	/// pointer down to read it.
-	meta_garden_stats_draw(_g);
-
 	meta_button_draw(_g.back, "Return", true);
 }
+
 
 //==============================================================================
 // FITTING THINGS INTO BOXES
@@ -1369,4 +1358,171 @@ function meta_draw_results() {
 	meta_button_draw(_g.retry, "Retry", true);
 	meta_button_draw(_g.next,  "Next",  !is_undefined(_next));
 	meta_button_draw(_g.map,   "World Map", true);
+}
+
+function meta_garden_candy_selected(_page) {
+	var _id = variable_global_exists("garden_candy_focus") && is_string(global.garden_candy_focus)
+	          ? global.garden_candy_focus : "";
+	var _all = candy_recipe_table(), _idx = clamp(floor(_page),0,1)*5;
+	for(var _i = _idx; _i < min(_idx+5,array_length(_all)); _i++){
+		if(_all[_i].id == _id) return _all[_i];
+	}
+	if(array_length(_all) == 0) return undefined;
+	return _all[min(_idx,array_length(_all)-1)];
+}
+
+function meta_garden_candy_percent(_value) {
+	return string_format(_value*100,3,1)+"%";
+}
+
+function meta_garden_candy_effect(_id, _level) {
+	var _mag = candy_magnitude(_id,_level);
+	if(!is_struct(_mag)) return "No effect data";
+	switch(_id){
+		case "red_licorice": return "+"+meta_garden_candy_percent(_mag.damage)+" tower damage";
+		case "jawbreaker": return "+"+meta_garden_candy_percent(_mag.range)+" tower range";
+		case "gummy_worm": return "+"+meta_garden_candy_percent(_mag.slow)+" slow effectiveness";
+		case "sour_drop": return "+"+meta_garden_candy_percent(_mag.crit_chance)+" crit chance";
+		case "fireball": return "+"+meta_garden_candy_percent(_mag.burn_damage)+" burn damage";
+		case "frosted_flake": return "+"+meta_garden_candy_percent(_mag.fire_rate)+" fire rate";
+		case "blood_bonbon": return "+"+meta_garden_candy_percent(_mag.damage)+" damage, +"+meta_garden_candy_percent(_mag.crit_damage)+" crit damage";
+		case "everlasting_gob": return "Freeze active timers for "+string(_mag.freeze_waves)+" wave(s)";
+		case "blood_orange": return "+"+meta_garden_candy_percent(_mag.pity_fill)+" shard pity fill";
+		case "money_honey": return "+"+meta_garden_candy_percent(_mag.kill_money)+" kill money";
+	}
+	return "No effect data";
+}
+
+function meta_garden_candy_icon_draw(_id, _x, _y, _size) {
+	var _sprite = icon_candy(_id);
+	if(sprite_exists(_sprite)){
+		icon_draw(_sprite,_x,_y,_size,"candy_recipe");
+		return;
+	}
+	var _colour = (_id == "blood_orange") ? c_orange : c_yellow,
+	    _tag = (_id == "blood_orange") ? "BO" : "MH";
+	draw_set_colour(_colour);
+	draw_circle(_x,_y,_size*0.40,false);
+	draw_set_colour(c_black);
+	draw_set_font(fnt_size12);
+	draw_set_halign(fa_center);
+	draw_set_valign(fa_middle);
+	draw_text(_x,_y,_tag);
+	draw_set_colour(c_white);
+	draw_set_halign(fa_left);
+	draw_set_valign(fa_top);
+}
+
+function meta_garden_candy_list_draw(_nodes, _rects, _offset, _selected, _pal) {
+	var _m = points_to_gui(mouse_x,mouse_y,0);
+	for(var _i = 0; _i < 5; _i++){
+		var _idx = _offset + _i;
+		if(_idx >= array_length(_nodes) || _i >= array_length(_rects)) break;
+		var _n = _nodes[_idx], _rc = _rects[_i],
+		    _unlocked = candy_recipe_unlocked(_n.id),
+		    _level = candy_level_get(_n.id),
+		    _cost = _unlocked ? candy_level_cost(_n.id) : candy_recipe_cost(_n.id),
+		    _gate = candy_recipe_gate_reason(_n.id),
+		    _can = (_gate == "" && _cost >= 0 && shards_get() >= _cost),
+		    _hov = meta_in_rect(_rc,_m[0],_m[1]),
+		    _sel = (_n.id == _selected),
+		    _cw = _rc[2]-_rc[0],
+		    _bg = (_sel || (_can && _hov)) ? _pal.panel_lit : _pal.panel;
+		meta_panel(_rc[0],_rc[1],_cw,_rc[3]-_rc[1],_bg,
+		           _sel ? c_yellow : ((_can && _hov) ? c_lime : c_black));
+		meta_garden_candy_icon_draw(_n.id,_rc[0]+26,_rc[1]+28,38);
+		draw_set_font(fnt_size16);
+		draw_set_colour(c_white);
+		draw_set_halign(fa_left);
+		var _label = ui_clip_text(_n.label,_cw-54-96);
+		draw_text(_rc[0]+54,_rc[1]+9,_label);
+		ui_reg_text("label",_rc[0]+54,_rc[1]+9,_label,fa_left,fa_top);
+		draw_set_halign(fa_right);
+		draw_set_colour(_unlocked ? c_yellow : (_can ? c_lime : c_dkgray));
+		var _rank = _unlocked ? "L"+string(_level)+"/10" : "RECIPE";
+		draw_text(_rc[2]-10,_rc[1]+9,_rank);
+		ui_reg_text("rank",_rc[2]-10,_rc[1]+9,_rank,fa_right,fa_top);
+		draw_set_font(fnt_size12);
+		draw_set_halign(fa_left);
+		draw_set_colour(c_silver);
+		var _desc = ui_clip_text(_n.desc,_cw-54-84);
+		draw_text(_rc[0]+54,_rc[1]+32,_desc);
+		ui_reg_text("desc",_rc[0]+54,_rc[1]+32,_desc,fa_left,fa_top);
+		draw_set_halign(fa_right);
+		draw_set_colour(_can ? c_lime : c_dkgray);
+		var _cost_txt = (_gate != "") ? "gated" : (_cost < 0 ? "maxed" : string(_cost)+" shards");
+		draw_text(_rc[2]-10,_rc[1]+32,_cost_txt);
+		ui_reg_text("cost",_rc[2]-10,_rc[1]+32,_cost_txt,fa_right,fa_top);
+	}
+	draw_set_halign(fa_left);
+}
+
+function meta_garden_candy_action_rects(_g) {
+	var _s = _g.stats;
+	if(array_length(_s) < 4) _s = [_g.wall_x,_g.wall_y,_g.wall_x+336,_g.wall_y+UI_GARDEN_STATS_H];
+	var _gr = _g.stats_grid;
+	if(array_length(_gr) < 4){
+		_gr = [ _s[0]+8, _s[1]+36, _s[2]-8, _s[3]-28 ];
+	}
+	var _row = (_gr[3]-_gr[1])/3;
+	return [
+		[_gr[0],_gr[1],_gr[2],_gr[1]+_row],
+		[_gr[0],_gr[1]+_row,_gr[2],_gr[1]+2*_row],
+		[_gr[0],_gr[1]+2*_row,_gr[2],_gr[3]]
+	];
+}
+
+function meta_garden_candy_detail_draw(_g, _recipe) {
+	var _w = _g.wall,
+	    _s = _g.stats,
+	    _head = _g.stats_head,
+	    _note = _g.stats_note,
+	    _id = _recipe.id,
+	    _unlocked = candy_recipe_unlocked(_id),
+	    _level = candy_level_get(_id),
+	    _gate = candy_recipe_gate_reason(_id),
+	    _mag = meta_garden_candy_effect(_id,max(1,_level)),
+	    _stock = candy_stock_get(_id),
+	    _duration_cost = candy_duration_cost(),
+		    _actions = meta_garden_candy_action_rects(_g);
+	if(array_length(_w) < 4) _w = [_g.wall_x,_g.wall_y,_g.wall_x+336,_g.wall_y+180];
+	if(array_length(_s) < 4) _s = [_g.wall_x,_w[3],_g.wall_x+336,_w[3]+UI_GARDEN_STATS_H];
+	if(array_length(_head) < 4) _head = [_s[0]+8,_s[1]+8,_s[2]-8,_s[1]+32];
+	if(array_length(_note) < 4) _note = [_s[0]+8,_s[3]-24,_s[2]-8,_s[3]-8];
+	meta_panel(_w[0],_w[1],_w[2]-_w[0],_w[3]-_w[1],make_colour_rgb(20,20,24),c_black);
+	meta_garden_candy_icon_draw(_id,_w[0]+52,(_w[1]+_w[3])*0.5,76);
+	draw_set_font(fnt_size20);
+	meta_text(_w[0]+104,_w[1]+16,ui_clip_text(_recipe.label,_w[2]-_w[0]-116),c_white,fa_left);
+	draw_set_font(fnt_size16);
+	meta_text(_w[0]+104,_w[1]+48,"Tier "+string(_recipe.tier)+"  |  "+(_unlocked ? "Level "+string(_level)+"/10" : "Recipe locked"),c_yellow,fa_left);
+	draw_set_font(fnt_size12);
+	meta_text(_w[0]+104,_w[1]+76,ui_clip_text(_mag,_w[2]-_w[0]-116),c_silver,fa_left);
+	meta_text(_w[0]+104,_w[1]+96,"Stock: "+string(_stock)+"  |  Duration: "+string(candy_duration_seconds())+"s",c_silver,fa_left);
+	if(_gate != "") meta_text(_w[0]+104,_w[1]+116,ui_clip_text(_gate,_w[2]-_w[0]-116),c_orange,fa_left);
+
+	meta_panel(_s[0],_s[1],_s[2]-_s[0],_s[3]-_s[1],make_colour_rgb(20,20,24),c_black);
+	draw_set_font(fnt_size12);
+	var _head_text = _unlocked ? "Level "+string(_level)+" effect" : "Recipe details";
+	meta_text(_head[0],_head[1]+5,_head_text,c_white,fa_left);
+	var _buy_cost = _unlocked ? candy_level_cost(_id) : candy_recipe_cost(_id),
+	    _buy_enabled = (_gate == "" && _buy_cost >= 0 && shards_get() >= _buy_cost),
+	    _buy_text = _unlocked ? (_buy_cost < 0 ? "Candy max level" : "Level up  "+string(_buy_cost)+" shards")
+	                          : (_gate != "" ? _gate : "Unlock recipe  "+string(_buy_cost)+" shards"),
+	    _stock_enabled = _unlocked && shards_get() >= 1,
+	    _stock_text = _unlocked ? "Buy 5 stock  1 shard" : "Unlock recipe to buy stock",
+	    _duration_enabled = (_duration_cost >= 0 && clovers_get() >= _duration_cost),
+	    _duration_text = (_duration_cost < 0) ? "Duration maxed +100%"
+	                    : "Duration +10%  "+string(_duration_cost)+" clovers";
+	meta_button_draw(_actions[0],_buy_text,_buy_enabled);
+	meta_button_draw(_actions[1],_stock_text,_stock_enabled);
+	meta_button_draw(_actions[2],_duration_text,_duration_enabled);
+	meta_text(_note[0],_note[1]+2,"Select a candy on the left; each purchase saves immediately.",c_silver,fa_left);
+}
+
+function meta_garden_candy_action_hit(_g) {
+	var _m = points_to_gui(mouse_x,mouse_y,0), _rects = meta_garden_candy_action_rects(_g);
+	for(var _i=0; _i<array_length(_rects); _i++){
+		if(meta_in_rect(_rects[_i],_m[0],_m[1])) return _i;
+	}
+	return -1;
 }

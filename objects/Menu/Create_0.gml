@@ -32,6 +32,9 @@ results_leaving = false;
 /// different cell moves it; leaving the screen does not clear it.
 garden_focus = -1;
 if(!variable_global_exists("garden_blood_view")) global.garden_blood_view = false;
+if(!variable_global_exists("garden_view_mode")) global.garden_view_mode = garden_blood_view() ? 1 : 0;
+if(!variable_global_exists("garden_candy_page")) global.garden_candy_page = 0;
+if(!variable_global_exists("garden_candy_focus")) global.garden_candy_focus = "red_licorice";
 
 /// state machine (plain switch - see the Step event)
 menu_state      = -1;                    /// set on the first step

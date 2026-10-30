@@ -92,14 +92,27 @@ function blood_content_unlocked() {
 	return blood_node_rank("crimson_garden") > 0;
 }
 
-/// The Garden Book shares its existing node wall between the clover branch and
-/// Blood Alchemy. This UI-only state is not part of account progression.
-function garden_blood_view() {
-	if(!variable_global_exists("garden_blood_view")) return false;
-	return is_bool(global.garden_blood_view) && global.garden_blood_view;
+/// Garden Book view state is session-only: 0 clover, 1 Blood Alchemy, 2 candy.
+function garden_view_mode() {
+	if(variable_global_exists("garden_view_mode") && is_real(global.garden_view_mode)){
+		return clamp(floor(global.garden_view_mode),0,2);
+	}
+	/// Migrate the old session toggle without touching the save file.
+	if(variable_global_exists("garden_blood_view")
+	&& is_bool(global.garden_blood_view) && global.garden_blood_view) return 1;
+	return 0;
+}
+
+function garden_blood_view() { return garden_view_mode() == 1; }
+function garden_candy_view() { return garden_view_mode() == 2; }
+
+function garden_candy_page_get() {
+	if(!variable_global_exists("garden_candy_page") || !is_real(global.garden_candy_page)) return 0;
+	return clamp(floor(global.garden_candy_page),0,1);
 }
 
 function garden_visible_nodes() {
+	if(garden_candy_view()) return candy_recipe_table();
 	if(garden_blood_view()) return blood_tree_nodes();
 	return clover_nodes();
 }

@@ -426,7 +426,7 @@ function ui_meta_garden_tree() {
 		flexDirection: "row", alignItems: "center", gapColumn: 4,
 		nodes: [
 			{ name: "garden.branch", flexGrow: 1, flexBasis: 0, height: 36 },
-			{ name: "garden.view", width: 108, height: 30 }
+			{ name: "garden.view", width: 112, height: 30 }
 		]
 	};
 	/// Keep all five node rectangles in the tree in either view. The visible
@@ -452,7 +452,12 @@ function ui_meta_garden_tree() {
 	         	  	{ name: "garden.right", width: _cell*_cols,
 	         	  	  flexDirection: "column", gapRow: 4,
 	         	  	  nodes: [
-	         	  	  	{ name: "garden.shophdr", width: "100%", height: UI_GARDEN_SHOPHDR_H },
+				{ name: "garden.shophdr", width: "100%", height: UI_GARDEN_SHOPHDR_H,
+					flexDirection: "row", alignItems: "center", gapColumn: 8,
+					nodes: [
+						{ name: "garden.shophdr.title", flexGrow: 1, flexBasis: 0, height: UI_GARDEN_SHOPHDR_H },
+						{ name: "garden.page", width: 84, height: 22 }
+					] },
 	         	  	  	{ name: "garden.wall", width: _cell*_cols,
 	         	  	  	  height: _cell*_rows },
 	         	  	  	{ name: "garden.stats", width: "100%", height: UI_GARDEN_STATS_H,
@@ -608,7 +613,7 @@ function ui_meta_names(_screen) {
 			/// and not declared, so renaming one was invisible to this check -
 			/// which is the one thing it exists to catch.
 			_out = ["garden.head.info", "garden.head.title", "garden.head.acts",
-			        "garden.wall", "garden.branch", "garden.view", "garden.shophdr",
+			        "garden.wall", "garden.branch", "garden.view", "garden.shophdr", "garden.shophdr.title", "garden.page",
 			        "garden.cur", "garden.btn.back",
 			        "garden.stats", "garden.stats.head",
 			        "garden.stats.grid", "garden.stats.note"];
