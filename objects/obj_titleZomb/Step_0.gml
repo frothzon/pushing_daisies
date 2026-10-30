@@ -19,11 +19,9 @@ switch(state){
         /// after a stage boot reset it (zomb_scml_reset clears every
         /// player, and the menu is re-entered after every stage).
         ///
-        /// idle keeps its DURATION in SECONDS: 60 steps was 2 s in the
-        /// GameMaker 8 build (30 fps) and became 1 s here (60 fps) - a
-        /// step is not a unit of time (LL-072).  The walk and the grab
-        /// below keep their 60 steps (1.0 s): they are meant to read
-        /// faster.
+        /// idle retains its 2.0s title loop (LL-072). Walk and grab use
+        /// the deliberately quicker 1.0s ZOMB_CYCLE_SECS duration; all
+        /// three periods are seconds, not raw state steps.
         mon_rig_play(rig, ZOMB_ANIM.idle, ANIM_SECONDS_ZOMBIE_IDLE);
         /// if range too great, change to walk state
         if(abs(mouse_x-x) > 16){
@@ -41,7 +39,7 @@ switch(state){
         break;
     //---------------------------- Walk State
     case 1:
-        /// the rig again, per step: walk at the sheet-era 60-step cycle
+        /// the rig again, per step: walk at the deliberately quick one-second cycle
         mon_rig_play(rig, ZOMB_ANIM.walk, ZOMB_CYCLE_SECS);
         /// if zombie is within range of mouse, go back to idle
         if(abs(mouse_x-x) < 16){

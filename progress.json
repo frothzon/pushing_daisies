@@ -46,15 +46,15 @@
     {
       "id": "anim-step-counts-since-30fps",
       "title": "Every animation still timed in STEPS was written for a 30 fps build - decide each one",
-      "status": "backlog",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "3",
       "size": "S",
       "prio": 3,
-      "needs": "",
-      "notes": "The tower loops are already right: obj_tower/Create_0 carries anim_seconds 1.00 idle and 0.25 return, and scr_tower_normal and scr_tower_return multiply by game_get_speed(gamespeed_fps) before asking scr_animSpeedForSteps, so they do not move when the frame rate does. What is left is the step-based call sites, all of which pass a literal 60 and so mean one second at 60 fps: obj_titleZomb case 1 (walk) and case 2 (grab), scr_zombie_emerge, and scr_zombie_path. None of them is obviously wrong - 60 steps was 2 s in the 30 fps build, so each is either a deliberate retime or the same defect the title idle had (LL-072) - and the only way to tell is to watch each one. The work is to look at each of the four, write down the period it should have, and replace the literal with scr_animSpeedForSeconds and a named macro, so the next frame-rate change is a no-op. Do not change them all to 2.0 by reflex: the emerge is meant to be quick and the walk cycle has to keep pace with 1.5 units per step of movement.",
+      "needs": "Reload GameMaker with global.devMode=true. On the title, verify idle loops at 2.0s and walk/grab at 1.0s; sprite-sheet fallbacks should print ANIM duration lines. In a stage, time an ordinary and a boss emergence at normal and 3x speed: scale should grow from 0 to full over about 1.0 real second. Toggle speed during the rise; it must continue smoothly without jumping backwards or restarting. Compare ZOMB EMERGE/PATH timestamps if helpful. A 0.33s or 2s rise, wrong title cadence, or an early/late state transition falsifies it.",
+      "notes": "Audit 2026-10-30: title idle uses ANIM_SECONDS_ZOMBIE_IDLE; title walk/grab and monster walk/idle use ZOMB_CYCLE_SECS through mon_rig_play; tower trio periods live in anim_seconds. Those call sites are already duration-based. scr_zombie_emerge alone had a 60-step scale timer, equivalent to 1.0s at 60fps. Preserved that quick 1.0s feel as ZOMB_EMERGE_SECS and changed the scale clock to clamped delta_time, so fast-forward and an FPS change do not retime the rise. Round-trip, balance, progress, touched-GML parsing, line-ending, and no-raw-timer checks passed. Runtime visual review remains.",
       "refs": [
         "objects/obj_titleZomb/Step_0.gml",
         "scripts/scr_zombie_emerge/scr_zombie_emerge.gml",
@@ -63,7 +63,7 @@
         "objects/obj_tower/Create_0.gml"
       ],
       "created": "2026-10-22",
-      "updated": "2026-10-22",
+      "updated": "2026-10-30",
       "done": null
     },
     {
@@ -231,7 +231,7 @@
       "size": "M",
       "prio": 2,
       "needs": "",
-      "notes": "The restyled art was already imported: five characters under sprites/.../Zombie Sprites/restyled/ (idle/walk/attack/die, 16 frames each) plus five portraits, and the old art was re-parented to .../Legacy/. Code now uses one WALK sprite per creature (sprite_array[0]); the crawl sprite is gone and scr_zombie_emerge grows image_xscale/yscale from 0.00 to base_scale over the 60-step emerge. scr_level_spawn stores base_scale (0.25, or 0.5 for a boss) and starts the monster at zero. scr_zombie_path derives image_speed from the frame count via scr_animSpeedForSteps (LL-030) and re-asserts the scale while keeping the facing sign (LL-012). obj_titleZomb moved to spr_grumble_idle/walk/attack, and two documented faults were fixed while there: the sign() flip (LL-012) and room_speed (LL-007).",
+      "notes": "Restyled art is imported: five characters under sprites/.../Zombie Sprites/restyled/ (idle/walk/attack/die, 16 frames each) plus five portraits; old art is under Legacy/. Code uses one WALK sprite per creature (sprite_array[0]); scr_zombie_emerge grows scale from 0 to base_scale over ZOMB_EMERGE_SECS=1.0 using clamped delta_time, so fast-forward does not compress the rise. scr_level_spawn stores base_scale (0.25, 0.5 for a boss) and starts at zero. scr_zombie_path derives sheet speed from frame count; title Grumble uses its idle/walk/attack rigs. The sign flip and obsolete room_speed issue were fixed.",
       "refs": [
         "scripts/scr_setupSpawning/scr_setupSpawning.gml",
         "scripts/scr_zombie_emerge/scr_zombie_emerge.gml",
@@ -241,7 +241,7 @@
         "objects/obj_titleZomb/Step_0.gml"
       ],
       "created": "2026-10-11",
-      "updated": "2026-10-13",
+      "updated": "2026-10-30",
       "done": "2026-10-13"
     },
     {
@@ -1413,7 +1413,7 @@
       "size": "S",
       "prio": 2,
       "needs": "",
-      "notes": "scr_level_spawn calls scr_level_difficulty() at instance_create, so a monster has its FULL life before the 60-step emerge - which means it is targetable from the spawn point. But scr_zombie_emerge ends with data[MON.life] = data[MON.maxLife], so every point of damage dealt during the emerge is silently undone; and scr_zomb_death is only reached from scr_zombie_path, so a monster sitting at 0 hp during the emerge survives to start walking. Net effect: a tower covering the spawn spends about a second of fire per monster into a life reset, and because the emerging monster is the NEAREST instance it is that tower's PREFERRED target. Two things to settle: was the reset meant to make the emerge untargetable (then the monster should not be findable - find_all_range should skip it), or should the damage persist (then drop the reset)? Either way it makes tower placement a real decision, so the sim has to model it rather than assume it away.  DECIDED 2026-10-18: DAMAGE PERSISTS. The reset is deleted (scr_zombie_emerge now only calls scr_changeState at step 60), so the card's two options resolved to the second one. Why not \"make the emerge untargetable\" instead: a monster that is not shootable is a monster the player cannot learn to pre-fire, and hiding it from find_all_range would have made tower placement LESS decisive, not more. A monster killed during the emerge now walks for one frame and dies on the first path frame, because scr_zomb_death still runs from scr_zombie_path - that one-frame delay is the only visible trace, and it is why the HP bar can show 0 through the last emerge frame.",
+      "notes": "Originally, the emerge path reset life to maxLife after spawn, erasing damage, and only PATH noticed death. DECIDED 2026-10-18: damage persists; the reset is removed. Current scr_zomb_step checks life before dispatching every state, so a monster killed during EMERGE enters DIE without first starting to walk. The grow lasts ZOMB_EMERGE_SECS=1.0 real second via clamped delta_time, rather than 60 state steps.",
       "refs": [
         "scripts/scr_zombie_emerge/scr_zombie_emerge.gml",
         "scripts/scr_level_spawn/scr_level_spawn.gml",
@@ -1421,7 +1421,7 @@
         "scripts/find_all_range/find_all_range.gml"
       ],
       "created": "2026-10-13",
-      "updated": "2026-10-18",
+      "updated": "2026-10-30",
       "done": "2026-10-18"
     },
     {
@@ -3299,14 +3299,14 @@
       "size": "S",
       "prio": 1,
       "needs": "",
-      "notes": "The idle state asked for 60 STEPS. A step is not a unit of time: at the GameMaker 8 30 fps 60 steps was 2 s, at 60 fps it is 1 s, so the loop plays twice as fast as it did in the original build (LL-072: the vertical half of LL-030, which fixed the same mistake for the tower loops by asking for a period in steps). Fix: scr_animSpeedForSeconds(sprite, seconds, tag) in scr_animSpeedForSteps.gml converts seconds to steps at the CURRENT frame rate and hands them to scr_animSpeedForSteps, so no maths is duplicated and a frame-rate change cannot resurrect the bug; ANIM_SECONDS_ZOMBIE_IDLE 2.0 is the one number to retune. obj_titleZomb case 0 calls it; walk and grab keep their 60 steps on purpose, they are meant to read faster. One ANIM line per tag per run, guarded so it cannot throw (LL-002). Honest caveat: the recovered GM8 source says image_speed 0.5, which for this 16-frame art at 30 fps is 32 steps = 1.07 s, not 2 s - so if 2.0 reads sluggish, the number to change is the macro, not the mechanism. Falsifier: an ANIM line that says steps=60, or 60 steps still hard-coded at the idle call site.",
+      "notes": "The title idle originally asked for 60 STEPS: 2s at the recovered 30fps, 1s at 60fps (LL-072). It now uses ANIM_SECONDS_ZOMBIE_IDLE=2.0. Title walk and grab use the deliberately quicker ZOMB_CYCLE_SECS=1.0. mon_rig_play passes these durations to SCML clips; sheet fallback uses scr_animSpeedForSeconds, which normalizes the declared sprite speed and frame count. SCML playback is logged by the rig; sheet fallback prints a guarded ANIM line. The recovered GM8 source says image_speed 0.5, which for 16 frames at 30fps is 1.07s, so if 2.0s reads sluggish, retune the macro rather than the mechanism. Runtime review remains.",
       "refs": [
         "scripts/scr_animSpeedForSteps/scr_animSpeedForSteps.gml",
         "objects/obj_titleZomb/Step_0.gml",
         "lessons_learned.md#ll-072"
       ],
       "created": "2026-10-22",
-      "updated": "2026-10-24",
+      "updated": "2026-10-30",
       "done": "2026-10-24"
     },
     {

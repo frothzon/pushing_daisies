@@ -45,6 +45,7 @@ base_scale = 1;
 zomb_state      = ZOMB_STATE.NONE;
 zomb_state_next = ZOMB_STATE.EMERGE;
 zomb_state_time = 0;
+zomb_emerge_elapsed_seconds = 0;
 
 /// generate path
 /// mp_collider

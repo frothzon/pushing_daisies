@@ -14,6 +14,10 @@ enum ZOMB_ANIM { walk, idle, attack, die }
 /// how fast it plays (LL-030).
 #macro ZOMB_CYCLE_SECS 1.0
 
+/// How long a monster grows from the ground before it can walk. Kept as
+/// one real second at normal and fast-forward speeds (LL-055).
+#macro ZOMB_EMERGE_SECS 1.0
+
 /// How long the corpse lies on the ground.  The die sprite is played at
 /// exactly this duration, and the destroy is this same number - so the
 /// monster disappears when its animation ends rather than after a delay

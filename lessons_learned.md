@@ -1592,7 +1592,7 @@ FAILED: Run Program Complete
 * **If the period matters, write it in seconds** and convert at **one** owner site. A bare step count in a state machine is the bug.
 * The frame rate is a **global** that can move under you (`game_get_speed(gamespeed_fps)`; `room_speed` in GMS1). Grep the literal: `grep -rn 'animSpeedForSteps(.*, 60)'` lists every remaining step-timed call site. Backlog card `anim-step-counts-since-30fps` tracks the ones left.
 * A sprite declares its speed in **frames per second or frames per game frame** (`sprite_get_speed_type`), so the conversion must normalise that first — which is why the seconds function **delegates** to `scr_animSpeedForSteps` (line 45) instead of repeating the maths.
-* **A deliberate exception is written down.** `obj_titleZomb` cases 1 and 2 keep 60 steps on purpose — the walk and the grab are meant to read faster — and the comment says so, or the next reader "fixes" them.
+* **The animation periods are deliberate and named.** The title idle keeps its 2.0 s duration; title walk/grab and monster walk/idle use `ZOMB_CYCLE_SECS` (1.0 s). The emergence grow uses `ZOMB_EMERGE_SECS` (1.0 s) measured with clamped `delta_time`, so it stays the same length at normal and 3x speed.
 * When *one* loop is reported as "too fast" and its neighbours look fine, do not look at the art: check the unit of the number that was asked for.
 
 **Files.** `scripts/scr_animSpeedForSteps/scr_animSpeedForSteps.gml`, `objects/obj_titleZomb/Step_0.gml`, `objects/obj_tower/Create_0.gml` (the `anim_seconds` precedent), `scripts/scr_zombie_emerge/scr_zombie_emerge.gml`, `scripts/scr_zombie_path/scr_zombie_path.gml`.
