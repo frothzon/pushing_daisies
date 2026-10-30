@@ -25,6 +25,12 @@
 /// game's 60, bought back as headroom on the expensive half of the runtime.
 #macro SCML_POSE_HZ 30
 
+#macro SCML_DRAW_AUTO 0
+#macro SCML_DRAW_FULL 1
+#macro SCML_DRAW_ABOVE 2
+#macro SCML_DRAW_SUBMERGED 3
+#macro SCML_DRAW_REFLECTION 4
+
 /// Runtime-only walk correction for the embedded SCML definitions. The imported
 /// SCML source files are not present, but the normalized clip key arrays are.
 /// Clamp the actual hip-to-knee direction and knee bend per walk key; child feet
@@ -601,28 +607,75 @@ function zomb_scml_state() {
 /// legal: the runtime multiplies, never divides, so every part lands on the
 /// root point at zero size, exactly like draw_self at image_xscale 0 did.
 ///
-/// Known, carded regressions on this branch: the status tint (parts draw
-/// c_white) and the waterline crop (the crop reads one sheet's pixels).
-function zomb_scml_draw(_rig) {
+/// The status shader wraps the part draw. Water modes clip the rig to the
+/// shared seam, then reuse the same player for the submerged and reflection passes.
+/// Draw the calling monster as its rigged player. Auto mode draws the full
+/// rig normally and clips only the above-water half for a monster in water.
+/// Explicit submerged and reflection modes share the same clipping and tint.
+function zomb_scml_draw(_rig, _mode = SCML_DRAW_AUTO, _reflection_alpha = 0.35) {
 	if(!zomb_scml_active(_rig)) return false;
+	if(_mode == SCML_DRAW_AUTO){
+		_mode = (variable_instance_exists(id, "inWater") && inWater)
+			? SCML_DRAW_ABOVE : SCML_DRAW_FULL;
+	}
+	var _water_mode = _mode == SCML_DRAW_ABOVE
+		|| _mode == SCML_DRAW_SUBMERGED
+		|| _mode == SCML_DRAW_REFLECTION;
+	if(_water_mode && (!variable_instance_exists(id, "inWater") || !inWater)) return false;
+	if(_mode != SCML_DRAW_FULL && !_water_mode) return false;
+
+	var _root_y = y,
+		_alpha = 1;
+	if(variable_instance_exists(id, "image_alpha") && is_real(image_alpha)) _alpha = image_alpha;
+	if(_mode == SCML_DRAW_REFLECTION){
+		var _seam = y - water_sink();
+		_root_y = 2 * _seam - y;
+		_reflection_alpha = is_real(_reflection_alpha) ? clamp(_reflection_alpha, 0, 1) : 0.35;
+		_alpha *= _reflection_alpha;
+	}
 
 	var _rot = 0;
 	if(variable_instance_exists(id, "rot_angle") && is_real(rot_angle)) _rot = rot_angle;
-	var _alpha = 1;
-	if(variable_instance_exists(id, "image_alpha") && is_real(image_alpha)) _alpha = image_alpha;
-
-	/// the per-entity SCALE FIX (zomb_scml_scale_fix, stamped by
-	/// mon_rig_from): rides the SAME transform, after the instance's own
-	/// scale and facing sign - states, base_scale and the emerge growth
-	/// stay blind to it
 	var _fix = 1;
-	if(variable_struct_exists(_rig, "scml_fix") && is_real(_rig.scml_fix)){
-		_fix = _rig.scml_fix;
+	if(variable_struct_exists(_rig, "scml_fix") && is_real(_rig.scml_fix)) _fix = _rig.scml_fix;
+	if(_mode == SCML_DRAW_REFLECTION){
+		zomb_scml().set_transform(zomb_scml_player(), x, _root_y, _rot,
+			image_xscale * _fix, -image_yscale * _fix, _alpha);
+	}else{
+		zomb_scml().set_transform(zomb_scml_player(), x, _root_y, _rot,
+			image_xscale * _fix, image_yscale * _fix, _alpha);
 	}
 
-	zomb_scml().set_transform(zomb_scml_player(), x, y, _rot,
-	                          image_xscale * _fix, image_yscale * _fix, _alpha);
-	zomb_scml().draw(zomb_scml_player(), x, y);
+	if(_mode == SCML_DRAW_FULL || _mode == SCML_DRAW_ABOVE){
+		zomb_scml_bounds(_rig);
+	}
+
+	var _uniform = zomb_scml_tint_uniform(),
+		_tint = status_tint();
+	if(_uniform >= 0){
+		shader_set(shd_scml_tint);
+		shader_set_uniform_color(_uniform, _tint, 1);
+	}
+
+	var _previous_scissor = undefined;
+	if(_water_mode){
+		_previous_scissor = gpu_get_scissor();
+		var _clip = zomb_scml_water_scissor(_mode, y - water_sink(), _previous_scissor);
+		if(is_undefined(_clip)){
+			if(_uniform >= 0) shader_reset();
+			return false;
+		}
+		gpu_set_scissor(_clip);
+		if(_mode == SCML_DRAW_ABOVE
+		   && !variable_instance_exists(id, "scml_water_reported")){
+			scml_water_reported = true;
+			scr_meta_log("SCML", "water crop ", _rig.scml, " seam=", round(y - water_sink()), " mode=above");
+		}
+	}
+
+	zomb_scml().draw(zomb_scml_player(), x, _root_y);
+	if(_water_mode) gpu_set_scissor(_previous_scissor);
+	if(_uniform >= 0) shader_reset();
 	return true;
 }
 
@@ -871,3 +924,149 @@ function zomb_scml_reset() {
 	             " entities preloaded  pose=", SCML_POSE_HZ, "hz");
 }
 
+
+/// Return the status shader uniform, compiling lazily on the first rig draw.
+/// A missing shader or uniform leaves the rig visible and reports one warning.
+function zomb_scml_tint_uniform() {
+	if(!variable_global_exists("scml_tint_uniform")) global.scml_tint_uniform = -1;
+	if(global.scml_tint_uniform >= 0) return global.scml_tint_uniform;
+
+	if(!shader_is_compiled(shd_scml_tint)){
+		if(!variable_global_exists("scml_tint_warned")){
+			global.scml_tint_warned = true;
+			scr_meta_log("SCML", "WARNING shd_scml_tint is not compiled - rig status colors are unavailable");
+		}
+		return -1;
+	}
+
+	global.scml_tint_uniform = shader_get_uniform(shd_scml_tint, "tintColour");
+	if(global.scml_tint_uniform < 0){
+		if(!variable_global_exists("scml_tint_warned")){
+			global.scml_tint_warned = true;
+			scr_meta_log("SCML", "WARNING shd_scml_tint has no tintColour uniform - rig status colors are unavailable");
+		}
+	}else{
+		scr_meta_log("SCML", "status tint shader ready");
+	}
+	return global.scml_tint_uniform;
+}
+
+/// Convert a room-space water seam into a scissor rectangle on the current
+/// application surface. The view port covers that surface in this project.
+/// Return undefined when this draw target cannot express the horizontal seam.
+function zomb_scml_water_scissor(_mode, _seam_y, _previous) {
+	if(!surface_exists(application_surface)) return undefined;
+	if(view_get_camera(0) < 0) return undefined;
+	if(__view_get(e__VW.Angle, 0) != 0) return undefined;
+
+	var _sw = surface_get_width(application_surface),
+		_sh = surface_get_height(application_surface),
+		_xp = __view_get(e__VW.XPort, 0),
+		_yp = __view_get(e__VW.YPort, 0),
+		_wp = __view_get(e__VW.WPort, 0),
+		_hp = __view_get(e__VW.HPort, 0),
+		_vy = __view_get(e__VW.YView, 0),
+		_vh = __view_get(e__VW.HView, 0);
+	if(_sw <= 0 || _sh <= 0 || _wp <= 0 || _hp <= 0 || _vh <= 0) return undefined;
+
+	var _left = clamp(_xp, 0, _sw),
+		_right = clamp(_xp + _wp, 0, _sw),
+		_top = clamp(_yp, 0, _sh),
+		_bottom = clamp(_yp + _hp, 0, _sh),
+		_seam = _yp + (_seam_y - _vy) * _hp / _vh,
+		_x1 = _left,
+		_x2 = _right,
+		_y1 = _top,
+		_y2 = _bottom;
+
+	if(_mode == SCML_DRAW_ABOVE){
+		_y2 = clamp(floor(_seam), _top, _bottom);
+	}else{
+		_y1 = clamp(ceil(_seam), _top, _bottom);
+	}
+
+	if(is_struct(_previous)
+	   && variable_struct_exists(_previous, "x")
+	   && variable_struct_exists(_previous, "y")
+	   && variable_struct_exists(_previous, "w")
+	   && variable_struct_exists(_previous, "h")){
+		_x1 = max(_x1, _previous.x);
+		_x2 = min(_x2, _previous.x + _previous.w);
+		_y1 = max(_y1, _previous.y);
+		_y2 = min(_y2, _previous.y + _previous.h);
+	}
+
+	return {x:_x1, y:_y1, w:max(0, _x2 - _x1), h:max(0, _y2 - _y1)};
+}
+
+/// Current posed rig footprint in room coordinates. It is measured from each
+/// part's painted alpha bbox and cached for this draw frame, shared by the HP
+/// bar and shadow pass instead of reading spr_mon's 32x32 placeholder.
+function zomb_scml_bounds(_rig) {
+	if(!zomb_scml_active(_rig)) return undefined;
+	var _rot = 0;
+	if(variable_instance_exists(id, "rot_angle") && is_real(rot_angle)) _rot = rot_angle;
+	var _fix = 1;
+	if(variable_struct_exists(_rig, "scml_fix") && is_real(_rig.scml_fix)) _fix = _rig.scml_fix;
+	var _scale_x = image_xscale * _fix,
+		_scale_y = image_yscale * _fix;
+
+	if(variable_instance_exists(id, "scml_bounds_frame")
+	   && scml_bounds_frame == current_time
+	   && variable_instance_exists(id, "scml_bounds_x")
+	   && scml_bounds_x == x
+	   && variable_instance_exists(id, "scml_bounds_y")
+	   && scml_bounds_y == y
+	   && variable_instance_exists(id, "scml_bounds_angle")
+	   && scml_bounds_angle == _rot
+	   && variable_instance_exists(id, "scml_bounds_scale_x")
+	   && scml_bounds_scale_x == _scale_x
+	   && variable_instance_exists(id, "scml_bounds_scale_y")
+	   && scml_bounds_scale_y == _scale_y
+	   && variable_instance_exists(id, "scml_draw_bounds")
+	   && is_struct(scml_draw_bounds)) return scml_draw_bounds;
+
+	var _alpha = 1;
+	if(variable_instance_exists(id, "image_alpha") && is_real(image_alpha)) _alpha = image_alpha;
+	zomb_scml().set_transform(zomb_scml_player(), x, y, _rot,
+		_scale_x, _scale_y, _alpha);
+
+	var _definition = zomb_scml().describe_entity(SCML_COLLECTION, _rig.scml);
+	if(!is_struct(_definition)
+	   || !variable_struct_exists(_definition, "parts")
+	   || !is_array(_definition.parts)) return undefined;
+
+	var _left = 0, _right = 0, _top = 0, _bottom = 0, _any = false;
+	for(var _i = 0; _i < array_length(_definition.parts); _i++){
+		var _part = zomb_scml().get_part_world(zomb_scml_player(), _definition.parts[_i]);
+		if(is_undefined(_part)) continue;
+		var _part_bounds = zomb_scml_part_alpha_bounds(_part);
+		if(is_undefined(_part_bounds)) continue;
+		if(!_any){
+			_left = _part_bounds.left;
+			_right = _part_bounds.right;
+			_top = _part_bounds.top;
+			_bottom = _part_bounds.bottom;
+			_any = true;
+		}else{
+			_left = min(_left, _part_bounds.left);
+			_right = max(_right, _part_bounds.right);
+			_top = min(_top, _part_bounds.top);
+			_bottom = max(_bottom, _part_bounds.bottom);
+		}
+	}
+	if(!_any) return undefined;
+
+	scml_draw_bounds = {left:_left, right:_right, top:_top, bottom:_bottom};
+	scml_bounds_frame = current_time;
+	scml_bounds_x = x;
+	scml_bounds_y = y;
+	scml_bounds_angle = _rot;
+	scml_bounds_scale_x = _scale_x;
+	scml_bounds_scale_y = _scale_y;
+	if(!variable_instance_exists(id, "scml_bounds_reported")){
+		scml_bounds_reported = true;
+		scr_meta_log("SCML", "bounds ", _rig.scml, " ", round(_right - _left), "x", round(_bottom - _top));
+	}
+	return scml_draw_bounds;
+}

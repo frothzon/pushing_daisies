@@ -3,7 +3,11 @@
 /// draw monster
 with(obj_mon){
     if(inWater){
-        draw_self();
+        if(variable_instance_exists(id, "rig") && is_struct(rig) && zomb_scml_active(rig)){
+            zomb_scml_draw(rig, SCML_DRAW_SUBMERGED);
+        } else {
+            draw_self();
+        }
     }
 }
 /// draw towers
@@ -17,8 +21,8 @@ with(obj_mon){
 /// That is the halo the plants in water were wearing.  scr_draw_self_scaled()
 /// is the one place that knows the idiom.
 ///
-/// The monsters above are right as they are: a monster's size really is in
-/// image_xscale, which is why only the tower pass was wrong.
+/// Sheet-backed monsters keep their original submerged draw; a live
+/// SCML player draws the lower half at the same seam as the upper half.
 with(obj_tower){
     if(inWater){
         scr_draw_self_scaled(draw_scale);

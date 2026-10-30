@@ -1235,6 +1235,7 @@
     {"id":{"name":"bck_house_tileset","path":"tilesets/bck_house_tileset/bck_house_tileset.yy",},},
     {"id":{"name":"bck_tile_dirt_tileset","path":"tilesets/bck_tile_dirt_tileset/bck_tile_dirt_tileset.yy",},},
     {"id":{"name":"scr_scml_rig","path":"scripts/scr_scml_rig/scr_scml_rig.yy",},},
+    {"id":{"name":"shd_scml_tint","path":"shaders/shd_scml_tint/shd_scml_tint.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",

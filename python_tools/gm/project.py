@@ -9,7 +9,7 @@ Also included are helpers for the tasks that are awkward to do by hand:
 
 * reading/writing an object's event code (``Create_0.gml`` etc.);
 * reading/writing a script's GML;
-* creating new scripts and objects, including their ``.yyp`` entries.
+* creating new scripts, objects, and shaders, including their ``.yyp`` entries.
 """
 
 from __future__ import annotations
@@ -419,6 +419,28 @@ class Project:
         folder.mkdir(parents=True, exist_ok=True)
         yy.dump(self._object_template(name, sprite, parent_object), folder / f"{name}.yy")
         self._register(name, f"objects/{name}/{name}.yy")
+        return self.resource(name)
+
+    def create_shader(self, name: str, vertex_source: str, fragment_source: str) -> Resource:
+        """Create a GLSL shader resource with its vertex and fragment sources."""
+        if name in self._resources:
+            raise FileExistsError(f"resource {name!r} already exists")
+        folder = self.root / "shaders" / name
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{name}.vsh").write_bytes(vertex_source.encode("utf-8"))
+        (folder / f"{name}.fsh").write_bytes(fragment_source.encode("utf-8"))
+        root = yy.GmObject(inline=False)
+        root.update({
+            "$GMShader": "",
+            "%Name": name,
+            "name": name,
+            "parent": self._reference("Shaders", "folders/Shaders.yy", inline=False),
+            "resourceType": "GMShader",
+            "resourceVersion": "2.0",
+            "type": 1,
+        })
+        yy.dump(yy.sort_keys(root), folder / f"{name}.yy")
+        self._register(name, f"shaders/{name}/{name}.yy")
         return self.resource(name)
 
     def _register(self, name: str, path: str) -> None:

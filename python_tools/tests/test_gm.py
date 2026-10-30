@@ -307,6 +307,20 @@ class ProjectTests(unittest.TestCase):
             self.assertTrue((root / "objects/obj_new/obj_new.yy").exists())
             self.assertEqual(obj.data["name"], "obj_new")
 
+            shader = proj.create_shader(
+                "shd_new", "void main() {}\n", "void main() {}\n"
+            )
+            self.assertTrue((root / "shaders/shd_new/shd_new.yy").exists())
+            self.assertEqual(shader.type, "GMShader")
+            self.assertEqual(
+                (root / "shaders/shd_new/shd_new.vsh").read_text(encoding="utf-8"),
+                "void main() {}\n",
+            )
+            self.assertEqual(
+                (root / "shaders/shd_new/shd_new.fsh").read_text(encoding="utf-8"),
+                "void main() {}\n",
+            )
+
             # event helper
             obj.write_event(0, 0, "show_debug_message(\"hi\");\n")
             obj.save()
@@ -317,6 +331,7 @@ class ProjectTests(unittest.TestCase):
             reloaded = project.Project(root)
             self.assertIn("scr_new", [r.name for r in reloaded.resources()])
             self.assertIn("obj_new", [r.name for r in reloaded.resources()])
+            self.assertIn("shd_new", [r.name for r in reloaded.resources()])
 
 
 class ProgressTests(unittest.TestCase):

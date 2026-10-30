@@ -6,7 +6,7 @@
 /// draw_self_part() read image_blend.  Nothing else in the project writes a
 /// monster's image_blend, which is what makes this one line rather than a
 /// colour to merge with somebody else's.  (On the Spriter branch below the
-/// tint is a carded no-op: the runtime's parts draw c_white - scr_scml_rig.)
+/// tint is applied around the parts draw by shd_scml_tint.)
 image_blend = status_tint();
 
 /// ---- THE RIG FIRST (scr_scml_rig) ------------------------------------
@@ -17,9 +17,8 @@ image_blend = status_tint();
 /// must NOT also run below, or the monster renders twice.  FALSE means no
 /// player, and the sheet path runs exactly as it always has.
 ///
-/// Known, carded regressions on the SCML branch: the status tint (parts
-/// draw c_white) and the waterline crop (the crop reads one sheet's
-/// pixels; a rigged monster in water draws its full rig, uncropped).
+/// SCML parts receive the same status tint, and the water surface
+/// clips the rig at the shared origin-based seam in zomb_scml_draw().
 ///
 /// ---- THE GROUND LINE IS THE ORIGIN: NOTHING IS CORRECTED HERE ------
 /// Do NOT add a vertical offset before this draw.  Every rig's die sheet

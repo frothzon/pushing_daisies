@@ -51,6 +51,7 @@ python -m gm add-event obj_enemy Draw_75
 # New resources
 python -m gm new-script scr_hello
 python -m gm new-object obj_enemy --sprite spr_mon --parent obj_mon_base
+python -m gm new-shader shd_tint --vertex shaders/source.vsh --fragment shaders/source.fsh
 
 # Verify every .yy/.yyp round-trips byte-for-byte
 python -m gm roundtrip
@@ -188,7 +189,7 @@ contains both LF and CRLF `.gml` files).
 | `gm/yy.py` | Byte-exact `.yy` / `.yyp` / `.resource_order` reader & writer |
 | `gm/gml.py` | GML read/write plus function-level editing |
 | `gm/events.py` | `eventType`/`eventNum` ↔ `Create_0.gml` mapping |
-| `gm/project.py` | `Project`, `Resource`, key-path helpers, creation helpers |
+| `gm/project.py` | `Project`, `Resource`, key-path helpers, script/object/shader creation helpers |
 | `gm/progress.py` | The progress tracker: schema, validation, the two generated views |
 | `gm/balance/` | The headless balance tester: `tables.py` (a GML table reader, including the shot `Cycle`), `geometry.py` (room → grid, route, slots), `terrain.py`, `model.py` (the closed form), `policy.py` (how the money gets spent), `sim.py` (the 60fps time-step), `report.py` (the read-outs) |
 | `gm/cli.py`, `gm/__main__.py` | `python -m gm ...` command line interface |

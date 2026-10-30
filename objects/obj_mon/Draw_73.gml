@@ -27,11 +27,15 @@ y += z_climb*2-12;
 /// An unclamped ratio makes lerp() EXTRAPOLATE: the fill was drawn to the
 /// left of the bar with a negative width, which is what "the HP bar can
 /// have negative width" looked like.  A dead monster is an EMPTY bar.
-var _xa    = bbox_left - 4,
-    _xb    = bbox_right + 4,
+var _rig_bounds = undefined;
+if(variable_instance_exists(id, "rig") && is_struct(rig) && zomb_scml_active(rig)){
+    _rig_bounds = zomb_scml_bounds(rig);
+}
+var _xa    = is_struct(_rig_bounds) ? _rig_bounds.left - 4 : bbox_left - 4,
+    _xb    = is_struct(_rig_bounds) ? _rig_bounds.right + 4 : bbox_right + 4,
     _max   = data[MON.maxLife],
     _ratio = (_max > 0) ? clamp(data[MON.life] / _max, 0, 1) : 0,
-    _y2    = bbox_bottom + 4;
+    _y2    = is_struct(_rig_bounds) ? _rig_bounds.bottom + 4 : bbox_bottom + 4;
 
 if(data[MON.life] < 0 && !variable_instance_exists(id, "hp_under_reported")){
     /// one line per monster, the first time it is DRAWN BELOW ZERO: a tower

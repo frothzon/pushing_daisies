@@ -244,6 +244,15 @@ def cmd_new_object(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_new_shader(args: argparse.Namespace) -> int:
+    proj = _load_project(args)
+    vertex_source = Path(args.vertex).read_text(encoding="utf-8")
+    fragment_source = Path(args.fragment).read_text(encoding="utf-8")
+    resource = proj.create_shader(args.name, vertex_source, fragment_source)
+    print(f"created {resource.path}")
+    return 0
+
+
 def cmd_roundtrip(args: argparse.Namespace) -> int:
     root = Path(args.project) if args.project else project_mod.find_project_root(".")
     if args.paths:
@@ -599,6 +608,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--sprite")
     p.add_argument("--parent")
     p.set_defaults(func=cmd_new_object)
+
+    p = sub.add_parser("new-shader", help="create a GLSL shader resource")
+    p.add_argument("name")
+    p.add_argument("--vertex", required=True, help="vertex source file")
+    p.add_argument("--fragment", required=True, help="fragment source file")
+    p.set_defaults(func=cmd_new_shader)
 
     p = sub.add_parser("progress", help="the progress tracker (check/build/list/set/add)")
     p.add_argument("action", nargs="?", default="check",

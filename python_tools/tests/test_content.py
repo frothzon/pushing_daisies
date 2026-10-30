@@ -1389,6 +1389,10 @@ MON_DRAW_REL = "objects/obj_mon/Draw_0.gml"
 MON_DIE_REL = "scripts/scr_zombie_die/scr_zombie_die.gml"
 LEVEL_CONTROL_STEP_REL = "objects/_levelControl/Step_0.gml"
 LEVEL_BOOT_REL = "scripts/scr_level_boot/scr_level_boot.gml"
+MON_HP_DRAW_REL = "objects/obj_mon/Draw_73.gml"
+SHADOW_DRAW_REL = "scripts/scr_drawLight/scr_drawLight.gml"
+REFLECTION_DRAW_REL = "scripts/scr_drawReflections/scr_drawReflections.gml"
+WATER_OBJECT_DRAW_REL = "objects/obj_water/Draw_0.gml"
 
 ENTITY_PAIR_RE = re.compile(r'"([A-Za-z][A-Za-z-]*)":\s*"([A-Za-z][A-Za-z-]*)"')
 
@@ -1423,6 +1427,14 @@ class ScmlRigAdapterTests(unittest.TestCase):
             (PROJECT_ROOT / LEVEL_CONTROL_STEP_REL).read_text(encoding="utf-8-sig"))
         cls.boot = _code_only(
             (PROJECT_ROOT / LEVEL_BOOT_REL).read_text(encoding="utf-8-sig"))
+        cls.hp_draw = _code_only(
+            (PROJECT_ROOT / MON_HP_DRAW_REL).read_text(encoding="utf-8-sig"))
+        cls.shadow_draw = _code_only(
+            (PROJECT_ROOT / SHADOW_DRAW_REL).read_text(encoding="utf-8-sig"))
+        cls.reflection_draw = _code_only(
+            (PROJECT_ROOT / REFLECTION_DRAW_REL).read_text(encoding="utf-8-sig"))
+        cls.water_object_draw = _code_only(
+            (PROJECT_ROOT / WATER_OBJECT_DRAW_REL).read_text(encoding="utf-8-sig"))
         cls.title_create = _code_only(
             (PROJECT_ROOT / "objects/obj_titleZomb/Create_0.gml").read_text(encoding="utf-8-sig"))
         cls.title_step = _code_only(
@@ -1593,5 +1605,45 @@ class ScmlRigAdapterTests(unittest.TestCase):
         self.assertIn("zomb_scml_remove();", destroy,
                       "the title zombie's player is not removed on "
                       "destroy - it ticks under the next room's update")
+
+    def test_status_tint_reaches_every_spriter_part(self):
+        """The runtime's c_white draw gets a per-monster status shader pass."""
+        self.assertIn("status_tint()", self.adapter,
+                      "rig draws no longer read the calling monster's status color")
+        self.assertIn("shader_set(shd_scml_tint)", self.adapter,
+                      "the SCML draw is not wrapped in its tint shader")
+        self.assertIn("shader_set_uniform_color(_uniform, _tint, 1)", self.adapter,
+                      "the status color is not supplied to the shader uniform")
+        self.assertIn("shader_reset()", self.adapter,
+                      "the SCML shader can leak into later draws")
+        fragment = (PROJECT_ROOT / "shaders/shd_scml_tint/shd_scml_tint.fsh").read_text(
+            encoding="utf-8-sig")
+        self.assertIn("uniform vec4 tintColour", fragment)
+        self.assertIn("* v_vColour * tintColour", fragment,
+                      "the shader no longer preserves per-part alpha while tinting")
+
+    def test_rigged_monsters_share_the_sheet_water_seam(self):
+        """The top, submerged and mirrored passes clip at one world seam."""
+        self.assertIn("SCML_DRAW_ABOVE", self.adapter)
+        self.assertIn("gpu_get_scissor()", self.adapter)
+        self.assertIn("gpu_set_scissor(_clip)", self.adapter)
+        self.assertIn("zomb_scml_draw(rig, SCML_DRAW_SUBMERGED)", self.water_object_draw)
+        self.assertIn("zomb_scml_draw(rig, SCML_DRAW_REFLECTION, _alpha)",
+                      self.reflection_draw)
+        self.assertIn("water_sink()", self.adapter,
+                      "the rig seam no longer follows the shared origin-based waterline")
+        self.assertIn("draw_self()", self.water_object_draw,
+                      "sheet-backed monsters lost their original submerged fallback")
+
+    def test_hp_bars_and_shadows_use_the_current_rig_footprint(self):
+        """The 32x32 placeholder cannot size UI or shadows for a live rig."""
+        self.assertIn("zomb_scml_bounds(rig)", self.hp_draw,
+                      "the HP bar still reads bbox_* from the placeholder sprite")
+        self.assertIn("zomb_scml_bounds(rig)", self.shadow_draw,
+                      "the shadow box still reads sprite_width/height from the placeholder")
+        self.assertIn("zomb_scml_part_alpha_bounds(_part)", self.adapter,
+                      "the rig footprint stopped measuring painted part pixels")
+        self.assertIn("bbox_left - 4", self.hp_draw,
+                      "sheet-backed monsters lost their existing HP bar fallback")
 
 
