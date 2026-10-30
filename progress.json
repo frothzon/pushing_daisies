@@ -20,14 +20,15 @@
   },
   "focus": {
     "now": [
-      "combat-specs",
-      "combat-status-bleed-vulnerable"
+      "garden-trees"
     ],
     "next": [
-      "garden-trees",
-      "garden-master-nodes"
+      "garden-master-nodes",
+      "shard-pity-and-drops",
+      "blood-tree",
+      "candy-recipes"
     ],
-    "note": "2026-10-30: Implementing the L3–L5 specialization choice and wiring the final status sources (Bleed/Vulnerability) through tower builds. Choices will be free at L3, saved per tower; run levels remain run-only per goal.md, which overrides the stale persistent-level/respec notes in roadmap.md."
+    "note": "2026-10-30: Filling the permanent upgrade systems first, then the shard and candy economy. The existing run-level tower ladder and local specialization work remain in review for Rayu."
   },
   "tasks": [
     {
@@ -928,15 +929,15 @@
     {
       "id": "combat-specs",
       "title": "Specializations at L3: two per tower, respec costs seeds",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "2",
       "size": "L",
       "prio": 3,
-      "needs": "",
-      "notes": "roadmap 2.5; goal.md 5 gives the Daisy Pusher pair (Bulldozer / Rapid Bloom) as the template for all 24. Needs the stat vocabulary from crit and resistances, and the PERSISTENT level from mastery-xp, because a specialization is chosen at L3 and must survive the run.",
+      "needs": "Reload GameMaker and run a stage with a tower that reaches L3. Choose either path, confirm the choice saves after leaving and reopening the stage, then buy L4 and L5 and confirm each path tier changes the card or combat. The log should show META SPEC chose ... saved=1. For Wither Briar or Barbed Fan, expect STAT vulnerable ... or STAT bleed ...; missing logs, a free path change on a later run, or no tier effect falsifies it.",
+      "notes": "goal.md §§5,13: free L3 choice saved by tower name; run levels do not persist. Local implementation defines 24 paths for 12 planned towers, with L3/L4/L5 tiers; three names await roster rows. Needs GameMaker playtest.",
       "refs": [
         "scripts/scr_meta_schema/scr_meta_schema.gml",
         "scripts/tower_levels/tower_levels.gml",
@@ -949,15 +950,15 @@
     {
       "id": "combat-status-bleed-vulnerable",
       "title": "Statuses 6-7: bleed and vulnerable",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "2",
       "size": "M",
       "prio": 3,
-      "needs": null,
-      "notes": "Bleed scales with movement (goal.md 7), so it only makes sense once slow works - it is the one status that interacts with another. Vulnerable is DAMAGE AMPLIFICATION, so it belongs at the pipeline (combat-damage-pipeline) rather than at the monster: it multiplies the amount the tower passes in. ENGINE IMPLEMENTED 2026-10-30: Bleed deals damage per actual path pixel moved (0.1 damage/px is the trait contract, so slow/root changes its delivered DPS); Vulnerable stores a strongest-wins bonus fraction and multiplies all hits in scr_do_damage, including DoT. No current roster tower is designed to apply either effect, so the card remains doing until a tower/spec source is wired for player-visible review.",
+      "needs": "Reload GameMaker and run with global.devMode=true. Choose a spec that applies Bleed or Vulnerability, then confirm the log shows STAT bleed ... damage/px while moving or STAT vulnerable +...% damage taken. A bleed tick should scale with actual movement, Vulnerability should amplify direct and DoT damage, and neither should persist after its timer. Missing proc logs, unchanged damage, or a status remaining after expiry falsifies the behavior.",
+      "notes": "Bleed and Vulnerability are implemented in the status/damage pipeline and now have player-facing sources in the local specialization paths. Runtime verification remains.",
       "refs": [
         "scripts/scr_do_damage/scr_do_damage.gml",
         "objects/obj_mon/Step_0.gml"
@@ -1987,7 +1988,7 @@
     {
       "id": "garden-trees",
       "title": "Clover trees: all four, 10 nodes x 5 ranks",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -2002,7 +2003,8 @@
         "economy.md"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "git-commit-curve",
