@@ -183,6 +183,13 @@ function scr_tower_shoot() {
 	                                       && is_real(_effect.mult) ? _effect.mult : 1,
 	                        _effect_amount = variable_struct_exists(_effect, "amount")
 	                                         && is_real(_effect.amount) ? _effect.amount : 0;
+	                    if(_effect.kind == STATUS.SLOW){
+	                        var _slow_bonus=candy_active_magnitude("slow");
+	                        _effect_mult=max(0.05,1-(1-_effect_mult)*(1+_slow_bonus));
+	                    }
+	                    if(_effect.kind == STATUS.BURN){
+	                        _effect_amount *= 1+candy_active_magnitude("burn_damage");
+	                    }
 	                    status_apply(_status_target, _effect.kind, _effect_mult,
 	                                 _effect.frames, _effect_amount);
 	                }

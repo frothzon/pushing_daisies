@@ -76,6 +76,8 @@ if(tower_hover < 0 && tower_index >= 0){
 
 /// run the level flow (roadmap 0.4)
 scr_level_step();
+candy_run_tick();
+candy_run_refresh();
 
 /// update static inventory
 scr_update_statinv();

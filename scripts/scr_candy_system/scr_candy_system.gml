@@ -202,6 +202,7 @@ function candy_run_reset() {
 	global.candy_current_wave = 0;
 	global.candy_freeze_waves = 0;
 	global.candy_freeze_active_wave = 0;
+	global.candy_stats_dirty = false;
 }
 
 function candy_run_active_map() {
@@ -293,7 +294,7 @@ function candy_run_activate(_id) {
 	    _remaining=candy_run_remaining(_id),
 	    _duration=candy_duration_seconds();
 	_active[$ _id] = { remaining:_remaining+_duration, level:_level };
-	candy_reapply_towers();
+	global.candy_stats_dirty = true;
 	scr_meta_log("CANDY","activate ",_recipe.label," level=",_level,
 	             " add=",_duration,"s remaining=",_remaining+_duration,"s");
 	return true;
@@ -323,11 +324,18 @@ function candy_run_tick() {
 			scr_meta_log("CANDY","expired ",_id);
 		}
 	}
-	if(_expired) candy_reapply_towers();
+	if(_expired) global.candy_stats_dirty = true;
 }
 
 /// Rebuild placed towers when a candy starts or expires. Reads another tower's
 /// data only inside with(), and uses the same resolver as placement/upgrading.
+function candy_run_refresh() {
+	if(!variable_global_exists("candy_stats_dirty") || !global.candy_stats_dirty) return false;
+	candy_reapply_towers();
+	global.candy_stats_dirty = false;
+	return true;
+}
+
 function candy_reapply_towers() {
 	with(obj_tower){
 		if(variable_instance_exists(id,"base_data") && is_array(base_data)
@@ -387,7 +395,8 @@ function candy_pause_draw() {
 	    _w=display_get_gui_width(), _h=display_get_gui_height(),
 	    _rows=max(1,ceil(array_length(_ids)/5)),
 	    _panel_h=38+_rows*62+(_rows-1)*7+12,
-	    _top=_h-_panel_h-12;
+	    _top=_h-_panel_h-12,
+	    _m=points_to_gui(mouse_x,mouse_y,0);
 	draw_set_alpha(1);
 	draw_set_colour(make_colour_rgb(24,20,28));
 	draw_rectangle(12,_top,_w-12,_h-8,false);
@@ -405,11 +414,11 @@ function candy_pause_draw() {
 			    _stock=candy_stock_get(_id),
 			    _remaining=candy_run_remaining(_id),
 			    _usable=(_stock > 0),
-			    _hover=(mouse_x >= _r[0] && mouse_x <= _r[2]
-			         && mouse_y >= _r[1] && mouse_y <= _r[3]),
-			    _colour=_usable ? (_hover ? make_colour_rgb(70,90,60) : make_colour_rgb(52,60,48))
-			                    : make_colour_rgb(42,42,46);
+			    _hover=(_m[0] >= _r[0] && _m[0] <= _r[2]
+			         && _m[1] >= _r[1] && _m[1] <= _r[3]);
 			if(_id == "everlasting_gob" && !candy_run_has_active()) _usable=false;
+			var _colour=_usable ? (_hover ? make_colour_rgb(70,90,60) : make_colour_rgb(52,60,48))
+			                    : make_colour_rgb(42,42,46);
 			draw_set_colour(_colour);
 			draw_rectangle(_r[0],_r[1],_r[2],_r[3],false);
 			draw_set_colour(c_white);

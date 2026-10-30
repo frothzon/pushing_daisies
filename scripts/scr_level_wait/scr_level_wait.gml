@@ -39,6 +39,7 @@ function scr_level_wait() {
 	    /// walk.  The pick itself was stored at state entry.
 	    if(!wave_preview_shown){
 	        wave_preview_shown = true;
+	        candy_run_wave_end(wave_count);
 	        if(is_struct(next_pick) && next_pick.index >= 0){
 	            scr_wave_preview(next_pick);
 	        }

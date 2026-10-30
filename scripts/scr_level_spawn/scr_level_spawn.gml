@@ -21,6 +21,7 @@ function scr_level_spawn() {
 	//--------------------------- choose the creature
 	if(level_state_time == 0){
 	    wave_count++;
+	    candy_run_wave_begin(wave_count);
 	    shard_wave_begin(wave_count);
 	    add_item_value(waves,1);
 	    scr_playSound(snd_zomb_emerge,false);

@@ -123,3 +123,5 @@ if(state == scr_main_highScore){
 
 for_dgrid(speed_buttons,scr_drawSpdBtns);
 
+if(state == scr_main_pause) candy_pause_draw();
+

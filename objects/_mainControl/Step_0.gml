@@ -36,6 +36,16 @@ if(state == scr_main_normal){
 var _mouse = points_to_gui(mouse_x,mouse_y,0);
 button_selected = dgrid_get_index(speed_buttons,_mouse[0],_mouse[1]);
 
+if(state == scr_main_pause && mouse_check_button_pressed(mb_left)){
+    var _candy_id = candy_pause_hit();
+    if(_candy_id != ""){
+        if(!candy_run_activate(_candy_id)){
+            scr_meta_log("CANDY","cannot activate ",_candy_id,
+                         " stock=",candy_stock_get(_candy_id));
+        }
+    }
+}
+
 if(mouse_check_button_pressed(mb_left)){
     /// first button
     if(button_selected == 0){

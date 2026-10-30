@@ -25,13 +25,14 @@ function scr_zomb_death() {
 	    _money_bonus = variable_instance_exists(id,"last_hit_tower_money_bonus")
 	                   && is_real(last_hit_tower_money_bonus)
 	                   ? clamp(last_hit_tower_money_bonus,0,1) : 0,
+	    _candy_money = candy_active_magnitude("kill_money"),
 	    _pay = 0;
 	with(_levelControl){
 		/// A BOSS's payout is already `wave + 1` (scr_level_spawn), so the
 		/// wave ramp is for the regular kills - on a boss the same wave would
 		/// be counted twice. Money Marigold's bonus scales the base before the
 		/// same carried-fraction pipeline, so it remains visible on 1-dollar kills.
-		_pay = scr_kill_money(_base * (1 + _money_bonus), wave_count, !is_boss_wave);
+		_pay = scr_kill_money(_base * (1 + _money_bonus + _candy_money), wave_count, !is_boss_wave);
 	}
 	add_item_value(STATINV.money, _pay);
 	var _points = floor(sqrt(data[MON.maxLife]))+1;
@@ -59,6 +60,7 @@ function scr_zomb_death() {
 
 	scr_meta_log("LEVEL", "kill ", data[MON.name], " +money=",
 	             _pay, " marigold_bonus=", round(_money_bonus*100), "%",
+	             " candy_money_bonus=", round(_candy_money*100), "%",
 	             " +pts=", _points, " die=", _die_txt, " (life ",
 	             get_item_value(STATINV.life), " left)");
 
