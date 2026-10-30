@@ -47,5 +47,36 @@ function show_portrait_box(argument0, argument1, argument2) {
 	/// ONE portrait for the WHOLE box (LL-058)
 	_box.portrait = argument0;
 
+	/// Portrait previews get a larger, wider box. Ordinary cutscene messages
+	/// keep their original 400x150 geometry and 64px frame.
+	var _has_portrait = sprite_exists(argument0),
+	    _gui_w = max(display_get_gui_width(),1),
+	    _gui_h = max(display_get_gui_height(),1),
+	    _box_w = _has_portrait ? min(480,max(1,_gui_w-24)) : 400,
+	    _box_h = _has_portrait ? 176 : 150,
+	    _portrait_size = _has_portrait ? min(min(96,_box_h-24),_box_w*0.25) : 64,
+	    _portrait_x = _has_portrait ? 14 : 2,
+	    _portrait_y = _has_portrait ? (_box_h-_portrait_size)*0.5 : 16,
+	    _text_x = _portrait_x + _portrait_size + 16,
+	    _text_y = _has_portrait ? (_box_h-56)*0.5 : 12,
+	    _box_x = max(0,(_gui_w-_box_w)*0.5),
+	    _box_y = _gui_h*0.5 - _box_h*0.5;
+
+	with(_box){
+	    m_pos[0] = _box_x;
+	    m_pos[1] = _box_y;
+	    m_pos[2] = _box_x + _box_w;
+	    m_pos[3] = _box_y + _box_h;
+	    m_pos[4] = _box_w;
+	    m_pos[5] = _box_h;
+	    p_pos[0] = _portrait_x;
+	    p_pos[1] = _portrait_y;
+	    p_pos[2] = _portrait_size;
+	    p_pos[3] = _portrait_size;
+	    t_xf = _text_x;
+	    t_yf = _text_y;
+	    t_width = max(1,_box_w-_text_x-8);
+	}
+
 	return(_box);
 }

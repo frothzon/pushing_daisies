@@ -12,17 +12,17 @@ draw9slice(spr_towerUpgrade,m_pos[0],m_pos[1],m_pos[4],m_pos[5],c_white,1);
 draw_text_ext(m_pos[0] + t_xf,m_pos[1] + t_yf, string_hash_to_newline(message_draw), 28, t_width);
 
 /// portrait - ONE whole sprite for the box, not a frame of `message_sprite`
-/// and NOT indexed by `message_current` (LL-058): a portrait looked up in
-/// an array whose message list can grow is a portrait that can end up
-/// beside another creature's name.  Guarded: draw_sprite_stretched on a
-/// missing sprite is a FATAL error (LL-012).
+/// and NOT indexed by `message_current` (LL-058). Fit its visible art inside
+/// the slot so a framed portrait keeps its proportions instead of being
+/// stretched into the old 64x64 square (LL-071).
 var _portrait = portrait;
 
 var xx = m_pos[0] + p_pos[0],
     yy = m_pos[1] + p_pos[1];
 
 if(sprite_exists(_portrait)){
-    draw_sprite_stretched(_portrait,0,xx+4,yy-2,p_pos[2],p_pos[3]);
+    ui_art_fit(_portrait,xx+p_pos[2]*0.5,yy+p_pos[3]*0.5,
+               p_pos[2],p_pos[3],c_white,1,"");
 } else if(message_image[message_current] >= 0 && sprite_exists(message_sprite)){
     draw_sprite_stretched(message_sprite,message_image[message_current],xx,yy,p_pos[2],p_pos[3]);
 }
