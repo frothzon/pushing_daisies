@@ -20,14 +20,14 @@
   },
   "focus": {
     "now": [
+      "combat-specs",
       "combat-status-bleed-vulnerable"
     ],
     "next": [
-      "combat-specs",
       "garden-trees",
       "garden-master-nodes"
     ],
-    "note": "2026-10-30: Poison and Root are implemented, with Bindweed and Belladonna wired to their existing sprite trios; awaiting Rayu runtime review. Continuing the remaining combat effects (Bleed and Vulnerable) before specializations and permanent progression."
+    "note": "2026-10-30: Implementing the L3–L5 specialization choice and wiring the final status sources (Bleed/Vulnerability) through tower builds. Choices will be free at L3, saved per tower; run levels remain run-only per goal.md, which overrides the stale persistent-level/respec notes in roadmap.md."
   },
   "tasks": [
     {
@@ -928,7 +928,7 @@
     {
       "id": "combat-specs",
       "title": "Specializations at L3: two per tower, respec costs seeds",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -943,7 +943,8 @@
         "scripts/scr_tower_roster/scr_tower_roster.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "combat-status-bleed-vulnerable",
