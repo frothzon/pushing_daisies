@@ -30,10 +30,13 @@
       "combat-gate-two-loadouts",
       "tower-l5-signatures",
       "tower-ring-mastery-palette",
-      "art-state-origins"
+      "art-state-origins",
+      "biome-tileset-wiring"
     ],
-    "next": [],
-    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette and corrected the stale sprite-origin diagnosis after the frame audit. Thresholds, palette, and title/in-game origin transitions await Rayu’s reloaded GameMaker review."
+    "next": [
+      "ui-hud-flex"
+    ],
+    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Finalized the L6-L10 mastery ring palette, corrected the stale sprite-origin diagnosis, and wired terrain atlas selection to biome with a Graveyard dirt fallback. Runtime visual checks are waiting on Rayu. Next code pass: move the in-game HUD onto flex layout."
   },
   "tasks": [
     {
@@ -688,23 +691,24 @@
     {
       "id": "biome-tileset-wiring",
       "title": "Terrain: pick the atlas from the biome, not from the load row",
-      "status": "backlog",
-      "owner": "cline",
-      "awaiting": "none",
+      "status": "review",
+      "owner": "both",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "5",
       "size": "S",
       "prio": 2,
-      "needs": "",
-      "notes": "ART STATUS (2026-10-21): there is no spr_graveyard_128x atlas, so region 5's ground cannot change yet - land the wiring with a documented dirt fallback and add the atlas to art-biome-tiles.",
+      "needs": "After reloading GameMaker with global.devMode=true, run one stage in each region. Check the LEVEL terrain biome=... atlas=... fallback=... line: Swamp→spr_swamp_128x, Desert→spr_desert_128x, Jungle→spr_jungle_128x, Graveyard→spr_dirt_128x fallback=1, Blood Fields→spr_blood_128x; Grass keeps its four strata. Confirm every startup ends rows=12 and the top-soil cap remains dirt. Missing terrain, a wrong atlas/fallback flag, or a startup row count other than 12 falsifies the wiring.",
+      "notes": "Added region_terrain_style(biome, layer). Grass keeps its authored dirt/sand/grass/thick strata; Swamp, Desert, Jungle, and Blood Fields use their biome atlas at every elevation. Graveyard maps to spr_dirt_128x until its art is delivered. Adopted the proposed dark/light tints and interpolate them by elevation; accent remains for future props. The top-soil cap still uses dirt frame 16. Startup logs biome, first atlas, and fallback flag. Static GML parsing and balance table validation passed; live region-by-region rendering remains for Rayu.",
       "refs": [
-        "scripts/scr_main_startup/scr_main_startup.gml",
-        "scripts/GameLevelData/GameLevelData.gml",
         "scripts/region_data/region_data.gml",
+        "scripts/GameLevelData/GameLevelData.gml",
+        "scripts/scr_main_startup/scr_main_startup.gml",
+        "scripts/scr_iniTileBuilder/scr_iniTileBuilder.gml",
         "art_descriptions.md"
       ],
       "created": "2026-10-19",
-      "updated": "2026-10-21",
+      "updated": "2026-10-30",
       "done": null
     },
     {
@@ -5053,6 +5057,12 @@
       "who": "cline",
       "task": "art-state-origins",
       "what": "Corrected the stale 20-23 px origin diagnosis in art_descriptions.md: the old values compared different canvas sizes; the corrected art-relative audit has at most 5 px across the zombie rigs and a 3 px Grumble idle/walk difference. Accepted the small pose offset and made no runtime or die-origin shifts; awaiting visual review."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "biome-tileset-wiring",
+      "what": "Wired biome terrain styles into level startup: Swamp, Desert, Jungle, Blood Fields use their greyscale atlas and tint pair; Grass retains its existing elevation strata; Graveyard uses tinted dirt until its atlas is delivered. The top-soil cap remains dirt and startup logs biome/atlas/fallback. Static parsing and balance tables pass; awaiting visual review across regions."
     }
   ]
 }
