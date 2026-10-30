@@ -40,7 +40,7 @@ never hand-tuned. The title-screen zombie is the rigged Grumble-Mulch
 | `art-level-complete` | **done 2026-10-21** | the banner arrived and is drawn at 1:1 (§4.5) | — |
 | `art-state-origins` | **review** | **no drawing** — visual check of the accepted ≤5 px ground-contact differences (§4.8); the former 20–23 px diagnosis compared different canvas sizes | no |
 | `portrait-draw-fit` | backlog | **no drawing** unless frameless busts are chosen (§4.6) | optional |
-| `legacy-boss-art-cleanup` | backlog | **no drawing** — five unused sprites to delete (§4.7) | no |
+| `legacy-boss-art-cleanup` | **done 2026-10-30** | all five unreferenced pre-restyle boss sprites removed from the project; no code behavior depended on them (§4.7) | — |
 
 The three formerly unwired unlockables, Kaboom Kalanchoe, Money Marigold, and
 Thornamental, now have roster entries and use their finished trios. Kaboom's
@@ -723,7 +723,8 @@ gold frame is not crushing it, and the text still starts clear of the picture.
 
 ### 4.7 `legacy-boss-art-cleanup` — delete, do not repurpose
 
-**No drawing.** Five sprites are in the project and referenced by no `.gml`:
+**No drawing.** These five registered sprites had no code callers and were
+removed from the project on 2026-10-30:
 
 | Sprite | Size / frames | What it is |
 | --- | --- | --- |
@@ -739,12 +740,13 @@ cel shading, no black contour — and would read as placeholders next to the
 gold-framed portraits. Repurposing them for `region-bosses` would cost more
 (repaint every frame to the house style) than drawing new rigs.
 
-**Decision:** delete all five in the IDE. Keep `spr_boss` only if a HUD or map
-marker is actually designed for it — and in that case it needs a caller, not
-just a place in the `.yyp`.
+**Disposition:** all five entries were removed from the project manifest and
+their sprite folders were deleted. `spr_boss` was not kept: no HUD or map
+marker uses it, and a resource with no caller only makes the boss roster
+ambiguous.
 
-**Acceptance.** The five no longer appear in the project, and nothing in the
-game changed (they were referenced nowhere).
+**Acceptance — met 2026-10-30.** The five no longer appear in the project; no
+runtime behavior changed because none had a caller.
 
 ---
 

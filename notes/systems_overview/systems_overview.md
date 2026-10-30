@@ -270,7 +270,7 @@ Slot layout is `enum MON { name, speed, life, sprite_data, kill_score, kill_mone
 
 A portrait belongs to the **box**, not to a message: `obj_textbox.portrait` (LL-058). It used to be `message_portrait[]`, written at the index of the message being *added* and drawn at `message_current` - two numbers that only agree while the box holds one message, which is how the popup came to show an older preview's creature.
 
-The pre-restyle art (Bald/Angry/Brainy, Tuskinator/Zero, plus `spr_bald_swim`, `spr_hair_grab`, `spr_hair_idle`, `spr_boss`) is filed under `sprites/…/Zombie Sprites/Legacy/` and is no longer referenced by code.
+The pre-restyle art (Bald/Angry/Brainy, Tuskinator/Zero, plus `spr_bald_swim`, `spr_hair_grab` and `spr_hair_idle`) remains under `sprites/…/Zombie Sprites/Legacy/` and is no longer referenced by code. The five unused boss resources (`spr_boss`, `spr_boss1_walk`/`climb` and `spr_boss2_walk`/`climb`) were removed from the project on 2026-10-30.
 
 Wave rules (`scripts/scr_level_spawn`, `scripts/scr_level_wait`,
 `scripts/scr_level_start`):

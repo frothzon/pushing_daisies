@@ -2290,24 +2290,24 @@
     },
     {
       "id": "legacy-boss-art-cleanup",
-      "title": "Delete or repurpose the three unused boss sprites",
-      "status": "backlog",
-      "owner": "rayu",
+      "title": "Delete five unreferenced legacy boss sprites",
+      "status": "done",
+      "owner": "both",
       "awaiting": "none",
       "area": "art",
       "phase": "2",
       "size": "S",
       "prio": 3,
       "needs": "",
-      "notes": "spr_boss (32x32 Boss icon), spr_boss1_walk (purple mushroom, 15 frames) and spr_boss2_walk (yellow clawed face, 15 frames) are in the .yyp and referenced by NO code - the game uses spr_tusk_walk and spr_zero_walk. They are a trap: they look like the boss set, and they made the 2026-10-18 boss-portrait report ambiguous. Delete them in the IDE, or keep spr_boss if a HUD marker wants it (it would then need a caller).",
+      "notes": "DONE 2026-10-30: removed all five unreferenced legacy boss sprite resources after checking GML and resource references and backing up the full directories plus .yyp to /tmp/pushing_daisies_legacy_boss_art_20261030.tar.gz. The old three-item tracker card omitted both climb sheets; all five items in art_descriptions.md §4.7 are now removed. Game behavior is unchanged because none had a caller.",
       "refs": [
-        "sprites/spr_boss1_walk/spr_boss1_walk.yy",
-        "sprites/spr_boss2_walk/spr_boss2_walk.yy",
-        "sprites/spr_boss/spr_boss.yy"
+        "art_descriptions.md",
+        "notes/systems_overview/systems_overview.md",
+        "pushing_daisies_recovered.yyp"
       ],
       "created": "2026-10-18",
-      "updated": "2026-10-18",
-      "done": null
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
     },
     {
       "id": "level-boot-reentrant",
@@ -5153,6 +5153,12 @@
       "who": "cline",
       "task": "candy-recipes",
       "what": "Corrected the Candy level sink in economy.md: ten recipes at 95 shards each cost 950 shards to take all to L10."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "legacy-boss-art-cleanup",
+      "what": "Removed all five unreferenced pre-restyle boss sprites through the GameMaker project toolkit after backing them up; updated the art inventory and corrected the old three-sprite tracker card."
     }
   ]
 }
