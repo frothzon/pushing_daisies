@@ -90,8 +90,8 @@
     {
       "id": "art-biome-tiles",
       "title": "Art: the Graveyard atlas, props, and a refresh call on the other four",
-      "status": "backlog",
-      "owner": "rayu",
+      "status": "doing",
+      "owner": "both",
       "awaiting": "none",
       "area": "art",
       "phase": "5",
@@ -104,7 +104,7 @@
         "goal.md"
       ],
       "created": "2026-10-05",
-      "updated": "2026-10-19",
+      "updated": "2026-10-30",
       "done": null
     },
     {
