@@ -192,3 +192,253 @@ function candy_stock_buy(_id, _bundles) {
 	scr_meta_log("CANDY","shop buy ",_n*5," ",_id," for ",_n," shards");
 	return true;
 }
+
+
+/// One stage owns one transient active-candy map. Pausing deactivates the
+/// level controller, so these game-time timers freeze without special cases.
+function candy_run_reset() {
+	global.candy_active = {};
+	global.candy_wave_live = false;
+	global.candy_current_wave = 0;
+	global.candy_freeze_waves = 0;
+	global.candy_freeze_active_wave = 0;
+}
+
+function candy_run_active_map() {
+	if(!variable_global_exists("candy_active") || !is_struct(global.candy_active)){
+		global.candy_active = {};
+	}
+	return global.candy_active;
+}
+
+function candy_run_remaining(_id) {
+	var _active=candy_run_active_map();
+	if(!is_string(_id) || !variable_struct_exists(_active,_id)) return 0;
+	var _entry=_active[$ _id];
+	if(!is_struct(_entry) || !variable_struct_exists(_entry,"remaining")
+	|| !is_real(_entry.remaining)) return 0;
+	return max(0,_entry.remaining);
+}
+
+/// Add same-axis candy bonuses. Each type contributes its level-set magnitude
+/// once; consuming another copy extends the timer, never this value.
+function candy_active_magnitude(_field) {
+	if(!is_string(_field)) return 0;
+	var _sum=0, _active=candy_run_active_map(), _all=candy_recipe_table();
+	for(var _i=0; _i<array_length(_all); _i++){
+		var _id=_all[_i].id;
+		if(_id == "everlasting_gob" || !variable_struct_exists(_active,_id)) continue;
+		var _entry=_active[$ _id];
+		if(!is_struct(_entry) || !variable_struct_exists(_entry,"remaining")
+		|| !is_real(_entry.remaining) || _entry.remaining <= 0) continue;
+		var _level=variable_struct_exists(_entry,"level") && is_real(_entry.level)
+		           ? _entry.level : candy_level_get(_id),
+		    _mag=candy_magnitude(_id,_level);
+		if(is_struct(_mag) && variable_struct_exists(_mag,_field)
+		&& is_real(_mag[$ _field])) _sum += _mag[$ _field];
+	}
+	return _sum;
+}
+
+function candy_run_has_active() {
+	var _active=candy_run_active_map(), _keys=variable_struct_get_names(_active);
+	for(var _i=0; _i<array_length(_keys); _i++){
+		if(candy_run_remaining(_keys[_i]) > 0) return true;
+	}
+	return false;
+}
+
+/// Called once as a wave starts. A Gob used between waves attaches to the
+/// upcoming wave; one used during a wave freezes that wave immediately.
+function candy_run_wave_begin(_wave) {
+	if(!is_real(_wave)) return false;
+	global.candy_current_wave = _wave;
+	global.candy_wave_live = true;
+	if(global.candy_freeze_waves > 0 && global.candy_freeze_active_wave <= 0){
+		global.candy_freeze_active_wave = _wave;
+	}
+	return true;
+}
+
+/// Called once when the field is clear and the between-wave timer expires.
+function candy_run_wave_end(_wave) {
+	global.candy_wave_live = false;
+	if(is_real(_wave) && global.candy_freeze_active_wave == _wave){
+		global.candy_freeze_waves = max(0,global.candy_freeze_waves-1);
+		global.candy_freeze_active_wave = 0;
+	}
+}
+
+/// Consume one unit. Ordinary candies add seconds; the Gob adds frozen waves.
+function candy_run_activate(_id) {
+	var _recipe=candy_recipe_find(_id);
+	if(!is_struct(_recipe) || !candy_recipe_unlocked(_id)
+	|| candy_stock_get(_id) <= 0) return false;
+	var _level=candy_level_get(_id),
+	    _mag=candy_magnitude(_id,_level);
+	if(_id == "everlasting_gob" && !candy_run_has_active()) return false;
+	if(!candy_stock_spend(_id,1)) return false;
+	scr_save_meta();
+
+	if(_id == "everlasting_gob"){
+		var _waves=max(1,_mag.freeze_waves);
+		global.candy_freeze_waves += _waves;
+		if(global.candy_wave_live) global.candy_freeze_active_wave = global.candy_current_wave;
+		scr_meta_log("CANDY","activate ",_recipe.label," level=",_level,
+		             " freezes=",_waves," waves total=",global.candy_freeze_waves);
+		return true;
+	}
+
+	var _active=candy_run_active_map(),
+	    _remaining=candy_run_remaining(_id),
+	    _duration=candy_duration_seconds();
+	_active[$ _id] = { remaining:_remaining+_duration, level:_level };
+	candy_reapply_towers();
+	scr_meta_log("CANDY","activate ",_recipe.label," level=",_level,
+	             " add=",_duration,"s remaining=",_remaining+_duration,"s");
+	return true;
+}
+
+/// Tick in game-time seconds, only while a wave has live enemies/spawns.
+/// Dividing by the current FPS keeps fast-forward from consuming more game time;
+/// pause deactivates this owner, so no timer reaches here while paused.
+function candy_run_tick() {
+	if(!variable_global_exists("candy_wave_live") || !global.candy_wave_live) return;
+	if(global.candy_freeze_waves > 0
+	&& global.candy_freeze_active_wave == global.candy_current_wave) return;
+	var _fps=max(1,game_get_speed(gamespeed_fps)),
+	    _step=1/_fps,
+	    _active=candy_run_active_map(),
+	    _keys=variable_struct_get_names(_active),
+	    _expired=false;
+	for(var _i=0; _i<array_length(_keys); _i++){
+		var _id=_keys[_i],
+		    _entry=_active[$ _id];
+		if(!is_struct(_entry) || !variable_struct_exists(_entry,"remaining")
+		|| !is_real(_entry.remaining) || _entry.remaining <= 0) continue;
+		_entry.remaining=max(0,_entry.remaining-_step);
+		_active[$ _id]=_entry;
+		if(_entry.remaining <= 0){
+			_expired=true;
+			scr_meta_log("CANDY","expired ",_id);
+		}
+	}
+	if(_expired) candy_reapply_towers();
+}
+
+/// Rebuild placed towers when a candy starts or expires. Reads another tower's
+/// data only inside with(), and uses the same resolver as placement/upgrading.
+function candy_reapply_towers() {
+	with(obj_tower){
+		if(variable_instance_exists(id,"base_data") && is_array(base_data)
+		&& variable_instance_exists(id,"data") && is_array(data)
+		&& array_length(data) > TOWER.level
+		&& variable_instance_exists(id,"name") && is_string(name)){
+			var _level=data[TOWER.level],
+			    _spec=variable_instance_exists(id,"specialization") && is_string(specialization)
+		          ? specialization : "",
+			    _rebuilt=tower_data_at_level(base_data,_level,
+		                                     clover_damage_bonus(),clover_firerate_bonus());
+			if(is_array(_rebuilt)){
+				data=tower_spec_apply_data(name,_spec,_level,_rebuilt);
+			}
+		}
+	}
+}
+
+/// Stable list of unlocked recipes shown in the pause candy bar.
+function candy_pause_ids() {
+	var _all=candy_recipe_table(), _out=[];
+	for(var _i=0; _i<array_length(_all); _i++){
+		if(candy_recipe_unlocked(_all[_i].id)) _out[array_length(_out)] = _all[_i].id;
+	}
+	return _out;
+}
+
+function candy_pause_rect(_index, _count) {
+	var _w=display_get_gui_width(), _h=display_get_gui_height(),
+	    _margin=24, _gap=8, _cell_w=min(150,(_w-2*_margin-4*_gap)/5),
+	    _cell_h=62, _row_gap=7, _cols=min(5,_count),
+	    _rows=max(1,ceil(_count/5)),
+	    _row=floor(_index/5), _col=_index mod 5,
+	    _row_count=min(5,_count-_row*5),
+	    _row_w=_row_count*_cell_w+(_row_count-1)*_gap,
+	    _x0=(_w-_row_w)*0.5,
+	    _panel_h=38+_rows*_cell_h+(_rows-1)*_row_gap+12,
+	    _top=_h-_panel_h-12,
+	    _x=_x0+_col*(_cell_w+_gap),
+	    _y=_top+34+_row*(_cell_h+_row_gap);
+	return [_x,_y,_x+_cell_w,_y+_cell_h];
+}
+
+function candy_pause_hit() {
+	var _ids=candy_pause_ids(), _m=points_to_gui(mouse_x,mouse_y,0);
+	for(var _i=0; _i<array_length(_ids); _i++){
+		var _r=candy_pause_rect(_i,array_length(_ids));
+		if(_m[0] >= _r[0] && _m[0] <= _r[2]
+		&& _m[1] >= _r[1] && _m[1] <= _r[3]) return _ids[_i];
+	}
+	return "";
+}
+
+/// Compact pause-menu candy inventory and activation panel.
+function candy_pause_draw() {
+	var _ids=candy_pause_ids(),
+	    _w=display_get_gui_width(), _h=display_get_gui_height(),
+	    _rows=max(1,ceil(array_length(_ids)/5)),
+	    _panel_h=38+_rows*62+(_rows-1)*7+12,
+	    _top=_h-_panel_h-12;
+	draw_set_alpha(1);
+	draw_set_colour(make_colour_rgb(24,20,28));
+	draw_rectangle(12,_top,_w-12,_h-8,false);
+	draw_set_colour(c_white);
+	draw_set_font(fnt_size16);
+	draw_set_halign(fa_center);
+	draw_text(_w*0.5,_top+7,"CANDY  -  click to use; same candy adds time");
+	if(array_length(_ids) == 0){
+		draw_set_font(fnt_size12);
+		draw_text(_w*0.5,_top+38,"Unlock candy recipes in the Garden Book.");
+	} else {
+		for(var _i=0; _i<array_length(_ids); _i++){
+			var _id=_ids[_i],
+			    _r=candy_pause_rect(_i,array_length(_ids)),
+			    _stock=candy_stock_get(_id),
+			    _remaining=candy_run_remaining(_id),
+			    _usable=(_stock > 0),
+			    _hover=(mouse_x >= _r[0] && mouse_x <= _r[2]
+			         && mouse_y >= _r[1] && mouse_y <= _r[3]),
+			    _colour=_usable ? (_hover ? make_colour_rgb(70,90,60) : make_colour_rgb(52,60,48))
+			                    : make_colour_rgb(42,42,46);
+			if(_id == "everlasting_gob" && !candy_run_has_active()) _usable=false;
+			draw_set_colour(_colour);
+			draw_rectangle(_r[0],_r[1],_r[2],_r[3],false);
+			draw_set_colour(c_white);
+			var _icon=icon_candy(_id),
+			    _cx=_r[0]+22, _cy=_r[1]+31;
+			if(sprite_exists(_icon)){
+				icon_draw(_icon,_cx,_cy,32,"pause_candy");
+			} else {
+				draw_set_colour(_id == "blood_orange" ? c_orange : c_yellow);
+				draw_circle(_cx,_cy,14,false);
+				draw_set_colour(c_white);
+				draw_set_font(fnt_size12);
+				draw_text(_cx,_cy-7,_id == "blood_orange" ? "BO" : "MH");
+			}
+			draw_set_font(fnt_size12);
+			draw_set_halign(fa_left);
+			draw_set_colour(_usable ? c_white : c_silver);
+			draw_text(_r[0]+42,_r[1]+7,ui_clip_text(candy_recipe_find(_id).label,_r[2]-_r[0]-50));
+			draw_set_colour(_stock > 0 ? c_lime : c_silver);
+			draw_text(_r[2]-7,_r[1]+7,"x"+string(_stock));
+			draw_set_colour(c_silver);
+			var _status=(_id == "everlasting_gob")
+			            ? string(global.candy_freeze_waves)+" frozen wave(s)"
+			            : (_remaining > 0 ? string_format(_remaining,1,0)+"s left" : "ready");
+			draw_text(_r[0]+42,_r[1]+34,_status);
+		}
+	}
+	draw_set_halign(fa_left);
+	draw_set_font(fnt_size16);
+	draw_set_colour(c_white);
+	draw_set_alpha(1);
+}

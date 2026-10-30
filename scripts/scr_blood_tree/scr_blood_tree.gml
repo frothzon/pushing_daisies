@@ -69,6 +69,7 @@ function blood_pity_fill_bonus() {
 	var _bonus = 0;
 	if(blood_node_rank("blood_magnet") > 0) _bonus += 0.10;
 	if(blood_node_rank("hemorrhagic_harvest") > 0) _bonus += 0.25;
+	_bonus += candy_active_magnitude("pity_fill");
 	return _bonus;
 }
 

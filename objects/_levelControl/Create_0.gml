@@ -19,6 +19,9 @@ tower_list = ds_list_create();
 
 scr_setupSpawning();
 
+/// Candy stock persists; run timers reset with each new stage.
+candy_run_reset();
+
 /// setup path finding grid
 globalvar LEVEL;
 LEVEL = id;

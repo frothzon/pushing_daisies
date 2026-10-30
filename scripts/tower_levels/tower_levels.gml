@@ -111,6 +111,19 @@ function tower_data_at_level(_base, _level, _clover_dmg, _clover_rate) {
 	_out[TOWER.fire_rate] = _base[TOWER.fire_rate] * (1 + _clover_rate) * tower_level_firerate(_level);
 	_out[TOWER.range]     = _base[TOWER.range]                          * tower_level_range(_level);
 	_out[TOWER.level]     = _level;
+
+	/// Active candies use additive bonuses on shared axes; re-resolution when
+	/// one starts/expires keeps placed towers and the selected-card preview equal.
+	_out[TOWER.damage]    *= 1 + candy_active_magnitude("damage");
+	_out[TOWER.fire_rate] *= 1 + candy_active_magnitude("fire_rate");
+	_out[TOWER.range]     *= 1 + candy_active_magnitude("range");
+	if(array_length(_out) > TOWER.crit_chance && is_real(_out[TOWER.crit_chance])){
+		_out[TOWER.crit_chance] = clamp(_out[TOWER.crit_chance]
+		                                + candy_active_magnitude("crit_chance"),0,1);
+	}
+	if(array_length(_out) > TOWER.crit_damage && is_real(_out[TOWER.crit_damage])){
+		_out[TOWER.crit_damage] += candy_active_magnitude("crit_damage");
+	}
 	return _out;
 }
 
