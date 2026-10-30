@@ -101,6 +101,18 @@ function region_of_biome(_biome) {
 	return undefined;
 }
 
+/// Desert storms arrive every fifth wave and reduce every tower's effective
+/// acquisition range by 20% for that wave. The 0.80 multiplier matches the
+/// existing Endless range modifier (goal.md 27.4 / 22).
+function region_sandstorm_active(_region, _wave) {
+	if(!is_real(_region) || !is_real(_wave) || _wave < 1) return false;
+	return _region == 3 && (_wave mod 5) == 0;
+}
+
+function region_tower_range_multiplier(_region, _wave) {
+	return region_sandstorm_active(_region,_wave) ? 0.80 : 1.00;
+}
+
 /// The terrain atlas and elevation tint for one biome/layer. Grass retains its
 /// authored four-band strata; the other biomes use their own atlas at every
 /// elevation. Graveyard uses the documented dirt fallback until its atlas lands.

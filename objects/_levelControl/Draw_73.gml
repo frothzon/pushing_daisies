@@ -134,7 +134,7 @@ if(_hov != noone){
 }
 
 if(_ring != noone){
-    var _range = _ring.data[TOWER.range];
+    var _range = tower_effective_range(_ring.data[TOWER.range]);
     draw_set_colour(c_white);
     draw_set_blend_mode(bm_add);
     draw_set_alpha(tower_range_alpha);

@@ -273,6 +273,7 @@ function ui_text_catalog_en() {
 		tower_choice_missing_path : "No path is defined",
 		candy_fallback_bo : "BO",
 		candy_fallback_mh : "MH",
+		region_sandstorm_status : "SANDSTORM -20% RANGE",
 		endless_name : "Endless",
 		garden_tab_candy : "Candy",
 		garden_candy_recipes : "Candy Recipes",

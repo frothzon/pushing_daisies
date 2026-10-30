@@ -9,7 +9,7 @@ if(blocked){
     scr_draw_self_scaled(draw_scale);
 }
 
-draw_circle(x,y,data[TOWER.range],true);
+draw_circle(x,y,tower_effective_range(data[TOWER.range]),true);
 
 /// draw stats
 scr_drawTowerStats(c_white);

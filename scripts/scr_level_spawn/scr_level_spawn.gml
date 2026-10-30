@@ -1,3 +1,20 @@
+/// Place a newly created monster at the prepared mid-path grave.
+function scr_level_spawn_from_grave(_monster, _point) {
+	if(!instance_exists(_monster) || !is_struct(_point)
+	|| !variable_struct_exists(_point,"x") || !variable_struct_exists(_point,"y")
+	|| !is_real(_point.x) || !is_real(_point.y)) return false;
+	var _x = _point.x, _y = _point.y;
+	with(_monster){
+		spawn_object = { x:_x, y:_y };
+		start_pos = array(_x,_y);
+		x = _x;
+		y = _y;
+		pos_save = array(_x,_y);
+		depth = scr_depth_y(y);
+	}
+	return true;
+}
+
 /// Pick a room spawn point for this monster. Endless split waves keep their
 /// existing two-endpoint cursor; Jungle alternates those endpoints every
 /// monster, and reverses the first side each wave. Other regions stay random.
@@ -73,6 +90,14 @@ function scr_level_spawn() {
 		}
 		candy_run_wave_begin(wave_count);
 		shard_wave_begin(wave_count,_row.region);
+		var _range_mult = region_tower_range_multiplier(_row.region,wave_count);
+		if(endless_is_active()) _range_mult *= endless_tower_range_multiplier(wave_count);
+		global.active_tower_range_multiplier = _range_mult;
+		tower_range_lights_refresh();
+		if(region_sandstorm_active(_row.region,wave_count)){
+			scr_meta_log("REGION","Desert sandstorm wave=",wave_count,
+			             " tower_range x",_range_mult);
+		}
 		add_item_value(waves,1);
 		scr_playSound(snd_zomb_emerge,false);
 
@@ -152,6 +177,13 @@ function scr_level_spawn() {
 	        wait_timer = _fps * 0.5;
 	        /// created at the y=0 edge of the band: obj_mon/Create_0 immediately
 	        /// re-derives it from the spawn point it picked (LL-059)
+	        var _grave_ambush = !is_boss_wave && is_struct(_row)
+	                            && variable_struct_exists(_row,"region") && _row.region == 5
+	                            && ((spawn_current + 1) mod 3) == 0
+	                            && variable_instance_exists(id,"graveyard_midpoint_ready")
+	                            && graveyard_midpoint_ready
+	                            && variable_instance_exists(id,"graveyard_routes")
+	                            && is_array(graveyard_routes) && array_length(graveyard_routes) > 0;
 	        var _inst = instance_create_depth(0,0,scr_depth_band(0),obj_mon);
 	        spawn_current++;
 	        _inst.sprite_array = _mon[MON.sprite_data];
@@ -172,6 +204,20 @@ function scr_level_spawn() {
 	        /// the log.
 	        with(_inst){
 	            mon_rig_dress(rig);
+	        }
+	        if(_grave_ambush){
+	            var _grave_source = noone;
+	            with(_inst){
+	                if(variable_instance_exists(id,"spawn_object")) _grave_source = spawn_object;
+	            }
+	            var _grave_point = scr_level_graveyard_point_for_spawn(_grave_source);
+	            if(is_struct(_grave_point) && scr_level_spawn_from_grave(_inst,_grave_point)){
+	                scr_meta_log("REGION","Graveyard mid-path emerge wave=",wave_count,
+	                             " from selected route grave x=",_grave_point.x,
+	                             " y=",_grave_point.y);
+	            } else {
+	                scr_meta_log("REGION","WARNING no route grave for selected spawner; using room spawn");
+	            }
 	        }
 	        var _elite_chance = 0.05 + blood_fields_night_elite_bonus(_row.region,wave_count),
 	            _forced_elite = endless_is_active() && endless_forced_elites(wave_count),

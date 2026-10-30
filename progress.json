@@ -2789,15 +2789,15 @@
     {
       "id": "region-mechanics",
       "title": "The five remaining region mechanics",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "5",
       "size": "L",
       "prio": 3,
-      "needs": "",
-      "notes": "Current audit: Region 2 already refuses towers on water cells; Region 6 Blood Fields Night adds elite chance and shard pity fill. Goal.md 27.4 still needs Region 3 sandstorm range debuff, Region 4 alternating spawners, and Region 5 mid-path grave emergence. Starting with Jungle by reusing the room spawner list and existing wave spawn flow; the remaining two mechanics stay in this card.",
+      "needs": "Reload GameMaker with global.devMode=true and check Region 3 waves 5/10. Expect META [REGION] Desert sandstorm wave=5 tower_range x0.8 and the SANDSTORM label; tower targeting and range indicators should contract for the storm wave and return to normal on wave 6. In Region 4, expect META [REGION] Jungle alternating spawns wave=... first=0/5; observe alternating outer endpoints within each wave and the first endpoint reversing next wave. In Region 5, expect prepared route graves routes=6/6 and every third non-boss zombie emerging at the midpoint for its selected room spawner. Verify Region 2 still blocks water placement and Region 6 still applies its night bonuses. A missing storm, wrong spawn cadence, grave-route WARNING, or PATH error falsifies the change.",
+      "notes": "Goal.md §27.4 implementation is in code: Region 4 alternates outer Jungle spawners each monster and reverses the first side each wave; Region 3 applies tower range x0.80 every fifth Desert wave, updates targeting, lights and range indicators, and shows SANDSTORM on the HUD; Region 5 prepares a midpoint and placement-blocking headstone for each room spawn route, then sends every third non-boss spawn to the midpoint belonging to its selected route. Region 2 water refusal and Region 6 Blood Fields Night remain implemented. Round-trip, balance, progress, touched-GML parsing, and line-ending checks passed. Runtime review remains.",
       "refs": [
         "scripts/region_data/region_data.gml"
       ],
@@ -3689,7 +3689,7 @@
       "phase": "3",
       "size": "M",
       "prio": 3,
-      "needs": "Reload GameMaker with global.devMode=true and clear a stage. Expect the existing LEVEL COMPLETE banner line (80% to 100% over 3s) and UI [HUD] layout OK canvas=<w>x540 nodes=6; press F12 and confirm UI [dump] hud shows hud.complete from 0,0 to <w>,540. The banner art should remain centered and 60% of GUI height at windowed and fullscreen aspect. A shifted/cropped banner, UI [HUD] layout FAIL, or changed 3-second hold falsifies it.",
+      "needs": "Reload GameMaker with global.devMode=true and clear a stage. Expect the existing LEVEL COMPLETE banner line (80% to 100% over 3s) and UI [HUD] layout OK canvas=<w>x540 nodes=7; press F12 and confirm UI [dump] hud shows hud.complete from 0,0 to <w>,540. The banner art should remain centered and 60% of GUI height at windowed and fullscreen aspect. A shifted/cropped banner, UI [HUD] layout FAIL, or changed 3-second hold falsifies it.",
       "notes": "2026-10-30: Menu title/options already use ui_menu_tree, and the in-run HUD now uses ui_hud_tree (ui-hud-flex). Remaining screen piece: anchor the Level Complete banner’s existing art-bbox center and 60%-of-GUI-height scale to a named full-canvas flex node, preserving LL-055 timing. Options and HUD runtime review remains with Rayu.",
       "refs": [
         "scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml",
@@ -3754,7 +3754,7 @@
       "phase": "3",
       "size": "M",
       "prio": 2,
-      "needs": "Reload GameMaker with global.devMode=true and run a stage. Confirm stat icons stay upper-right, speed controls upper-left, and the selected tower card with clickable Upgrade/Sell buttons stays bottom-left. Resize or toggle fullscreen and press F12: expect UI [HUD] layout OK canvas=<w>x540 nodes=6 and UI [dump] hud with 7 tree nodes. Try the speed buttons and Upgrade/Sell after resizing. Any UI [HUD] layout FAIL line, overlap, stale position, or click miss falsifies it.",
+      "needs": "Reload GameMaker with global.devMode=true and run a stage. Confirm stat icons stay upper-right, speed controls and any SANDSTORM label stay upper-left, and the selected tower card with clickable Upgrade/Sell buttons stays bottom-left. Resize or toggle fullscreen and press F12: expect UI [HUD] layout OK canvas=<w>x540 nodes=7 and UI [dump] hud with 7 tree nodes. Try the speed buttons and Upgrade/Sell after resizing. Any UI [HUD] layout FAIL line, overlap, stale position, or click miss falsifies it.",
       "notes": "",
       "refs": [
         "scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml",

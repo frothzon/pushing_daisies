@@ -605,7 +605,7 @@ function tower_spec_choose_instance(_tower, _index) {
 		tower_string = scr_dataToString(data);
 		image_blend = merge_colour(c_gray,c_white,data[TOWER.level]/10);
 		if(variable_instance_exists(id,"tower_light") && scr_isValidInstance(tower_light)){
-			var _radius = data[TOWER.range];
+			var _radius = tower_effective_range(data[TOWER.range]);
 			with(tower_light){ scr_scale_sprite(_radius*2,_radius*2); }
 		}
 	}

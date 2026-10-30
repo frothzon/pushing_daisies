@@ -14,6 +14,9 @@ ground_map = _mainControl.ground_map;
 
 tower_list = ds_list_create();
 run_mode_endless = endless_is_active();
+global.active_tower_range_multiplier = 1;
+graveyard_routes = [];
+graveyard_midpoint_ready = false;
 
 
 /// setup spawns

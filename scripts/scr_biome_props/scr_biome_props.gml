@@ -44,6 +44,60 @@ function biome_prop_table() {
 	];
 }
 
+/// Find a safe midpoint on the route from a room spawn to the exit. This
+/// reuses the live path grid and leaves both temporary paths freed.
+function biome_graveyard_midpoint(_grid, _x1, _y1, _x2, _y2) {
+	if(!is_real(_grid) || _grid < 0
+	|| !is_real(_x1) || !is_real(_y1) || !is_real(_x2) || !is_real(_y2)) return undefined;
+	var _route = path_add(), _probe = path_add();
+	if(!scr_path_replace(_grid,_x1,_y1,_x2,_y2,_route,_probe)){
+		path_delete(_route);
+		path_delete(_probe);
+		return undefined;
+	}
+	var _length = path_get_length(_route),
+	    _x = path_get_x(_route,0.50),
+	    _y = path_get_y(_route,0.50);
+	path_delete(_route);
+	path_delete(_probe);
+	if(!is_real(_length) || _length < 128 || !is_real(_x) || !is_real(_y)) return undefined;
+	return { x:round(_x), y:round(_y), length:_length };
+}
+
+/// Place a cemetery marker at one route mid-point. It reserves its cell in
+/// the tower-placement grid, but does not block the monster path grid.
+function biome_graveyard_marker_spawn(_x, _y, _cell_w, _cell_h, _stage, _variant) {
+	if(!is_real(_x) || !is_real(_y) || !is_real(_cell_w) || _cell_w <= 0
+	|| !is_real(_cell_h) || _cell_h <= 0 || !is_real(_stage)
+	|| !is_real(_variant)) return noone;
+	var _stones = [spr_headstone_cracked,spr_headstone_flower,
+	               spr_headstone_obelisk,spr_headstone_round],
+	    _stone_index = (max(1,floor(_stage))-1+max(0,floor(_variant))) mod array_length(_stones),
+	    _sprite = _stones[_stone_index];
+	if(!sprite_exists(_sprite)) return noone;
+	var _scale = 48 / max(1,sprite_get_height(_sprite)),
+	    _col = floor((_x + _cell_w) / _cell_w),
+	    _row = floor((_y + _cell_h) / _cell_h),
+	    _marker = instance_create_depth(_x,_y,scr_depth_band(_y)+1,obj_biome_prop);
+	if(!instance_exists(_marker)) return noone;
+	with(_marker){
+		sprite_index = _sprite;
+		image_index = 0;
+		image_speed = 0;
+		image_xscale = _scale;
+		image_yscale = _scale;
+		image_angle = 0;
+		image_blend = c_white;
+		image_alpha = 1;
+		visible = true;
+		depth = scr_depth_band(y)+1;
+		biome_prop_col = _col;
+		biome_prop_row = _row;
+		biome_prop_footprint = 1;
+	}
+	return _marker;
+}
+
 function biome_prop_biome_name(_biome) {
 	switch(_biome){
 		case BIOME.SWAMP: return "swamp";

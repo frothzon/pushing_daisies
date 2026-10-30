@@ -290,7 +290,8 @@ if(mouse_check_button_pressed(mb_left) && tower_timer > 10){
                         /// reset tower light
                         with(tower_selection.tower_light){
                             var _them = other.tower_selection;
-                            scr_scale_sprite(_them.data[TOWER.range]*2,_them.data[TOWER.range]*2);
+                            var _diameter = tower_effective_range(_them.data[TOWER.range])*2;
+                            scr_scale_sprite(_diameter,_diameter);
                         }
                     }
                 }

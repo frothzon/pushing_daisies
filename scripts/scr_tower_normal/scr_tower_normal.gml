@@ -50,11 +50,10 @@ function scr_tower_normal() {
 	}
 
 	target = instance_nearest(x,y,obj_mon);
-var _range_mult=endless_is_active()
-	                  ? endless_tower_range_multiplier(get_item_value(STATINV.waves)) : 1;
+	var _effective_range = tower_effective_range(data[TOWER.range]);
 	if(attack_timer >= attack_cycle
 	&& scr_isValidInstance(target)
-	&& point_in_circle(x,y,target.x,target.y,data[TOWER.range]*_range_mult)){
+	&& point_in_circle(x,y,target.x,target.y,_effective_range)){
 	    /// change state to shoot
 	    scr_changeState(scr_tower_shoot);
 	}

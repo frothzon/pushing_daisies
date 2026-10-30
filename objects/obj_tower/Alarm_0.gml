@@ -1,7 +1,8 @@
 /// @description  create light
 tower_light = instance_create(x,y,_light);
 with(tower_light){
-    scr_scale_sprite(other.data[TOWER.range]*2,other.data[TOWER.range]*2);
+    var _diameter = tower_effective_range(other.data[TOWER.range])*2;
+    scr_scale_sprite(_diameter,_diameter);
 }
 
 /// where we can click the tower is answered by the MASK now, every step,

@@ -123,7 +123,7 @@ function scr_tower_shoot() {
 	    }
 	}
 	if(!_live){
-	    target = find_all_range(x,y,obj_mon,data[TOWER.range],data[TOWER.targets]);
+	    target = find_all_range(x,y,obj_mon,tower_effective_range(data[TOWER.range]),data[TOWER.targets]);
 	    if(!is_array(target)){
 	        /// nothing left to shoot - return to idle rather than holding
 	        /// the attack pose (this is the playtest bug)
@@ -171,7 +171,7 @@ function scr_tower_shoot() {
 	            scr_do_damage(target, _i, _hit_damage, _is_critical);
 	            if(_is_critical){
 	                tower_spec_signature_on_hit(name,_spec_key,data[TOWER.level],
-	                    x,y,data[TOWER.range],target,_hit_damage,true);
+	                    x,y,tower_effective_range(data[TOWER.range]),target,_hit_damage,true);
 	            }
 	        }
 	    }

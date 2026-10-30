@@ -13,6 +13,9 @@ function ui_hud_tree() {
 			/// two 48px speed/pause cells, top-left
 			{ name: "hud.speed", positionType: "absolute",
 			  left: 16, top: 16, width: 96, height: 48 },
+			/// Region weather label, beside the speed controls and clear of stats.
+			{ name: "hud.region.weather", positionType: "absolute",
+			  left: 128, top: 16, width: 192, height: 48 },
 			/// four 32px stat icons, 48px apart, top-right
 			{ name: "hud.stats", positionType: "absolute",
 			  right: 24, top: 24, width: 32, height: 176 },
@@ -53,6 +56,7 @@ function ui_hud_check() {
 	var _w = global.ui.w, _h = global.ui.h,
 	    _specs = [
 		["hud.speed", 16, 16, 112, 64],
+		["hud.region.weather", 128, 16, 320, 64],
 		["hud.stats", _w-56, 24, _w-24, 200],
 		["hud.complete", 0, 0, _w, _h],
 		["hud.tower", 16, _h-204, 336, _h-16],
@@ -74,7 +78,7 @@ function ui_hud_check() {
 			_ok = false;
 		}
 	}
-	if(_ok) ui_log("HUD", "layout OK canvas=", _w, "x", _h, " nodes=6");
+	if(_ok) ui_log("HUD", "layout OK canvas=", _w, "x", _h, " nodes=7");
 	return _ok;
 }
 

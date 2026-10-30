@@ -35,6 +35,27 @@ if(_ui > 0.01){
     draw_set_alpha(1);
 }
 
+/// Desert sandstorms are a wave rule, and the status sits beside the speed
+/// controls so the temporary range loss is visible without opening the card.
+var _weather_row = stage_current(),
+    _weather_wave = get_item_value(STATINV.waves);
+if(_ui > 0.01 && is_struct(_weather_row)
+&& variable_struct_exists(_weather_row,"region")
+&& region_sandstorm_active(_weather_row.region,_weather_wave)){
+    var _weather_rect = ui_rect("hud","hud.region.weather");
+    if(array_length(_weather_rect) >= 4){
+        var _weather_text = ui_text("region_sandstorm_status"),
+            _weather_w = _weather_rect[2]-_weather_rect[0];
+        ui_fit_font(_weather_text,_weather_w,[16,14,12]);
+        _weather_text = ui_clip_text(_weather_text,_weather_w);
+        draw_set_colour(c_yellow);
+        draw_set_halign(fa_left);
+        draw_set_valign(fa_middle);
+        draw_text_outline(_weather_rect[0],(_weather_rect[1]+_weather_rect[3])*0.5,
+                          _weather_text,c_yellow,c_black,1);
+    }
+}
+
 /// startup
 
 draw_set_halign(fa_center);

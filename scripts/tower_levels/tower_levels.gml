@@ -93,6 +93,33 @@ function tower_sell_refund(_invested) {
 	return round(_invested * 0.60);
 }
 
+
+/// Apply the active wave's shared range modifier to a tower's stored stat.
+/// The level controller updates this once at each wave start.
+function tower_effective_range(_range) {
+	if(!is_real(_range) || _range < 0) return 0;
+	var _mult = variable_global_exists("active_tower_range_multiplier")
+	            && is_real(global.active_tower_range_multiplier)
+	            ? max(0,global.active_tower_range_multiplier) : 1;
+	return _range * _mult;
+}
+
+/// Rescale every placed tower's range light after the wave modifier changes.
+function tower_range_lights_refresh() {
+	with(obj_tower){
+		if(variable_instance_exists(id,"data") && is_array(data)
+		&& array_length(data) > TOWER.range
+		&& variable_instance_exists(id,"tower_light")
+		&& instance_exists(tower_light)){
+			with(tower_light){
+				var _diameter = tower_effective_range(other.data[TOWER.range]) * 2;
+				scr_scale_sprite(_diameter,_diameter);
+			}
+		}
+	}
+	return true;
+}
+
 /// A tower's data at a given level: the roster's BASE stats, the garden's
 /// permanent clover bonuses, then the level ladder.
 ///
