@@ -94,10 +94,11 @@ function tower_stat_note(_name) {
 				break;
 			case STATUS.BLEED:
 				_part = "bleed " + string(round(_e.chance*100)) + "% "
-				        + string(_e.amount) + "/s/" + string(_e.seconds) + "s";
+				        + string(_e.amount) + "/px/" + string(_e.seconds) + "s";
 				break;
 			case STATUS.VULN:
-				_part = "vulnerable " + string(round(_e.chance*100)) + "%/"
+				_part = "vulnerable " + string(round(_e.chance*100)) + "% +"
+				        + string(round(_e.amount*100)) + "% damage/"
 				        + string(_e.seconds) + "s";
 				break;
 		}

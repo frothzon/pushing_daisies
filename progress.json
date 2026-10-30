@@ -948,21 +948,22 @@
     {
       "id": "combat-status-bleed-vulnerable",
       "title": "Statuses 6-7: bleed and vulnerable",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
       "phase": "2",
       "size": "M",
       "prio": 3,
-      "needs": "",
-      "notes": "Bleed scales with movement (goal.md 7), so it only makes sense once slow works - it is the one status that interacts with another. Vulnerable is DAMAGE AMPLIFICATION, so it belongs at the pipeline (combat-damage-pipeline) rather than at the monster: it multiplies the amount the tower passes in.",
+      "needs": null,
+      "notes": "Bleed scales with movement (goal.md 7), so it only makes sense once slow works - it is the one status that interacts with another. Vulnerable is DAMAGE AMPLIFICATION, so it belongs at the pipeline (combat-damage-pipeline) rather than at the monster: it multiplies the amount the tower passes in. ENGINE IMPLEMENTED 2026-10-30: Bleed deals damage per actual path pixel moved (0.1 damage/px is the trait contract, so slow/root changes its delivered DPS); Vulnerable stores a strongest-wins bonus fraction and multiplies all hits in scr_do_damage, including DoT. No current roster tower is designed to apply either effect, so the card remains doing until a tower/spec source is wired for player-visible review.",
       "refs": [
         "scripts/scr_do_damage/scr_do_damage.gml",
         "objects/obj_mon/Step_0.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "combat-status-burn",

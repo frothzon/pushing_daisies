@@ -96,9 +96,10 @@ function status_class_name(_class) {
 /// Apply (or REFRESH) one kind on one monster.
 ///
 /// `_mult` is a SPEED multiplier for SLOW; `_amount` is damage per second for
-/// BURN and damage per second per stack for POISON. Burn adds proc duration;
-/// Poison adds up to five stacks and refreshes duration; other statuses keep
-/// their strongest effect and longest duration.
+/// BURN, damage per second per stack for POISON, damage per path pixel for
+/// BLEED, and the damage bonus fraction for VULN. Burn adds proc duration;
+/// Poison adds up to five stacks; other statuses keep their strongest effect
+/// and longest duration.
 ///
 /// STALE ENTRIES ARE OVERWRITTEN, NOT REMOVED.  An expired status keeps its
 /// key and sits at frames <= 0, which every reader treats as "not there".
@@ -199,6 +200,18 @@ function status_apply(_mon, _kind, _mult, _frames, _amount) {
 		print("STAT  ", status_name(_kind), " ", _a, " damage/s for ", _f,
 		      "f on ", _mon, " class=", status_class_name(_class),
 		      " (", _fresh ? "new" : "refresh", ") now ", status_summary(_mon));
+	} else if(_kind == STATUS.POISON){
+		print("STAT  poison ", _a, " damage/s per stack for ", _f,
+		      "f on ", _mon, " class=", status_class_name(_class),
+		      " (", _fresh ? "new" : "stack", ") now ", status_summary(_mon));
+	} else if(_kind == STATUS.BLEED){
+		print("STAT  bleed ", _a, " damage/px while moving for ", _f,
+		      "f on ", _mon, " class=", status_class_name(_class),
+		      " (", _fresh ? "new" : "refresh", ") now ", status_summary(_mon));
+	} else if(_kind == STATUS.VULN){
+		print("STAT  vulnerable +", round(_a*100), "% damage taken for ", _f,
+		      "f on ", _mon, " class=", status_class_name(_class),
+		      " (", _fresh ? "new" : "refresh", ") now ", status_summary(_mon));
 	} else {
 		print("STAT  ", status_name(_kind), " x", _m, " for ", _f,
 		      "f on ", _mon, " class=", status_class_name(_class),
@@ -226,15 +239,23 @@ function status_summary(_mon) {
 				|| !variable_struct_exists(_s, "frames")
 				|| !is_real(_s.frames) || _s.frames <= 0) continue;
 				_out += (_out == "" ? "" : ", ");
+				var _amount = 0;
+				if(variable_struct_exists(_s, "amount") && is_real(_s.amount)){
+					_amount = _s.amount;
+				}
 				if(_s.kind == STATUS.BURN || _s.kind == STATUS.POISON){
-					var _amount = 0;
-					if(variable_struct_exists(_s, "amount") && is_real(_s.amount)){
-						_amount = _s.amount;
-					}
 					var _stacks = (_s.kind == STATUS.POISON) ? status_stack_count(_s) : 1;
 					_out += status_name(_s.kind) + " " + string(_amount * _stacks) + "dps";
 					if(_s.kind == STATUS.POISON) _out += " x" + string(_stacks);
 					_out += " " + string(_s.frames) + "f";
+				} else if(_s.kind == STATUS.BLEED){
+					_out += "bleed " + string(_amount) + " damage/px "
+					      + string(_s.frames) + "f";
+				} else if(_s.kind == STATUS.VULN){
+					_out += "vulnerable +" + string(round(_amount*100)) + "% "
+					      + string(_s.frames) + "f";
+				} else if(_s.kind == STATUS.STUN || _s.kind == STATUS.ROOT){
+					_out += status_name(_s.kind) + " stopped " + string(_s.frames) + "f";
 				} else {
 					var _mult = 1;
 					if(variable_struct_exists(_s, "mult") && is_real(_s.mult)){
@@ -275,9 +296,26 @@ function status_speed_mult() {
 	return clamp(_m, 0, 1);
 }
 
+/// The damage multiplier from a live Vulnerable status on the CALLING monster.
+/// Direct hits and DoT both pass through scr_do_damage, so they share this one
+/// read and Vulnerability cannot affect only one damage route.
+function status_damage_taken_mult() {
+	if(!variable_instance_exists(id, "status_count")
+	|| !is_real(status_count) || status_count <= 0) return 1;
+	if(!variable_instance_exists(id, "statuses") || !is_struct(statuses)) return 1;
+	var _key = string(STATUS.VULN);
+	if(!variable_struct_exists(statuses, _key)) return 1;
+	var _s = statuses[$ _key];
+	if(!is_struct(_s) || !variable_struct_exists(_s, "frames")
+	|| !is_real(_s.frames) || _s.frames <= 0) return 1;
+	var _bonus = variable_struct_exists(_s, "amount") && is_real(_s.amount)
+	             ? clamp(_s.amount, 0, 4) : 0;
+	return 1 + _bonus;
+}
+
 /// The colour the CALLING monster is drawn with while it carries something.
 /// c_white = unaffected, which is the important half: obj_mon/Draw_0 writes
-/// this EVERY frame, so a slow that has ended cannot leave a blue wash behind.
+/// this EVERY frame, so an expired effect cannot leave a tint behind.
 function status_tint() {
 	if(!variable_instance_exists(id, "status_count")) return c_white;
 	if(!is_real(status_count) || status_count <= 0) return c_white;
@@ -350,6 +388,20 @@ function status_tick() {
 			if(_damage_per_second > 0){
 				/// Directly uses the amount pipeline: status ticks never roll crit.
 				scr_do_damage(_self, 0, _damage_per_second / _fps, false);
+			}
+		}
+		if(_s.kind == STATUS.BLEED && _alive_for_dot){
+			/// Bleed is damage per path pixel, so fast movement naturally takes
+			/// more damage per second while a stopped/rooted monster takes none.
+			var _move_speed = 0;
+			if(variable_instance_exists(id, "path_speed") && is_real(path_speed)){
+				_move_speed = abs(path_speed);
+			}
+			var _damage_per_pixel = variable_struct_exists(_s, "amount")
+			                        && is_real(_s.amount) ? max(0, _s.amount) : 0,
+			    _bleed_damage = _damage_per_pixel * _move_speed;
+			if(_bleed_damage > 0){
+				scr_do_damage(_self, 0, _bleed_damage, false);
 			}
 		}
 		_s.frames -= 1;
