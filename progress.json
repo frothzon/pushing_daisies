@@ -3160,7 +3160,7 @@
     {
       "id": "stages-region-2",
       "title": "Author region 2: ten stage rows",
-      "status": "backlog",
+      "status": "done",
       "owner": "cline",
       "awaiting": "none",
       "area": "data",
@@ -3168,17 +3168,18 @@
       "size": "M",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.6, one region per card because the falsifier is per-stage: 'if authoring one stage takes more than ~30 minutes the DATA SCHEMA is wrong - fix the schema, not the stages'. Region rows need only what stage_data authors (spawn mix, bosses, par_spend, par_time); the wave count and the curve come from region_data. CARRIED FROM phase5-regions (applies to all five region cards): region_data already carries the curve, the seeds and the wave rule for all six biomes, so this is table-filling plus art - which is what roadmap 5.6 promised. Blocked in practice on the biome art, not on code.",
+      "notes": "Completed: all ten Region 2 stage rows are present in scripts/stage_data/stage_data.gml, with spawn mixes, ordered boss pairs, seed rewards, and authored par_spend/par_time cutoffs. The shared region_data table supplies the wave rule and curve. Tracker catch-up; no new rows were added in this update.",
       "refs": [
         "scripts/stage_data/stage_data.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
     },
     {
       "id": "stages-region-3",
       "title": "Author region 3: ten stage rows",
-      "status": "backlog",
+      "status": "done",
       "owner": "cline",
       "awaiting": "none",
       "area": "data",
@@ -3186,17 +3187,18 @@
       "size": "M",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.6, one region per card because the falsifier is per-stage: 'if authoring one stage takes more than ~30 minutes the DATA SCHEMA is wrong - fix the schema, not the stages'. Region rows need only what stage_data authors (spawn mix, bosses, par_spend, par_time); the wave count and the curve come from region_data.",
+      "notes": "Completed: all ten Region 3 stage rows are present in scripts/stage_data/stage_data.gml, with spawn mixes, ordered boss pairs, seed rewards, and authored par_spend/par_time cutoffs. The shared region_data table supplies the wave rule and curve. Tracker catch-up; no new rows were added in this update.",
       "refs": [
         "scripts/stage_data/stage_data.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
     },
     {
       "id": "stages-region-4",
       "title": "Author region 4: ten stage rows",
-      "status": "backlog",
+      "status": "done",
       "owner": "cline",
       "awaiting": "none",
       "area": "data",
@@ -3204,17 +3206,18 @@
       "size": "M",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.6, one region per card because the falsifier is per-stage: 'if authoring one stage takes more than ~30 minutes the DATA SCHEMA is wrong - fix the schema, not the stages'. Region rows need only what stage_data authors (spawn mix, bosses, par_spend, par_time); the wave count and the curve come from region_data.",
+      "notes": "Completed: all ten Region 4 stage rows are present in scripts/stage_data/stage_data.gml, with spawn mixes, ordered boss pairs, seed rewards, and authored par_spend/par_time cutoffs. The shared region_data table supplies the wave rule and curve. Tracker catch-up; no new rows were added in this update.",
       "refs": [
         "scripts/stage_data/stage_data.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
     },
     {
       "id": "stages-region-5",
       "title": "Author region 5: ten stage rows",
-      "status": "backlog",
+      "status": "done",
       "owner": "cline",
       "awaiting": "none",
       "area": "data",
@@ -3222,12 +3225,13 @@
       "size": "M",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.6, one region per card because the falsifier is per-stage: 'if authoring one stage takes more than ~30 minutes the DATA SCHEMA is wrong - fix the schema, not the stages'. Region rows need only what stage_data authors (spawn mix, bosses, par_spend, par_time); the wave count and the curve come from region_data.",
+      "notes": "Completed: all ten Region 5 stage rows are present in scripts/stage_data/stage_data.gml, with spawn mixes, ordered boss pairs, seed rewards, and authored par_spend/par_time cutoffs. The shared region_data table supplies the wave rule and curve. Tracker catch-up; no new rows were added in this update.",
       "refs": [
         "scripts/stage_data/stage_data.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15"
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
     },
     {
       "id": "stages-region-6",
@@ -5084,6 +5088,30 @@
       "who": "cline",
       "task": "dead-color-swap-shader",
       "what": "Removed the two uncalled project-local color-swap GMScript resources via gm.Project and deleted their folders after backing them up. The project has no callers or matching shader; kept the separate shd_scml_tint resource and packaged extension manifest unchanged. Round-trip and balance checks pass."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "stages-region-2",
+      "what": "Marked complete after confirming all ten stage rows for this region in stage_data.gml; the source already contained its spawn mixes, boss pairs, and par cutoffs."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "stages-region-3",
+      "what": "Marked complete after confirming all ten stage rows for this region in stage_data.gml; the source already contained its spawn mixes, boss pairs, and par cutoffs."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "stages-region-4",
+      "what": "Marked complete after confirming all ten stage rows for this region in stage_data.gml; the source already contained its spawn mixes, boss pairs, and par cutoffs."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "stages-region-5",
+      "what": "Marked complete after confirming all ten stage rows for this region in stage_data.gml; the source already contained its spawn mixes, boss pairs, and par cutoffs."
     }
   ]
 }
