@@ -3740,7 +3740,7 @@
     {
       "id": "ui-hud-flex",
       "title": "Move the in-game HUD onto flex nodes (stat card, tower card, speed buttons)",
-      "status": "backlog",
+      "status": "doing",
       "owner": "cline",
       "awaiting": "none",
       "area": "code",
@@ -3751,7 +3751,7 @@
       "notes": "",
       "refs": [],
       "created": "2026-10-21",
-      "updated": "2026-10-21",
+      "updated": "2026-10-30",
       "done": null
     },
     {
