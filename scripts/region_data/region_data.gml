@@ -162,10 +162,9 @@ function region_terrain_style(_biome, _layer) {
 			break;
 
 		case BIOME.GRAVEYARD:
-			_atlas = spr_dirt_128x;
+			_atlas = spr_graveyard_128x;
 			_dark = make_colour_rgb(58, 63, 73);
 			_light = make_colour_rgb(118, 124, 116);
-			_fallback = true;
 			break;
 
 		case BIOME.BLOOD_FIELDS:

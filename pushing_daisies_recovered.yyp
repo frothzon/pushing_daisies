@@ -1234,6 +1234,7 @@
     {"id":{"name":"spr_shroud_portrait","path":"sprites/spr_shroud_portrait/spr_shroud_portrait.yy",},},
     {"id":{"name":"spr_blood_orange","path":"sprites/spr_blood_orange/spr_blood_orange.yy",},},
     {"id":{"name":"spr_money_honey","path":"sprites/spr_money_honey/spr_money_honey.yy",},},
+    {"id":{"name":"spr_graveyard_128x","path":"sprites/spr_graveyard_128x/spr_graveyard_128x.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",

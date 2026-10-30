@@ -1,14 +1,14 @@
 # Art descriptions
 
 Draw-ready briefs and technical contracts for the project's art. Measurements
-were taken from the repository on **2026-10-19**; proposals are labelled. The
+were taken from the repository on **2026-10-30**; proposals are labelled. The
 board tracks ownership and completion. Art is complete only when the game uses
 it; §5 is the integration checklist.
 
 The 2026-10-21 drop delivered the level-complete banner, 18 biome props, 36
-meta icons, four tower trios, and eight shot effects. The Graveyard atlas and
-the boss/zombie rigs remained outside that drop. Naming and unreferenced-sprite
-cleanup is tracked by `art-cleanup-unreferenced`.
+meta icons, four tower trios, and eight shot effects. The Graveyard atlas was
+added 2026-10-30. The boss/zombie rigs arrived in later drops. Naming and
+unreferenced-sprite cleanup is tracked by `art-cleanup-unreferenced`.
 
 Since **2026-10-28** the monster rigs are primarily **Spriter SCML** (the
 SCML-custom import, `scripts/scr_scml_spriter_interface_system`): the
@@ -35,7 +35,7 @@ never hand-tuned. The title-screen zombie is the rigged Grumble-Mulch
 | `region-bosses` | **code done 2026-10-24** | the **4 new boss rigs** and their 4 portraits arrived and are wired (a row carries `array(walk, idle, attack, die)`, `scr_zomb_art` plays it); region 2 reuses an existing boss | — |
 | `region-zombies` | **code + portraits integrated 2026-10-30** | all 6 restyled walker rigs and all 6 portraits are wired, including the formerly missing Sandblasted and Shroud portraits. `attack` is drawn but never played: the gate is a place, not an enemy (`zomb-attack-at-gate`, §3.2) | — |
 | `tower-slice-trios` | **done 2026-10-21** | all four trios arrived; every roster tower now uses its named trio, and all eight shot-effect sprites are wired (§4.9) | — |
-| `art-biome-tiles` | backlog | **only the Graveyard atlas and remaining biome props** — the other four greyscale atlases now have runtime selection and tinting (§4.3) | small |
+| `art-biome-tiles` | review | Graveyard atlas integrated for Region 5; runtime visual review remains. Existing regional props are present. The four older atlases stay as-is unless Rayu chooses a coordinated refresh (§4.3) | no |
 | `art-garden-book` | **done 2026-10-21** | every icon arrived (36); the screens that show the rest are their own cards | — |
 | `art-level-complete` | **done 2026-10-21** | the banner arrived and is drawn at 1:1 (§4.5) | — |
 | `art-state-origins` | **review** | **no drawing** — visual check of the accepted ≤5 px ground-contact differences (§4.8); the former 20–23 px diagnosis compared different canvas sizes | no |
@@ -67,10 +67,8 @@ Verified by opening the files, not by listing names:
   portrait: three legacy walkers, two legacy bosses, six restyled walkers and
   four new bosses. Rusted gold frame, painterly rim light, vignetted background.
 * **Terrain atlases, 128×128 × 17 frames, greyscale** — grass, dirt, sand,
-  thick, **swamp, desert, jungle, blood**. The last four are real, distinct,
-  hand-drawn atlases (mud and reeds / cracked sand plates / root-and-moss /
-  veined ground), already in the repo and already the right format. See §4.3 —
-  this contradicts the card.
+  thick, **swamp, desert, jungle, graveyard, blood**. The five regional atlases
+  are distinct and in the format the game uses. See §4.3.
 * **Props** — `bck_fence` (128×128), `bck_house` (128×128), `bck_debree_blood`
   (288×32 gore strip, used by every zombie death), four `spr_headstone_*`
   variants (64×64), `spr_gravestone_cross` (128×128), `spr_graveyard_crypt`
@@ -522,11 +520,11 @@ is distinguishable from the other five **in silhouette**, not only in colour.
 
 ---
 
-### 4.3 `art-biome-tiles` — the Graveyard atlas, and what "tileset" means here
+### 4.3 `art-biome-tiles` — five regional atlases, and what "tileset" means here
 
 **The card says "only Grass has art". That is wrong**, in the same way the
-Belladonna card was wrong: the repo already contains **four of the five**
-region atlases, in the exact format the code needs.
+Belladonna card was wrong: the repo already contains **all five** region
+atlases, in the exact format the code needs.
 
 | Region | Atlas sprite | State |
 | --- | --- | --- |
@@ -534,34 +532,27 @@ region atlases, in the exact format the code needs.
 | 2 Swamp | `spr_swamp_128x` | exists, wired and tinted |
 | 3 Desert | `spr_desert_128x` | exists, wired and tinted |
 | 4 Jungle | `spr_jungle_128x` | exists, wired and tinted |
-| 5 Graveyard | — (`spr_dirt_128x` fallback) | atlas **missing**; fallback wired and tinted |
+| 5 Graveyard | `spr_graveyard_128x` | delivered 2026-10-30; selected and tinted; runtime review pending |
 | 6 Blood Fields | `spr_blood_128x` | exists, wired and tinted |
 
 Opening frame 16 confirms each delivered region atlas is real, distinct art: mud and reeds / cracked sand plates / root-and-moss / veined mud. They are old-style (soft, photographic grey), but satisfy §3.4 and are now selected and tinted by region.
 
-So the actual art job is:
+The Graveyard atlas follows §3.4: 128×128, 17 greyscale frames, empty frame 0,
+an isolated open-grave lip in frame 1, and a repeating gravel/soil tile in frame
+16. Frame 16's opposite edge pixels match exactly. Runtime cropping and tinting
+still need a visual check.
 
-1. **Draw the Graveyard atlas** to the §3.4 contract: wet dark soil with gravel,
-   sunken coffin-lid planks, bone shards, puddles and a little moss — designed in
-   greyscale, seamless on all four edges of frame 16, with a designed underside
-   for frame 1. Region 5's mechanic (zombies rise from graves) means the **frame
-   1 isolated tile** gets seen more than usual: it is the lip of an open grave.
-2. **Optionally refresh the four existing atlases.** They are the correct format
+The remaining art call is optional:
+
+1. **Optionally refresh the four existing atlases.** They are the correct format
    but they are the oldest art in the game and read softer than the restyled
    characters. That is a taste call for rayu; if it is a yes, it is 5 × 17 frames
    and should be one pass so the five biomes stay consistent with each other.
-3. **Props per biome** (small, high-value, and mostly missing):
-   * *Swamp:* reeds, a half-sunk dead tree, lily clumps, a protruding ribcage.
-   * *Desert:* a leaning gantry leg, a dead conveyor roller, a half-buried
-     barrel, heat-shimmer is code, not art.
-   * *Jungle:* root arches, hanging vines, a broken flagstone, an overgrown
-     statue.
-   * *Graveyard:* four house-style headstones, a crypt, and a leaning cross
-     have been delivered and wired into the biome prop table. The route graves
-     use the same 64×64 headstone variants; no tombstone redraw remains.
-   * *Blood Fields:* the fence (`bck_fence`) and gore strip
-     (`bck_debree_blood`) already exist; what is missing is red meadow grass and
-     a quarantine-fence variant.
+2. **Props are already delivered and wired.** Swamp, Desert, Jungle, Graveyard,
+   and Blood Fields each have biome-specific scenery in `scr_biome_props`; the
+   runtime placement and route-clear check is the separate `biome-props` card.
+   This audit also found `spr_bloodfields_grass` and `spr_quarantine_fence`, so
+   those are not missing assets.
 
 **Selected terrain tint pairs (2026-10-30).** The atlases are grey; the dark
 and light colours interpolate across elevation rows with `load_amount`. The
@@ -575,20 +566,18 @@ accent is reserved for future prop art and is not baked into the atlas:
 | Graveyard | `#3A3F49` | `#767C74` | candle `#D9B36A` |
 | Blood Fields | `#4A2A28` | `#8A3B34` | bone `#D8CDBB` |
 
-**The atlas wiring landed (2026-10-30).** `GameLevelData.biome` now selects
-Swamp, Desert, Jungle, and Blood Fields atlases in `region_terrain_style()`;
-Grass keeps its existing four elevation strata. Graveyard uses a documented
-dirt-atlas fallback tinted with its selected palette until the Graveyard atlas
-is drawn. `scr_iniTileBuilder` still draws the highest top-soil cap from dirt,
-unchanged. The startup log names the stage biome, first atlas, and fallback
-flag, so an atlas mismatch is visible without guessing from the screenshot.
+**The atlas wiring landed (2026-10-30).** `GameLevelData.biome` selects all five
+regional atlases in `region_terrain_style()`; Grass keeps its existing four
+elevation strata. `scr_iniTileBuilder` still draws the highest top-soil cap
+from dirt, unchanged. The startup log names the stage biome, first atlas, and
+fallback flag, so an atlas mismatch is visible without guessing from the
+screenshot.
 
 **Acceptance.** In regions 1-6, confirm the title `LEVEL terrain biome=...`
 line names the stage biome and expected atlas, startup still ends with
 `rows=12`, and all six grounds render without missing tiles. Region 5 should
-show the dirt fallback with the Graveyard tint; after its atlas arrives it can
-replace that one mapping. The top-soil cap stays unchanged and tile edges must
-not seam.
+show `spr_graveyard_128x fallback=0` with the Graveyard tint. The top-soil cap
+stays unchanged and tile edges must not seam.
 
 ---
 
