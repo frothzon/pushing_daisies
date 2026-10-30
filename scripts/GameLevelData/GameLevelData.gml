@@ -169,7 +169,7 @@ function level_current() {
 			/// the table is empty or broken - never hand back undefined
 			var _r1 = region_get(1);
 			if(is_undefined(_r1)){
-				_r1 = region_row(1, "Grass", BIOME.GRASS, 3, 15, 5, 30, 2, 10);
+				_r1 = region_row(1, "Grass", BIOME.GRASS, 3, 15, 5, 13, 2, 10);
 			}
 			_l = new GameLevelData(stage_row(1, 1, 3, [0], [], 40, 90), _r1);
 		}

@@ -31,7 +31,7 @@
     "next": [
       "par-reauthor"
     ],
-    "note": "2026-10-30: Normal ceiling sim reproduces late-region leakouts; candidate clean endpoints are R4=18, R5=16, R6=10 on stages 1/5/10, pending validation across all ten. Seven badges now award through run counters and display saved medal icons; Frugal/Speed par values are still provisional. Upgrade-card, specialization, Candy and two-loadout combat implementations are in the Rayu runtime review queue."
+    "note": "2026-10-30: The three-loadout Normal coverage sweep is complete: 180/180 instant-buy runs cleared, covering all 60 rows with three builds each. R4/R5/R6 curves are 18/16/10; 30/30 ceiling-fit stage rows clear. Seven badge awards and map icons are implemented; Frugal/Speed remain provisional until par reauthoring. Upgrade, specialization, Candy and combat-gate changes still await runtime review."
   },
   "tasks": [
     {
@@ -2377,6 +2377,27 @@
       "done": "2026-10-04"
     },
     {
+      "id": "loadout-stage-coverage",
+      "title": "Find three clean progression loadouts per stage",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "tools",
+      "phase": "5",
+      "size": "L",
+      "prio": 2,
+      "needs": "All 60 Normal rows have at least three distinct clean replay-eligible four-tower builds; no coverage gaps.",
+      "notes": "Completed 180 deterministic Normal instant-buy time-step runs: three distinct four-tower loadouts on each of 60 stage rows, all 180 cleared with 20 lives and zero leaks. Loadouts may use towers unlocked later and replay earlier stages, as goal.md allows. This proves model coverage only; it is not a GameMaker run or a first-clear starter-only guarantee. The required coverage gate is met; par medians can now be reauthored separately.",
+      "refs": [
+        "goal.md",
+        "python_tools/gm/balance/sim.py",
+        "python_tools/gm/balance/fit.py"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
+    },
+    {
       "id": "mastery-xp",
       "title": "Mastery XP per kill: closed as superseded by goal.md 4 and 13",
       "status": "done",
@@ -2561,8 +2582,8 @@
       "phase": "2",
       "size": "M",
       "prio": 2,
-      "needs": "Re-author thresholds after the stage balance work supports clean clears; current sim spend/time totals on failed runs cannot represent a median or prove Frugal and Speed Grower are reachable.",
-      "notes": "The stage rows still copy Region 1 par values across all regions. A 2026-10-30 Normal instant-buy sweep found Region 1 clears, but the default four starters fail many later rows (R2 stages 4-10, R3 stages 3-10, all R4-R6), so those failure times are not valid clear-time medians. Preserve the current values until a clear-capable policy can measure comparable runs; then author par_spend as the under-50%-of-median spend threshold and par_time as a reachable clear limit. This depends on the balance task, not more extrapolation from failed runs.",
+      "needs": "After loadout-stage-coverage identifies three progression-legal clean builds per stage, sample seeded Normal clears and author par_spend below 50% of median gross spend plus a reachable par_time; publish both in Deploy. Exclude failures and record the policy and sample size.",
+      "notes": "The old R2-R6 par values are copied from Region 1 and cannot remain authoritative. R4-R6 now have Normal ceiling-policy clears on all ten stages at curve_end 18/16/10, but the instant-buyer default starter build still fails many late rows. Stage-10 progression builds give clean examples, not per-stage medians. First establish three progression-legal clear builds per row; then use only clean runs to derive medians and thresholds.",
       "refs": [
         "scripts/stage_data/stage_data.gml",
         "scripts/scr_badges/scr_badges.gml"
@@ -2673,15 +2694,15 @@
     {
       "id": "region-4-6-difficulty",
       "title": "Regions 4-6 leak under the tester's ceiling policy, and region 6 runs out of life",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "cline",
+      "awaiting": "rayu",
       "area": "data",
       "phase": "5",
       "size": "M",
       "prio": 2,
-      "needs": "Use the balance fitter and time-step simulator to choose region 4-6 curve_end values; validate stages 1, 5 and 10 first, then all ten Normal stages before editing region_data. Keep the Hard/Brutal gate in view and document the resulting assumptions.",
-      "notes": "REPRODUCED 2026-10-30: current Normal ceiling-policy stage 1 holds clean in Regions 1-3, leaks 1 in Region 4, leaks 5 in Region 5, and loses all 20 lives by wave 14 in Region 6. Fitter plus time-step checks on representative stages 1/5/10: Region 4 curve_end=18 clears clean (20 leaks 2 on stage 10); Region 5 curve_end=16 clears clean (18 leaks 1 on stage 10); Region 6 curve_end=10 clears clean (11-12 leak on stage 10, 13 leaks 8, 14-15 lose). Validate each candidate across all ten stages before changing the table.",
+      "needs": "Reload GameMaker with global.devMode=true. In Normal, run Stage 10 in Regions 4, 5 and 6 with these progression-available builds: R4 use Burning Ivy/Belladonna Blitz/Cannon Tulip/Slender Mandrake, then swap Slender for Pina Collider, then swap in Chillip for the fourth slot; R5 use Burning Ivy/Belladonna Blitz/Cannon Tulip/Kaboom Kalanchoe, then Slender Mandrake, then Chillip for the fourth slot; R6 use Burning Ivy/Belladonna Blitz/Kaboom Kalanchoe/Money Marigold, then Cannon Tulip instead of Kalanchoe, then Chillip instead of Cannon. Expect each META [LEVEL] CLEAR line to show 20 lives and leaked=0. Also play Stage 1 once in each region and report if the curve feels too soft or too steep. A failed clear, leak in these builds, or severe pacing mismatch falsifies the balance.",
+      "notes": "IMPLEMENTED AND SIMULATED: regional Normal endpoints changed R4 34->18, R5 42->16, R6 52->10. With the time-step ceiling buyer, all ten stages in each region clear with zero leaks (30/30). On the more player-like instant buyer, the four free starters still fail many late rows; this is not a player-winnability proof. Progression-available instant-buy checks at Stage 10 found three clean distinct loadouts per region, each with 20 lives. R4 control-only and starter builds fail, so the game review uses three DPS/hybrid variants. Hard/Brutal and live GameMaker behavior remain unverified.",
       "refs": [
         "scripts/stage_data/stage_data.gml",
         "scripts/region_data/region_data.gml",
@@ -4974,6 +4995,12 @@
       "who": "cline",
       "task": "dev-seed-sandbox",
       "what": "Added a devMode-only roster unlock bypass for Deploy. Test loadouts remain in global.loadout and never overwrite meta.loadout; no seeds or owned tower flags are granted. Boot logs explain the temporary mode. Awaiting save-preservation review."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "loadout-stage-coverage",
+      "what": "Completed 180 deterministic Normal instant-buy time-step simulations: three distinct four-tower loadouts on each of 60 stage rows, all 180 clearing with 20 lives and zero leaks. The builds may use later-unlocked towers on replay, as goal.md permits. This proves model coverage, not a GameMaker run or a first-clear starter-only guarantee; par median work can proceed."
     }
   ]
 }

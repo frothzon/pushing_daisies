@@ -288,14 +288,14 @@ towers arrived on waves 9 and 12 of 15 - the second half of the roster was a
 one-wave decision, which is why the measurable ladder was really "Daisy, then
 Ivy". All four are affordable by wave 6 now.
 
-**Consequence, measured:** the compression moves the curve. With the cheaper
-roster and the ramped payout, stage 1-1 at `curve_end` **13** reads a worst bite
-of **0.32** - below the panel's own 0.35 floor, i.e. *trivial* - where it read
-0.57 before. The old cap 30 now reads 0.73 and only `curve_end` ≈ 50+ puts a wave
-over the ceiling. **The wave curve has to be refitted against sim outcomes
-(`balance-fit-from-sim`); it is deliberately NOT guessed here.** The former
-Cannon / Meat unlock prices (25 / 40 🌱 behind Region 1) are retired: §2.2 now
-sets the full roster's gates and costs, and the code follows that table.
+**Historical consequence, measured immediately after the 2026-10-13 reprice:**
+with that snapshot of the roster, stage 1-1 at `curve_end` **13** read a worst
+bite of **0.32**, below the panel's 0.35 floor; the old cap 30 read 0.73. Later
+tower-stat changes mean those readings are not a current result. The 2026-10-30
+Normal fit for regions 4-6 is recorded in §4.5; Region 1 and regions 2-3 still
+need a current all-stage pass. The former Cannon / Meat unlock prices (25 / 40
+🌱 behind Region 1) are retired: §2.2 now sets the full roster's gates and costs,
+and the code follows that table.
 
 **⚠ The `Targets` column did nothing until 2026-10-13 (LL-039).** `find_all_range`
 read `array_last_index(_targets)` and then wrote at that same index, so the list
@@ -410,9 +410,9 @@ m(w) = 1 + (curve_end - 1) * ((w - 1) / (waves - 1)) ^ curve_pow
 | 1 | Grass | **13** | 2 |
 | 2 | Swamp | **19** | 2 |
 | 3 | Desert | **26** | 2 |
-| 4 | Jungle | **34** | 2 |
-| 5 | Graveyard | **42** | 2 |
-| 6 | Blood Fields | **52** | 2 |
+| 4 | Jungle | **18** | 2 |
+| 5 | Graveyard | **16** | 2 |
+| 6 | Blood Fields | **10** | 2 |
 
 `m(1) = 1.00` in **every** biome — *"wave 1 of any stage in the game is the same
 fight"* — which is what lets one set of tower numbers survive sixty stages. The
@@ -421,9 +421,17 @@ bend is 2 because a stage's money grows with the **square** of the wave number
 waves relatively *easier*, which is the opposite of a ramp.
 
 `STATINV.waves` is seeded at **0**, so the speed ramp, HUD, and `wave_count`
-refer to the same wave (LL-044). Region 1's `curve_end = 13` is confirmed for
-Normal; regions 2–6 remain assumptions until played. Refit curves after tower
-or economy changes, using `gm balance sim` as the outcome arbiter.
+refer to the same wave (LL-044). Region 1's `curve_end = 13` has a Normal play
+confirmation, while regions 2-3 retain first-pass estimates (`19` and `26`). On
+2026-10-30, `gm balance fit --sim` tested all ten stage lengths in each of
+regions 4-6 at their current endpoints (`18`, `16`, `10`): all 30 Normal ceiling-
+buy simulations cleared without leaks. This is evidence for the
+regional curves under an optimistic policy, not a GameMaker run or a full
+player-winnability result. The instant-buy policy with only the four free
+starters still fails many late rows; with progression-available high-DPS builds,
+three distinct stage-10 loadouts per region clear cleanly, but that does not prove
+three builds work on every earlier stage. Hard/Brutal and live play remain open.
+Refit after tower or economy changes.
 
 **Diagnostics.** `scr_curve_report()` logs and `scr_curve_draw()` displays the
 curve under `global.devMode`: biome endpoints, route and reachable slots,
@@ -738,7 +746,7 @@ One medal per badge per stage, stored in the save. **No art in v1** — the reco
 | 11 | Candy duration track — first purchase | 10 ☘️ for +10%, buyable inside region 1, so every player feels it | Phase 3 |
 | 12 | Candy duration track — the +100% cap | 10,230 ☘️ total, deliberately the last thing a clover-rich player finishes | Phase 3/6 |
 | 13 | The difficulty ladder is monotonic **in play** | hp per dollar of income must be **ordered** and rising with the difficulty - it measures how much hp the player must chew per dollar earned, so the top difficulty must show the most. It was 1.00 / 1.17 / 1.01 (**worst on Hard**, LL-042); since the carry it is 0.0063 / 0.0076 / 0.0095 | `gm balance sim`, every rebalance |
-| 15 | The wave curve matches the ladder it is fitted to | `curve_end` must put the LAST wave in the panel's band on Normal (bite 0.35-0.90). After the 2026-10-13 reprice 1-1 reads **0.32** at cap 13, i.e. below the floor - the curve is stale and `balance-fit-from-sim` owns it | `gm balance project`, `gm balance sim` |
+| 15 | The wave curve matches the ladder it is fitted to | Current Normal sim fit clears all ten stages at R4/R5/R6 endpoints 18/16/10 with no leaks; R1 needs a current all-stage recheck, R2/R3 need full ten-stage fit, and Hard/Brutal plus live play remain unverified | `gm balance fit --sim`, `gm balance sim` |
 | 14 | A `targets` cap is reachable | `gm balance sim` reports the widest target list any tower held; 1-1 peaks at **7**, so a cap of 10 is coverage-limited, not target-limited | `gm balance sim` |
 
 **Instrumentation this requires (Phase 0):** every currency event logs through `print()` under `global.devMode`, with the `META`, `SEED`, `CLOVER`, `SHARD` and `CANDY` prefixes, per the log-prefix convention in `AGENTS.md` §4. Without that log, Phase 6 tuning is guesswork.
