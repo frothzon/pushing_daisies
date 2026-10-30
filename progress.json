@@ -2578,21 +2578,23 @@
     {
       "id": "onboarding-pass",
       "title": "Onboarding: a fresh player reaches stage 5 unaided",
-      "status": "backlog",
+      "status": "review",
       "owner": "both",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "design",
       "phase": "6",
       "size": "M",
       "prio": 2,
-      "needs": "",
-      "notes": "roadmap 6.2; goal.md 27.5 is the script. The Phase 6 gate is not a feature - it is whether the first twenty minutes teach placement, range, the ladder and the wave curve without a tutorial. Needs the combat depth first: a status is the first thing worth teaching.",
+      "needs": "On a disposable fresh save, check World Map, Deploy and Garden Book before a clear: no zero currency balances or empty Badges counter should show. Clear stage 1 and confirm Seeds/Clovers appear; earn and spend shards, then confirm Shards/Candy stay visible at zero after a Blood node or recipe purchase. Continue without outside instructions through stage 5 and note where placement, range, upgrades, wave curve, rewards or badges were unclear.",
+      "notes": "Implemented staged currency visibility for onboarding: seeds/clovers follow a saved campaign clear; shards/candy follow the first shard or saved Blood/Candy progress; the badges count waits until the first earned badge. Runtime stage-1-to-5 playthrough still decides whether the onboarding gate passes.",
       "refs": [
         "roadmap.md",
-        "goal.md"
+        "goal.md",
+        "scripts/scr_meta_screen/scr_meta_screen.gml",
+        "lessons_learned.md"
       ],
       "created": "2026-10-18",
-      "updated": "2026-10-18",
+      "updated": "2026-10-30",
       "done": null
     },
     {

@@ -102,6 +102,7 @@ and add its row to the index.
 | [LL-083](#ll-083) | The boot trace says **`RIG   walker N <creature> slots=4 walk=none idle=none attack=none die=none` for every creature** while the art sits in the bank row - every monster wears the one-frame `spr_mon` for walk AND death, `is_real()` on an enum slot answered false, and no error anywhere; the second hit of LL-034's landmine, and the diagnosis was sitting unread in the run log | FIXED |
 | [LL-084](#ll-084) | The new Spriter zombies look **squat** even though scale normalization says the rig is 2–3× larger than its sheet | FIXED |
 | [LL-085](#ll-085) | Biped Spriter zombies still look **crouched while walking**: the walk plays, but the knees stay folded | WATCH |
+| [LL-086](#ll-086) | A fresh save shows zero balances for every future currency before the player can earn them | FIXED |
 
 ---
 
@@ -1884,6 +1885,21 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 **Files.** scripts/scr_scml_rig/scr_scml_rig.gml, scripts/scr_scml_spriter_interface_system/Spriter_Interface_System.md.
 
 **See also.** [LL-084](#ll-084), [LL-081](#ll-081), [LL-072](#ll-072)
+
+---
+
+<a name="ll-086"></a>
+## LL-086 — The meta bar introduced every currency on a fresh save, before the player could earn them
+
+**Look for.** A first-time player sees Seeds, Clovers, Blood Shards, and Candy all displayed as zero on the world map and Deploy screens before completing a stage.
+
+**Cause.** `meta_currency_items()` returned every account balance unconditionally. The HUD was correct about the numbers but ignored `goal.md` §27.5's staged introduction: campaign rewards begin on the first clear, and Blood/Candy begin on the first shard.
+
+**Rule.** Reveal Seeds and Clovers after a saved campaign clear; reveal Shards and Candy after a shard is earned or the player has made a permanent Blood/Candy purchase. Derive visibility from saved progression so spending a balance back to zero does not make an already introduced system disappear. Keep in-run Money and Lives on the stage HUD.
+
+**Files.** `scripts/scr_meta_screen/scr_meta_screen.gml`, `goal.md` §27.5.
+
+**See also.** [LL-050](#ll-050), [LL-015](#ll-015)
 
 ---
 ## Adding an entry

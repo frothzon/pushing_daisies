@@ -146,20 +146,57 @@ function meta_icon_w(_spr, _size) {
 	return _b[4] * _s + 6;
 }
 
-/// The persistent currency items as [sprite, text] pairs - ONE list, measured to
+/// Whether the first clear has introduced the seed and clover rewards.
+function meta_campaign_currency_unlocked() {
+	if(!variable_global_exists("meta") || !is_struct(global.meta)) return false;
+	if(!variable_struct_exists(global.meta,"clears")) return false;
+	return scr_meta_count(global.meta[$ "clears"]) > 0;
+}
+
+/// A shard balance or permanent Blood/Candy purchase keeps this system visible
+/// after the balance is spent back to zero.
+function meta_shard_currency_unlocked() {
+	if(shards_get() > 0) return true;
+	if(!variable_global_exists("meta") || !is_struct(global.meta)) return false;
+	var _blood = variable_struct_exists(global.meta,"blood_nodes")
+	             ? global.meta[$ "blood_nodes"] : undefined,
+	    _recipes = variable_struct_exists(global.meta,"candy_recipes")
+	               ? global.meta[$ "candy_recipes"] : undefined,
+	    _stock = variable_struct_exists(global.meta,"candy")
+	             ? global.meta[$ "candy"] : undefined,
+	    _levels = variable_struct_exists(global.meta,"candy_levels")
+	             ? global.meta[$ "candy_levels"] : undefined;
+	return scr_meta_count(_blood) > 0 || scr_meta_count(_recipes) > 0
+	       || scr_meta_count(_stock) > 0 || scr_meta_count(_levels) > 0;
+}
+
+/// The persistent counters as [sprite, text] pairs - ONE list, measured to
 /// choose a size and then drawn, so the size that was chosen is the size that
-/// was drawn.
+/// was drawn. The four meta currencies appear only after their first source is
+/// available: a clear introduces seeds/clovers; a shard introduces shards/candy.
 function meta_currency_items() {
-	return [
-		[icon_currency(CURRENCY.SEEDS),   string(seeds_get()), "seeds", seeds_get()],
-		[icon_currency(CURRENCY.CLOVERS), string(clovers_get()), "clovers", clovers_get()],
-		[icon_currency(CURRENCY.SHARDS),  string(shards_get()), "shards", shards_get()],
-		[icon_currency(CURRENCY.CANDY), "Candy "+string(candy_stock_total()), "candy", candy_stock_total()],
+	var _items = [];
+	if(meta_campaign_currency_unlocked()){
+		_items[array_length(_items)] =
+			[icon_currency(CURRENCY.SEEDS), string(seeds_get()), "seeds", seeds_get()];
+		_items[array_length(_items)] =
+			[icon_currency(CURRENCY.CLOVERS), string(clovers_get()), "clovers", clovers_get()];
+	}
+	if(meta_shard_currency_unlocked()){
+		_items[array_length(_items)] =
+			[icon_currency(CURRENCY.SHARDS), string(shards_get()), "shards", shards_get()];
+		_items[array_length(_items)] =
+			[icon_currency(CURRENCY.CANDY), "Candy "+string(candy_stock_total()), "candy", candy_stock_total()];
+	}
+	_items[array_length(_items)] =
 		[-1, "Towers " + string(tower_owned_count()) + "/" +
-		     string(array_length(tower_roster()))],
-		[-1, "Badges " + string(badge_total_earned()) + "/" +
-		     string(badge_total_possible())]
-	];
+		     string(array_length(tower_roster()))];
+	if(badge_total_earned() > 0){
+		_items[array_length(_items)] =
+			[-1, "Badges " + string(badge_total_earned()) + "/" +
+			     string(badge_total_possible())];
+	}
+	return _items;
 }
 
 /// Track the four balances for a short new-value highlight on the meta HUD.
