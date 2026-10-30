@@ -72,16 +72,14 @@ function scr_setupSpawning() {
 	/// while the rigs are spr_bog_wader_*, spr_root_bound_* and spr_bell_ringer_*
 	/// - a portrait is its own drawing, so its file name says so.
 	///
-	/// TWO ARE MISSING AND SAY SO (art-sandblasted-portrait): the art drop
-	/// promised six walker portraits and delivered four.  -1 is the documented
-	/// "no portrait", the popup guards on it, and test_content pins -1 to
-	/// EXACTLY these two names - so a third creature cannot quietly join them,
-	/// and neither can one of these two quietly stay -1 after its art lands.
+	/// Every restyled walker now has a portrait.  Keep each named portrait
+	/// assigned beside its creature row; test_content enforces full, unique
+	/// coverage so a missing or accidentally shared portrait cannot ship.
 	spawn_mon[3][MON.portrait] = spr_newly_turned_portrait;
 	spawn_mon[4][MON.portrait] = spr_bogwader_portrait;
-	spawn_mon[5][MON.portrait] = -1;   /// Sandblasted - no art yet
+	spawn_mon[5][MON.portrait] = spr_sandblasted_portrait;
 	spawn_mon[6][MON.portrait] = spr_rootbound_portrait;
-	spawn_mon[7][MON.portrait] = -1;   /// Shroud - no art yet
+	spawn_mon[7][MON.portrait] = spr_shroud_portrait;
 	spawn_mon[8][MON.portrait] = spr_harvester_portrait;
 	spawn_boss[2][MON.portrait] = spr_foreman_rustlung_portrait;
 	spawn_boss[3][MON.portrait] = spr_orchid_widow_portrait;

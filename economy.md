@@ -620,7 +620,7 @@ Levels are permanent, per candy, and bought with shards:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **Cost (shards)** | 2 | 3 | 4 | 6 | 8 | 11 | 15 | 20 | 26 |
 
-**95 shards per candy. 760 for all eight.**
+**95 shards per candy. 950 for all ten recipes.**
 
 Sanity-checked against shard supply:
 
@@ -632,7 +632,7 @@ Sanity-checked against shard supply:
 | A good Endless run (boxes 1–8) | 3–8 |
 | Blood tree, complete (one-off) | 46 |
 
-So **the first two levels cost 5 shards** — about two thirds of one campaign sweep — which is why early investment is felt immediately. One candy to L10 is roughly **a dozen sweeps**; all eight is the lifetime project. That curve is the whole point: it is the only shard sink that never ends (`goal.md` §16).
+So **the first two levels cost 5 shards** — about two thirds of one campaign sweep — which is why early investment is felt immediately. One candy to L10 is roughly **a dozen sweeps**; taking all ten to L10 is the lifetime project. That curve is the whole point: it is the only shard sink that never ends (`goal.md` §16).
 
 **A level never touches the duration.** Levels buy magnitude, clovers buy time (§3.5): a level-10 candy is still exactly 30 seconds — 60 with the clover track maxed — it just does more per second.
 

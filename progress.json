@@ -253,22 +253,22 @@
     {
       "id": "art-sandblasted-portrait",
       "title": "Two rigs have no portrait: Sandblasted and Shroud",
-      "status": "next",
-      "owner": "rayu",
+      "status": "review",
+      "owner": "both",
       "awaiting": "rayu",
       "area": "art",
       "phase": "5",
       "size": "S",
       "prio": 2,
-      "needs": "Draw two 314x314 one-frame portraits in the same contract as the four that already exist (spr_newly_turned_portrait is the reference): Sandblasted - art_descriptions.md section 4, Region 3, a tall thin dried-out worker with sand pouring from a torn side and rebar through one shoulder - and Shroud - section 4, Region 5, a body still wrapped in a burial shroud dragging a collapsed headstone. Name them spr_sandblasted_portrait and spr_shroud_portrait; with the files in place the two -1s in scr_setupSpawning become sprite names and test_only_the_two_documented_creatures_have_no_portrait is the test that has to be updated with them.",
-      "notes": "Both rows carry MON.portrait = -1 with a comment naming this card, the Up Next popup guards on -1, and test_content pins the missing set to EXACTLY these two names - so a third creature cannot quietly join them, and neither can one of these quietly stay -1 after its art lands. The portrait contract is art_descriptions.md section 3.3: 314x314, one frame, head-and-shoulders bust slightly turned, dark vignetted background (not transparent), rusted-gold inset frame about 14 px, warm rim from the upper left and cool shadow on the right.",
+      "needs": "Reload with global.devMode=true and inspect Sandblasted in Region 3 and Shroud in Region 5 in the Up Next popup. Confirm the correct framed portraits are readable at fitted size with no crop or blank icon. Expect META  [LEVEL] walker bank lines containing portrait=spr_sandblasted_portrait and portrait=spr_shroud_portrait. portrait=none, swapped art, clipping, or an incorrect log name falsifies the wiring.",
+      "notes": "IMPLEMENTED 2026-10-30: generated matching 314x314 portraits, registered spr_sandblasted_portrait and spr_shroud_portrait with the portrait folder contract, assigned both MON.portrait slots, and updated the existing content assertion to require complete portrait coverage and pin both character-to-sprite mappings. Runtime Up Next review remains.",
       "refs": [
         "art_descriptions.md",
         "scripts/scr_setupSpawning/scr_setupSpawning.gml",
         "python_tools/tests/test_content.py"
       ],
       "created": "2026-10-24",
-      "updated": "2026-10-24",
+      "updated": "2026-10-30",
       "done": null
     },
     {
@@ -837,7 +837,7 @@
       "size": "L",
       "prio": 3,
       "needs": "Reload with global.devMode = true and open Garden Book > Candy. Page all 10 recipes and test both rare gates; unlock, level, buy stock and duration, then relaunch to check saves. Confirm Everlasting Gob shows frozen waves rather than a seconds duration; Gummy Worm and Money Honey reach +28.5% at L10. In a stage activate candies from pause: expect META  [CANDY] recipe/level/stock/duration/activate/expired lines; the active HUD counts down only during live waves, repeat use adds time, Gob freezes active timers, Blood Orange shows pity progress, and Money Honey raises kill payouts. Clipped UI, wrong timer/effect, lost save, or absent logs falsifies it.",
-      "notes": "IMPLEMENTED IN CODE: ten recipes (eight standard, two gated rare), permanent unlocks and levels, shard stock bundles (5 per shard), clover duration track, Garden Book catalog/detail/actions, pause activation/status panel, live active-candy countdown HUD, active-wave timers, Gob timer freeze, and combat/status/pity/kill-money effects. Purchases save immediately. Endless loot-box stock rewards are implemented separately. Corrected the Gob detail row to show frozen wave count instead of a seconds duration, and synchronized Gummy Worm and Money Honey L10 documentation to the implemented +28.5% values. Documentation synchronized: goal.md §16 and economy.md §6.1 now both include the two gated tier-4 rare recipes at 35 shards each. Remaining: GameMaker visual/runtime review.",
+      "notes": "IMPLEMENTED IN CODE: ten recipes (eight standard, two gated rare), permanent unlocks and levels, shard stock bundles (5 per shard), clover duration track, Garden Book catalog/detail/actions, pause activation/status panel, live active-candy countdown HUD, active-wave timers, Gob timer freeze, and combat/status/pity/kill-money effects. Purchases save immediately. Endless loot-box stock rewards are implemented separately. Corrected the Gob detail row to show frozen wave count instead of a seconds duration, synchronized Gummy Worm and Money Honey L10 documentation to the implemented +28.5% values, documented both tier-4 rare recipes at 35 shards, and corrected the §6.4 sink total to 950 shards for all ten recipes. Remaining: GameMaker visual/runtime review.",
       "refs": [
         "economy.md",
         "objects/obj_mon/Step_0.gml",
@@ -5141,6 +5141,18 @@
       "who": "cline",
       "task": "art-cleanup-unreferenced",
       "what": "Removed eight unreferenced legacy sprites after backing them up and checking the project manifest and source references. Preserved blood-tree icon origins because the shared UI image drawer accounts for each sprite origin."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "art-sandblasted-portrait",
+      "what": "Added and wired 314x314 Sandblasted and Shroud portraits, updated the existing portrait-coverage assertion and art inventory, and left the Up Next visual check for Rayu."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "candy-recipes",
+      "what": "Corrected the Candy level sink in economy.md: ten recipes at 95 shards each cost 950 shards to take all to L10."
     }
   ]
 }

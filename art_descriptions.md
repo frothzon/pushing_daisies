@@ -33,7 +33,7 @@ never hand-tuned. The title-screen zombie is the rigged Grumble-Mulch
 | Card | Status | What is genuinely missing | Drawing? |
 | --- | --- | --- | --- |
 | `region-bosses` | **code done 2026-10-24** | the **4 new boss rigs** and their 4 portraits arrived and are wired (a row carries `array(walk, idle, attack, die)`, `scr_zomb_art` plays it); region 2 reuses an existing boss | — |
-| `region-zombies` | **code done 2026-10-24**, one art job left | the **6 rigs** arrived (walk + idle + attack + die each); **two portraits are still missing** - Sandblasted and Shroud (`art-sandblasted-portrait`). `attack` is drawn but never played: the gate is a place, not an enemy (`zomb-attack-at-gate`, §3.2) | two portraits |
+| `region-zombies` | **code + portraits integrated 2026-10-30** | all 6 restyled walker rigs and all 6 portraits are wired, including the formerly missing Sandblasted and Shroud portraits. `attack` is drawn but never played: the gate is a place, not an enemy (`zomb-attack-at-gate`, §3.2) | — |
 | `tower-slice-trios` | **done 2026-10-21** | all four trios arrived; every roster tower now uses its named trio, and all eight shot-effect sprites are wired (§4.9) | — |
 | `art-biome-tiles` | backlog | **only the Graveyard atlas and remaining biome props** — the other four greyscale atlases now have runtime selection and tinting (§4.3) | small |
 | `art-garden-book` | **done 2026-10-21** | every icon arrived (36); the screens that show the rest are their own cards | — |
@@ -63,8 +63,9 @@ Verified by opening the files, not by listing names:
   sheet canvases differ by state; that alone is not a ground shift. The current
   primary rigs are SCML with a shared character root; the corrected pose audit
   is in §4.8.
-* **Portraits, 314×314** — five: grumble, dome, cerebrisk, tusk, zero. Rusted
-  gold frame, painterly rim light, vignetted background.
+* **Portraits, 314×314** — all fifteen walkers and bosses have a distinct
+  portrait: three legacy walkers, two legacy bosses, six restyled walkers and
+  four new bosses. Rusted gold frame, painterly rim light, vignetted background.
 * **Terrain atlases, 128×128 × 17 frames, greyscale** — grass, dirt, sand,
   thick, **swamp, desert, jungle, blood**. The last four are real, distinct,
   hand-drawn atlases (mud and reeds / cracked sand plates / root-and-moss /
@@ -479,6 +480,7 @@ teeth. Tall, thin, leaning into a wind that is no longer blowing.
 *Palette:* bleached tan and bone, one oxide-orange overall strap, sand-white
 highlights. *Silhouette:* tall and narrow with a long drag-chain behind.
 *Tell:* it raises one hand to shield its eyes before it speeds up.
+*Portrait delivered 2026-10-30:* `spr_sandblasted_portrait` (314×314).
 
 #### Region 4 — Jungle (Vines Take the Ruins): **"The Rootbound"** *(proposal)*
 A corpse being taken apart by the jungle in real time. Roots burst out of its
@@ -498,6 +500,7 @@ zombies rising from graves mid-path.
 *Palette:* bone-white cloth, wet slate, one warm candle-gold glow in the folds.
 *Silhouette:* a low triangle of cloth with two hands out and a stone dragging
 behind. *Tell:* the shroud swells before it lunges.
+*Portrait delivered 2026-10-30:* `spr_shroud_portrait` (314×314).
 
 #### Region 6 — Blood Fields (Slaughterhouse Meadow): **"The Harvester"** *(proposal)*
 A scarecrow built from stitched carcass and red meadow flowers: a pole through

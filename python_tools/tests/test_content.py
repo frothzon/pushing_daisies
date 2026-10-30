@@ -174,19 +174,22 @@ class SpawnRosterTests(unittest.TestCase):
                 self.assertTrue(yy.exists(), "%s: %s is not a sprite in the "
                                 "project (%s)" % (name, spr, yy))
 
-    def test_only_the_two_documented_creatures_have_no_portrait(self):
-        """`-1` is legal, but only for a creature whose art has not landed.
-
-        Pinned as EQUALITY, not as "at most two": a third creature quietly
-        joining the list is exactly how a missing portrait ships, and a name
-        staying on it after its art arrives is the same bug the other way.
-        The art card is `art-sandblasted-portrait` (it covers both).
-        """
+    def test_all_creatures_have_portrait_art(self):
+        """No creature should keep the -1 no-portrait placeholder."""
         missing = sorted(name for (bank, idx), (name, _) in self.rows.items()
                          if self.portraits.get((bank, idx)) == "-1")
-        self.assertEqual(["Sandblasted", "Shroud"], missing,
-                         "the creature(s) with no portrait art changed - "
-                         "update art-sandblasted-portrait on the board")
+        self.assertEqual([], missing,
+                         "portrait art is missing for: %s" % missing)
+        by_name = {name: self.portraits.get(key)
+                   for key, (name, _) in self.rows.items()}
+        expected = {
+            "Sandblasted": "spr_sandblasted_portrait",
+            "Shroud": "spr_shroud_portrait",
+        }
+        for creature, sprite in expected.items():
+            self.assertEqual(sprite, by_name.get(creature),
+                             "%s must use its own portrait %s"
+                             % (creature, sprite))
 
 
 @unittest.skipIf(PROJECT_ROOT is None, "no GameMaker project above this file")
