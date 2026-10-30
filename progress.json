@@ -28,12 +28,13 @@
       "candy-recipes",
       "candy-fast-forward-timer",
       "combat-gate-two-loadouts",
-      "tower-l5-signatures"
-    ],
-    "next": [
+      "tower-l5-signatures",
       "tower-ring-mastery-palette"
     ],
-    "note": "2026-10-30: Re-authored Frugal/Speed Grower cutoffs for all 60 stages from 540 seeded Normal instant-buy clears (9 per row; all 20 lives, 0 leaks); handed thresholds to Rayu for Deploy/badge runtime review. Three-loadout coverage remains complete. R4/R5/R6 curves are 18/16/10. Upgrade-card, specialization, remaining Candy behavior and combat gates still await GameMaker review. Mastery is implemented; the L6-L10 ring palette remains provisional and its old tracker rationale is stale."
+    "next": [
+      "art-state-origins"
+    ],
+    "note": "2026-10-30: Re-authored all 60 Frugal/Speed Grower cutoffs from 540 seeded Normal model clears; all 540 cleared with 20 lives and 0 leaks. Named the mastery ring extension through L10 and documented the absolute-level palette. Both are awaiting Rayu’s reloaded GameMaker review. Next code pass: audit zombie sprite state origins against the rig and transitions."
   },
   "tasks": [
     {
@@ -3606,21 +3607,23 @@
     {
       "id": "tower-ring-mastery-palette",
       "title": "Name the ring colours for levels 6-10 (the mastery ladder)",
-      "status": "backlog",
-      "owner": "rayu",
-      "awaiting": "none",
+      "status": "review",
+      "owner": "both",
+      "awaiting": "rayu",
       "area": "design",
       "phase": "2",
       "size": "S",
       "prio": 3,
-      "needs": "",
-      "notes": "Levels 6-10 are the MASTERY ladder (goal.md 4: the floor and the cap each rise one level per master node, so mastery V reaches L10) and NOTHING IN THE BUILD CAN REACH THEM YET - scr_meta_schema seeds global.meta.mastery at 0 and no code raises it, so the cap is 5 and the ladder is L1-L5. Those five entries in tower_level_outline therefore still carry the first-pass cool ramp (indigo, violet, magenta, pink, and gold at the cap): they were never named, because rayu's palette (tower-level-palette, 2026-10-15) covered the four rungs money buys, which is the whole ladder that exists. This card is that same question one rung-set up, and it has a fork in it worth deciding rather than defaulting: either name five more hues, or index the ring by RUNG ABOVE THE FLOOR instead of by absolute level. The rung version makes the ramp red-to-blue at every mastery and a freshly placed tower always ringless, which is tidier - but it would need goal.md 4 rule 3 rewritten, because that rule exists so that a tower placed at floor 6 does not look identical to one placed at floor 3, and rung colouring makes them identical by construction. NOT REACHABLE, so there is nothing to look at in play until the garden can grant mastery: this card waits on that, not on rayu.",
+      "needs": "After reload, use a garden save that reaches mastery V and take a tower through L6-L10. Confirm its rings read indigo, violet, magenta, rose, and gold in order, and that each remains distinct at rest and on hover. Confirm the level label still identifies the exact level. A neighboring pair that reads as the same colour, gold failing to mark L10, or a ring washed out by additive blending falsifies the palette.",
+      "notes": "Finalized the provisional L6-L10 hues as indigo (100,60,255), violet (180,40,255), magenta (255,30,200), rose (255,80,130), and gold (255,220,50). Their channel spacing is increased for the existing 25% additive rest state; hover still rises to 75%. Absolute level remains the key as goal.md §4 rule 3 requires, while the hover label supplies the exact number. The mastery purchase path is implemented in clover_master_node_buy; the prior note claiming no build can reach L6 was stale.",
       "refs": [
         "scripts/tower_levels/tower_levels.gml",
+        "objects/obj_tower/Draw_0.gml",
+        "scripts/scr_drawSelfOutlined/scr_drawSelfOutlined.gml",
         "goal.md"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-15",
+      "updated": "2026-10-30",
       "done": null
     },
     {
@@ -5035,9 +5038,15 @@
     },
     {
       "date": "2026-10-30",
+      "who": "cline",
       "task": "par-reauthor",
-      "what": "Re-authored all 60 Frugal/Speed Grower thresholds from 540 seeded Normal instant-buy model clears: 9 samples per stage from 3 replay-eligible four-tower loadouts x 3 seeds; 540/540 cleared with 20 lives and 0 leaks. par_spend is an exclusive cutoff at ceil(median gross spend / 2); par_time is the next whole second strictly above nearest-rank p75. Updated stage_data and economy.md. Model limits and exact runtime review steps are recorded on the card.",
-      "who": "cline"
+      "what": "Re-authored all 60 Frugal/Speed Grower thresholds from 540 seeded Normal instant-buy model clears: 9 samples per stage from 3 replay-eligible four-tower loadouts x 3 seeds; 540/540 cleared with 20 lives and 0 leaks. par_spend is an exclusive cutoff at ceil(median gross spend / 2); par_time is the next whole second strictly above nearest-rank p75. Updated stage_data and economy.md. Model limits and exact runtime review steps are recorded on the card."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "tower-ring-mastery-palette",
+      "what": "Named and finalized the Garden Mastery ring hues at L6-L10 (indigo, violet, magenta, rose, gold), increased RGB separation for the existing additive rest opacity, and documented that rings stay keyed to absolute level. Static GML parse passed; awaiting reloaded GameMaker visual review."
     }
   ]
 }

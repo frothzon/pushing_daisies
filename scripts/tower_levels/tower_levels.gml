@@ -141,15 +141,15 @@ function tower_level_outline(_level) {
 	var _c = [
 		-1,                                 /// 0 - unused, so the table indexes by LEVEL
 		-1,                                 /// 1 - no ring, by design
-		make_colour_rgb(255,  64,  64),     /// 2  RED    - rayu's palette
-		make_colour_rgb(255, 152,  48),     /// 3  ORANGE - rayu's palette
-		make_colour_rgb( 72, 224,  96),     /// 4  GREEN  - rayu's palette
-		make_colour_rgb( 64, 144, 255),     /// 5  BLUE   - rayu's palette
-		make_colour_rgb(138, 107, 255),     /// 6  indigo - first pass, mastery only
-		make_colour_rgb(185,  92, 255),     /// 7  violet - first pass, mastery only
-		make_colour_rgb(232,  92, 216),     /// 8  magenta- first pass, mastery only
-		make_colour_rgb(255, 111, 176),     /// 9  pink   - first pass, mastery only
-		make_colour_rgb(255, 210,  74)      /// 10 gold   - first pass, the cap
+		make_colour_rgb(255,  64,  64),     /// 2  RED     - rayu's palette
+		make_colour_rgb(255, 152,  48),     /// 3  ORANGE  - rayu's palette
+		make_colour_rgb( 72, 224,  96),     /// 4  GREEN   - rayu's palette
+		make_colour_rgb( 64, 144, 255),     /// 5  BLUE    - rayu's palette
+		make_colour_rgb(100,  60, 255),     /// 6  INDIGO  - mastery I
+		make_colour_rgb(180,  40, 255),     /// 7  VIOLET  - mastery II
+		make_colour_rgb(255,  30, 200),     /// 8  MAGENTA - mastery III
+		make_colour_rgb(255,  80, 130),     /// 9  ROSE    - mastery IV
+		make_colour_rgb(255, 220,  50)      /// 10 GOLD   - mastery V and the cap
 	];
 	var _i = clamp(round(_level), 1, array_length(_c) - 1);
 	return _c[_i];
