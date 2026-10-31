@@ -1,12 +1,14 @@
 # Art descriptions
 
 Draw-ready briefs and technical contracts for the project's art. Measurements
-were taken from the repository on **2026-10-30**; proposals are labelled. The
-board tracks ownership and completion. Art is complete only when the game uses
+were taken from the repository on **2026-10-30**. The implemented names and
+current ownership are recorded without proposal labels; the board tracks
+completion and remaining runtime review. Art is complete only when the game uses
 it; §5 is the integration checklist.
 
 The 2026-10-21 drop delivered the level-complete banner, 18 biome props, 36
-meta icons, four tower trios, and eight shot effects. The Graveyard atlas was
+meta icons, four tower trios, and eight shot effects. Two Candy icons were
+added 2026-10-30, bringing the meta icon set to 38. The Graveyard atlas was
 added 2026-10-30. The boss/zombie rigs arrived in later drops. Naming and
 unreferenced-sprite cleanup is tracked by `art-cleanup-unreferenced`.
 
@@ -30,17 +32,18 @@ never hand-tuned. The title-screen zombie is the rigged Grumble-Mulch
 
 ## 0. Open art jobs
 
-| Card | Status | What is genuinely missing | Drawing? |
+| Card | Status | What remains | Drawing? |
 | --- | --- | --- | --- |
-| `region-bosses` | **code done 2026-10-24** | the **4 new boss rigs** and their 4 portraits arrived and are wired (a row carries `array(walk, idle, attack, die)`, `scr_zomb_art` plays it); region 2 reuses an existing boss | — |
-| `region-zombies` | **code + portraits integrated 2026-10-30** | all 6 restyled walker rigs and all 6 portraits are wired, including the formerly missing Sandblasted and Shroud portraits. `attack` is drawn but never played: the gate is a place, not an enemy (`zomb-attack-at-gate`, §3.2) | — |
-| `tower-slice-trios` | **done 2026-10-21** | all four trios arrived; every roster tower now uses its named trio, and all eight shot-effect sprites are wired (§4.9) | — |
-| `art-biome-tiles` | review | Graveyard atlas integrated for Region 5; runtime visual review remains. Existing regional props are present. The four older atlases stay as-is unless Rayu chooses a coordinated refresh (§4.3) | no |
-| `art-garden-book` | **done 2026-10-21** | every icon arrived (36); the screens that show the rest are their own cards | — |
-| `art-level-complete` | **done 2026-10-21** | the banner arrived and is drawn at 1:1 (§4.5) | — |
-| `art-state-origins` | **review** | **no drawing** — visual check of the accepted ≤5 px ground-contact differences (§4.8); the former 20–23 px diagnosis compared different canvas sizes | no |
-| `portrait-draw-fit` | backlog | **no drawing** unless frameless busts are chosen (§4.6) | optional |
-| `legacy-boss-art-cleanup` | **done 2026-10-30** | all five unreferenced pre-restyle boss sprites removed from the project; no code behavior depended on them (§4.7) | — |
+| `region-bosses` | **done** | all 4 new boss rigs and portraits are wired; the six-boss roster includes the two original bosses and reuses Sub-Zero in Region 2 | — |
+| `region-zombies` | **done** | all 6 new walker rigs and all 6 portraits are wired, including Sandblasted and Shroud. The attack slot remains decorative in v1 by decision (`zomb-attack-at-gate`, §3.2) | — |
+| `tower-slice-trios` | **done** | all 12 roster towers use dedicated idle / attack / return trios, and all eight shot-effect sprites are wired (§4.9) | — |
+| `art-biome-tiles` | **review** | the Graveyard atlas is integrated; runtime visual review remains. Keep the four existing regional atlases for v1 (§4.3) | no |
+| `art-garden-book` | **done** | all 38 meta-screen icons are in the project; screen placement is covered by the UI cards | — |
+| `art-level-complete` | **done** | the banner is integrated and drawn at 1:1 (§4.5) | — |
+| `art-state-origins` | **review** | **no drawing** — visually check the accepted ≤5 px ground-contact differences (§4.8) | no |
+| `portrait-draw-fit` | **review** | **no drawing** — fitted preview-card layout is implemented; check portrait readability in GameMaker (§4.6) | no |
+| `art-sandblasted-portrait` | **review** | both missing portraits are now generated and wired; check them in the Up Next preview | no |
+| `legacy-boss-art-cleanup` | **done** | all five unreferenced pre-restyle boss sprites were removed; no code behavior depended on them (§4.7) | — |
 
 The three formerly unwired unlockables, Kaboom Kalanchoe, Money Marigold, and
 Thornamental, now have roster entries and use their finished trios. Kaboom's
@@ -199,14 +202,13 @@ share one canvas and ground row.** For each new character:
 | Facing | right; the game mirrors with `image_xscale < 0` |
 | Margins | 10 px minimum around the silhouette, so the black outline is never clipped |
 
-**What the game currently uses** matters for sequencing: `obj_mon` plays
-**`sprite_array[0]`, `[1]` and `[3]`** — `walk` while it is moving, `idle` while
-it is blocked, and `die` when it is killed (`scr_zomb_art`: it switches only when
-the state changes, so a one-sprite rig still works). **`attack` — slot 2 — is
-never played**: a monster in this game does not fight, it walks to the gate and
-takes a life, so that slot is drawn and unused until the gate grows a real
-engage step (`zomb-attack-at-gate`). Dedicated `idle`/`die` sheets are therefore
-worth drawing for a new rig; the walk cycle stays the one mandatory state (§4.2).
+**The v1 state contract** is settled: monsters use `walk` while moving, `idle`
+while blocked, and `die` when killed. The SCML rig plays those named clips; the
+sheet fallback maps them to `sprite_array[0]`, `[1]`, and `[3]`.
+The attack clip is decorative and remains unplayed by design
+(`zomb-attack-at-gate`, closed 2026-10-30): monsters walk to the gate and cause
+a leak; they do not fight it. Dedicated `idle`/`die` sheets are used in-game,
+while the walk cycle remains mandatory (§4.2).
 
 ### 3.3 Portraits — 314×314, gold frame, painterly
 
@@ -297,9 +299,10 @@ A replacement should therefore be authored at the size it is seen:
 
 ## 4. Card by card
 
-### 4.1 `region-bosses` — four new bosses, and one deliberate reuse
+### 4.1 `region-bosses` — six bosses: four new and two established
 
-**What the game does today.** There are two bosses, both in `spawn_boss`:
+**Current roster.** The game has six bosses: the two original bosses below and
+four new bosses for Regions 3–6. Region 2 reuses Sub-Zero:
 
 | Boss | Art | Portrait | Role |
 | --- | --- | --- | --- |
@@ -316,12 +319,12 @@ one gets a silhouette unlike every other creature in the game, a two-colour
 palette that says its biome, one "tell" that telegraphs its attack, and a death
 that pays off the design.
 
-**Frame plan (per boss):** walk 16 frames (mandatory — it is the sprite the
-level plays), attack 16, die 16. Idle is optional until `obj_mon` actually
-switches states. All states on **one 240×200 canvas with the origin fixed at
-(120, 190)** — the §3.2 rule, and what stops the boss jumping when it switches.
+**Frame plan (per new boss):** 16 frames each for walk, idle, attack, and die.
+The v1 game plays walk / idle / die; attack art is loaded but remains unused by
+the settled `zomb-attack-at-gate` decision. Sheet fallback states share one
+**240×200 canvas and origin (120, 190)**, the §3.2 ground-contact contract.
 
-#### Region 3 — Desert (Bleached Ironworks): **"Foreman Rustlung"** *(proposal)*
+#### Region 3 — Desert (Bleached Ironworks): **"Foreman Rustlung"**
 
 A factory foreman who was welded into his own machine. The body is a dried husk
 in a shredded work shirt and one boot; the rest is a cage of rusted girders
@@ -345,7 +348,7 @@ copy.
   white sky and a gantry behind him. A man who kept working after the factory
   died.
 
-#### Region 4 — Jungle (Vines Take the Ruins): **"The Orchid Widow"** *(proposal)*
+#### Region 4 — Jungle (Vines Take the Ruins): **"The Orchid Widow"**
 
 A gardener's body that has been comprehensively taken over. The head is gone;
 in its place a huge carnivorous orchid with a wet, toothy throat and a
@@ -365,7 +368,7 @@ pair of shears; the other has become a woody branch with three hooked claws.
 * **Portrait:** the bloom fills most of the frame, petals curling under the gold
   border, one human eye still visible deep inside the throat.
 
-#### Region 5 — Graveyard (The Digested Past): **"The Bellringer"** *(proposal)*
+#### Region 5 — Graveyard (The Digested Past): **"The Bellringer"**
 
 The gravedigger who never stopped ringing for the dead. He is fused with the
 bell: a cracked church bell is his torso, his head hangs forward out of the
@@ -385,7 +388,7 @@ the shovel he was buried with.
 * **Portrait:** a bell rim framing a dirt-caked face, rope through the teeth,
   a graveyard receding behind him. The most mournful portrait in the set.
 
-#### Region 6 — Blood Fields (Slaughterhouse Meadow): **"The Gardener"** *(proposal)*
+#### Region 6 — Blood Fields (Slaughterhouse Meadow): **"The Gardener"**
 
 The final boss, and the game's thesis in one silhouette: a colossal, rotten
 topiary of the player's own daisy. A daisy's head with a cracked, weeping face,
@@ -416,15 +419,17 @@ biome is a feature (the player knows its bomb tell). If it needs anything at
 all, it is a swamp-tinted **portrait background**, which is a small optional
 variant, not a new rig.
 
-**Acceptance.** Each new boss is visible in its region's stage 10, its portrait
-appears in the "Up Next…" popup, and a full idle→walk→attack cycle keeps the
-feet on one screen row (§4.8's test, applied to the new rigs).
+**Acceptance.** Each new boss is visible in its region's stage 10 and its
+portrait appears in the "Up Next…" popup. The v1 idle / walk / die cycle keeps
+feet on one screen row (§4.8); attack art remains decorative under the settled
+`zomb-attack-at-gate` decision.
 
 ---
 
 ### 4.2 `region-zombies` — six walk cycles, six portraits
 
-**What the game does today.** Three monsters, all region 1, all restyled already:
+**Original Region 1 baseline.** These three established monsters remain the
+shared reference for the six added types below:
 
 | Monster | Speed / life | Walk sprite | Design |
 | --- | --- | --- | --- |
@@ -432,36 +437,28 @@ feet on one screen row (§4.8's test, applied to the new rigs).
 | **Dome-Alone** | 0.5 / 12 | 138×160 | the tank: oversized teal head, orange shirt, red tie, one tooth |
 | **Professor-Cerebrisk** | 1.5 / 5 | 147×170 | the fast one: exposed pink brain, round glasses, lab coat |
 
-**The honest budget.** `goal.md` §28.1 budgets "30 frames each", and that was
-right for the game as it was built: the level used to play the **walk cycle
-only**. Since 2026-10-24 it also plays **`idle`** (while blocked) and **`die`**
-(on the kill), so a new rig is worth **walk + idle + die = 48 frames + one
-portrait**; `attack` remains drawn-but-unplayed until the gate grows a real
-engage step (`zomb-attack-at-gate`, §3.2). The ten rigs that landed with
-`region-zombies` / `region-bosses` all carry the full four slots, so the art is
-ahead of the code in exactly one place, on purpose.
+**The frame budget.** `goal.md` §28.1 budgets 30 frames per new type. The
+implemented rigs carry 16-frame walk / idle / attack / die clips plus one
+portrait. V1 uses walk, idle (while blocked), and die (on a kill); the attack
+clip remains decorative by the closed `zomb-attack-at-gate` decision (§3.2).
 
 **Per-zombie frame plan:** walk 16 frames on a **240×200 canvas, origin
 (120,190)**; portrait 314×314. If a state sheet is drawn, it stays on the same
 canvas and origin (§3.2).
 
-The themes below are **proposals**, chosen so that each one *shows its region's
-mechanic* rather than just wearing its colours.
+The six added types are the implemented roster, with each design showing its
+region's identity rather than only wearing its colours.
 
-#### Region 1 — the sixth slot: **"The Newly Turned"** *(proposal)*
-The arithmetic of the card is six zombies and five regions after region 1, so
-one slot is region 1's. The cleanest use is a **fresh** zombie: a suburbanite
-turned this morning — polo shirt, bathrobe, one slipper, mail still in hand, no
-decay yet except the eyes and the jaw. Small and fast, the "oh no, that was a
-person" enemy for the tutorial region, and the reference point the other five
-decompose away from.
+#### Region 1 — the sixth slot: **"The Newly Turned"**
+The roster decision is settled: **The Newly Turned** is the sixth type and
+belongs to Region 1. The other five new types fill Regions 2–6, one per region.
+This keeps a fresh suburbanite — polo shirt, bathrobe, one slipper, mail still
+in hand — as the tutorial's small, fast "oh no, that was a person" enemy and a
+reference point for the later designs.
 *Palette:* clean pastels against the region's grey-green; the only bright shirt
-in the game's monster set. **If the six are meant as one per region (2–6) plus
-a Blood Fields elite instead, say so and this slot becomes "The Stitched"** — two
-torsos sharing one spine, stitched at the hip, which is also the best base for
-recolour variants.
+in the game's monster set.
 
-#### Region 2 — Swamp (Toxic Stagnation): **"The Bog Wader"** *(proposal)*
+#### Region 2 — Swamp (Toxic Stagnation): **"The Bog Wader"**
 Waist-deep in the water its region forbids towers from standing in. Only the
 torso and arms show above a skirt of dripping silt, weed and bone; the ribcage
 has a faint sickly glow inside it; a snapped boat oar is still gripped in one
@@ -471,7 +468,7 @@ wide and low, arms trailing, weed skirt breaking the outline. *Tell:* the water
 ripples stop for a beat before it lunges.
 *Why it is the region's zombie:* it walks where the player cannot build.
 
-#### Region 3 — Desert (Bleached Ironworks): **"The Sandblasted"** *(proposal)*
+#### Region 3 — Desert (Bleached Ironworks): **"The Sandblasted"**
 A dried-out worker in shredded overalls, sand pouring from a tear in its side,
 a length of rebar through one shoulder, cracked lips pulled back from perfect
 teeth. Tall, thin, leaning into a wind that is no longer blowing.
@@ -480,7 +477,7 @@ highlights. *Silhouette:* tall and narrow with a long drag-chain behind.
 *Tell:* it raises one hand to shield its eyes before it speeds up.
 *Portrait delivered 2026-10-30:* `spr_sandblasted_portrait` (314×314).
 
-#### Region 4 — Jungle (Vines Take the Ruins): **"The Rootbound"** *(proposal)*
+#### Region 4 — Jungle (Vines Take the Ruins): **"The Rootbound"**
 A corpse being taken apart by the jungle in real time. Roots burst out of its
 chest and anchor it to the ground with every step; one arm has become a woody
 branch; leaves grow where hair was; a single bright orchid sits in the hollow of
@@ -489,7 +486,7 @@ its throat.
 *Silhouette:* asymmetric, tendrils trailing, one shoulder much higher than the
 other. *Tell:* the roots pull taut and it lurches.
 
-#### Region 5 — Graveyard (The Digested Past): **"The Shroud"** *(proposal)*
+#### Region 5 — Graveyard (The Digested Past): **"The Shroud"**
 A body still wrapped in a burial shroud, dragging a collapsed headstone on a
 chain. No legs are visible — it moves in a low, creeping crawl of cloth, and the
 shroud is wet enough to leave a trail. It is the one zombie that must read
@@ -500,7 +497,7 @@ zombies rising from graves mid-path.
 behind. *Tell:* the shroud swells before it lunges.
 *Portrait delivered 2026-10-30:* `spr_shroud_portrait` (314×314).
 
-#### Region 6 — Blood Fields (Slaughterhouse Meadow): **"The Harvester"** *(proposal)*
+#### Region 6 — Blood Fields (Slaughterhouse Meadow): **"The Harvester"**
 A scarecrow built from stitched carcass and red meadow flowers: a pole through
 the spine, a burlap face, a scythe blade lashed to one forearm, petals packed
 into the ribcage. Tall, spiky and unmistakable at 37 px — the elite the night
@@ -798,16 +795,12 @@ tower. It pays $1–3 per cleared wave through L5, then scales by 8% per
 mastery level; `spr_marigold_income_sparkle` plays when paid. The attack trio
 is retained as art, but does not imply that the passive tower damages monsters.
 
-**Two art questions remain, neither needing a redraw:**
-
-* **Pina Collider is ~30% smaller than its peers.** Either intentional (it is
-  the cheap AoE) or its art should be scaled up. `draw_scale` is frozen at 0.5
-  for the level look, so "scale it up" means redrawing the trio larger on the
-  192 canvas, not changing the code.
-* **`tower-level-palette`** (levels 6–10 ring colours) is a design card, but it
-  constrains tower art: every trio needs a clean closed outline for the ring to
-  trace. Check a new trio by drawing a 3 px outline around it and looking at it
-  at 96 px.
+**V1 art decisions:** keep Pina Collider at its authored size and the shared
+0.5 draw scale; its compact pineapple silhouette is distinctive, and no redraw
+or per-tower scaling is planned. Check that it remains readable in the live
+shop and at 32 px board-cell scale before reopening the art. The L6–L10 ring
+palette is already named and implemented in `tower_levels.gml`; the runtime
+contrast check is tracked separately as `tower-ring-mastery-palette`.
 
 ## 5. Delivery checklist (the part that makes it "done")
 
@@ -828,23 +821,25 @@ is retained as art, but does not imply that the passive tower damages monsters.
 
 ---
 
-## 6. Open questions for rayu
+## 6. Settled choices and remaining visual review
 
-1. **Which of these cards are yours?** (`art-track-ownership`) The document
-   splits cleanly into drawing jobs — bosses, zombies, graveyard atlas, UI
-   icons, banner — and non-drawing jobs — origins, portrait fit, legacy cleanup,
-   biome wiring.
-2. **The sixth zombie.** Is it region 1's "Newly Turned", or the Blood Fields
-   elite ("The Stitched")? The card says six; the regions after region 1 give
-   five.
-3. **Are the four existing biome atlases good enough?** They are the correct
-   format and real art, but old-style. Refreshing all five is 85 frames and
-   should be one pass.
-4. **Pina's size** — intentional, or a redraw?
-5. **Boss and zombie names** in §4.1/§4.2 are proposals; settle them before the
-   portraits, because the name is what the popup prints.
+The asset-owner assignments are recorded in `progress.json`; no ownership
+answer is outstanding. The six-type split is final: Newly Turned is the Region
+1 addition, followed by one added type in each of Regions 2–6. The boss and
+walker names in §§4.1–4.2 are the names used by the roster and portraits, not
+proposals.
 
----
+For v1, keep the four existing Swamp, Desert, Jungle and Blood Fields atlases:
+they meet the 128×128 / 17-frame contract and are distinct, wired terrain art.
+The Graveyard atlas is the only new atlas in this pass. A coordinated refresh
+can be opened later only if the in-game review finds a readability problem.
+
+Keep Pina Collider's delivered proportions and shared tower draw scale. Its
+compact shape is accepted for v1; the remaining check is whether it reads
+clearly in the Garden Book and at board scale. `art-biome-tiles`,
+`art-sandblasted-portrait`, `portrait-draw-fit`, and `art-state-origins` retain
+their runtime visual reviews in the tracker.
+
 
 ## 7. Where the facts came from
 

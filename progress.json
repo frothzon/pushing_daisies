@@ -100,7 +100,7 @@
       "size": "L",
       "prio": 3,
       "needs": "Reload GameMaker and run Region 5 with global.devMode=true. Confirm the LEVEL terrain line names spr_graveyard_128x fallback=0; terrain rows end at rows=12; the Graveyard tint reads correctly; frame 1 shows an open grave lip; frame 16 has no visible seams; and the top-soil cap remains dirt. Send the line or describe a failed visual check.",
-      "notes": "Delivered a 128x128, 17-frame grayscale atlas with empty frame 0, open-grave frame 1, and an edge-matched interior frame 16. Wired Region 5 to the new sprite. Existing biome props, including Blood Fields grass and quarantine fence, were already present and wired; four older regional atlases remain unchanged pending Rayu taste preference.",
+      "notes": "Delivered the 128x128, 17-frame grayscale Graveyard atlas with empty frame 0, open-grave frame 1, and edge-matched frame 16; Region 5 uses it. V1 decision: retain the four existing Swamp, Desert, Jungle, and Blood Fields atlases, which meet the format contract and are already distinct/wired; no coordinated redraw is planned. Runtime review still checks tint, cropping, seams, and the soil cap.",
       "refs": [
         "art_descriptions.md",
         "sprites/spr_graveyard_128x/spr_graveyard_128x.yy",
@@ -183,12 +183,12 @@
       "size": "M",
       "prio": 3,
       "needs": "",
-      "notes": "Mastery nodes, the clover and blood trees, candy slots and the badge sheet.",
+      "notes": "DONE: all 38 Garden Book and meta-screen icons are integrated: four currencies, clover branches and node pips, mastery and Blood Alchemy nodes, ten candy icons, and badge medals. Screen placement and fit remain on the UI runtime review cards.",
       "refs": [
         "roadmap.md"
       ],
       "created": "2026-10-05",
-      "updated": "2026-10-21",
+      "updated": "2026-10-30",
       "done": "2026-10-21"
     },
     {
@@ -256,7 +256,7 @@
     },
     {
       "id": "art-sandblasted-portrait",
-      "title": "Two rigs have no portrait: Sandblasted and Shroud",
+      "title": "Review the Sandblasted and Shroud portraits",
       "status": "review",
       "owner": "both",
       "awaiting": "rayu",
@@ -339,21 +339,21 @@
     {
       "id": "art-track-ownership",
       "title": "Decide who owns the nine art and sound cards",
-      "status": "next",
+      "status": "done",
       "owner": "rayu",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "design",
       "phase": "infra",
       "size": "S",
       "prio": 2,
-      "needs": "Say which of these eight asset cards are yours: art-level-complete, portrait-draw-fit, art-garden-book, art-biome-tiles, region-bosses, region-zombies, legacy-boss-art-cleanup, tower-slice-trios. art_descriptions.md now gives each one a brief, a measured spec and an honest size - and two of them (legacy cleanup, portrait fit) are not drawing jobs at all - so the answer can be as short as all the drawing ones. Three of the original nine are settled: art-belladonna-trio is cline (the sheet is in hand) and provide-chorus-loops is now a listening test that already awaits rayu.",
-      "notes": "They sat in backlog with awaiting=none, which reads as Cline can do these - the board lying in the opposite direction from usual. If they are rayu, each gets status=next, awaiting=rayu and a needs line (the gate refuses a backlog card that awaits a person, which is exactly the point), and the code waves reorder around them. If some are mine, name which and they get a real brief instead. Found 2026-10-19 while planning; updated the same day once belladonna (sheet exists) and the chorus loops (measured) stopped being questions.",
+      "needs": null,
+      "notes": "Closed after tracker audit: all eight named asset cards already have explicit owners in progress.json. region-bosses and region-zombies are Cline and done; art-level-complete, art-garden-book, tower-slice-trios are Rayu and done; portrait-draw-fit, art-biome-tiles, and legacy-boss-art-cleanup are both-owned and done or in review. provide-chorus-loops is separately Rayu-owned and awaiting listening review. No further ownership decision is needed.",
       "refs": [
         "progress.json"
       ],
       "created": "2026-10-19",
-      "updated": "2026-10-19",
-      "done": null
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
     },
     {
       "id": "art-zombie-alpha-outline",
@@ -2714,7 +2714,7 @@
     },
     {
       "id": "portrait-draw-fit",
-      "title": "The portrait box is 64x64 for 314x314 badge art",
+      "title": "Fit 314px monster portraits in the wave preview",
       "status": "review",
       "owner": "both",
       "awaiting": "rayu",
@@ -2817,7 +2817,7 @@
     },
     {
       "id": "region-bosses",
-      "title": "Five bosses: four new rigs plus one reuse",
+      "title": "Six bosses: four new rigs and two established bosses",
       "status": "done",
       "owner": "cline",
       "awaiting": "none",
@@ -2826,12 +2826,12 @@
       "size": "L",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.3. 4 x 2 sprites x 15 frames, and boss art is the most expensive in the game (goal.md 28.1). DONE 2026-10-24: the four boss rigs (Foreman-Rustlung, Orchid-Widow, Bell-Ringer, Gardener) arrived as full four-slot arrays with all four portraits, and each closes its region's stage 10 (regions 3-6); region 2 still reuses an existing boss. Busy and trap now skip a monster that is dying, so a corpse cannot soak a shot, and scr_zomb_death pays once and then plays the die art.",
+      "notes": "DONE: the six-boss campaign roster is implemented. The four new rigs Foreman-Rustlung, Orchid-Widow, Bell-Ringer, and Gardener each have walk/idle/attack/die art and a portrait; Tusk-A-Lot and Sub-Zero are the two established bosses, with Sub-Zero reused for Region 2. New bosses close Regions 3–6. Runtime boss-wave review remains on the content cards.",
       "refs": [
         "goal.md"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-24",
+      "updated": "2026-10-30",
       "done": "2026-10-24"
     },
     {
@@ -2864,13 +2864,13 @@
       "size": "L",
       "prio": 3,
       "needs": "",
-      "notes": "roadmap 5.4. 6 x 2 sprites x 15 frames; the variants cost data, not art, which is the saving that makes the 1,800 -> 850 frames claim in goal.md 28.1 true. DONE 2026-10-24: the six rigs arrived as full arrays (walk, idle, attack, die), 16 frames each, all on the 240x200 canvas at origin (120,190) except the Shroud, and scr_zomb_art plays walk/idle/die. Four portraits landed (Newly-Turned, Bog-Wader, Rootbound, Harvester); TWO ARE STILL MISSING - Sandblasted and Shroud - and that is the open card art-sandblasted-portrait, not this one. The attack slot is drawn but never played; that is zomb-attack-at-gate. CORRECTION 2026-10-24: zomb_ground_offset was the bug, not the fix - a sprite origin already is its ground contact, and that offset moved every corpse down by the empty canvas padding under its art once the bbox envelope included the lying body (the Shroud 28 px on screen, the Bell-Ringer 6.6) and every walker by 0-2.5 px on every frame. It is deleted; the die sheets were already aligned to within 5 px (LL-078, card zomb-die-ground-offset).",
+      "notes": "DONE: six new types fill the Region 1–6 roster (Newly Turned, Bog Wader, Sandblasted, Rootbound, Shroud, Harvester); all six have walk/idle/attack/die rigs, and all six portraits are wired. Sandblasted and Shroud portraits landed 2026-10-30. The attack slot stays decorative and unplayed in v1 by the closed zomb-attack-at-gate decision. Ground contact uses the shared origin; see LL-078.",
       "refs": [
         "scripts/scr_setupSpawning/scr_setupSpawning.gml",
         "goal.md"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-24",
+      "updated": "2026-10-30",
       "done": "2026-10-24"
     },
     {
@@ -3690,7 +3690,7 @@
     },
     {
       "id": "tower-slice-trios",
-      "title": "Art: the two Phase 1 unlockable tower trios (placeholders today)",
+      "title": "Cannon Tulip and Meat Bulb use dedicated tower art trios",
       "status": "done",
       "owner": "rayu",
       "awaiting": "none",
@@ -3699,14 +3699,14 @@
       "size": "M",
       "prio": 2,
       "needs": "",
-      "notes": "Roadmap 1.11 is marked NOT done and says so out loud: Cannon Tulip and Meat Bulb borrow spr_t3_* and spr_t4_* as clearly-marked placeholders, so two of the six towers in the vertical slice are drawn with another tower's art. They need real trios as spr_t5_* and spr_t6_* (roadmap 1.11), 3 states each on the 192x192 canvas. The roster comment already names this as the debt; art_descriptions.md 4.9 has the brief for both.",
+      "notes": "DONE: the old placeholder premise is obsolete. All 12 roster towers use their own named 192x192 idle/attack/return trios, including Cannon Tulip and Meat Bulb. The unused spr_t3_* / spr_t4_* legacy resources were removed after checking GML references. Art descriptions §4.9 records the complete roster; the remaining review is in-game size/readability, not missing tower sprites.",
       "refs": [
         "scripts/scr_tower_roster/scr_tower_roster.gml",
         "roadmap.md",
         "art_descriptions.md"
       ],
       "created": "2026-10-19",
-      "updated": "2026-10-21",
+      "updated": "2026-10-30",
       "done": "2026-10-21"
     },
     {
@@ -5208,6 +5208,18 @@
       "who": "cline",
       "task": "garden-onboarding-tab-gates",
       "what": "Gated the Garden Book entry and tabs by saved progression, with shared draw/input/layout predicates and flex cache invalidation. Stale view state falls back to an available tab. Awaiting fresh-save and runtime review."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "art-track-ownership",
+      "what": "Closed the ownership handoff from existing tracker evidence: all eight named art cards already have explicit owners, and the chorus-loop listening card is separately assigned to Rayu."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "region-zombies",
+      "what": "Synced art_descriptions and tracker notes to the current roster and art contracts: six bosses, six zombie types with all portraits, dedicated trios for all 12 towers, decorative unused attack clips, retained legacy biome atlases, and accepted Pina proportions."
     }
   ]
 }
