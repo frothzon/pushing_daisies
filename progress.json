@@ -3911,7 +3911,7 @@
       "size": "M",
       "prio": 3,
       "needs": "Reload GameMaker with global.devMode=true and clear a stage. Expect the existing LEVEL COMPLETE banner line (80% to 100% over 3s) and UI [HUD] layout OK canvas=<w>x540 nodes=8; press F12 and confirm UI [dump] hud shows hud.complete from 0,0 to <w>,540 and 8 tree nodes, including hud.candy. The banner art should remain centered and 60% of GUI height at windowed and fullscreen aspect. A shifted/cropped banner, UI [HUD] layout FAIL, or changed 3-second hold falsifies it.",
-      "notes": "2026-10-30: Menu title/options already use ui_menu_tree, and the in-run HUD now uses ui_hud_tree (ui-hud-flex). Remaining screen piece: anchor the Level Complete banner’s existing art-bbox center and 60%-of-GUI-height scale to a named full-canvas flex node, preserving LL-055 timing. Options and HUD runtime review remains with Rayu.",
+      "notes": "IMPLEMENTED: scr_level_complete_draw reads the full-canvas hud.complete flex rectangle for its center and height, measures the banner sprite art bbox, and scales the painted art to 60% of GUI height through the existing 80%-to-100% three-second sequence. Runtime clear/resize review remains with Rayu.",
       "refs": [
         "scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml",
         "scripts/scr_level_state/scr_level_state.gml",
