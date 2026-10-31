@@ -30,7 +30,7 @@ function scr_stpButton() {
 	    if(mouse_check_button_pressed(mb_left)){
 	        image_blend = blend_click;
 	        button_state = 2;
-	        blend_timer = room_speed*0.5;
+	        blend_timer = game_get_speed(gamespeed_fps)*0.5;
 	        scr_playSound(snd_button,false);
 	        print("BTN   click  '", text, "' active=", active, " callable=", is_callable(script));
 	        /// dump the menu state too.  The Menu instance is looked up and

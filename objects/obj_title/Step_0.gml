@@ -2,7 +2,7 @@
 
 wait_timer++;
 
-if(wait_timer > room_speed*1.5){
+if(wait_timer > game_get_speed(gamespeed_fps)*1.5){
     __background_set( e__BG.Alpha, 0, lerp(__background_get( e__BG.Alpha, 0 ),0,0.1) );
 }
 

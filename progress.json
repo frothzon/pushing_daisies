@@ -39,12 +39,13 @@
       "dead-color-swap-shader",
       "perf-60-monsters",
       "garden-nav",
-      "garden-onboarding-tab-gates"
+      "garden-onboarding-tab-gates",
+      "gms2-room-speed-api"
     ],
     "next": [
       "hud-readability-and-strings"
     ],
-    "note": "2026-10-30: Garden Book tabs now follow saved progression, and the Candy page keeps the full Seed Shop available; both are awaiting runtime review. Continue the code-side goal work while the larger GameMaker review queue waits for Rayu; performance instrumentation still needs a target-machine measurement at 60 living monsters before texture groups change."
+    "note": "2026-10-30: LL-007 room_speed conversion is implemented and statically verified; runtime timing check awaits Rayu after reload. The toolkit suite is green again (366 tests, 2 skipped) after updating three stale assertions. Continue remaining code-side goal work; target-machine performance at 60 living monsters still needs measurement before texture groups change."
   },
   "tasks": [
     {
@@ -2134,6 +2135,46 @@
       "done": "2026-10-07"
     },
     {
+      "id": "gms2-room-speed-api",
+      "title": "Replace obsolete room_speed uses across live GML",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "infra",
+      "size": "L",
+      "prio": 2,
+      "needs": "Reload with global.devMode=true. Toggle 1x/3x and verify the menu, deploy countdown, title wait, switch timer, and combat text/effect timers keep their intended seconds; check the 3-second legacy game-over transition still exits if speed changes. Confirm the speed toggle sets 60 and 180 FPS. Any stuck transition, wrong duration, or unchanged speed falsifies the fix.",
+      "notes": "IMPLEMENTED IN CODE 2026-10-30: replaced all 26 live room_speed reads/writes across 19 GML files with game_get_speed(gamespeed_fps) and game_set_speed(60/180, gamespeed_fps). Historical comment references remain, but no live room_speed identifier remains. Added an FPS divisor guard to the switch timer display and changed the legacy game-over threshold from == to >= so a mid-timer speed change cannot skip the transition. Line endings preserved. Roundtrip (1014 resources, 0 differ), balance check, progress check, GML function parsing, and all 366 toolkit tests pass. Runtime timing review remains.",
+      "refs": [
+        "lessons_learned.md",
+        "objects/Menu/Step_0.gml",
+        "objects/_waveNum/Create_0.gml",
+        "objects/_eff_acid/Create_0.gml",
+        "objects/_eff_xplod/Create_0.gml",
+        "objects/_eff_puff/Create_0.gml",
+        "objects/_eff_spikes/Create_0.gml",
+        "objects/_spawn/Create_0.gml",
+        "objects/_text_rise/Create_0.gml",
+        "objects/obj_title/Step_0.gml",
+        "scripts/scr_main_gameOver/scr_main_gameOver.gml",
+        "scripts/scr_set_switch/scr_set_switch.gml",
+        "scripts/scr_position_next/scr_position_next.gml",
+        "scripts/scr_stpButton/scr_stpButton.gml",
+        "scripts/scr_main_cutscene/scr_main_cutscene.gml",
+        "scripts/scr_main_highScore/scr_main_highScore.gml",
+        "scripts/scr_main_normal/scr_main_normal.gml",
+        "scripts/scr_setFrameSkip/scr_setFrameSkip.gml",
+        "scripts/scr_iniTooltip/scr_iniTooltip.gml",
+        "scripts/scr_drawSwitchTimer/scr_drawSwitchTimer.gml",
+        "scripts/scr_level_start/scr_level_start.gml",
+        "scripts/scr_level_state/scr_level_state.gml"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
+    },
+    {
       "id": "hover-cell-level",
       "title": "Hover a plant: light its cell, print its level, ring its range",
       "status": "done",
@@ -3360,6 +3401,30 @@
       "created": "2026-10-22",
       "updated": "2026-10-30",
       "done": "2026-10-24"
+    },
+    {
+      "id": "toolkit-test-contract-sync",
+      "title": "Keep toolkit assertions aligned with current project structure",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "tools",
+      "phase": "infra",
+      "size": "S",
+      "prio": 2,
+      "needs": null,
+      "notes": "Updated three stale assertions without weakening runtime checks: pinned the documented 13/19/26/18/16/10 regional endpoints, scoped the no-creature-reroll assertion to scr_level_spawn (leaving spawn-point randomization valid), and included the standalone HUD layout tree. Focused tests and all 366 toolkit tests pass.",
+      "refs": [
+        "python_tools/tests/test_balance.py",
+        "python_tools/tests/test_content.py",
+        "python_tools/tests/test_gm.py",
+        "economy.md",
+        "scripts/scr_level_pick_spawn/scr_level_pick_spawn.gml",
+        "scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
     },
     {
       "id": "tower-belladonna",
@@ -5220,6 +5285,18 @@
       "who": "cline",
       "task": "region-zombies",
       "what": "Synced art_descriptions and tracker notes to the current roster and art contracts: six bosses, six zombie types with all portraits, dedicated trios for all 12 towers, decorative unused attack clips, retained legacy biome atlases, and accepted Pina proportions."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "gms2-room-speed-api",
+      "what": "Converted all 26 live room_speed reads/writes across 19 GML files to game_get_speed/game_set_speed; queued runtime timing review."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "toolkit-test-contract-sync",
+      "what": "Aligned three stale toolkit assertions with the current documented regional curve, spawn function boundary, and separate HUD layout; full 366-test suite is green."
     }
   ]
 }

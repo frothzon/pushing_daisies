@@ -243,7 +243,7 @@ function scr_level_clear() {
 	}
 
 	/// ---- the clock: REAL seconds, not frames (LL-055) -----------------
-	/// Fast-forward sets room_speed to 180, so a frame count would turn the
+	/// Fast-forward sets 180 FPS through game_set_speed(), so a frame count would turn the
 	/// three-second hold into one real second - and a pause stops this Step
 	/// entirely, so the clock stops with it.  Delta is clamped so a stall
 	/// (a window drag, a disk hiccup) cannot skip a beat of the sequence.

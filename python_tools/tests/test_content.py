@@ -22,7 +22,7 @@ TOOLS_DIR = TESTS_DIR.parent
 REPO_ROOT = TOOLS_DIR.parent
 sys.path.insert(0, str(TOOLS_DIR))
 
-from gm import yy  # noqa: E402
+from gm import gml, yy  # noqa: E402
 from gm.art import png as art_png  # noqa: E402
 
 
@@ -219,7 +219,9 @@ class WavePreviewTests(unittest.TestCase):
         return (PROJECT_ROOT / rel).read_text(encoding="utf-8-sig")
 
     def test_spawn_never_rolls_for_itself(self):
-        src = _code_only(self.read(LEVEL_SPAWN_REL))
+        function = gml.get_function(self.read(LEVEL_SPAWN_REL), "scr_level_spawn")
+        self.assertIsNotNone(function, "scr_level_spawn function is missing")
+        src = _code_only(function.source)
         self.assertNotIn("irandom", src,
                          "scr_level_spawn rolls a creature of its own: an "
                          "irandom there cannot be the creature the popup "

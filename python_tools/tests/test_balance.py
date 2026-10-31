@@ -56,7 +56,9 @@ class TableTests(unittest.TestCase):
         self.assertEqual(13, first.curve_end)      # retuned from 30 on 2026-10-12
         self.assertEqual(2, first.curve_pow)
         self.assertEqual(10, first.boss_every)
-        self.assertEqual([13, 19, 26, 34, 42, 52],
+        # R4-R6 were reauthored after the early regional estimates; keep this
+        # pinned to the current GML table and economy.md §4.5.
+        self.assertEqual([13, 19, 26, 18, 16, 10],
                          [r.curve_end for r in self.t.regions])
 
     def test_waves_are_a_rule_not_a_per_stage_number(self):

@@ -10,7 +10,7 @@ function scr_set_switch(argument0, argument1, argument2) {
 
 	trigger_obj = argument0;
 	trigger_qty = argument1;
-	time_keeper = argument2*room_speed;
+	time_keeper = argument2*game_get_speed(gamespeed_fps);
 
 
 

@@ -22,7 +22,7 @@ function scr_main_cutscene() {
 	    section_timer++;
 	    __view_set( e__VW.XView, 0, lerp(__view_get( e__VW.XView, 0 ),obj_graveCenter.x - __view_get( e__VW.WView, 0 )*0.5,0.1) );
 	    __view_set( e__VW.YView, 0, lerp(__view_get( e__VW.YView, 0 ),obj_graveCenter.y - __view_get( e__VW.HView, 0 )*0.5,0.1) );
-	    if(section_timer > room_speed*1.5){
+	    if(section_timer > game_get_speed(gamespeed_fps)*1.5){
 	        section = 2;
 	        scr_playSound(snd_zomb_die,false);
 	        text_box = show_message_box(0,c_white,"BRAINSSS.... #BRAAIINNSSS... #BRAAIINNSSSESS... ");
@@ -33,7 +33,7 @@ function scr_main_cutscene() {
 	/// wait a second...
 	if(section == 2){
 	    section_timer++;
-	    if(section_timer > room_speed*2){
+	    if(section_timer > game_get_speed(gamespeed_fps)*2){
 	        section = 3;
 	        section_timer = 0;
 	        if(scr_isValidInstance(text_box)){
@@ -60,7 +60,7 @@ function scr_main_cutscene() {
 	        __view_set( e__VW.HView, 0, global.ui.h );
 	        section_timer++;
 	    }
-	    if(section_timer > room_speed){
+	    if(section_timer > game_get_speed(gamespeed_fps)){
 	        //------------- create control objects ---------//
 	        instance_create(0,0,_levelControl);
 	        //----------------------------------------------//

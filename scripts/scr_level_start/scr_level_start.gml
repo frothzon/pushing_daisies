@@ -80,7 +80,7 @@ function scr_level_start() {
 
 	    Roadmap 0.4/0.5.  State entry is level_state_time == 0 (the same
 	    contract the old runner had), and the timer counts game-FPS frames
-	    rather than room_speed frames, so the countdown is the same length
+	    using the current game FPS, so the countdown keeps the same real-time length
 	    whatever the runtime speed setting happens to be (LL-007).
 	*/
 

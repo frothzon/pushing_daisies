@@ -22,7 +22,7 @@ function scr_main_normal() {
 
 	//----------------------- Pause Game
 	/// fade to score screen
-	if(state_time >= room_speed*0.2){
+	if(state_time >= game_get_speed(gamespeed_fps)*0.2){
 	    if(keyboard_check_pressed(ord("P"))){
 	        scr_changeState(scr_main_pause);
 	    }

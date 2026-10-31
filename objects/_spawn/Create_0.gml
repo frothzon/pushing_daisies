@@ -1,5 +1,5 @@
 /// @description  pointing timer
 
-timer = room_speed*3;
+timer = game_get_speed(gamespeed_fps)*3;
 
 

@@ -559,7 +559,10 @@ class FlexPanelTests(unittest.TestCase):
     taken on the machine where it was written.
     """
 
-    LAYOUT_SCRIPTS = ("scripts/scr_ui_layout_menu/scr_ui_layout_menu.gml",)
+    LAYOUT_SCRIPTS = (
+        "scripts/scr_ui_layout_menu/scr_ui_layout_menu.gml",
+        "scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml",
+    )
 
     def _gml_files(self):
         if PROJECT_ROOT is None:

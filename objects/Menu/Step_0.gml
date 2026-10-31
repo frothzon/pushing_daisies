@@ -99,7 +99,7 @@ switch(menu_state){
         if(menu_state_time == 0){
             for_array(menu_button,scr_button_index_disable);
         }
-        if(menu_state_time > room_speed*0.5){
+        if(menu_state_time > game_get_speed(gamespeed_fps)*0.5){
             audio_stop_all();
             fadeout(game_room,c_black,1,0,0);
         }
@@ -124,7 +124,7 @@ switch(menu_state){
                   difficulty_name(global.difficulty),
                   " loadout ", string(global.loadout));
         }
-        if(menu_state_time > room_speed*0.5){
+        if(menu_state_time > game_get_speed(gamespeed_fps)*0.5){
             audio_stop_all();
             fadeout(game_room,c_black,1,0,0);
         }
@@ -151,7 +151,7 @@ switch(menu_state){
             scr_resetSoundVolume();
             scr_saveOptions();
         }
-        if(menu_state_time > room_speed*0.5){
+        if(menu_state_time > game_get_speed(gamespeed_fps)*0.5){
             scr_music_start_menu();
             scr_menu_changeState(MENU_STATE.START);
         }
@@ -162,7 +162,7 @@ switch(menu_state){
         if(menu_state_time == 0){
             for_array(menu_button,scr_button_index_disable);
         }
-        if(menu_state_time > room_speed*0.5){
+        if(menu_state_time > game_get_speed(gamespeed_fps)*0.5){
             audio_stop_all();
             game_end();
         }

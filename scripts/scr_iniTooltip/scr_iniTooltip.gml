@@ -7,7 +7,7 @@ function scr_iniTooltip(argument0) {
 	tool_obj = id;
 	tooltip = undefined;
 	tool_counter = 0;
-	count_time = argument0*room_speed;
+	count_time = argument0*game_get_speed(gamespeed_fps);
 
 
 

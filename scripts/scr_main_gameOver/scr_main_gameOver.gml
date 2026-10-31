@@ -20,12 +20,12 @@ function scr_main_gameOver() {
 	}
 
 	/// fade to score screen
-	if(state_time == room_speed*3){
+	if(state_time >= game_get_speed(gamespeed_fps)*3){
 	    scr_changeState(scr_main_highScore);
 	}
 
 	/// black screen before high score
-	if(state_time > room_speed*1.5){
+	if(state_time > game_get_speed(gamespeed_fps)*1.5){
 	    blackScreen = lerp(blackScreen,1,0.2);
 	}
 

@@ -38,7 +38,7 @@ function scr_main_highScore() {
 	}
 
 	/// exit high score table
-	if(state_time > room_speed){
+	if(state_time > game_get_speed(gamespeed_fps)){
 	    if(mouse_check_button_pressed(mb_left)){
 	        fadeout(rm_score,c_black,1,0,0);
 	    }

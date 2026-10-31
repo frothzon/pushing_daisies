@@ -1,6 +1,6 @@
 /// @description  set life to room speed
 
-hit_time = room_speed*0.25;
+hit_time = game_get_speed(gamespeed_fps)*0.25;
 timer = 0;
 xend = x;
 yend = y;

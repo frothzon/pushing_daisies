@@ -8,7 +8,8 @@ function scr_drawSwitchTimer(argument0, argument1, argument2) {
 	*/
 
 	with(argument0){
-	    var _time = (time_keeper - state_time) div room_speed,
+	    var _fps = max(1,game_get_speed(gamespeed_fps)),
+	        _time = (time_keeper - state_time) div _fps,
 	        _str = string(_time + 1),
 	        _x1 = argument1,
 	        _y1 = argument2;

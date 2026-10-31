@@ -13,7 +13,7 @@ function scr_position_next(argument0, argument1) {
 	    _rate = point_distance(_obj.x,_obj.y,_obj.xprevious,_obj.yprevious),    /// speed
 	    _time = argument1,  /// time required
 	    _face = point_direction(_obj.xprevious,_obj.yprevious,_obj.x,_obj.y),   /// direction
-	    _dist = _rate*_time*room_speed;    /// distance moved using distance = rate*time
+	    _dist = _rate*_time*game_get_speed(gamespeed_fps);    /// distance moved using distance = rate*time
     
 	var _x = _obj.x + lengthdir_x(_dist,_face),
 	    _y = _obj.y + lengthdir_y(_dist,_face);

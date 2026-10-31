@@ -11,9 +11,9 @@ function scr_setFrameSkip(argument0) {
 	/// enable it
 	if(!frame_skip){
 	    draw_enable_drawevent(true);
-	    room_speed = 60;
+	    game_set_speed(60, gamespeed_fps);
 	} else {
-	    room_speed = 180;
+	    game_set_speed(180, gamespeed_fps);
 	}
 
 

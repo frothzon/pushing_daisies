@@ -222,17 +222,19 @@ gml_Object_Menu_Step_0 (line 12) -     scr_menu_debug(id, "state entered");
 ---
 
 <a name="ll-007"></a>
-## LL-007 — `room_speed` is obsolete in GMS2  *(OPEN — not yet fixed)*
+## LL-007 — `room_speed` is obsolete in GMS2  *(LIVE CODE CONVERTED 2026-10-30; runtime verification pending)*
 
 **Look for.** Timings fire instantly or never; fades snap or hang.
 
-**Cause.** **`room_speed` is obsolete** in GMS2 (~35 files use it).
+**Cause.** The obsolete GMS1 speed identifier remained in live GML timers and the frame-skip switch.
 
 **Rule.**
 
 * Replace every read with `game_get_speed(gamespeed_fps)`, and set the speed with `game_set_speed(60, gamespeed_fps)` instead of `room_speed = 60`. Do it in one pass and re-check the timings of every affected script.
 
-**Files.** `objects/Menu/Step_0.gml`
+**Status.** The 26 live reads/writes across 19 GML files now use the GMS2 FPS getter/setter. The selected timer display guards its FPS divisor, and the legacy game-over transition uses `>=` so an FPS change cannot skip its exit threshold. Historical comments still name `room_speed`; there are no live code references. The runtime timing check is tracked by `gms2-room-speed-api`.
+
+**Files.** Full inventory: progress card `gms2-room-speed-api`; entry points include `objects/Menu/Step_0.gml`, `scripts/scr_setFrameSkip/scr_setFrameSkip.gml`, and the legacy timer helpers.
 
 ---
 
