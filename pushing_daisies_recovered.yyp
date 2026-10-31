@@ -1236,10 +1236,13 @@
     {"id":{"name":"bck_house_tileset","path":"tilesets/bck_house_tileset/bck_house_tileset.yy",},},
     {"id":{"name":"bck_tile_dirt_tileset","path":"tilesets/bck_tile_dirt_tileset/bck_tile_dirt_tileset.yy",},},
     {"id":{"name":"scr_dual_grid","path":"scripts/scr_dual_grid/scr_dual_grid.yy",},},
+    {"id":{"name":"obj_dual_grid_demo","path":"objects/obj_dual_grid_demo/obj_dual_grid_demo.yy",},},
+    {"id":{"name":"rm_dual_grid_demo","path":"rooms/rm_dual_grid_demo/rm_dual_grid_demo.yy",},},
   ],
   "resourceType":"GMProject",
   "resourceVersion":"2.0",
   "RoomOrderNodes":[
+    {"roomId":{"name":"rm_dual_grid_demo","path":"rooms/rm_dual_grid_demo/rm_dual_grid_demo.yy",},},
     {"roomId":{"name":"rm_title","path":"rooms/rm_title/rm_title.yy",},},
     {"roomId":{"name":"rm_menu","path":"rooms/rm_menu/rm_menu.yy",},},
     {"roomId":{"name":"rm_test","path":"rooms/rm_test/rm_test.yy",},},

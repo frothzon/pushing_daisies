@@ -1565,6 +1565,30 @@
       "done": "2026-10-18"
     },
     {
+      "id": "dual-grid-demo-room",
+      "title": "Build direct-boot dual-grid showcase room",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "6",
+      "size": "M",
+      "prio": 1,
+      "needs": "Reload the project in GameMaker and run. Send a screenshot of the DUAL-GRID TERRAIN TEST room. Confirm mask 0 is empty, frames 1-15 show the TL/TR/BL/BR masks, and the rendered map shows the edge, hole, inner notch, and diagonal-only pair without gaps. Missing META [DGRID] demo ready, a blank map, a wrong corner, or any gap falsifies the check.",
+      "notes": "Added a direct-start 960x540 room with a runtime-generated patterned 16-frame debug atlas, all 16 mask previews, and a rendered sample map. RoomOrderNodes puts it first; global.startRoom remains rm_test. The debug atlas is deleted by the object's CleanUp event. Awaiting Rayu's screenshot to review runtime visuals.",
+      "refs": [
+        "scripts/scr_dual_grid/scr_dual_grid.gml",
+        "objects/obj_dual_grid_demo/Create_0.gml",
+        "objects/obj_dual_grid_demo/Draw_64.gml",
+        "objects/obj_dual_grid_demo/CleanUp_0.gml",
+        "rooms/rm_dual_grid_demo/rm_dual_grid_demo.yy",
+        "pushing_daisies_recovered.yyp"
+      ],
+      "created": "2026-10-31",
+      "updated": "2026-10-31",
+      "done": null
+    },
+    {
       "id": "dual-grid-library",
       "title": "Build reusable dual-grid mask and renderer library",
       "status": "done",
@@ -5770,6 +5794,12 @@
       "who": "cline",
       "task": "dual-grid-library",
       "what": "Added reusable dual-grid mask and layer-rendering helpers with an opt-in builder path; existing terrain atlases remain on the legacy renderer until converted."
+    },
+    {
+      "date": "2026-10-31",
+      "who": "cline",
+      "task": "dual-grid-demo-room",
+      "what": "Added a direct-start debug room with a procedural mask atlas, all 16 previews, a rendered terrain fixture, and an explicit screenshot review checklist."
     }
   ]
 }
