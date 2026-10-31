@@ -30,7 +30,6 @@ for_dgrid(tower_draw,tower_script);
 if(_ui > 0.01){
     draw_set_alpha(_ui);
     scr_draw_statinv();
-    candy_pity_hud_draw(_ui);
     candy_run_hud_draw(_ui);
     draw_set_alpha(1);
 }

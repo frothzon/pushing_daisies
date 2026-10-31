@@ -477,20 +477,22 @@ function candy_pause_draw() {
 
 
 /// Blood Orange makes its otherwise invisible pity benefit legible on the field.
-function candy_pity_hud_draw(_alpha) {
-	if(candy_active_magnitude("pity_fill") <= 0) return;
+function candy_pity_hud_draw(_alpha, _x, _y, _w) {
+	if(candy_active_magnitude("pity_fill") <= 0
+	|| !is_real(_x) || !is_real(_y) || !is_real(_w) || _w <= 16) return false;
 	var _progress=min(shard_pity_get(),20000),
 	    _mult=1+blood_pity_fill_bonus(),
 	    _text=ui_text_format("candy_pity",{progress:string(round(_progress)),multiplier:string_format(_mult,1,2)});
 	draw_set_alpha(is_real(_alpha) ? clamp(_alpha,0,1) : 1);
 	draw_set_font(fnt_size12);
 	draw_set_halign(fa_right);
-	draw_set_valign(fa_top);
-	draw_text_outline(display_get_gui_width()-12,12,_text,c_orange,c_black,1);
+	draw_set_valign(fa_middle);
+	draw_text_outline(_x+_w-8,_y,_text,c_orange,c_black,1);
 	draw_set_alpha(1);
 	draw_set_font(fnt_size16);
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
+	return true;
 }
 
 /// Draw the active candy countdowns on the live stage HUD. The pause panel
@@ -511,15 +513,19 @@ function candy_run_hud_draw(_alpha) {
 	var _frozen = variable_global_exists("candy_freeze_waves")
 	             && is_real(global.candy_freeze_waves)
 	             ? max(0,floor(global.candy_freeze_waves)) : 0,
-	    _count = array_length(_active_ids) + (_frozen > 0 ? 1 : 0);
+	    _count = array_length(_active_ids) + (_frozen > 0 ? 1 : 0),
+	    _pity_active = candy_active_magnitude("pity_fill") > 0;
 	if(_count <= 0) return false;
 
-	var _x = 12,
-	    _y = 12,
-	    _w = 196,
+	var _layout = ui_rect("hud","hud.candy");
+	if(array_length(_layout) < 4) return false;
+	var _x = _layout[0],
+	    _y = _layout[1],
+	    _w = _layout[2]-_layout[0],
 	    _row_h = 22,
 	    _header_h = 22,
-	    _h = _header_h + _count*_row_h + 8;
+	    _h = _header_h + _count*_row_h + (_pity_active ? _row_h : 0) + 8;
+	if(_h > _layout[3]-_layout[1]) return false;
 	draw_set_alpha(_opacity*0.88);
 	draw_set_colour(make_colour_rgb(24,20,28));
 	draw_rectangle(_x,_y,_x+_w,_y+_h,false);
@@ -550,6 +556,10 @@ function candy_run_hud_draw(_alpha) {
 		draw_text_outline(_x+8,_row_y,ui_text("candy_name_everlasting_gob"),c_aqua,c_black,1);
 		draw_set_halign(fa_right);
 		draw_text_outline(_x+_w-8,_row_y,ui_text_format("candy_frozen_waves",{count:string(_frozen)}),c_aqua,c_black,1);
+	}
+	if(_pity_active){
+		var _pity_y = _y+_header_h+_count*_row_h+_row_h*0.5;
+		candy_pity_hud_draw(_opacity,_x,_pity_y,_w);
 	}
 
 	draw_set_alpha(1);

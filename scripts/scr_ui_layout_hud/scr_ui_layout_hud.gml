@@ -19,6 +19,9 @@ function ui_hud_tree() {
 			/// four 32px stat icons, 48px apart, top-right
 			{ name: "hud.stats", positionType: "absolute",
 			  right: 24, top: 24, width: 32, height: 176 },
+			/// active candy timers, below the top HUD and to the right of the tower card
+			{ name: "hud.candy", positionType: "absolute",
+			  right: 72, top: 84, width: 196, height: 280 },
 			/// full-canvas anchor for the Level Complete banner's art centre
 			{ name: "hud.complete", positionType: "absolute",
 			  left: 0, top: 0, width: "100%", height: "100%" },
@@ -58,6 +61,7 @@ function ui_hud_check() {
 		["hud.speed", 16, 16, 112, 64],
 		["hud.region.weather", 128, 16, 320, 64],
 		["hud.stats", _w-56, 24, _w-24, 200],
+		["hud.candy", _w-268, 84, _w-72, 364],
 		["hud.complete", 0, 0, _w, _h],
 		["hud.tower", 16, _h-204, 336, _h-16],
 		["hud.tower.range", 16, _h-170, 336, _h-108],
@@ -78,7 +82,7 @@ function ui_hud_check() {
 			_ok = false;
 		}
 	}
-	if(_ok) ui_log("HUD", "layout OK canvas=", _w, "x", _h, " nodes=7");
+	if(_ok) ui_log("HUD", "layout OK canvas=", _w, "x", _h, " nodes=8");
 	return _ok;
 }
 

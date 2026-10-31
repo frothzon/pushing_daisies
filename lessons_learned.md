@@ -106,6 +106,7 @@ and add its row to the index.
 | [LL-087](#ll-087) | The late-region balance sim started every tower at level 1 and ignored permanent clover progression | FIXED |
 | [LL-088](#ll-088) | Ordinary leaks cost zero lives without Vitality, and 25% Vitality prevents 75%; raw leak counts also differ from lives lost | FIXED |
 | [LL-089](#ll-089) | A range Candy changes targeting but the tower's light radius stays at its old size | WATCH |
+| [LL-090](#ll-090) | Active Candy timers cover the speed controls, while Blood Orange pity covers the stage stats | WATCH |
 
 ---
 
@@ -1948,6 +1949,18 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 **Rule.** Whenever an active effect rebuilds tower range, refresh the tower range lights after the new data is assigned. Check both activation and expiry, and ensure the radius returns to baseline.
 
 **Files.** `scripts/scr_candy_system/scr_candy_system.gml`, `scripts/tower_levels/tower_levels.gml`, `objects/obj_tower/Alarm_0.gml`.
+
+
+<a name="ll-090"></a>
+## LL-090 — Active Candy timers covered the speed controls, while Blood Orange pity covered the stage stats
+
+**Look for.** The Candy countdown panel starts at the upper-left over the speed buttons, or the Blood Orange pity line is hidden by the upper-right stat inventory. The full Candy panel can reach 250 px tall when every recipe is active.
+
+**Cause.** Candy drew from hard-coded screen corners instead of the named HUD layout, and its pity readout had a separate hard-coded corner. Neither rectangle reserved space against the other HUD elements or the panel's maximum content.
+
+**Rule.** Anchor the active Candy panel through a named flex node, reserve its maximum height clear of speed, weather, stats, tower card, and Endless HUD, and draw pity progress inside the same panel. Keep the layout check's node count and the Candy runtime acceptance criteria in sync.
+
+**Files.** `scripts/scr_candy_system/scr_candy_system.gml`, `scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml`, `objects/_levelControl/Draw_64.gml`.
 
 ---
 ## Adding an entry
