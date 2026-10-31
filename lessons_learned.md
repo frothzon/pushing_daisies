@@ -105,6 +105,7 @@ and add its row to the index.
 | [LL-086](#ll-086) | A fresh save shows zero balances for every future currency before the player can earn them | FIXED |
 | [LL-087](#ll-087) | The late-region balance sim started every tower at level 1 and ignored permanent clover progression | FIXED |
 | [LL-088](#ll-088) | Ordinary leaks cost zero lives without Vitality, and 25% Vitality prevents 75%; raw leak counts also differ from lives lost | FIXED |
+| [LL-089](#ll-089) | A range Candy changes targeting but the tower's light radius stays at its old size | WATCH |
 
 ---
 
@@ -1934,6 +1935,19 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 **Files.** `scripts/lose_life/lose_life.gml`, `scripts/scr_level_wait/scr_level_wait.gml`, `scripts/scr_zomb_death/scr_zomb_death.gml`, `python_tools/gm/balance/{sim,report}.py`, `python_tools/tests/test_balance.py`.
 
 **See also.** [LL-042](#ll-042), [LL-087](#ll-087)
+
+---
+
+<a name="ll-089"></a>
+## LL-089 — A range Candy changed the tower's reach but left its light behind
+
+**Look for.** Jawbreaker increases a tower's effective firing radius, but its light-map radius remains at the placement or previous-upgrade size; it also stays stale when the Candy expires.
+
+**Cause.** `candy_reapply_towers()` rebuilt each tower's stat array, while the separate `_light` instance kept the scale last assigned at placement, upgrade, or wave-modifier change. Targeting read the rebuilt range, so combat could be correct while the visible/revealed area was wrong.
+
+**Rule.** Whenever an active effect rebuilds tower range, refresh the tower range lights after the new data is assigned. Check both activation and expiry, and ensure the radius returns to baseline.
+
+**Files.** `scripts/scr_candy_system/scr_candy_system.gml`, `scripts/tower_levels/tower_levels.gml`, `objects/obj_tower/Alarm_0.gml`.
 
 ---
 ## Adding an entry

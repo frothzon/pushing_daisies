@@ -352,6 +352,9 @@ function candy_run_tick() {
 function candy_run_refresh() {
 	if(!variable_global_exists("candy_stats_dirty") || !global.candy_stats_dirty) return false;
 	candy_reapply_towers();
+	/// Range candies change the field-of-view light sources as well as the
+	/// attack radius. Keep those lightmap sprites in sync when stats rebuild.
+	tower_range_lights_refresh();
 	global.candy_stats_dirty = false;
 	return true;
 }
