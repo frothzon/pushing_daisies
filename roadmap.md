@@ -653,16 +653,20 @@ And every commit is described in terms of **what the user should see in the log*
 
 ## 14. Progress tracking
 
+The statuses below distinguish implementation from the in-game gates. Features
+with code in place but runtime checks waiting are marked **review pending**;
+`progress.json` remains the live, card-level source of truth.
+
 | Phase | State | Notes |
 | --- | --- | --- |
 | Design (`goal.md`, `economy.md`, `roadmap.md`) | **done** | 2026-10-04 |
-| 0 — Foundations | **done** | 2026-10-04 — save, `stage_data`, `difficulty_data`, level flow on `enum` + `switch`, instrumentation, the perlin fatal, config globals, and all three blocker bugs. Outstanding on purpose: the project-wide `room_speed` sweep, and a Deploy screen that reads `stage_data` (Phase 1). See §4.7 |
-| 1 — Vertical slice | **done** | 2026-10-04 — world map, Deploy screen, Garden Book (Offense + seed shop), seeds, clovers, 3 badges, 6 towers, loadout enforcement, results in the level's `CLEAR` state. The three screens are **Menu states, not rooms** (see §5.6.1). Outstanding on purpose: art for the two unlockable towers (1.11), and the four remaining badges. See §5.6 |
-| 2 — Combat depth | not started | |
-| 3 — Garden Book | not started | |
-| 4 — Endless, candy, shards | not started | |
-| 5 — Content | not started | |
-| 6 — Balance & polish | not started | |
+| 0 — Foundations | **implementation complete; review pending** | Save, data tables, level flow, instrumentation, and blockers are implemented. The obsolete `room_speed` sweep and Deploy's use of `stage_data` are complete; timing still has a GameMaker review card. See §4.7 and `progress.json`. |
+| 1 — Vertical slice | **implementation complete; review pending** | World Map, Deploy, Garden Book, currencies, badges, loadout, and Results are implemented. Two phase-1 review cards remain; the screens are Menu states, not rooms (see §5.6.1). |
+| 2 — Combat depth | **implementation complete; review pending** | Combat, tower ladder, specializations, and statuses are implemented. The current board has 32 review cards and one next card in this phase. |
+| 3 — Garden Book | **implementation complete; review pending** | Four Clover trees, Blood tree, Mastery, currency HUD, shop, and respec are implemented; 12 review cards remain. |
+| 4 — Endless, candy, shards | **implementation complete; review pending** | Endless rewards, loot boxes, shard progression, and Candy are implemented; 9 review cards remain. |
+| 5 — Content | **implementation complete; review pending** | Regions, mechanics, monsters, towers, and badges are integrated; 9 review cards remain. |
+| 6 — Balance & polish | **review pending** | Balance, onboarding, and audio acceptance still need their player-side checks. |
 
 ## 15. Change log
 
@@ -674,4 +678,5 @@ And every commit is described in terms of **what the user should see in the log*
 | 2026-10-04 | **Playtest round 1 fixes** (§5.6.5). Three issues from the first run: slots could not be cleared (`loadout_current()` padded them back — split into `loadout_stored()` + `loadout_ready()`); art and names clipped (added `meta_sprite_fit`, `meta_wrap`, `meta_text_fit`); and the title buttons stayed live over the new screens, which turned out to be a **project-wide** defect — `scr_button_index_hide()` had never hidden anything, because `visible = false` does not affect an object with its own Draw event. Recorded as **LL-019**. |
 | 2026-10-04 | **Phase 1 implemented.** Nine new scripts (`scr_tower_roster`, `scr_loadout`, `scr_meta_progress`, `scr_meta_seeds`, `scr_meta_clovers`, `scr_clover_tree`, `scr_meta_unlock`, `scr_badges`, `scr_meta_screen`), the Meta's three screens built as Menu states, the level armed from the loadout, and the clear now paying seeds, clovers and badges. Added §5.6 (as built) with the deviation, the double-click trap, the two guards and nine acceptance tests. The two new `lessons_learned.md` entries (LL-017, LL-018) came out of it. |
 | 2026-10-04 | **Phase 0 implemented.** Eight new scripts (`scr_meta_schema`, `scr_save_meta`, `scr_load_meta`, `scr_meta_log`, `stage_data`, `difficulty_data`, `scr_level_state`, `scr_path_validate`), the level flow moved onto `enum` + `switch`, `room_speed` fixed in every file touched, and all three blocker bugs closed with their acceptance tests. Added 4.7 (as built), the four new `lessons_learned.md` entries (LL-013 to LL-016), and promoted LL-007 to **PART FIXED**. Recorded one correction: `instance_create` is a compatibility script, not a bug. |
+| 2026-10-30 | Reconciled the phase-status table with the implemented systems and current `progress.json` review cards; the old Phase 2–6 “not started” entries were stale. |
 
