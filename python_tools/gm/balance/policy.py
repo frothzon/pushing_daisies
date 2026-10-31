@@ -200,8 +200,11 @@ def coverage_for(scene: Scene, route: Sequence[geometry.Point] = (),
                     r, geometry.polyline_length(r))
 
 
-def rung_price(tower: Tower, level: int, scene: Scene, mastery: int = 0) -> float:
+def rung_price(tower: Tower, level: int, scene: Scene,
+               mastery: Optional[int] = None) -> float:
     """What the NEXT rung costs, or -1 at the cap (``tower_upgrade_price``)."""
+    if mastery is None:
+        mastery = scene.mastery
     return scene.tables.rung_price(tower.price, level, mastery)
 
 
@@ -238,7 +241,8 @@ class Plan:
 
 def plan(scene: Scene, money: float, cov: Optional[Coverage] = None,
          taken: Iterable[Cell] = (), allow_rungs: bool = False,
-         clover_damage: float = 0.0, clover_rate: float = 0.0,
+         clover_damage: Optional[float] = None,
+         clover_rate: Optional[float] = None,
          limit: Optional[int] = None, spread: bool = False,
          standing: Sequence[Tuple[Cell, Tower, int]] = ()) -> Plan:
     """Spend ``money`` on the best effective-dps-per-dollar the route allows.
@@ -269,6 +273,10 @@ def plan(scene: Scene, money: float, cov: Optional[Coverage] = None,
 
     Returns a :class:`Plan`.  Never overspends, never reuses a cell.
     """
+    if clover_damage is None:
+        clover_damage = scene.clover_damage
+    if clover_rate is None:
+        clover_rate = scene.clover_rate
     cov = coverage_for(scene, cache=cov)
     standing = list(standing)
     used: Set[Cell] = set(taken) | {c for c, _t, _l in standing}
@@ -340,7 +348,7 @@ def plan(scene: Scene, money: float, cov: Optional[Coverage] = None,
         if allow_rungs:
             for cell, cur in onboard.items():
                 t, lvl, cur_dps, c_cov, rng = cur
-                price = rung_price(t, lvl, scene)
+                price = rung_price(t, lvl, scene, scene.mastery)
                 if price < 0 or price > purse:
                     continue
                 nxt = lvl + 1

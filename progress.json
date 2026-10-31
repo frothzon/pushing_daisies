@@ -40,12 +40,13 @@
       "perf-60-monsters",
       "garden-nav",
       "garden-onboarding-tab-gates",
-      "gms2-room-speed-api"
+      "gms2-room-speed-api",
+      "balance-progression-sim"
     ],
     "next": [
       "hud-readability-and-strings"
     ],
-    "note": "2026-10-30: LL-007 room_speed conversion is implemented and statically verified; runtime timing check awaits Rayu after reload. The toolkit suite is green again (366 tests, 2 skipped) after updating three stale assertions. Continue remaining code-side goal work; target-machine performance at 60 living monsters still needs measurement before texture groups change."
+    "note": "2026-10-30: LL-007 room_speed conversion is statically verified; runtime timing still awaits Rayu after reload. The full toolkit suite now passes at 369 tests, 2 skipped. Balance scenes now accept saved mastery and clover offense bonuses; sample R4-10 Hard/Brutal runs still fail, so use actual save values before deciding on difficulty data. Target-machine performance at 60 living monsters still needs measurement before texture groups change."
   },
   "tasks": [
     {
@@ -549,6 +550,34 @@
       "created": "2026-10-13",
       "updated": "2026-10-14",
       "done": "2026-10-14"
+    },
+    {
+      "id": "balance-progression-sim",
+      "title": "Balance simulator: model earned mastery and clover bonuses",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "tools",
+      "phase": "5",
+      "size": "M",
+      "prio": 2,
+      "needs": "On return, read the save mastery rank and Offense damage/fire-rate totals, then run R4-10 Hard and Brutal with --mastery N --clover-damage D --clover-rate R --spend instant. Confirm the progression line reports the expected floor/cap and bonuses, then report clear/leaks. Tested M3 runs failed both with zero bonuses and with maximum Offense (+35% damage, +5% rate); if the actual save still fails, difficulty tuning remains. Do not tune stage tables from a Mastery-0-only result.",
+      "notes": "IMPLEMENTED: scenes model Garden Mastery floor/cap and explicit clover damage/fire-rate bonuses; upgrade pricing, planner, sim, gate, fit, project, and sim reports carry those values. Added CLI flags, regression coverage, README example, and LL-087. Focused balance tests: 89 passed, 2 skipped; full toolkit: 369 passed, 2 skipped; roundtrip: 1014 files, 0 differ; balance and progress checks green. Scenario check: R4-10 Hard and Brutal still failed at Mastery III with zero Offense bonuses; Hard and Brutal also failed with max Offense bonuses (+35% damage, +5% rate). Use the real save values before deciding whether region difficulty data needs adjustment.",
+      "refs": [
+        "goal.md",
+        "economy.md",
+        "python_tools/README.md",
+        "python_tools/gm/balance/model.py",
+        "python_tools/gm/balance/policy.py",
+        "python_tools/gm/balance/sim.py",
+        "python_tools/gm/balance/report.py",
+        "python_tools/gm/cli.py",
+        "python_tools/tests/test_balance.py",
+        "lessons_learned.md"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "balance-sim",

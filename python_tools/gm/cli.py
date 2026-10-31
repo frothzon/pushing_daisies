@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
@@ -52,6 +53,17 @@ def _resolve_event(spec: str) -> Tuple[int, int]:
     if spec in events_mod.EVENT_TYPE_IDS:
         return events_mod.EVENT_TYPE_IDS[spec], 0
     raise SystemExit(f"unrecognised event {spec!r} (try Create, Step_0, Draw_75, ...)")
+
+
+def _non_negative_fraction(text: str) -> float:
+    """Parse a finite, non-negative fraction used by the balance scenarios."""
+    try:
+        value = float(text)
+    except ValueError as err:
+        raise argparse.ArgumentTypeError("must be a number (for example 0.10)") from err
+    if not math.isfinite(value) or value < 0:
+        raise argparse.ArgumentTypeError("must be a finite, non-negative fraction")
+    return value
 
 
 def _target_file(resource: "project_mod.Resource", event: Optional[str]) -> Path:
@@ -301,7 +313,9 @@ def cmd_balance(args: argparse.Namespace) -> int:
 
     scene_for = lambda diff: model.resolve(  # noqa: E731
         root, region=args.region, stage=args.stage, difficulty=diff,
-        loadout=args.loadout, spawns=args.spawns, z=args.z)
+        loadout=args.loadout, spawns=args.spawns, z=args.z,
+        mastery=args.mastery, clover_damage=args.clover_damage,
+        clover_rate=args.clover_rate)
 
     if args.action == "gate":
         from .balance import sim as bsim
@@ -319,14 +333,17 @@ def cmd_balance(args: argparse.Namespace) -> int:
                      (6, 1, "high-HP wave: Harvester"))
         print(report.rule(f"combat gate - {args.trials} seeded trials, Brutal"))
         gate_waves = args.max_waves if args.max_waves is not None else 5
-        print("   Fixed four-tower L1 deployments, no specialization or candy, same route cells;")
+        print("   Fixed four-tower floor-level deployments, no specialization or candy, same route cells;")
         print("   combat-only run (no purchases). Setup cost is shown separately.")
         print(f"   seeds {args.seed}..{args.seed + args.trials - 1}; first {gate_waves} waves per scenario")
         for region, stage, label in scenarios:
             scenes = {
                 name: model.resolve(root, region=region, stage=stage,
                                     difficulty="Brutal", loadout=names,
-                                    spawns=args.spawns, z=args.z)
+                                    spawns=args.spawns, z=args.z,
+                                    mastery=args.mastery,
+                                    clover_damage=args.clover_damage,
+                                    clover_rate=args.clover_rate)
                 for name, names in loadouts.items()
             }
             cells = bsim.common_deployment_cells(list(scenes.values()), count=4)
@@ -399,7 +416,10 @@ def cmd_balance(args: argparse.Namespace) -> int:
                 lambda name: model.resolve(root, region=args.region,
                                            stage=args.stage, difficulty=name,
                                            loadout=args.loadout,
-                                           spawns=args.spawns, z=args.z))
+                                           spawns=args.spawns, z=args.z,
+                                           mastery=args.mastery,
+                                           clover_damage=args.clover_damage,
+                                           clover_rate=args.clover_rate))
         for line in lines:
             print(line)
         return 0
@@ -431,7 +451,9 @@ def cmd_balance(args: argparse.Namespace) -> int:
                 scene = model.resolve(root, region=args.region, stage=st,
                                       difficulty=args.difficulty,
                                       loadout=args.loadout, spawns=args.spawns,
-                                      z=args.z, t=t2)
+                                      z=args.z, t=t2, mastery=args.mastery,
+                                      clover_damage=args.clover_damage,
+                                      clover_rate=args.clover_rate)
                 cov = policy.coverage_for(scene)
                 rows = model.all_waves(scene, cov=cov)
                 out.append(bfit.StageFit(
@@ -489,7 +511,9 @@ def cmd_balance(args: argparse.Namespace) -> int:
                     scene = model.resolve(root, region=args.region, stage=st,
                                           difficulty=args.difficulty,
                                           loadout=args.loadout, spawns=args.spawns,
-                                          z=args.z, t=t2)
+                                          z=args.z, t=t2, mastery=args.mastery,
+                                          clover_damage=args.clover_damage,
+                                          clover_rate=args.clover_rate)
                     o = bsim.Sim(scene, ter=bterrain.Terrain(args.z),
                                  spend="ceiling").run()
                     holds = holds and o.cleared_all
@@ -699,6 +723,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--stage", type=int, default=1)
     p.add_argument("--difficulty", default="Normal",
                    choices=["Normal", "Hard", "Brutal"])
+    p.add_argument("--mastery", type=int, choices=range(6), default=0,
+                   help="garden mastery rank 0-5; raises tower arrival level and cap")
+    p.add_argument("--clover-damage", type=_non_negative_fraction, default=0.0,
+                   help="persistent tower damage bonus as a fraction (0.10 = +10%%)")
+    p.add_argument("--clover-rate", type=_non_negative_fraction, default=0.0,
+                   help="persistent fire-rate bonus as a fraction (0.05 = +5%%)")
     p.add_argument("--loadout", nargs="+", metavar="TOWER",
                    help="the four towers to price (default: the starters)")
     p.add_argument("--spawns", default="all", choices=["all", "first"],

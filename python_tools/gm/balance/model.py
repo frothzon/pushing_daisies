@@ -56,6 +56,7 @@ class Scene:
     slot_cells: List[geometry.Cell] = field(default_factory=list)
     monsters: List[Monster] = field(default_factory=list)
     bosses: List[Monster] = field(default_factory=list)
+    mastery: int = 0
     floor_level: int = 1
     clover_damage: float = 0.0
     clover_rate: float = 0.0
@@ -115,7 +116,7 @@ class Scene:
         the live finding, printed by ``gm balance project``.
         """
         tower, dps_floor, price = self.placement()
-        dps_cap = self.tables.dps_at_level(tower, self.tables.cap(0),
+        dps_cap = self.tables.dps_at_level(tower, self.tables.cap(self.mastery),
                                            self.clover_damage, self.clover_rate)
         total = price * self.tables.constants.rung_total
         return (dps_cap - dps_floor) / total if total > 0 else 0.0
@@ -123,7 +124,9 @@ class Scene:
 
 def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal",
             loadout: Optional[Sequence[str]] = None, spawns: str = "all",
-            z: float = 6.0, room: str = "rm_test", t: Optional[Tables] = None,
+            z: float = 6.0, mastery: int = 0,
+            clover_damage: float = 0.0, clover_rate: float = 0.0,
+            room: str = "rm_test", t: Optional[Tables] = None,
             m: Optional[LevelMap] = None) -> Scene:
     """Build the scene for one stage: tables, map, route, slots, loadout.
 
@@ -134,6 +137,13 @@ def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal"
     files.
     """
     t = t if t is not None else tables.load(root)
+    if not isinstance(mastery, int) or isinstance(mastery, bool) or not 0 <= mastery <= 5:
+        raise TableError("mastery must be an integer from 0 through 5")
+    for label, value in (("clover_damage", clover_damage),
+                         ("clover_rate", clover_rate)):
+        if (not isinstance(value, (int, float)) or isinstance(value, bool)
+                or not math.isfinite(value) or value < 0):
+            raise TableError(f"{label} must be a finite, non-negative fraction")
     m = m if m is not None else geometry.load_map(root, room=room,
                                                   cell=t.constants.cell)
     reg = t.region(region)
@@ -148,7 +158,10 @@ def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal"
         loadout=[t.tower(n) for n in names],
         monsters=[t.monster(i) for i in st.spawns],
         bosses=[t.monster(i, boss=True) for i in st.bosses],
-        floor_level=t.floor(0),
+        mastery=mastery,
+        floor_level=t.floor(mastery),
+        clover_damage=float(clover_damage),
+        clover_rate=float(clover_rate),
     )
 
     starts = m.spawns[:1] if spawns == "first" else list(m.spawns)

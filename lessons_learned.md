@@ -103,6 +103,7 @@ and add its row to the index.
 | [LL-084](#ll-084) | The new Spriter zombies look **squat** even though scale normalization says the rig is 2–3× larger than its sheet | FIXED |
 | [LL-085](#ll-085) | Biped Spriter zombies still look **crouched while walking**: the walk plays, but the knees stay folded | WATCH |
 | [LL-086](#ll-086) | A fresh save shows zero balances for every future currency before the player can earn them | FIXED |
+| [LL-087](#ll-087) | The late-region balance sim started every tower at level 1 and ignored permanent clover offense | FIXED |
 
 ---
 
@@ -1902,6 +1903,21 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 **Files.** `scripts/scr_meta_screen/scr_meta_screen.gml`, `goal.md` §27.5.
 
 **See also.** [LL-050](#ll-050), [LL-015](#ll-015)
+
+---
+
+<a name="ll-087"></a>
+## LL-087 — The late-region balance sim started every tower at level 1 and ignored permanent clover offense
+
+**Look for.** A late-region stage appears impossible in the headless sim even though the campaign grants mastery and the garden has permanent tower damage or fire-rate bonuses.
+
+**Cause.** `model.resolve()` always built its `Scene` at Mastery 0 with zero clover offense. The planner therefore deployed at L1, priced rungs against the wrong cap, and ignored persistent damage/rate bonuses while measuring a region whose difficulty assumes those upgrades are reachable.
+
+**Rule.** Keep a fresh-save default, but thread explicit mastery and clover bonuses through scene resolution, rung pricing, greedy planning, the time-step sim, fit/gate scenarios and the CLI. Report the inputs with each sim result so a clear or failure always identifies its progression assumptions. Mastery raises floor and cap together; the planner must still have the same four money-bought rungs.
+
+**Files.** `python_tools/gm/balance/{model,policy,sim,report}.py`, `python_tools/gm/cli.py`, `python_tools/tests/test_balance.py`.
+
+**See also.** [LL-038](#ll-038), [LL-040](#ll-040), [LL-042](#ll-042), [LL-048](#ll-048)
 
 ---
 ## Adding an entry

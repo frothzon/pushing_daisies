@@ -69,6 +69,8 @@ python -m gm balance route       # the room's grid, route and slots
 python -m gm balance towers      # the roster: card dps vs delivered, and dominance
 python -m gm balance afford      # the income curve against the ladder prices
 python -m gm balance sim         # time-step a whole stage: leaks, hearts, the gate
+python -m gm balance sim --region 4 --stage 10 --difficulty Hard --mastery 3 \
+    --clover-damage 0.10 --clover-rate 0.05  # model the garden's earned power
 python -m gm balance sim --cycle both   # ...against the idealised fire cycle
 python -m gm balance gate --trials 20 --seed 17  # control vs DPS loadout gate
 python -m gm balance project --all-waves --profile
@@ -121,6 +123,11 @@ optimistic because money that lands mid-wave idles until the next one - and
 greedy scores UNION coverage (`dps x the share of route nothing else shoots`)
 and is handed the towers already standing, so it spreads along the route and
 buys rungs as well as placements (LL-048).
+
+Progression defaults to a fresh garden (`--mastery 0`, no clover bonuses).
+Pass the saved mastery rank and total offense-tree damage/fire-rate fractions
+to model a progressed save; mastery raises both the free arrival floor and the
+upgrade cap, keeping the four in-run rungs intact.
 
 `balance gate` runs the current control and damage four-tower builds on the
 first five Brutal waves of the fast Shroud and high-HP Harvester stages. It

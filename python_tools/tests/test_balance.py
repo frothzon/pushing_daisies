@@ -493,6 +493,29 @@ class ModelTests(unittest.TestCase):
         self.assertGreater(model.money_through(brutal, 1),
                            model.money_through(self.scene, 1))
 
+    def test_scene_models_mastery_floor_cap_and_clover_damage(self):
+        scene = model.resolve(PROJECT_ROOT, region=4, stage=10,
+                              mastery=3, clover_damage=0.12,
+                              clover_rate=0.03)
+        self.assertEqual(3, scene.mastery)
+        self.assertEqual(self.t.floor(3), scene.floor_level)
+        self.assertEqual(self.t.cap(3), scene.tables.cap(scene.mastery))
+        tower = scene.loadout[0]
+        actual = scene.tables.data_at_level(
+            tower, scene.floor_level, scene.clover_damage, scene.clover_rate)
+        expected = scene.tables.data_at_level(tower, 4, 0.12, 0.03)
+        self.assertEqual(expected, actual)
+        with self.assertRaises(tables.TableError):
+            model.resolve(PROJECT_ROOT, mastery=6)
+
+    def test_policy_uses_the_scene_clover_bonuses(self):
+        scene = model.resolve(PROJECT_ROOT, region=1, stage=1,
+                              clover_damage=0.10, clover_rate=0.02)
+        buy = policy.plan(scene, 100, limit=1).buys[0]
+        expected = scene.tables.delivered_dps_at_level(
+            buy.tower, scene.floor_level, 0.10, 0.02, targets=1)
+        self.assertAlmostEqual(expected, buy.dps)
+
     def test_the_demand_is_one_creature_on_a_boss_wave(self):
         d = model.demand(self.scene, 7)               # the MID boss wave (LL-060)
         self.assertTrue(d.boss)
@@ -1228,6 +1251,15 @@ class SpendingPolicyTests(unittest.TestCase):
         self.assertTrue(levels, "no towers were built at all")
         self.assertGreater(max(levels), self.scene.floor_level,
                            "the policy never bought a rung: %r" % (levels,))
+
+    def test_rung_policy_uses_mastery_floor_and_cap(self):
+        scene = model.resolve(PROJECT_ROOT, region=1, stage=1, mastery=2)
+        tower = scene.loadout[0]
+        self.assertEqual(scene.tables.rung_price(
+            tower.price, scene.floor_level, mastery=2),
+            policy.rung_price(tower, scene.floor_level, scene))
+        self.assertEqual(-1.0, policy.rung_price(
+            tower, scene.tables.cap(scene.mastery), scene))
 
     def test_instant_spending_empties_the_purse(self):
         """Money that lands mid-wave becomes a tower, so less of it idles."""

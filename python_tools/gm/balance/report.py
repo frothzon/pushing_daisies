@@ -382,6 +382,11 @@ def sim_report(o, scene=None) -> List[str]:
     who = (f"{scene.stage.region}-{scene.stage.stage} on {scene.difficulty.name}   "
            if scene is not None else "")
     out.append(f"   {who}cycle {o.cycle}   spend {o.spend}   z {o.terrain_z:g}")
+    if scene is not None:
+        out.append(f"   progression mastery {scene.mastery}   "
+                   f"floor L{scene.floor_level}/cap L{scene.tables.cap(scene.mastery)}   "
+                   f"clover damage +{scene.clover_damage:.1%}   "
+                   f"fire rate +{scene.clover_rate:.1%}")
     if o.failed:
         verdict = "FAILED"
     elif o.truncated:

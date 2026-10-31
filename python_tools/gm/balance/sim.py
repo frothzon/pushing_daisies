@@ -863,6 +863,8 @@ class Sim:
         standing = [(tw.cell, tw.tower, tw.level) for tw in self.towers]
         bought = policy.plan(self.scene, self.money, cov=self.cov,
                              taken=self.built, allow_rungs=True, spread=True,
+                             clover_damage=self.scene.clover_damage,
+                             clover_rate=self.scene.clover_rate,
                              standing=standing)
         out: List[SimTower] = []
         for b in bought.buys:
