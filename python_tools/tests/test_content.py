@@ -1457,6 +1457,12 @@ class ScmlRigAdapterTests(unittest.TestCase):
             (PROJECT_ROOT / LEVEL_CONTROL_STEP_REL).read_text(encoding="utf-8-sig"))
         cls.boot = _code_only(
             (PROJECT_ROOT / LEVEL_BOOT_REL).read_text(encoding="utf-8-sig"))
+        cls.startup = _code_only(
+            (PROJECT_ROOT / "scripts/scr_main_startup/scr_main_startup.gml"
+             ).read_text(encoding="utf-8-sig"))
+        cls.loading_draw = _code_only(
+            (PROJECT_ROOT / "objects/_mainControl/Draw_75.gml"
+             ).read_text(encoding="utf-8-sig"))
         cls.hp_draw = _code_only(
             (PROJECT_ROOT / MON_HP_DRAW_REL).read_text(encoding="utf-8-sig"))
         cls.shadow_draw = _code_only(
@@ -1522,7 +1528,8 @@ class ScmlRigAdapterTests(unittest.TestCase):
 
     def test_the_draw_branch_is_a_chain_not_two_draws(self):
         """A drawn rig must not also draw_self - one monster, one render."""
-        self.assertIn("if(zomb_scml_draw(zomb_rig())){", self.mon_draw,
+        self.assertIn("if(zomb_scml_draw(zomb_rig(), SCML_DRAW_AUTO, 0.35, _tint)){",
+                      self.mon_draw,
                       "the SCML draw branch is gone from obj_mon Draw_0")
         self.assertIn("} else if(inWater){", self.mon_draw,
                       "the water crop is not the rig branch's else - a "
@@ -1572,6 +1579,18 @@ class ScmlRigAdapterTests(unittest.TestCase):
                       "scr_level_boot no longer resets the Spriter players - "
                       "a room_restart() inherits stale players")
 
+    def test_stage_preparation_is_sliced_and_reports_progress(self):
+        """A room entry gets a frame to draw before per-creature setup."""
+        self.assertIn("function zomb_scml_boot_step()", self.adapter)
+        self.assertIn("zomb_scml_boot_step();", self.startup)
+        self.assertIn("zomb_scml_boot_count()", self.startup)
+        self.assertIn("load_rig_counter + load_counter", self.startup)
+        self.assertIn("load_amount = clamp(", self.startup)
+        self.assertIn('draw_background_stretched(bck_loading,0,0,_w,_h)',
+                      self.loading_draw)
+        self.assertIn('round(clamp(load_amount, 0, 1) * 100)',
+                      self.loading_draw)
+
     def test_the_scale_fix_is_measured_and_stamped_on_the_rig(self):
         """Rig-native height is normalized to the original walk sheet.
 
@@ -1580,7 +1599,7 @@ class ScmlRigAdapterTests(unittest.TestCase):
         run to 300px against whole walk sheets of 98-161px), so without a
         per-entity fix the creatures come out inconsistent with the sheet
         era and with each other.  The fix is MEASURED (a scratch player's
-        posed footprint through get_part_world) against the sheet's ART
+        posed footprint from one bulk pose snapshot) against the sheet's ART
         bbox - never its padded canvas - and clamped, so a bad measurement
         cannot make a monster invisible or giant.
         """
@@ -1665,14 +1684,19 @@ class ScmlRigAdapterTests(unittest.TestCase):
         self.assertIn("draw_self()", self.water_object_draw,
                       "sheet-backed monsters lost their original submerged fallback")
 
-    def test_hp_bars_and_shadows_use_the_current_rig_footprint(self):
-        """The 32x32 placeholder cannot size UI or shadows for a live rig."""
-        self.assertIn("zomb_scml_bounds(rig)", self.hp_draw,
-                      "the HP bar still reads bbox_* from the placeholder sprite")
+    def test_hp_bars_use_stable_rig_bounds_and_shadows_use_current_bounds(self):
+        """The bar stays still while shadows keep following the live pose."""
+        self.assertIn("zomb_scml_health_bounds(rig)", self.hp_draw,
+                      "the HP bar must use the cached walk envelope")
+        self.assertIn("scml_walk_bounds_map", self.adapter,
+                      "rig preparation must cache the stable walk envelope")
         self.assertIn("zomb_scml_bounds(rig)", self.shadow_draw,
-                      "the shadow box still reads sprite_width/height from the placeholder")
-        self.assertIn("zomb_scml_part_alpha_bounds(_part)", self.adapter,
-                      "the rig footprint stopped measuring painted part pixels")
+                      "the shadow box must follow the current painted rig pose")
+        self.assertIn("function zomb_scml_part_alpha_bounds(_part, _root_x, _root_y)",
+                      self.adapter,
+                      "the bounds helper lost its explicit root coordinates")
+        self.assertIn("zomb_scml_part_alpha_bounds(_part, x, y)", self.adapter,
+                      "live rig bounds are missing the monster root position")
         self.assertIn("bbox_left - 4", self.hp_draw,
                       "sheet-backed monsters lost their existing HP bar fallback")
 

@@ -57,9 +57,9 @@ I'd actually make the **5× Brutal reward intentional**: Brutal shouldn't merely
 
 Stage 17:
 
-- Normal → 5 Seeds
-- Hard → 10 Seeds
-- Brutal → 25 Seeds
+- Normal → 7 Seeds
+- Hard → 14 Seeds
+- Brutal → 35 Seeds
 
 The player can therefore choose:
 
@@ -184,7 +184,7 @@ Focuses on DPS.
 - Increased attack speed.
 - Crit chance.
 - Crit damage.
-- Multi-shot at high levels.
+- At signature tier (normally L5; Growth can unlock it at L4), fire a second direct-hit packet at each selected target. This is Projectile Count, separate from Target Count, and each packet rolls crit independently.
 
 The important thing is that **specializations shouldn't simply be "more damage vs more range."**
 
@@ -207,6 +207,16 @@ Every attack can potentially have:
 - Range
 - Projectile Count
 - Target Count
+
+**Target Count** is the number of distinct enemies selected for one volley.
+**Projectile Count** is the number of direct-hit packets each selected enemy
+receives. They are independent stats: raising one must not raise the other.
+Base towers have one projectile. Daisy Pusher's Rapid Bloom signature adds a
+second packet per selected target; it leaves the target cap unchanged. Each
+packet can crit and roll on-hit effects independently. A tower card's DPS is
+per target (`damage × effective shots/s × projectiles × expected crit`); the
+roster's theoretical multi-target total also multiplies by target count, before
+coverage and overkill.
 
 **No armor.** Monsters in this project have no armor stat, and adding one would double the balance matrix for no design gain, so armor and armor penetration are cut for v1. Zombie toughness is expressed as HP, speed and elite tier instead.
 
@@ -1144,7 +1154,7 @@ Five screens, all on the same state-machine + button pattern that `objects/Menu`
 | Moment | What appears |
 | --- | --- |
 | Stage 1 | the Deploy screen (4 auto-filled slots and the locked wall), money, lives |
-| First clear | seeds, and the first unlock (25 🌱) |
+| Region 1 boss clear | seeds, and the first tower gate opens; 44 Normal seeds can buy Chillip for 25 🌱 |
 | Stage 5 | badges — the first *Untouched* attempt |
 | Region 1 boss | Endless mode |
 | First blood shard | the Blood tree and candy |
@@ -1189,11 +1199,24 @@ Unlock prices: **25, 50, 90, 150, 230, 340, 480, 650** → **2,015 🌱** for al
 
 | Path | Seeds earned |
 | --- | --- |
-| Normal, all 60 first clears | 620 |
-| + Hard on everything | ~1,240 |
-| Full Brutal sweep | ~3,100 |
+| Normal, all 60 first clears | 704 |
+| Hard, all 60 first clears | 1,408 |
+| Brutal, all 60 first clears | 3,520 |
 
-So a Normal-only player **cannot** unlock the whole roster — they have to meet the game at Hard or Brutal, which is exactly what §2 asks for. The first unlock (25 🌱) is ~9 Normal stages or **2 Brutal stages**, so the promise lands in the first session.
+These totals come from the stage rows: each region starts from its base seed value
+and increases the award at stages 4, 7, and 10. A Normal-only player who also
+repeats every stage once earns 864 seeds after the repeat floor, still short of
+the 2,015 needed for the full roster. A full Hard sweep also falls short; a full
+Brutal sweep earns enough to unlock all eight towers. Because the first tower
+gate opens only after the R1 boss, a fresh-save mixed route that first-clears R1
+on Normal and R2–R6 on Brutal earns 3,344 seeds and can still unlock the roster.
+The 3,520 full-Brutal total is the all-stages first-clear sum; a fresh-save
+all-Brutal R1 route has not been established.
+
+The 25-seed affordability threshold is crossed after seven R1 Normal clears
+(26 seeds) or two Brutal clears (30 seeds). Chillip's Region 1 gate opens only
+after the R1 boss at stage 10, so the first actual purchase is available after
+that clear, within the first region.
 
 ## 28.3 Where every number lives
 

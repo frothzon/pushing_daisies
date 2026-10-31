@@ -29,7 +29,7 @@ y += z_climb*2-12;
 /// have negative width" looked like.  A dead monster is an EMPTY bar.
 var _rig_bounds = undefined;
 if(variable_instance_exists(id, "rig") && is_struct(rig) && zomb_scml_active(rig)){
-    _rig_bounds = zomb_scml_bounds(rig);
+    _rig_bounds = zomb_scml_health_bounds(rig);
 }
 var _xa    = is_struct(_rig_bounds) ? _rig_bounds.left - 4 : bbox_left - 4,
     _xb    = is_struct(_rig_bounds) ? _rig_bounds.right + 4 : bbox_right + 4,

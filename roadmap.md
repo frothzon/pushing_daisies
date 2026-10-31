@@ -53,7 +53,7 @@ verification, resource-editing, line-ending, and GameMaker reload rules.
 | # | Task | Files | Why |
 | --- | --- | --- | --- |
 | 0.1 | **A save that works** — versioned, atomic, corrupt-safe | new `scr_save_meta` / `scr_load_meta`; fix `scr_setup_statinv`, `scr_save_static`, `scr_load_static` | the meta layer has nowhere to live today: the current path is `working_directory` and the load call is commented out |
-| 0.2 | **`stage_data`** — region, stage, base seeds, wave count, spawn mix, biome, `par_spend`, `par_time`, boss flag | new script | removes the need for 60 rooms |
+| 0.2 | **`stage_data`** — region, stage seed rewards, spawn mix, boss pair, `par_spend`, `par_time`; wave rule and biome come from `region_data` | new script | removes the need for 60 rooms |
 | 0.3 | **`difficulty_data`** — seed/HP/speed/spawn/money multipliers | new script | one table for the whole game (`goal.md` §2) |
 | 0.4 | **Level flow → `enum` + `switch`** | `objects/_levelControl/Step_0.gml`, new `scr_level_state` | `scr_runState` + numeric sentinels will not survive stage phases (LL-004) |
 | 0.5 | **`room_speed` → `game_get_speed(gamespeed_fps)`** in the touched files | level flow first | every status-effect timer depends on it (LL-007) — and **the candy timer is the first real timer in the game**, so it cannot be written until this lands |
@@ -418,7 +418,7 @@ reached by a different route.
 | P1-4 | Clear the stage | `META [LEVEL] CLEAR … seeds=+3 clovers=+…`; `META [SEED]` / `META [CLOVER]` lines; the banner names the seeds, the clovers and any new medal |
 | P1-5 | Return | the menu opens on the **world map**, not the title screen; 1-1 is green and 1-2 is now open |
 | P1-6 | Garden Book | nodes show `rank 0/5` and a cost; clicking one with enough clovers buys a rank and saves |
-| P1-7 | Seed Shop, after ~9 Normal clears | 25 seeds and Cannon Tulip is affordable; buying it makes it appear in the Deploy wall |
+| P1-7 | Seed Shop, after the R1 boss | 44 Normal first-clear seeds and the Region 1 gate can buy Chillip for 25; it appears in the Deploy wall |
 | P1-8 | Quit and relaunch | seeds, clovers, the unlocked tower, the tree rank, the clear and the medal are all still there |
 | P1-9 | Replay stage 1-1 | seeds and clovers are quartered (repeat), and the medal is **not** announced again |
 
@@ -469,7 +469,7 @@ Return button, which is what that state's `hide` calls always meant.
 | 2.4 | **In-run tower levels** — money buys four rungs from the garden's free arrival floor; tower levels reset next stage, while saved Garden Mastery sets the floor and cap | `scripts/tower_levels`, save mastery | `goal.md` §§4 and 13; no per-kill XP or per-tower level save |
 | 2.5 | **Specializations at L3** — two per tower, stored per tower, respec costs clovers | new `scr_spec_*` | 12 specs for the 6 shipped towers; Seeds remain content-only (`goal.md` §1) |
 | 2.6 | **`scr_level_difficulty` rewrite** — the new curve from `economy.md` §4.4 | `scripts/scr_level_difficulty` | **atomic with 2.4**: the old function exists to match a ×16 L5 |
-| 2.7 | **Tower stat vocabulary** — extend `enum TOWER` and `scr_towerData` with crit/status fields | `tower_enums`, `scr_towerData` | append fields at the **end** of the enum: every existing index must keep its meaning |
+| 2.7 | **Tower stat vocabulary** — extend `enum TOWER` and `scr_towerData` with crit and projectile fields; keep statuses in the status resolver | `tower_enums`, `scr_towerData` | append fields at the **end** of the enum: every existing index must keep its meaning; target and projectile counts are separate |
 | 2.8 | **Six role towers** — Chillip, Bindweed, Thornamental, Belladonna, Kaboom, and Money Marigold | `scr_tower_roster`, `scr_tower_specs`, `scr_tower_shoot` | code landed 2026-10-30; runtime balance review remains |
 | 2.9 | **Art** — 4 tower trios (12 sprites), 1–2 new zombies | sprites | the largest single art push in v1 |
 
@@ -506,8 +506,10 @@ five **clover** Mastery nodes permanently set one shared arrival floor and cap.
 The older 2.4 premise that a tower's purchased level persists in the save was
 superseded by that design. No per-tower level is saved.
 
-**Still open:** `par_spend` / `par_time` re-authored for 15–60 wave stages
-(`par-reauthor` - Frugal and Speed Grower are unearnable until it lands).
+**Implemented, awaiting runtime review:** `par_spend` / `par_time` have been
+re-authored on all 60 stage rows from 540 deterministic Normal simulations
+(`par-reauthor`). Frugal and Speed Grower now have authored thresholds; the
+model-derived values still need player pacing review and an in-game check.
 
 **Falsifier for this block.** If biome 2's wave 1 is harder than biome 1's, the
 shared base is broken. If a stage's money runs out before wave 10, the curve is
@@ -573,17 +575,17 @@ If 15,000 kills produce no shard, the pity window is wrong (that is the first nu
 | 5.3 | **Five bosses** — 4 new rigs + region 2 reusing the second existing boss | 4 × 2 sprites × 15 frames | boss art is the most expensive in the game |
 | 5.4 | **Six new zombies** — one per region, plus variants from the existing 3 rigs | 6 × 2 sprites × 15 frames | variants cost data, not art |
 | 5.5 | **Six unlockable towers** — complete roster, seed costs, gates, paths, and FX wiring | `scr_tower_roster`, `scr_tower_specs`, `scr_fx` | code and existing art integrated 2026-10-30; runtime review remains |
-| 5.6 | **Fifty stages** — data rows, spawn mixes, `par_spend`, `par_time` | authoring | should be *minutes per stage*, not hours |
+| 5.6 | **Fifty later-region stages** — R2–R6 rows, spawn mixes and par thresholds | all 60 rows and par cutoffs are authored; par_time includes the corrected corpse-clear duration; balance and runtime review remain | 5 regions, 10 stages each |
 | 5.7 | **All seven badges** across all 60 stages | data | the pattern exists after Phase 1 |
 | 5.8 | **Audio** — region music, new tower/zombie sounds | 5 tracks + ~15 stings | can run in parallel with everything |
 
 ### 9.2 Gate
 
-The full 60-stage campaign is completable, and the `economy.md` §9 checkpoints hold at region scale: cap 6 by stage ~12, first shard region 3–4, the roster unlockable by region 5–6, and every stage clearable by at least three loadouts.
+The full 60-stage campaign is modeled, and the `economy.md` §9 checkpoints hold at region scale: cap 6 by stage ~12, first shard region 3–4, the roster unlockable by region 5–6, and every stage clearable by at least three loadouts. Three replay-eligible four-tower builds cleared each Normal row in 180 deterministic runs, and a seed-legal Normal path cleared all 60 rows. A seed-legal mixed path also clears all 60 model stages: first-clear R1 on Normal to open the tower gate, then first-clear R2–R6 on Brutal. It buys Mastery I after R1, Mastery II after R2, and Mastery III after R4; it follows each tower gate and earns 3,344 seeds, enough to unlock the roster. These are fixed-terrain, instant-buy model results; live play and player execution still need review. A fresh-save all-Brutal R1 path is not established: the starter-only no-clover model fails at R1-4. Candy and specialization paths are now modeled from GML, including implemented L5 signatures, but were absent from that 60-stage route and still need runtime review.
 
 ### 9.3 Falsifier
 
-**If authoring one stage takes more than ~30 minutes, the data schema is wrong — fix the schema, not the stages.** That rule exists because 50 stages at three hours each is a year of work, and at twenty minutes each it is a fortnight.
+**If a later-region stage needs substantial one-off code, the data schema is wrong — fix the schema, not the stage.** The 50 R2–R6 rows now use the shared stage and region tables; the remaining gate is whether their modeled pacing matches play.
 
 ---
 

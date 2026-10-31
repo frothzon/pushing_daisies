@@ -3,7 +3,7 @@
 The values of record for [`goal.md`](./goal.md): intent wins on conflict, this
 file wins on numbers. Values are v1 starting points to tune from Phase 6 logs.
 
-Last updated: **2026-10-04**.
+Last updated: **2026-10-30**.
 
 ---
 
@@ -27,16 +27,22 @@ Four meta currencies and one run currency. Nothing else in the game should ever 
 
 ### 2.1 Earning
 
-`seeds = region_base × difficulty_multiplier × repeat_multiplier`
+`seeds = stage_row_seeds × difficulty_multiplier × repeat_multiplier`
 
-| Region | Base (Normal) | Hard ×2 | Brutal ×5 |
-| --- | --- | --- | --- |
-| 1 Grass | 3 | 6 | 15 |
-| 2 Swamp | 5 | 10 | 25 |
-| 3 Desert | 8 | 16 | 40 |
-| 4 Jungle | 11 | 22 | 55 |
-| 5 Graveyard | 15 | 30 | 75 |
-| 6 Blood Fields | 20 | 40 | 100 |
+Each region has a base `B` in `region_data`; its ten stage rows use the ladder
+`B, B, B, B+1, B+1, B+1, B+2, B+2, B+2, B+5` from `stage_data`. The repeat
+multiplier applies to that stage's difficulty-scaled reward, then floors the
+result (minimum 1 seed).
+
+| Region | Base B | Normal, 10 first clears | Hard, 10 first clears | Brutal, 10 first clears | One Normal repeat of all 10 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 Grass | 3 | 44 | 88 | 220 | 11 |
+| 2 Swamp | 5 | 64 | 128 | 320 | 11 |
+| 3 Desert | 8 | 94 | 188 | 470 | 21 |
+| 4 Jungle | 11 | 124 | 248 | 620 | 28 |
+| 5 Graveyard | 15 | 164 | 328 | 820 | 38 |
+| 6 Blood Fields | 20 | 214 | 428 | 1,070 | 51 |
+| **All regions** | — | **704** | **1,408** | **3,520** | **160** |
 
 | Multiplier | Value |
 | --- | --- |
@@ -80,12 +86,17 @@ Keeping seeds strictly content-only is what makes the four currencies readable a
 
 | Milestone | Target |
 | --- | --- |
-| First unlock (25 🌱) | ~9 Normal stages, or **2 Brutal stages** |
+| First unlock seed threshold (25 🌱) | 7 R1 Normal clears (26 seeds), or **2 Brutal clears** (30); the tower gate opens after the R1 boss at stage 10 |
 | Half the roster (4 of 8) | end of Region 3 on a Normal/Hard mix |
 | Whole roster | Regions 5–6, mixing Hard and Brutal |
 | First tower to L6 | after Garden Mastery I, ~stage 12–14 |
 
-*A Normal-only player finishes with ~620 + 155 (repeats) ≈ 775 🌱 — five unlocks, deliberately not eight.*
+*A Normal-only player earns 704 on first clears, or 864 after one Normal repeat of each stage (the per-stage floor makes repeats total 160) — still five unlocks, deliberately not eight.*
+
+A seed-legal fresh-save mixed route earns **3,344 🌱**: clear R1 on Normal to
+open the first tower gate, then take first clears in R2–R6 on Brutal. The 3,520
+figure in the table is the sum if all 60 rows pay the Brutal first-clear
+multiplier; gates make the mixed route the verified model path.
 
 ---
 
@@ -305,6 +316,15 @@ Pina Collider with `targets = 10` hit one monster for 200. The roles this table
 assigns — "multi-target" and "area damage" — did not exist, and the shop's
 `damage × rate × targets` was arithmetic about a column nothing read.
 
+`targets` is the distinct-enemy cap; `projectiles` is the number of direct-hit
+packets each selected enemy receives. The roster's aggregate nominal DPS is
+`damage × rate × targets × projectiles`. Every base tower currently has one
+projectile, so the table below is unchanged. The selected-tower card shows the
+per-target figure (`damage × effective shots/s × projectiles`, including
+expected crit), which is the value one enemy receives before coverage and
+overkill. Rapid Bloom's signature raises its projectile count to two without
+raising its target cap.
+
 That is now fixed, so **the multipliers in this table are real for the first
 time**, and the curve is calibrated for the world where they were not:
 
@@ -421,17 +441,21 @@ bend is 2 because a stage's money grows with the **square** of the wave number
 waves relatively *easier*, which is the opposite of a ramp.
 
 `STATINV.waves` is seeded at **0**, so the speed ramp, HUD, and `wave_count`
-refer to the same wave (LL-044). Region 1's `curve_end = 13` has a Normal play
-confirmation, while regions 2-3 retain first-pass estimates (`19` and `26`). On
-2026-10-30, `gm balance fit --sim` tested all ten stage lengths in each of
-regions 4-6 at their current endpoints (`18`, `16`, `10`): all 30 Normal ceiling-
-buy simulations cleared without leaks. This is evidence for the
-regional curves under an optimistic policy, not a GameMaker run or a full
-player-winnability result. The instant-buy policy with only the four free
-starters still fails many late rows; with progression-available high-DPS builds,
-three distinct stage-10 loadouts per region clear cleanly, but that does not prove
-three builds work on every earlier stage. Hard/Brutal and live play remain open.
-Refit after tower or economy changes.
+refer to the same wave (LL-044). The current endpoints are 13 / 19 / 26 / 18 /
+16 / 10 for regions 1-6. `gm balance fit --sim` tested all ten stage lengths
+in regions 4-6 at their current endpoints; all 30 Normal ceiling-buy simulations
+cleared without leaks. A separate all-region check found three distinct
+progression-available replay builds for every Normal row: 180 deterministic
+instant-buy simulations cleared with 20 lives and zero leaks.
+
+A seed-aware first-clear route also cleared all 60 Normal stages in the model.
+It uses the four starters in R1; buys Chillip for 25 seeds after the R1 gate and
+uses it from R2 through R3-7; then buys Thornamental for 90 seeds after R3-1 and
+uses it from R3-8 through R6-10. The 60 deterministic instant-buy runs used
+terrain z=6, no clovers, candy, or specialization, and all ended with 20 lives
+and zero leaks. This proves one model route, not live player winnability or
+Hard/Brutal coverage. The starter-only policy still loses late R2/R3 stages,
+which is why progression unlocks matter. Refit after tower or economy changes.
 
 **Diagnostics.** `scr_curve_report()` logs and `scr_curve_draw()` displays the
 curve under `global.devMode`: biome endpoints, route and reachable slots,
@@ -729,7 +753,7 @@ One medal per badge per stage, stored in the save. **No art in v1** — the reco
 | 🏅 **Speed Grower** | finish under the stage's `par_time` | authored per stage |
 | 🏅 **Brutalist** | complete the stage on Brutal | the difficulty badge |
 
-**Threshold method (2026-10-30).** Each stage uses nine seeded Normal model clears: three replay-eligible four-tower loadouts, each run with three seeds. The 540 sampled runs all cleared with 20 lives and no leaks; failures and leaky clears are excluded from the calculation. `par_spend` is `ceil(median gross spend / 2)`. Frugal awards only when spend is *strictly below* that exclusive integer cutoff, so the requirement remains below half the median. `par_time` is the smallest whole-second cutoff strictly above the nearest-rank 75th-percentile clear time. The model uses the real fire cycle, instant buying, fixed terrain z=6, and elapsed frames from first wave spawn through clear; this matches `level_elapsed_seconds`, which excludes the deploy countdown. These are model-derived first-pass thresholds, not player telemetry; the simulator uses mean-field creature stats and does not model candy, specializations, or mastery.
+**Threshold method (2026-10-30).** Each stage uses nine seeded Normal model clears: three replay-eligible four-tower loadouts, each run with three seeds. The 540 sampled runs cleared with 20 lives and no leaks. `par_spend` is `ceil(median gross spend / 2)`. Frugal awards only when spend is *strictly below* that exclusive integer cutoff, so the requirement remains below half the median. `par_time` is the smallest whole-second cutoff strictly above the nearest-rank 75th-percentile clear time. The original sample used the real fire cycle, instant buying, fixed terrain z=6, and elapsed time from first wave spawn through clear, matching `level_elapsed_seconds` without the deploy countdown. After the corpse-lifecycle correction (LL-092), every modeled clear waits for the source-backed 48-frame / 0.8-second DIE duration after the last kill in each wave. Every stage has 15–60 waves in steps of five, so the elapsed time increases by an exact integer `waves × 0.8s` for every run in that stage. The p75 and exclusive whole-second cutoff therefore shift by that same exact amount; all 60 `par_time` values were updated, while `par_spend` stays unchanged. New times span 213–989 seconds. These are model-derived first-pass thresholds, not player telemetry. The sampled runs used no Candy, specializations, or mastery. The simulator now reads specialization tiers, Growth scaling, and implemented signatures from GML, but those effects remain absent from this threshold sample.
 
 **Total available:** 7 × 60 stages = **420 medals**, plus 6 region-completion medals (one per boss) = **426**.
 
@@ -741,9 +765,9 @@ One medal per badge per stage, stored in the save. **No art in v1** — the reco
 
 | # | Checkpoint | Target | Verified in |
 | --- | --- | --- | --- |
-| 1 | First tower unlock | inside the first ~3 stages of meaningful play | Phase 1 playtest |
+| 1 | First tower unlock | after the R1 boss; the gate opens and 44 Normal first-clear seeds can buy Chillip | Phase 1 playtest |
 | 2 | Early Brutal beats a Normal grind | a Brutal clear ≥ 3× a Normal clear (5× by construction) | Phase 1 by arithmetic |
-| 3 | Normal-only cannot buy the roster | 775 🌱 earned < 2,015 🌱 needed | arithmetic |
+| 3 | Normal-only cannot buy the roster | 864 🌱 after first clears plus one repeat of every stage < 2,015 🌱 needed | arithmetic |
 | 4 | Garden Mastery I — cap 6, towers arrive at **2** | ~stage 10–12 | Phase 3 |
 | 5 | First blood shard | region 3–4 | Phase 4, from the kill counter |
 | 6 | Every stage clearable by ≥ 3 loadouts | no stage has a single correct answer | Phase 2 |
@@ -754,7 +778,7 @@ One medal per badge per stage, stored in the save. **No art in v1** — the reco
 | 11 | Candy duration track — first purchase | 10 ☘️ for +10%, buyable inside region 1, so every player feels it | Phase 3 |
 | 12 | Candy duration track — the +100% cap | 10,230 ☘️ total, deliberately the last thing a clover-rich player finishes | Phase 3/6 |
 | 13 | The difficulty ladder is monotonic **in play** | hp per dollar of income must be **ordered** and rising with the difficulty - it measures how much hp the player must chew per dollar earned, so the top difficulty must show the most. It was 1.00 / 1.17 / 1.01 (**worst on Hard**, LL-042); since the carry it is 0.0063 / 0.0076 / 0.0095 | `gm balance sim`, every rebalance |
-| 15 | The wave curve matches the ladder it is fitted to | Current Normal sim fit clears all ten stages at R4/R5/R6 endpoints 18/16/10 with no leaks; R1 needs a current all-stage recheck, R2/R3 need full ten-stage fit, and Hard/Brutal plus live play remain unverified | `gm balance fit --sim`, `gm balance sim` |
+| 15 | The wave curve matches the ladder it is fitted to | All six current Normal endpoints fit the ten stage rows per region; three replay-eligible builds cleared every row in 180 deterministic runs, and one seed-legal Normal path cleared all 60 rows. A mixed Normal R1 / Brutal R2–R6 path also clears all 60 in the simulator with regional mastery and gated unlocks. Endpoint fit and live play remain unverified at Hard/Brutal | `gm balance fit --sim`, `gm balance sim`, `loadout-stage-coverage`, `normal-first-clear-path`, `difficulty-first-clear` |
 | 14 | A `targets` cap is reachable | `gm balance sim` reports the widest target list any tower held; 1-1 peaks at **7**, so a cap of 10 is coverage-limited, not target-limited | `gm balance sim` |
 
 **Instrumentation this requires (Phase 0):** every currency event logs through `print()` under `global.devMode`, with the `META`, `SEED`, `CLOVER`, `SHARD` and `CANDY` prefixes, per the log-prefix convention in `AGENTS.md` §4. Without that log, Phase 6 tuning is guesswork.

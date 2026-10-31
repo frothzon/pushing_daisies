@@ -15,10 +15,10 @@ function clover_node(_branch, _id, _label, _cost, _effects, _desc) {
 
 function clover_branch_table() {
 	return [
-		{ id:"vitality", label:"Vitality", icon:BRANCH.VITALITY },
-		{ id:"offense",  label:"Offense",  icon:BRANCH.OFFENSE  },
-		{ id:"growth",   label:"Growth",   icon:BRANCH.GROWTH   },
-		{ id:"harvest",  label:"Harvest",  icon:BRANCH.HARVEST  }
+		{ id:"vitality", label:ui_text("meta_garden_branch_vitality"), icon:BRANCH.VITALITY },
+		{ id:"offense",  label:ui_text("meta_garden_branch_offense"),  icon:BRANCH.OFFENSE  },
+		{ id:"growth",   label:ui_text("meta_garden_branch_growth"),   icon:BRANCH.GROWTH   },
+		{ id:"harvest",  label:ui_text("meta_garden_branch_harvest"),  icon:BRANCH.HARVEST  }
 	];
 }
 
@@ -63,52 +63,52 @@ function clover_page_cycle() {
 function clover_nodes(_branch) {
 	switch(_branch){
 		case "vitality": return [
-			clover_node("vitality","vit_life_1","Life I",5,{max_life:1},"+1 maximum life per rank"),
-			clover_node("vitality","vit_life_2","Life II",8,{max_life:1},"+1 maximum life per rank"),
-			clover_node("vitality","vit_life_3","Life III",12,{max_life:1},"+1 maximum life per rank"),
-			clover_node("vitality","vit_life_4","Life IV",18,{max_life:1},"+1 maximum life per rank"),
-			clover_node("vitality","vit_life_5","Life V",25,{max_life:1},"+1 maximum life per rank"),
-			clover_node("vitality","vit_fortitude","Fortitude",35,{life_loss_reduction:0.05},"Prevent 5% of leak life loss per rank"),
-			clover_node("vitality","vit_regen","Regeneration",50,{regen_per_five_waves:1},"Restore 1 life per 5 waves per rank"),
-			clover_node("vitality","vit_boss_ward","Boss Ward",70,{boss_saves:1},"Prevent 1 boss leak per stage per rank"),
-			clover_node("vitality","vit_last_stand","Last Stand",100,{max_life:1},"+1 maximum life per rank"),
-			clover_node("vitality","vit_deep_roots","Deep Roots",150,{max_life:2},"+2 maximum life per rank")
+			clover_node("vitality","vit_life_1",ui_text("clover_node_vit_life_1_name"),5,{max_life:1},ui_text("clover_node_vit_life_1_desc")),
+			clover_node("vitality","vit_life_2",ui_text("clover_node_vit_life_2_name"),8,{max_life:1},ui_text("clover_node_vit_life_2_desc")),
+			clover_node("vitality","vit_life_3",ui_text("clover_node_vit_life_3_name"),12,{max_life:1},ui_text("clover_node_vit_life_3_desc")),
+			clover_node("vitality","vit_life_4",ui_text("clover_node_vit_life_4_name"),18,{max_life:1},ui_text("clover_node_vit_life_4_desc")),
+			clover_node("vitality","vit_life_5",ui_text("clover_node_vit_life_5_name"),25,{max_life:1},ui_text("clover_node_vit_life_5_desc")),
+			clover_node("vitality","vit_fortitude",ui_text("clover_node_vit_fortitude_name"),35,{life_loss_reduction:0.05},ui_text("clover_node_vit_fortitude_desc")),
+			clover_node("vitality","vit_regen",ui_text("clover_node_vit_regen_name"),50,{regen_per_five_waves:1},ui_text("clover_node_vit_regen_desc")),
+			clover_node("vitality","vit_boss_ward",ui_text("clover_node_vit_boss_ward_name"),70,{boss_saves:1},ui_text("clover_node_vit_boss_ward_desc")),
+			clover_node("vitality","vit_last_stand",ui_text("clover_node_vit_last_stand_name"),100,{max_life:1},ui_text("clover_node_vit_last_stand_desc")),
+			clover_node("vitality","vit_deep_roots",ui_text("clover_node_vit_deep_roots_name"),150,{max_life:2},ui_text("clover_node_vit_deep_roots_desc"))
 		];
 		case "offense": return [
-			clover_node("offense","off_damage","Tower Damage I",5,{damage:0.004},"+0.4% tower damage per rank"),
-			clover_node("offense","off_damage_2","Tower Damage II",8,{damage:0.004},"+0.4% tower damage per rank"),
-			clover_node("offense","off_damage_3","Tower Damage III",12,{damage:0.004},"+0.4% tower damage per rank"),
-			clover_node("offense","off_damage_4","Tower Damage IV",18,{damage:0.004},"+0.4% tower damage per rank"),
-			clover_node("offense","off_damage_5","Tower Damage V",25,{damage:0.004},"+0.4% tower damage per rank"),
-			clover_node("offense","off_firerate","Fire Rate",35,{fire_rate:0.01},"+1% fire rate per rank"),
-			clover_node("offense","off_crit_chance","Critical Chance",50,{crit_chance:0.01},"+1% critical chance per rank"),
-			clover_node("offense","off_crit_damage","Critical Damage",70,{crit_damage:0.05},"+5% critical damage per rank"),
-			clover_node("offense","off_damage_9","Focused Force",100,{damage:0.02},"+2% tower damage per rank"),
-			clover_node("offense","off_damage_10","Final Flourish",150,{damage:0.03},"+3% tower damage per rank")
+			clover_node("offense","off_damage",ui_text("clover_node_off_damage_name"),5,{damage:0.004},ui_text("clover_node_off_damage_desc")),
+			clover_node("offense","off_damage_2",ui_text("clover_node_off_damage_2_name"),8,{damage:0.004},ui_text("clover_node_off_damage_2_desc")),
+			clover_node("offense","off_damage_3",ui_text("clover_node_off_damage_3_name"),12,{damage:0.004},ui_text("clover_node_off_damage_3_desc")),
+			clover_node("offense","off_damage_4",ui_text("clover_node_off_damage_4_name"),18,{damage:0.004},ui_text("clover_node_off_damage_4_desc")),
+			clover_node("offense","off_damage_5",ui_text("clover_node_off_damage_5_name"),25,{damage:0.004},ui_text("clover_node_off_damage_5_desc")),
+			clover_node("offense","off_firerate",ui_text("clover_node_off_firerate_name"),35,{fire_rate:0.01},ui_text("clover_node_off_firerate_desc")),
+			clover_node("offense","off_crit_chance",ui_text("clover_node_off_crit_chance_name"),50,{crit_chance:0.01},ui_text("clover_node_off_crit_chance_desc")),
+			clover_node("offense","off_crit_damage",ui_text("clover_node_off_crit_damage_name"),70,{crit_damage:0.05},ui_text("clover_node_off_crit_damage_desc")),
+			clover_node("offense","off_damage_9",ui_text("clover_node_off_damage_9_name"),100,{damage:0.02},ui_text("clover_node_off_damage_9_desc")),
+			clover_node("offense","off_damage_10",ui_text("clover_node_off_damage_10_name"),150,{damage:0.03},ui_text("clover_node_off_damage_10_desc"))
 		];
 		case "growth": return [
-			clover_node("growth","growth_discount_1","Economy I",5,{upgrade_discount:0.01},"-1% upgrade cost per rank"),
-			clover_node("growth","growth_discount_2","Economy II",8,{upgrade_discount:0.01},"-1% upgrade cost per rank"),
-			clover_node("growth","growth_discount_3","Economy III",12,{upgrade_discount:0.01},"-1% upgrade cost per rank"),
-			clover_node("growth","growth_discount_4","Economy IV",18,{upgrade_discount:0.01},"-1% upgrade cost per rank"),
-			clover_node("growth","growth_discount_5","Economy V",25,{upgrade_discount:0.01},"-1% upgrade cost per rank"),
-			clover_node("growth","growth_kill_money","Green Returns",35,{kill_money:0.03},"+3% kill money per rank"),
-			clover_node("growth","growth_spec_tier","Master Gardener",50,{spec_tier:1,specialization_bonus:0.01},"Unlock tier 3 at L4; +1% spec strength per rank"),
-			clover_node("growth","growth_master_discount_1","Mastery Bargain I",70,{master_discount:0.02},"-2% master node cost per rank"),
-			clover_node("growth","growth_master_discount_2","Mastery Bargain II",100,{master_discount:0.04},"-4% master node cost per rank"),
-			clover_node("growth","growth_start_money","Early Bloom",150,{starting_money:2},"+2 starting money per rank")
+			clover_node("growth","growth_discount_1",ui_text("clover_node_growth_discount_1_name"),5,{upgrade_discount:0.01},ui_text("clover_node_growth_discount_1_desc")),
+			clover_node("growth","growth_discount_2",ui_text("clover_node_growth_discount_2_name"),8,{upgrade_discount:0.01},ui_text("clover_node_growth_discount_2_desc")),
+			clover_node("growth","growth_discount_3",ui_text("clover_node_growth_discount_3_name"),12,{upgrade_discount:0.01},ui_text("clover_node_growth_discount_3_desc")),
+			clover_node("growth","growth_discount_4",ui_text("clover_node_growth_discount_4_name"),18,{upgrade_discount:0.01},ui_text("clover_node_growth_discount_4_desc")),
+			clover_node("growth","growth_discount_5",ui_text("clover_node_growth_discount_5_name"),25,{upgrade_discount:0.01},ui_text("clover_node_growth_discount_5_desc")),
+			clover_node("growth","growth_kill_money",ui_text("clover_node_growth_kill_money_name"),35,{kill_money:0.03},ui_text("clover_node_growth_kill_money_desc")),
+			clover_node("growth","growth_spec_tier",ui_text("clover_node_growth_spec_tier_name"),50,{spec_tier:1,specialization_bonus:0.01},ui_text("clover_node_growth_spec_tier_desc")),
+			clover_node("growth","growth_master_discount_1",ui_text("clover_node_growth_master_discount_1_name"),70,{master_discount:0.02},ui_text("clover_node_growth_master_discount_1_desc")),
+			clover_node("growth","growth_master_discount_2",ui_text("clover_node_growth_master_discount_2_name"),100,{master_discount:0.04},ui_text("clover_node_growth_master_discount_2_desc")),
+			clover_node("growth","growth_start_money",ui_text("clover_node_growth_start_money_name"),150,{starting_money:2},ui_text("clover_node_growth_start_money_desc"))
 		];
 		case "harvest": return [
-			clover_node("harvest","harvest_money_1","Bounty I",5,{kill_money:0.01},"+1% zombie money per rank"),
-			clover_node("harvest","harvest_money_2","Bounty II",8,{kill_money:0.01},"+1% zombie money per rank"),
-			clover_node("harvest","harvest_money_3","Bounty III",12,{kill_money:0.01},"+1% zombie money per rank"),
-			clover_node("harvest","harvest_money_4","Bounty IV",18,{kill_money:0.01},"+1% zombie money per rank"),
-			clover_node("harvest","harvest_money_5","Bounty V",25,{kill_money:0.01},"+1% zombie money per rank"),
-			clover_node("harvest","harvest_start_money","Full Purse",35,{starting_money:1},"+1 starting money per rank"),
-			clover_node("harvest","harvest_boss_money","Boss Bounty",50,{boss_reward:0.05},"+5% boss reward per rank"),
-			clover_node("harvest","harvest_seeds_1","Seed Finder I",70,{seed_reward:0.01},"+1% seed rewards per rank"),
-			clover_node("harvest","harvest_seeds_2","Seed Finder II",100,{seed_reward:0.02},"+2% seed rewards per rank"),
-			clover_node("harvest","harvest_seeds_3","Seed Finder III",150,{seed_reward:0.03},"+3% seed rewards per rank")
+			clover_node("harvest","harvest_money_1",ui_text("clover_node_harvest_money_1_name"),5,{kill_money:0.01},ui_text("clover_node_harvest_money_1_desc")),
+			clover_node("harvest","harvest_money_2",ui_text("clover_node_harvest_money_2_name"),8,{kill_money:0.01},ui_text("clover_node_harvest_money_2_desc")),
+			clover_node("harvest","harvest_money_3",ui_text("clover_node_harvest_money_3_name"),12,{kill_money:0.01},ui_text("clover_node_harvest_money_3_desc")),
+			clover_node("harvest","harvest_money_4",ui_text("clover_node_harvest_money_4_name"),18,{kill_money:0.01},ui_text("clover_node_harvest_money_4_desc")),
+			clover_node("harvest","harvest_money_5",ui_text("clover_node_harvest_money_5_name"),25,{kill_money:0.01},ui_text("clover_node_harvest_money_5_desc")),
+			clover_node("harvest","harvest_start_money",ui_text("clover_node_harvest_start_money_name"),35,{starting_money:1},ui_text("clover_node_harvest_start_money_desc")),
+			clover_node("harvest","harvest_boss_money",ui_text("clover_node_harvest_boss_money_name"),50,{boss_reward:0.05},ui_text("clover_node_harvest_boss_money_desc")),
+			clover_node("harvest","harvest_seeds_1",ui_text("clover_node_harvest_seeds_1_name"),70,{seed_reward:0.01},ui_text("clover_node_harvest_seeds_1_desc")),
+			clover_node("harvest","harvest_seeds_2",ui_text("clover_node_harvest_seeds_2_name"),100,{seed_reward:0.02},ui_text("clover_node_harvest_seeds_2_desc")),
+			clover_node("harvest","harvest_seeds_3",ui_text("clover_node_harvest_seeds_3_name"),150,{seed_reward:0.03},ui_text("clover_node_harvest_seeds_3_desc"))
 		];
 	}
 	return [];
@@ -246,11 +246,11 @@ function clover_wave_regen(_wave) {
 /// The five account-wide floor/cap purchases (economy.md §3.3).
 function clover_master_nodes() {
 	return [
-		{ id:"mastery_1", rank:1, label:"Garden Mastery I", region:1, cost:120, desc:"Towers arrive at level 2; cap 6" },
-		{ id:"mastery_2", rank:2, label:"Garden Mastery II", region:2, cost:260, desc:"Towers arrive at level 3; cap 7" },
-		{ id:"mastery_3", rank:3, label:"Garden Mastery III", region:3, cost:500, desc:"Towers arrive at level 4; cap 8" },
-		{ id:"mastery_4", rank:4, label:"Garden Mastery IV", region:4, cost:900, desc:"Towers arrive at level 5; cap 9" },
-		{ id:"mastery_5", rank:5, label:"Garden Mastery V", region:5, cost:1500, desc:"Towers arrive at level 6; cap 10" }
+		{ id:"mastery_1", rank:1, label:ui_text("mastery_node_mastery_1_name"), region:1, cost:120, desc:ui_text("mastery_node_mastery_1_desc") },
+		{ id:"mastery_2", rank:2, label:ui_text("mastery_node_mastery_2_name"), region:2, cost:260, desc:ui_text("mastery_node_mastery_2_desc") },
+		{ id:"mastery_3", rank:3, label:ui_text("mastery_node_mastery_3_name"), region:3, cost:500, desc:ui_text("mastery_node_mastery_3_desc") },
+		{ id:"mastery_4", rank:4, label:ui_text("mastery_node_mastery_4_name"), region:4, cost:900, desc:ui_text("mastery_node_mastery_4_desc") },
+		{ id:"mastery_5", rank:5, label:ui_text("mastery_node_mastery_5_name"), region:5, cost:1500, desc:ui_text("mastery_node_mastery_5_desc") }
 	];
 }
 

@@ -35,6 +35,9 @@ def tables_report(t: Tables) -> List[str]:
         out.append(f"   tower  {w.name:<18} ${w.price:<5g} range {w.range:<5g} "
                    f"dmg {w.damage:<5g} rate {w.fire_rate:<5g} targets {w.targets:<3d} "
                    f"nominal dps {w.dps:g}")
+    path_count = sum(len(paths) for paths in t.specializations.values())
+    out.append(f"   specs  {len(t.specializations)} towers, {path_count} paths, "
+               f"{sum(len(path.tiers) for paths in t.specializations.values() for path in paths.values())} tiers")
     for m in t.monsters:
         out.append(f"   mon    {m.name:<18} speed {m.speed:<5g} life {m.life:<6g} "
                    f"money {m.kill_money:<3d} count {m.spawn_count}")
@@ -261,8 +264,10 @@ def towers_report(scene: Scene, cov=None) -> List[str]:
 
     The four measures, in the order they should be read:
 
-    * ``card``  - ``damage x rate x targets``: what the shop prints;
-    * ``x1``    - the same with ``targets = 1``: one monster at a time;
+    * ``card``  - ``damage x rate x targets x projectiles``: the selected
+      specialization's nominal multi-hit total at the mastery floor;
+    * ``x1``    - the same with ``targets = 1``: one monster at a time, all of
+      its projectiles;
     * ``deliv`` - ``x1`` with the fire CYCLE charged (LL-040);
     * ``eff``   - ``deliv x coverage``: what actually reaches the route.
 
@@ -280,33 +285,33 @@ def towers_report(scene: Scene, cov=None) -> List[str]:
     out.append(f"   the shot cycle: {cyc.fps}/rate + {cyc.offset_mean:g} stagger "
                f"+ {cyc.return_frames:g} return frames (LL-040)")
     out.append("   Damage figures include expected direct-hit criticals.")
-    out.append(f"   {'tower':<18}{'$':>4}{'dmg':>5}{'rate':>5}{'tgt':>4}"
+    out.append(f"   {'tower':<18}{'$':>4}{'dmg':>5}{'rate':>5}{'tgt':>4}{'prj':>4}"
                f"{'crit':>6}{'card':>7}{'x1':>7}{'deliv':>7}{'cover':>7}{'eff':>6}{'$/eff':>8}")
 
     rows: List[dict] = []
     for w in scene.loadout:
+        stats = scene.tower_stats(w, scene.floor_level)
         crit = scene.expected_crit_multiplier(w)
-        dmg, rate, reach = t.data_at_level(w, scene.floor_level,
-                                           scene.clover_damage, scene.clover_rate)
-        card = t.dps_at_level(w, scene.floor_level, scene.clover_damage,
-                              scene.clover_rate) * crit
-        x1 = t.dps_at_level(w, scene.floor_level, scene.clover_damage,
-                            scene.clover_rate, targets=1) * crit
-        dlv = t.delivered_dps_at_level(w, scene.floor_level, scene.clover_damage,
-                                       scene.clover_rate, targets=1) * crit
+        dmg, rate, reach = stats.damage, stats.fire_rate, stats.range
+        card = dmg * rate * stats.targets * stats.projectiles * crit
+        x1 = dmg * rate * stats.projectiles * crit
+        dlv = cyc.dps(dmg, rate, targets=1,
+                      projectiles=stats.projectiles) * crit
         cover = _best_coverage(cov, scene, reach)
         eff = dlv * cover
-        eff_multi = cyc.dps(dmg, rate, w.targets) * crit * cover
+        eff_multi = cyc.dps(dmg, rate, stats.targets,
+                            stats.projectiles) * crit * cover
         dollar = (w.price / eff) if eff > 0 else float("inf")
         out.append(f"   {w.name:<18}{w.price:>4g}{dmg:>5.3g}{rate:>5.3g}"
-                   f"{w.targets:>4d}{crit:>6.2f}{card:>7.1f}{x1:>7.1f}{dlv:>7.1f}"
+                   f"{stats.targets:>4d}{stats.projectiles:>4d}{crit:>6.2f}{card:>7.1f}{x1:>7.1f}{dlv:>7.1f}"
                    f"{cover:>7.3f}{eff:>6.1f}{dollar:>8.2f}")
         rows.append({"tower": w, "price": w.price, "deliv": dlv, "cover": cover,
                      "eff": eff, "eff_multi": eff_multi, "dollar": dollar,
-                     "card": card, "x1": x1, "crit": crit, "reach": reach})
+                     "card": card, "x1": x1, "crit": crit, "reach": reach,
+                     "targets": stats.targets})
 
     out.append("   crit = expected direct-hit multiplier.  card = the shop.  "
-               "x1 = one target.  deliv = x1 less the cycle. "
+               "x1 = one target, all projectiles.  deliv = x1 less the cycle. "
                "eff = deliv x cover.")
 
     # ---- the same tower, priced three ways ------------------------------
@@ -361,7 +366,7 @@ def towers_report(scene: Scene, cov=None) -> List[str]:
                    f"(1.0x would mean one tower in four skins)")
 
     # ---- what a FULL target cap would be worth (the ceiling) -------------
-    multi = [r for r in rows if r["tower"].targets > 1]
+    multi = [r for r in rows if r["targets"] > 1]
     if multi:
         out.append("")
         out.append("   congestion CEILING - what the cap would be worth if it were")
@@ -370,7 +375,7 @@ def towers_report(scene: Scene, cov=None) -> List[str]:
         out.append("   walk ~1.3px a step, so a range holds a few, not ten.")
         for r in multi:
             ratio = (r["eff_multi"] / r["eff"]) if r["eff"] else 0.0
-            out.append(f"     {r['tower'].name:<18} targets {r['tower'].targets:>2d}  "
+            out.append(f"     {r['tower'].name:<18} targets {r['targets']:>2d}  "
                        f"x1 {r['eff']:>7.1f}  full {r['eff_multi']:>8.1f}  "
                        f"ceiling {ratio:>5.1f}x  (both columns are "
                        f"coverage-weighted eff dps)")
@@ -390,6 +395,22 @@ def sim_report(o, scene=None) -> List[str]:
     out.append(f"   {who}cycle {o.cycle}   spend {o.spend}   z {o.terrain_z:g}")
     if scene is not None:
         out.extend(progression_lines(scene))
+    if o.candy_used:
+        profile = []
+        for candy_id, (level, uses) in o.candy_used.items():
+            frames = o.candy_active_frames.get(candy_id, 0)
+            if candy_id == "everlasting_gob":
+                profile.append(f"{candy_id} L{level} x{uses} ({o.candy_frozen_waves} wave-freezes)")
+            else:
+                seconds = frames / (scene.tables.constants.candy_frame_hz
+                                    if scene is not None else 60)
+                profile.append(f"{candy_id} L{level} x{uses} ({seconds:.1f}s active)")
+        out.append("   Candy    " + ", ".join(profile)
+                   + "; timed recipes start at wave 1, Gob at first boss")
+        if o.candy_pity_bonus_progress > 0:
+            out.append(f"   pity     Candy added {o.candy_pity_bonus_progress:.2f} kill-equivalent progress")
+    else:
+        out.append("   Candy    none activated")
     if o.failed:
         verdict = "FAILED"
     elif o.truncated:
@@ -434,11 +455,16 @@ def sim_report(o, scene=None) -> List[str]:
 
 def progression_lines(scene: Scene) -> List[str]:
     """Name all progression inputs that can change a balance result."""
+    selected = [f"{tower.name}={tower.specialization}"
+                for tower in scene.loadout if tower.specialization]
     return [
         f"   progression mastery {scene.mastery}   "
         f"floor L{scene.floor_level}/cap L{scene.tables.cap(scene.mastery)}   "
         f"damage +{scene.clover_damage:.1%}   rate +{scene.clover_rate:.1%}   "
         f"crit +{scene.clover_crit_chance:.1%}/+{scene.clover_crit_damage:.2f}x",
+        f"   specialization Growth rank {scene.growth_spec_rank}/"
+        f"{scene.tables.constants.growth_spec_rank_max}   "
+        + (", ".join(selected) if selected else "none selected"),
         f"   economy upgrade -{scene.clover_upgrade_discount:.1%}   "
         f"kill +{scene.clover_kill_money:.1%}   start +${scene.clover_starting_money}   "
         f"boss +{scene.clover_boss_reward:.1%}",

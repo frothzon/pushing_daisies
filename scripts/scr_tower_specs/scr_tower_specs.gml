@@ -8,7 +8,7 @@ function tower_spec_tier(_damage, _rate, _range, _crit, _crit_damage, _targets, 
 	return {
 		damage : _damage, rate : _rate, range : _range,
 		crit : _crit, crit_damage : _crit_damage, money : 0, income : 0,
-		targets : _targets, knockback : _knockback,
+		targets : _targets, projectiles : 0, knockback : _knockback,
 		statuses : is_array(_statuses) ? _statuses : []
 	};
 }
@@ -25,6 +25,11 @@ function tower_spec_income_tier(_tier, _money) {
 
 function tower_spec_flat_income_tier(_tier, _income) {
 	if(is_struct(_tier) && is_real(_income)) _tier.income = max(0,_income);
+	return _tier;
+}
+
+function tower_spec_projectile_tier(_tier, _count) {
+	if(is_struct(_tier) && is_real(_count)) _tier.projectiles = max(0,round(_count));
 	return _tier;
 }
 
@@ -45,7 +50,7 @@ function tower_spec_table() {
 			tower_spec_path("rapid_bloom", ui_text("spec_rapid_bloom_name"), ui_text("spec_rapid_bloom_description"), [
 				tower_spec_tier(0,0.12,0,0.04,0,0,0,[]),
 				tower_spec_tier(0,0.10,0,0.05,0,0,0,[]),
-				tower_spec_tier(0,0,0,0,0.25,1,0,[])
+				tower_spec_projectile_tier(tower_spec_tier(0,0,0,0,0.25,0,0,[]),1)
 			])
 		]},
 		{ tower : "Burning Ivy", paths : [
@@ -267,12 +272,12 @@ function tower_spec_tier_limit(_level) {
 
 function tower_spec_modifiers(_tower_name, _key, _level) {
 	var _out = { damage:0, rate:0, range:0, crit:0, crit_damage:0,
-	             money:0, income:0, targets:0, knockback:0 };
+	             money:0, income:0, targets:0, projectiles:0, knockback:0 };
 	var _spec = tower_spec_find(_tower_name,_key);
 	if(!is_struct(_spec) || !is_array(_spec.tiers)) return _out;
 	var _limit = min(tower_spec_tier_limit(_level),array_length(_spec.tiers));
 	var _fields = ["damage","rate","range","crit","crit_damage","money",
-	               "income","targets","knockback"];
+	               "income","targets","projectiles","knockback"];
 	for(var _i = 0; _i < _limit; _i++){
 		var _tier = _spec.tiers[_i];
 		if(!is_struct(_tier)) continue;
@@ -302,6 +307,8 @@ function tower_spec_apply_data(_tower_name, _key, _level, _data) {
 	_out[TOWER.fire_rate] *= max(0,1+_mods.rate);
 	_out[TOWER.range] *= max(0,1+_mods.range);
 	_out[TOWER.targets] = max(1,round(_out[TOWER.targets]+_mods.targets));
+	if(array_length(_out) <= TOWER.projectiles) _out[TOWER.projectiles] = 1;
+	_out[TOWER.projectiles] = max(1,round(_out[TOWER.projectiles]+_mods.projectiles));
 	return _out;
 }
 
@@ -722,6 +729,7 @@ function tower_spec_choice_effect_summary(_tower_name, _key, _level) {
 	if(_mods.crit != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_crit",{value:string(round(_mods.crit*100))}));
 	if(_mods.crit_damage != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_crit_damage",{value:string(round(_mods.crit_damage*100))}));
 	if(_mods.targets != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_targets",{value:string(round(_mods.targets))}));
+	if(_mods.projectiles != 0) _parts = tower_spec_choice_add(_parts,ui_text_format("tower_spec_projectiles",{value:string(round(_mods.projectiles))}));
 	if(_mods.money != 0){
 		var _money_label = _tower_name == "Money Marigold"
 		                   ? ui_text_format("tower_spec_wave_dividends",{value:string(round(_mods.money*100))})

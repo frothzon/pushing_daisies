@@ -7,7 +7,8 @@
 /// monster's image_blend, which is what makes this one line rather than a
 /// colour to merge with somebody else's.  (On the Spriter branch below the
 /// tint is applied around the parts draw by shd_scml_tint.)
-image_blend = status_tint();
+var _tint = status_tint();
+image_blend = _tint;
 
 /// ---- THE RIG FIRST (scr_scml_rig) ------------------------------------
 /// A monster whose class has a Spriter entity draws its rigged player
@@ -37,7 +38,7 @@ image_blend = status_tint();
 /// (scale 0.35), 28 px on the Shroud (2.0), 6.6 on the Bell-Ringer (0.3).
 /// Walk sheets keep padding too - 10 rows on the Gardener - so walkers sank
 /// as well: the Grumble-Mulch 2 px on every frame of the game.  LL-078.
-if(zomb_scml_draw(zomb_rig())){
+if(zomb_scml_draw(zomb_rig(), SCML_DRAW_AUTO, 0.35, _tint)){
     /// drawn as its rigged player - nothing else to draw
 } else if(inWater){
     /// The crop is DERIVED from the origin rather than being 0.75 of the

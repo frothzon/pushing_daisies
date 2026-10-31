@@ -20,12 +20,13 @@ are what the feel targets are written against.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from dataclasses import dataclass, field, replace
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from . import geometry, tables, terrain
 from .geometry import LevelMap, Point
-from .tables import Difficulty, Monster, Region, Stage, TableError, Tables, Tower
+from .tables import (Difficulty, Monster, Region, Stage, TableError, Tables,
+                     Tower, TowerStats)
 
 #: the panel's target band: wave 1 must not be trivial, the last wave survivable
 FLOOR_BITE = 0.35
@@ -58,6 +59,7 @@ class Scene:
     bosses: List[Monster] = field(default_factory=list)
     mastery: int = 0
     floor_level: int = 1
+    growth_spec_rank: int = 0
     clover_damage: float = 0.0
     clover_rate: float = 0.0
     clover_crit_chance: float = 0.0
@@ -102,11 +104,18 @@ class Scene:
         return (round(self.tables.constants.start_money * self.difficulty.life)
                 + self.clover_starting_money)
 
-    def expected_crit_multiplier(self, tower: Tower) -> float:
+    def expected_crit_multiplier(self, tower: Tower,
+                                 level: Optional[int] = None) -> float:
         """Expected direct-hit multiplier after tower traits and clover tech."""
-        chance = min(1.0, max(0.0, tower.crit_chance + self.clover_crit_chance))
-        damage = max(1.0, tower.crit_damage + self.clover_crit_damage)
-        return 1.0 + chance * (damage - 1.0)
+        stats = self.tower_stats(
+            tower, self.floor_level if level is None else level)
+        return 1.0 + stats.crit_chance * (stats.crit_damage - 1.0)
+
+    def tower_stats(self, tower: Tower, level: int) -> TowerStats:
+        return self.tables.tower_stats(
+            tower, level, self.clover_damage, self.clover_rate,
+            self.clover_crit_chance, self.clover_crit_damage,
+            self.growth_spec_rank)
 
     # -- the loadout ------------------------------------------------------
     def placement(self) -> Tuple[Tower, float, float]:
@@ -120,9 +129,9 @@ class Scene:
         for t in self.loadout:
             if t.price <= 0:
                 continue
-            dps = (self.tables.dps_at_level(t, self.floor_level,
-                                            self.clover_damage, self.clover_rate)
-                   * self.expected_crit_multiplier(t))
+            stats = self.tower_stats(t, self.floor_level)
+            dps = (stats.damage * stats.fire_rate * stats.targets
+                   * stats.projectiles * self.expected_crit_multiplier(t))
             density = dps / t.price
             if best is None or density > best[0]:
                 best = (density, t, dps)
@@ -139,9 +148,10 @@ class Scene:
         the live finding, printed by ``gm balance project``.
         """
         tower, dps_floor, price = self.placement()
-        dps_cap = (self.tables.dps_at_level(
-            tower, self.tables.cap(self.mastery), self.clover_damage,
-            self.clover_rate) * self.expected_crit_multiplier(tower))
+        cap_stats = self.tower_stats(tower, self.tables.cap(self.mastery))
+        dps_cap = (cap_stats.damage * cap_stats.fire_rate * cap_stats.targets
+                    * cap_stats.projectiles * self.expected_crit_multiplier(
+                        tower, self.tables.cap(self.mastery)))
         total = (price * self.tables.constants.rung_total
                  * (1.0 - self.clover_upgrade_discount))
         return (dps_cap - dps_floor) / total if total > 0 else 0.0
@@ -149,7 +159,8 @@ class Scene:
 
 def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal",
             loadout: Optional[Sequence[str]] = None, spawns: str = "all",
-            z: float = 6.0, mastery: int = 0,
+            z: float = 6.0, mastery: int = 0, growth_spec_rank: int = 0,
+            specializations: Optional[Mapping[str, str]] = None,
             clover_damage: float = 0.0, clover_rate: float = 0.0,
             clover_crit_chance: float = 0.0,
             clover_crit_damage: float = 0.0,
@@ -174,6 +185,14 @@ def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal"
     t = t if t is not None else tables.load(root)
     if not isinstance(mastery, int) or isinstance(mastery, bool) or not 0 <= mastery <= 5:
         raise TableError("mastery must be an integer from 0 through 5")
+    if (not isinstance(growth_spec_rank, int) or isinstance(growth_spec_rank, bool)
+            or not 0 <= growth_spec_rank <= t.constants.growth_spec_rank_max):
+        raise TableError("growth_spec_rank must be an integer from 0 through "
+                         f"{t.constants.growth_spec_rank_max}")
+    if specializations is None:
+        specializations = {}
+    if not isinstance(specializations, Mapping):
+        raise TableError("specializations must map tower names to path keys")
     fractions = (
         ("clover_damage", clover_damage, 0.35),
         ("clover_rate", clover_rate, 0.05),
@@ -207,15 +226,25 @@ def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal"
     diff = t.difficulty(difficulty)
     names = list(loadout) if loadout is not None else list(STARTERS)
 
+    selected: Dict[str, str] = {}
+    for name, key in specializations.items():
+        if not isinstance(name, str) or not isinstance(key, str):
+            raise TableError("specialization names and path keys must be strings")
+        t.specialization(name, key)
+        selected[name] = key
+    resolved_loadout = [replace(t.tower(name), specialization=selected.get(name, ""))
+                        for name in names]
+
 
     scene = Scene(
         tables=t, region=reg, stage=st, difficulty=diff,
         terrains=[terrain.Terrain(z, "uniform")],
-        loadout=[t.tower(n) for n in names],
+        loadout=resolved_loadout,
         monsters=[t.monster(i) for i in st.spawns],
         bosses=[t.monster(i, boss=True) for i in st.bosses],
         mastery=mastery,
         floor_level=t.floor(mastery),
+        growth_spec_rank=growth_spec_rank,
         clover_damage=float(clover_damage),
         clover_rate=float(clover_rate),
         clover_crit_chance=float(clover_crit_chance),
@@ -242,8 +271,7 @@ def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal"
     # The LONGEST route is used: it is the one that needs covering, so its slot
     # count is the honest ceiling rather than an average nobody plays.
     tower, _, _ = scene.placement()
-    _, _, rng = t.data_at_level(tower, scene.floor_level,
-                                scene.clover_damage, scene.clover_rate)
+    rng = scene.tower_stats(tower, scene.floor_level).range
     scene.tower, scene.tower_range = tower, rng
     scene.slot_cells = geometry.slots(m, scene.longest_route(), rng)
     scene.slots = len(scene.slot_cells)

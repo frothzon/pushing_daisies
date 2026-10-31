@@ -24,9 +24,22 @@ things a ratio cannot express become measurable:
 * **the emerge.** Monsters are vulnerable while rising; ``scr_zombie_emerge``
   does not restore life, and ``scr_zomb_step`` checks death before dispatching
   the current state.
+* **corpses keep the wave live.** A kill settles immediately, but the monster
+  instance stays through the non-looping DIE animation (``ZOMB_DIE_SECS``).
+  ``scr_level_wait`` starts its 354-frame gate only after the corpse is gone;
+  Candy keeps ticking until that same boundary.
 * **combat effects.** Crit rolls and on-hit statuses come from the roster's
   trait table. Slow, stun, root, burn, poison, bleed and vulnerability use a
   seeded RNG so repeated runs are reproducible.
+* **specializations.** `--specialization TOWER=PATH` applies the GML path tiers
+  at L3-L5, including Growth's early signature unlock, status overrides,
+  projectile/target changes, knockback, hit-money, wave-income and implemented
+  signature effects.
+* **Candy.** Optional `--candy id:level:uses` profiles apply the authored stat,
+  control and kill-money effects for their live-wave frame duration. Regular
+  Candy starts at wave 1; Gob is used on the first boss wave while another
+  Candy is active. This is a declared activation policy, not a model of pause
+  timing or the player's saved stock.
 * **terrain is a transient.**  ``z_climb`` starts at 10 and lerps 0.1 a frame
   toward the cell's height (``scr_zomb_pathSpeed``), so a monster's first second
   of walking is not at the speed its terrain implies.
@@ -37,13 +50,13 @@ things a ratio cannot express become measurable:
 THE FRAME ORDER, and it is an assumption.  GameMaker runs instances in an order
 this tool cannot read, so each frame is stepped as
 
-    level (spawn / wait / clear)  ->  towers  ->  monsters  ->  fail check
+    level (spawn / wait / clear)  ->  Candy tick  ->  towers  ->  monsters  ->  fail check
 
 which means: a monster spawned this frame cannot be shot until the next frame; a
-kill pays in the frame it is shot (towers before monsters); and a monster that
-reaches the despawn this frame still took that frame's shot.  Sub-frame details
-can differ from the game by one step - smaller than the differences this tool
-exists to find.
+kill pays in the frame it is shot (towers before monsters) and leaves its corpse
+for the authored DIE duration; and a monster that reaches the despawn this frame
+still took that frame's shot. Sub-frame details can differ from the game by one
+step - smaller than the differences this tool exists to find.
 
 WHAT IS NOT MODELLED, stated rather than discovered later:
 
@@ -147,7 +160,8 @@ class SimTower:
       capped, it is not as long as the fire period - re-checks its CACHED
       target list every frame and re-scans with ``find_all_range`` only when
       nothing in it is still ALIVE (a started swing is committed);
-    * damage lands once, on ``fire_frame``, against every cached target;
+    * damage lands on ``fire_frame`` against every cached target, with each
+      target receiving one direct-hit packet per projectile;
     * ``return`` lasts as long as the return animation.
 
     ``state_time`` is the game's counter and a state change resets it, so the
@@ -168,11 +182,16 @@ class SimTower:
     rate: float                    # fire_rate at this level
     reach: float                   # range at this level
     targets: int
+    projectiles: int
+    knockback: float
     time_offset: int
     mode: str = "real"             # real | nominal
     state: str = "normal"
     state_time: int = 0
     target: Optional[List["SimMonster"]] = None
+    shot_stats: Optional[tables.TowerStats] = None
+    shot_hit: float = 0.0
+    shot_projectiles: int = 1
     did_damage: bool = False
     frame_number: float = 0.0     # the SWING, in frames (kept name: the GML
     fire_frame: int = 0           # one is swing_frame - see scr_tower_shoot
@@ -255,6 +274,10 @@ class Outcome:
     spend: str = "ceiling"
     terrain_z: float = 0.0
     truncated: bool = False        # stopped at the caller's wave cap, not at CLEAR
+    candy_used: Dict[str, Tuple[int, int]] = field(default_factory=dict)
+    candy_active_frames: Dict[str, int] = field(default_factory=dict)
+    candy_pity_bonus_progress: float = 0.0
+    candy_frozen_waves: int = 0
 
     @property
     def cleared_all(self) -> bool:
@@ -283,7 +306,8 @@ class SimMonster:
 
     ``z_climb`` starts at :data:`EMERGE_START_Z` when the path state begins and
     lerps toward the terrain, which is why a monster's speed changes over the
-    first second of its walk even on flat ground.
+    first second of its walk even on flat ground. A killed monster remains as
+    a non-targetable corpse until its timed DIE clip ends.
     """
 
     boss: bool = False
@@ -306,7 +330,9 @@ class SimMonster:
     leaked: bool = False
     killed: bool = False
     death_frame: int = 0
+    corpse_until_frame: int = 0
     walk_frames: int = 0
+    last_hit_tower_money_bonus: float = 0.0
 
 
 @dataclass
@@ -319,6 +345,24 @@ class SimStatus:
     frames: int
     stacks: int = 1
     source_tower: int = -1
+    wildfire_signature: bool = False
+
+
+@dataclass(frozen=True)
+class CandyUse:
+    """A requested recipe level and number of stock units for one sim run."""
+
+    id: str
+    level: int = 1
+    count: int = 1
+
+
+@dataclass
+class ActiveCandy:
+    """One active non-Gob Candy and its remaining normal-speed game frames."""
+
+    level: int
+    remaining_frames: int
 
 
 class Sim:
@@ -349,7 +393,9 @@ class Sim:
                  m: Optional[geometry.LevelMap] = None,
                  max_waves: Optional[int] = None,
                  max_frames: int = 300000, seed: int = 0,
-                 initial_placements: Sequence[Tuple[str, Cell]] = ()) -> None:
+                 initial_placements: Sequence[Tuple[str, Cell]] = (),
+                 candies: Sequence[CandyUse] = (),
+                 candy_duration_rank: int = 0) -> None:
         t = scene.tables
         self.scene = scene
         self.fps = int(fps or t.constants.fps)
@@ -360,6 +406,29 @@ class Sim:
         self.seed = int(seed)
         self.rng = random.Random(self.seed)
         self.initial_placements = tuple(initial_placements)
+        if not 0 <= int(candy_duration_rank) <= 10:
+            raise ValueError("Candy duration rank must be between 0 and 10")
+        self.candy_duration_rank = int(candy_duration_rank)
+        self.candy_uses: Dict[str, CandyUse] = {}
+        for use in candies:
+            if not isinstance(use, CandyUse):
+                raise TypeError("candies must contain CandyUse records")
+            if not 1 <= int(use.level) <= 10 or int(use.count) < 1:
+                raise ValueError(f"invalid Candy use {use!r}")
+            t.candy(use.id)  # fail loudly on an unknown recipe
+            old = self.candy_uses.get(use.id)
+            if old is not None and old.level != int(use.level):
+                raise ValueError(f"Candy {use.id!r} has two requested levels")
+            self.candy_uses[use.id] = CandyUse(
+                use.id, int(use.level), int(use.count) + (old.count if old else 0))
+        if "everlasting_gob" in self.candy_uses and len(self.candy_uses) == 1:
+            raise ValueError("Everlasting Gob needs another active Candy to freeze")
+        self.active_candies: Dict[str, ActiveCandy] = {}
+        self._candy_started = False
+        self._candy_gob_pending = self.candy_uses.get("everlasting_gob")
+        self.candy_freeze_waves = 0
+        self.candy_freeze_active_wave = 0
+        self.candy_wave_live = False
         self.ter = ter if ter is not None else terrain.Terrain(6.0, "uniform")
         self.diff = scene.difficulty
         self.const = t.constants
@@ -409,6 +478,98 @@ class Sim:
         self.buy_scan_left = 0
         self.out = Outcome(cycle=cycle, spend=spend, terrain_z=self.ground_z,
                            start_money=self.money, start_life=self.lives)
+
+    def _active_candy_magnitude(self, field_name: str) -> float:
+        """Add a Candy axis exactly as ``candy_active_magnitude`` does."""
+        total = 0.0
+        for candy_id, active in self.active_candies.items():
+            if active.remaining_frames <= 0:
+                continue
+            total += self.scene.tables.candy(candy_id).magnitude(
+                active.level).get(field_name, 0.0)
+        return total
+
+    def _candy_has_active(self) -> bool:
+        return any(state.remaining_frames > 0
+                   for state in self.active_candies.values())
+
+    def _candy_start(self) -> None:
+        """Activate selected duration Candy at the first live wave."""
+        if self._candy_started:
+            return
+        self._candy_started = True
+        duration_seconds = self.const.candy_base_seconds * (
+            1.0 + self.candy_duration_rank * self.const.candy_duration_per_rank)
+        frames_per_use = round(duration_seconds * self.const.candy_frame_hz)
+        for candy_id, use in self.candy_uses.items():
+            if candy_id == "everlasting_gob":
+                continue
+            self.active_candies[candy_id] = ActiveCandy(
+                level=use.level, remaining_frames=frames_per_use * use.count)
+            self.out.candy_used[candy_id] = (use.level, use.count)
+            self.out.candy_active_frames[candy_id] = 0
+        self._refresh_tower_stats()
+
+    def _candy_wave_begin(self, wave: int, boss: bool) -> None:
+        self.candy_wave_live = True
+        if self.candy_freeze_waves > 0 and self.candy_freeze_active_wave <= 0:
+            self.candy_freeze_active_wave = wave
+        # The Gob waits for a boss so its first freeze is spent on a meaningful
+        # wave. This is deterministic policy; the player can choose otherwise.
+        use = self._candy_gob_pending
+        if boss and use is not None and self._candy_has_active():
+            magnitude = self.scene.tables.candy(use.id).magnitude(use.level)
+            frozen = max(1, int(magnitude.get("freeze_waves", 1))) * use.count
+            self.candy_freeze_waves += frozen
+            self.candy_freeze_active_wave = wave
+            self.out.candy_used[use.id] = (use.level, use.count)
+            self.out.candy_frozen_waves += frozen
+            self._candy_gob_pending = None
+
+    def _candy_wave_end(self, wave: int) -> None:
+        self.candy_wave_live = False
+        if self.candy_freeze_active_wave == wave:
+            self.candy_freeze_waves = max(0, self.candy_freeze_waves - 1)
+            self.candy_freeze_active_wave = 0
+
+    def _tick_candies(self) -> None:
+        """Consume frames until scr_level_wait sees no obj_mon instances."""
+        if not self.candy_wave_live:
+            return
+        if (self.candy_freeze_waves > 0
+                and self.candy_freeze_active_wave == self.wave):
+            return
+        expired = False
+        for candy_id, active in self.active_candies.items():
+            if active.remaining_frames <= 0:
+                continue
+            active.remaining_frames -= 1
+            self.out.candy_active_frames[candy_id] = (
+                self.out.candy_active_frames.get(candy_id, 0) + 1)
+            if active.remaining_frames <= 0:
+                expired = True
+        if expired:
+            self._refresh_tower_stats()
+
+    def _refresh_tower_stats(self) -> None:
+        """Re-resolve placed towers when a Candy starts or expires."""
+        damage = self._active_candy_magnitude("damage")
+        fire_rate = self._active_candy_magnitude("fire_rate")
+        reach = self._active_candy_magnitude("range")
+        for tower in self.towers:
+            stats = self._tower_stats(tower.tower, tower.level)
+            tower.hit = stats.damage * (1.0 + damage)
+            tower.rate = stats.fire_rate * (1.0 + fire_rate)
+            tower.reach = stats.range * (1.0 + reach)
+            tower.targets = stats.targets
+            tower.projectiles = stats.projectiles
+            tower.knockback = stats.knockback
+
+    def _tower_stats(self, tower: Tower, level: int) -> tables.TowerStats:
+        return self.scene.tables.tower_stats(
+            tower, level, self.scene.clover_damage, self.scene.clover_rate,
+            self.scene.clover_crit_chance, self.scene.clover_crit_damage,
+            self.scene.growth_spec_rank)
 
     # -- the wave's creature, read the way the closed form reads it ---------
     def stat_waves(self, wave: int) -> int:
@@ -492,10 +653,13 @@ class Sim:
         return applied
 
     def _apply_status(self, monster: SimMonster, effect: HitStatus,
-                      source_tower: int) -> None:
+                      source_tower: int,
+                      wildfire_signature: bool = False) -> None:
         """Apply one proc, matching status_apply's refresh/stack rules."""
         if not monster.alive or monster.life <= 0:
             return
+        mult = effect.mult
+        amount = effect.amount
         frames = max(1, round(effect.seconds * self.fps))
         status_class = "boss" if monster.boss else "elite" if monster.elite else "normal"
         if status_class in ("boss", "elite") and effect.kind in (
@@ -507,40 +671,110 @@ class Sim:
         old = monster.statuses.get(effect.kind)
         if old is None or old.frames <= 0:
             monster.statuses[effect.kind] = SimStatus(
-                effect.kind, effect.mult, effect.amount, frames,
-                1, source_tower)
+                effect.kind, mult, amount, frames,
+                1, source_tower, wildfire_signature)
             return
 
         if effect.kind == "slow":
-            old.mult = min(old.mult, effect.mult)
+            old.mult = min(old.mult, mult)
         if effect.kind == "poison":
             old.stacks = min(old.stacks + 1, 5)
-        stronger = effect.amount >= old.amount
-        old.amount = max(old.amount, effect.amount)
+        stronger = amount >= old.amount
+        old.amount = max(old.amount, amount)
         if stronger:
             old.source_tower = source_tower
         if effect.kind == "burn":
             old.frames += frames
         else:
             old.frames = max(old.frames, frames)
+        if wildfire_signature:
+            old.wildfire_signature = True
 
-    def _apply_hit(self, tower: SimTower, monster: SimMonster) -> None:
-        """One direct target hit, followed by its independent crit/status rolls."""
-        if not monster.alive:
+    def _apply_hit(self, tower: SimTower, monster: SimMonster,
+                   stats: tables.TowerStats, base_hit: float) -> None:
+        """One committed direct packet and its crit/signature side effects."""
+        if not monster.alive or monster.life <= 0:
             return
-        hit = tower.hit
+        key = tower.tower.specialization
+        strength = self.scene.tables.specialization_strength(
+            self.scene.growth_spec_rank)
+        sig_crit = 0.0
+        bleed = monster.statuses.get("bleed")
+        if (tower.name == "Meat Bulb" and key == "ripper"
+                and stats.tier_limit >= 3 and bleed is not None
+                and bleed.frames > 0):
+            sig_crit = 0.25 * strength
         crit_chance = min(1.0, max(
-            0.0, tower.tower.crit_chance + self.scene.clover_crit_chance))
+            0.0, stats.crit_chance + sig_crit
+            + self._active_candy_magnitude("crit_chance")))
         crit_damage = max(
-            1.0, tower.tower.crit_damage + self.scene.clover_crit_damage)
-        if self.rng.random() < crit_chance:
-            hit *= crit_damage
+            1.0, stats.crit_damage
+            + self._active_candy_magnitude("crit_damage"))
+        critical = self.rng.random() < crit_chance
+
+        if stats.knockback > 0:
+            push = stats.knockback * (0.25 if monster.boss else 1.0)
+            displacement = min(push, self.length * 0.02)
+            monster.dist = max(0.0, monster.dist - displacement)
+            monster.x, monster.y = self.track.at(monster.dist)
+
+        monster.last_hit_tower_money_bonus = min(
+            1.0, max(0.0, tower.tower.money_bonus + stats.money))
+        hit = base_hit * (crit_damage if critical else 1.0)
+        vuln = monster.statuses.get("vuln")
+        if (tower.name == "Meat Bulb" and key == "tenderizer"
+                and stats.tier_limit >= 3 and vuln is not None
+                and vuln.frames > 0):
+            hit *= 1.0 + 0.20 * strength
         self._deal_damage(monster, hit, tower.tower_index)
-        if monster.life <= 0:
-            return
-        for effect in tower.tower.statuses:
-            if self.rng.random() < effect.chance:
-                self._apply_status(monster, effect, tower.tower_index)
+
+        if (critical and tower.name == "Cannon Tulip" and key == "deadeye"
+                and stats.tier_limit >= 3):
+            already_hit = {id(target) for target in (tower.target or [])}
+            candidates = [candidate for candidate in self.monsters
+                          if candidate.alive and candidate.life > 0
+                          and id(candidate) not in already_hit
+                          and self._dist(tower, candidate) <= tower.reach]
+            candidates.sort(key=lambda candidate: self._dist(tower, candidate))
+            if candidates:
+                self._deal_damage(candidates[0], hit * 0.50 * strength,
+                                  tower.tower_index)
+
+    def _apply_shot_statuses(self, tower: SimTower,
+                             targets: Sequence[SimMonster],
+                             stats: tables.TowerStats,
+                             projectiles: int) -> None:
+        """Apply the locked status list after all direct packets in a volley."""
+        wildfire = (tower.name == "Burning Ivy"
+                    and tower.tower.specialization == "wildfire"
+                    and stats.tier_limit >= 3)
+        for effect in stats.statuses:
+            for monster in targets:
+                for _projectile in range(projectiles):
+                    if not monster.alive or monster.life <= 0:
+                        break
+                    if self.rng.random() >= effect.chance:
+                        continue
+                    mult, amount = effect.mult, effect.amount
+                    if effect.kind == "slow":
+                        mult = max(0.05, 1.0 - (1.0 - mult)
+                                   * (1.0 + self._active_candy_magnitude("slow")))
+                    elif effect.kind == "burn":
+                        amount *= 1.0 + self._active_candy_magnitude("burn_damage")
+                    before = 0
+                    old_poison = monster.statuses.get("poison")
+                    if effect.kind == "poison" and old_poison is not None:
+                        before = old_poison.stacks if old_poison.frames > 0 else 0
+                    applied_effect = HitStatus(effect.kind, effect.chance,
+                                               mult, amount, effect.seconds)
+                    self._apply_status(
+                        monster, applied_effect, tower.tower_index,
+                        wildfire_signature=wildfire and effect.kind == "burn")
+                    if effect.kind == "poison" and before < 5:
+                        poison = monster.statuses.get("poison")
+                        if poison is not None and poison.frames > 0 and poison.stacks >= 5:
+                            self._deal_damage(monster, amount * 5,
+                                              tower.tower_index)
 
     @staticmethod
     def _status_speed_multiplier(monster: SimMonster) -> float:
@@ -658,6 +892,9 @@ class Sim:
             tw.fire_frame = max(1, int(tw.swing_frame - tw.time_offset))
             tw.target = None
             tw.did_damage = False
+            tw.shot_stats = self._tower_stats(tw.tower, tw.level)
+            tw.shot_hit = tw.hit
+            tw.shot_projectiles = tw.projectiles
         # the cached list is re-checked EVERY frame, and only a list in which
         # nothing is still ALIVE is re-scanned.  A started swing is COMMITTED:
         # the range test that used to be here cancelled a slow tower every
@@ -677,10 +914,14 @@ class Sim:
         if not tw.did_damage and tw.state_time >= tw.fire_frame:
             tw.did_damage = True
             tw.shots += 1
-            for m in tw.target:
-                if not m.alive:
-                    continue
-                self._apply_hit(tw, m)
+            stats = tw.shot_stats or self._tower_stats(tw.tower, tw.level)
+            targets = list(tw.target)
+            for m in targets:
+                for _projectile in range(tw.shot_projectiles):
+                    if not m.alive or m.life <= 0:
+                        break
+                    self._apply_hit(tw, m, stats, tw.shot_hit)
+            self._apply_shot_statuses(tw, targets, stats, tw.shot_projectiles)
         if tw.state_time >= tw.swing_frame:
             if not tw.did_damage:
                 tw.wasted += 1                  # the target died before it landed
@@ -702,8 +943,14 @@ class Sim:
         if not tw.target:
             return
         tw.shots += 1
+        stats = self._tower_stats(tw.tower, tw.level)
+        targets = list(tw.target)
         for m in tw.target:
-            self._apply_hit(tw, m)
+            for _projectile in range(stats.projectiles):
+                if not m.alive or m.life <= 0:
+                    break
+                self._apply_hit(tw, m, stats, tw.hit)
+        self._apply_shot_statuses(tw, targets, stats, stats.projectiles)
         tw.next_fire = self.frame + self.cycle_obj.period(tw.rate)
 
     # -- the monsters (scr_zombie_*) ---------------------------------------
@@ -722,7 +969,12 @@ class Sim:
         if self.cur is not None:
             self.cur.peak_alive = max(self.cur.peak_alive, alive)
         self.out.peak_alive = max(self.out.peak_alive, alive)
-        self.monsters = [m for m in self.monsters if m.alive]
+        # The controller and Candy tick ran earlier this frame; remove a body
+        # only after its final DIE Step, as scr_zombie_die() does.
+        self.monsters = [
+            m for m in self.monsters
+            if m.alive or (m.killed and m.corpse_until_frame > self.frame)
+        ]
 
     def _run_mon_state(self, m: SimMonster) -> bool:
         """One frame of a monster's state.  True if it changed state."""
@@ -782,7 +1034,8 @@ class Sim:
         # scr_zomb_death applies clover kill/boss bonuses to kills. lose_life
         # calls scr_kill_money with the raw monster payout, so a leak receives
         # half the base payout and carries its fraction without those bonuses.
-        bonus = self.scene.clover_kill_money if clover_bonus else 0.0
+        bonus = (self.scene.clover_kill_money
+                 + self._active_candy_magnitude("kill_money")) if clover_bonus else 0.0
         if boss and clover_bonus:
             bonus += self.scene.clover_boss_reward
         want = base * (1 + bonus) * ramp * self.diff.money * scale + self.money_carry
@@ -790,16 +1043,44 @@ class Sim:
         self.money_carry = want - pay
         return int(pay)
 
+    def _wildfire_on_death(self, monster: SimMonster) -> None:
+        """Spread a marked Wildfire burn once, to the nearest living target."""
+        burn = monster.statuses.get("burn")
+        if (burn is None or not burn.wildfire_signature
+                or burn.amount <= 0 or burn.frames <= 1):
+            return
+        burn.wildfire_signature = False
+        nearby = [candidate for candidate in self.monsters
+                  if candidate is not monster and candidate.alive
+                  and candidate.life > 0
+                  and math.dist((monster.x, monster.y),
+                                (candidate.x, candidate.y)) <= 64.0]
+        nearby.sort(key=lambda candidate: math.dist(
+            (monster.x, monster.y), (candidate.x, candidate.y)))
+        if not nearby:
+            return
+        frames = max(1, math.floor(burn.frames * 0.50))
+        self._apply_status(
+            nearby[0], HitStatus("burn", 1.0, 1.0, burn.amount * 0.50,
+                                 frames / self.fps), -1)
+
     def _kill(self, m: SimMonster) -> None:
-        """``scr_zomb_death``: pay, and destroy - in the frame the life hits 0."""
-        paid = self._payout(m.kill_money, boss=m.boss)
+        """Settle a kill now; keep its obj_mon corpse through the DIE clip."""
+        self._wildfire_on_death(m)
+        base = m.kill_money * (1.0 + m.last_hit_tower_money_bonus)
+        paid = self._payout(base, boss=m.boss)
         self.money += paid
         m.alive, m.killed = False, True
         m.death_frame = self.frame
+        m.corpse_until_frame = self.frame + max(
+            1, int(round(self.const.zombie_die_seconds * self.fps)))
         self.out.kills += 1
         self.out.money_earned += paid
         self.out.hp_killed += m.max_life
         self.out.walk_frames.append(m.walk_frames)
+        if not m.boss:
+            self.out.candy_pity_bonus_progress += self._active_candy_magnitude(
+                "pity_fill")
         if self.cur is not None:
             self.cur.kills += 1
             self.cur.money_earned += paid
@@ -844,6 +1125,7 @@ class Sim:
             self._step_level()
             if self.out.cleared:
                 break
+            self._tick_candies()
             self._step_towers()
             self._step_monsters()
             if self.lives <= 0:
@@ -894,7 +1176,12 @@ class Sim:
                              taken=self.built, allow_rungs=True, spread=True,
                              clover_damage=self.scene.clover_damage,
                              clover_rate=self.scene.clover_rate,
-                             standing=standing)
+                             standing=standing,
+                             candy_damage=self._active_candy_magnitude("damage"),
+                             candy_rate=self._active_candy_magnitude("fire_rate"),
+                             candy_range=self._active_candy_magnitude("range"),
+                             candy_crit_chance=self._active_candy_magnitude("crit_chance"),
+                             candy_crit_damage=self._active_candy_magnitude("crit_damage"))
         out: List[SimTower] = []
         for b in bought.buys:
             if b.price > self.money:
@@ -910,10 +1197,14 @@ class Sim:
 
     def _upgrade(self, tw: SimTower, buy: policy.Buy) -> None:
         """Raise a standing tower to the level the policy just paid for."""
-        dmg, rate, rng = self.scene.tables.data_at_level(
-            buy.tower, buy.level, self.scene.clover_damage,
-            self.scene.clover_rate)
-        tw.level, tw.hit, tw.rate, tw.reach = buy.level, dmg, rate, rng
+        stats = self._tower_stats(buy.tower, buy.level)
+        tw.level = buy.level
+        tw.hit = stats.damage * (1.0 + self._active_candy_magnitude("damage"))
+        tw.rate = stats.fire_rate * (1.0 + self._active_candy_magnitude("fire_rate"))
+        tw.reach = stats.range * (1.0 + self._active_candy_magnitude("range"))
+        tw.targets = stats.targets
+        tw.projectiles = stats.projectiles
+        tw.knockback = stats.knockback
 
     def _instant_buy(self) -> None:
         """Spend the purse mid-wave - the policy a person actually plays.
@@ -937,11 +1228,14 @@ class Sim:
     def _place(self, buy: policy.Buy) -> SimTower:
         """Stand a tower in a cell, at the stats the ladder gives its level."""
         cx, cy = self.map.centre_of(*buy.cell)
-        dmg, rate, rng = self.scene.tables.data_at_level(
-            buy.tower, buy.level, self.scene.clover_damage, self.scene.clover_rate)
+        stats = self._tower_stats(buy.tower, buy.level)
         tw = SimTower(
             cell=buy.cell, tower=buy.tower, level=buy.level, x=cx, y=cy,
-            hit=dmg, rate=rate, reach=rng, targets=buy.tower.targets,
+            hit=stats.damage * (1.0 + self._active_candy_magnitude("damage")),
+            rate=stats.fire_rate * (1.0 + self._active_candy_magnitude("fire_rate")),
+            reach=stats.range * (1.0 + self._active_candy_magnitude("range")),
+            targets=stats.targets, projectiles=stats.projectiles,
+            knockback=stats.knockback,
             # time_offset = irandom_range(1,8) per tower (obj_tower/Create_0).
             # The MEAN is the expected cost of the stagger, and the steady-state
             # cycle length depends on it - the spread only de-syncs a row.
@@ -970,16 +1264,17 @@ class Sim:
         for name, cell in self.initial_placements:
             if cell in self.built:
                 raise ValueError(f"duplicate initial tower cell: {cell}")
-            tower = self.scene.tables.tower(name)
+            tower = next((item for item in self.scene.loadout
+                          if item.name == name), self.scene.tables.tower(name))
             price = float(tower.price)
             level = self.scene.floor_level
-            dmg, rate, reach = self.scene.tables.data_at_level(
-                tower, level, self.scene.clover_damage, self.scene.clover_rate)
-            dps = self.scene.tables.delivered_dps_at_level(
-                tower, level, self.scene.clover_damage, self.scene.clover_rate,
-                targets=1)
-            multi = self.scene.tables.dps_at_level(
-                tower, level, self.scene.clover_damage, self.scene.clover_rate)
+            stats = self._tower_stats(tower, level)
+            reach = stats.range
+            dps = self.scene.tables.cycle.dps(
+                stats.damage, stats.fire_rate, targets=1,
+                projectiles=stats.projectiles)
+            multi = (stats.damage * stats.fire_rate * stats.targets
+                     * stats.projectiles)
             buy = policy.Buy(cell, tower, level, price, dps,
                              self.cov.of(cell, reach), multi)
             self._place(buy)
@@ -1025,6 +1320,9 @@ class Sim:
         if self.st == 0:
             self.wave += 1
             boss, count, life, speed, kill_money = self.wave_spec(self.wave)
+            if self.wave == 1:
+                self._candy_start()
+            self._candy_wave_begin(self.wave, boss)
             count = max(1, int(count))
             self.cur = WaveResult(
                 wave=self.wave, boss=boss, count=count, hp=count * life,
@@ -1054,12 +1352,14 @@ class Sim:
 
     def _step_wait(self) -> None:
         """scr_level_wait: the gate only counts while the field is CLEAR."""
-        if not any(m.alive for m in self.monsters):
+        if not self.monsters:
             if self.cur is not None and self.cur.clear_frame == 0:
                 # the frame the field emptied - the split between "fighting" and
                 # "waiting for the 354-frame gate" is what tells a stage's length
                 # apart from its difficulty
                 self.cur.clear_frame = self.frame
+                self._pay_wave_income()
+                self._candy_wave_end(self.wave)
             self.spawn_timer -= 1
         if self.spawn_timer <= 0:
             if self.cur is not None:
@@ -1073,6 +1373,41 @@ class Sim:
             done = (self.wave >= self.scene.waves
                     or (self.max_waves is not None and self.wave >= self.max_waves))
             self.pending = "CLEAR" if done else "SPAWN"
+
+    def _pay_wave_income(self) -> None:
+        """Pay Money Marigold's per-clear income with the shared money carry."""
+        for tower in self.towers:
+            if tower.name != "Money Marigold" or tower.tower.wave_income <= 0:
+                continue
+            level = min(10, max(1, int(round(tower.level))))
+            stats = self._tower_stats(tower.tower, level)
+            base = min(3.0, tower.tower.wave_income
+                       + math.floor((level - 1) * 0.5))
+            mastery_scale = 1.0
+            if level > 5 and len(self.scene.tables.ladder) >= 5:
+                ladder = self.scene.tables.ladder
+                mastery_scale = (ladder[min(level, len(ladder)) - 1].damage
+                                 / max(0.01, ladder[4].damage))
+            earned = base * mastery_scale * (1.0 + stats.money) + stats.income
+            key = tower.tower.specialization
+            strength = self.scene.tables.specialization_strength(
+                self.scene.growth_spec_rank)
+            if stats.tier_limit >= 3 and key == "compound_interest":
+                earned *= min(1.0 + 0.20 * strength,
+                              math.pow(1.0 + 0.02 * strength,
+                                       max(0, self.wave - 1)))
+            elif (stats.tier_limit >= 3 and key == "golden_harvest"
+                  and self.wave % 5 == 0):
+                earned += 5.0 * strength
+            if earned <= 0:
+                continue
+            total = earned + self.money_carry
+            paid = math.floor(total)
+            self.money_carry = total - paid
+            self.money += paid
+            self.out.money_earned += paid
+            if self.cur is not None:
+                self.cur.money_earned += paid
 
     def _spawn_monster(self) -> None:
         cur = self.cur
@@ -1103,9 +1438,7 @@ def common_deployment_cells(scenes: Sequence[Scene], count: int = 4) -> List[Cel
     ranges = []
     for scene in scenes:
         for tower in scene.loadout:
-            ranges.append(scene.tables.data_at_level(
-                tower, scene.floor_level, scene.clover_damage,
-                scene.clover_rate)[2])
+            ranges.append(scene.tower_stats(tower, scene.floor_level).range)
     if not ranges:
         return []
     reach = min(ranges)

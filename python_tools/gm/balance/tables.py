@@ -14,6 +14,7 @@ does not have.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -271,16 +272,88 @@ class Tower:
     crit_chance: float = 0.05
     crit_damage: float = 1.5
     statuses: Tuple[HitStatus, ...] = ()
+    projectiles: int = 1
+    money_bonus: float = 0.0
+    wave_income: float = 0.0
+    specialization: str = ""
 
     @property
     def dps(self) -> float:
-        """Nominal DPS - ``damage x rate x targets``, the panel's figure.
+        """Nominal DPS - ``damage x rate x targets x projectiles``.
 
         It is an UPPER BOUND: it assumes every shot lands on a full set of
         targets.  What the run actually delivers is measured by the sim, and
         the gap between the two is the interesting number.
         """
-        return self.damage * self.fire_rate * self.targets
+        return self.damage * self.fire_rate * self.targets * self.projectiles
+
+
+@dataclass(frozen=True)
+class SpecializationTier:
+    """One tier from ``tower_spec_table()`` in the game."""
+
+    damage: float = 0.0
+    rate: float = 0.0
+    range: float = 0.0
+    crit: float = 0.0
+    crit_damage: float = 0.0
+    targets: int = 0
+    projectiles: int = 0
+    knockback: float = 0.0
+    money: float = 0.0
+    income: float = 0.0
+    statuses: Tuple[HitStatus, ...] = ()
+
+
+@dataclass(frozen=True)
+class SpecializationPath:
+    """A tower's named path and its three authored tiers."""
+
+    tower: str
+    key: str
+    tiers: Tuple[SpecializationTier, ...]
+
+
+@dataclass(frozen=True)
+class TowerStats:
+    """All level-dependent stats the game resolves for one tower."""
+
+    damage: float
+    fire_rate: float
+    range: float
+    targets: int
+    projectiles: int
+    crit_chance: float
+    crit_damage: float
+    knockback: float
+    money: float
+    income: float
+    tier_limit: int
+    statuses: Tuple[HitStatus, ...]
+
+
+@dataclass(frozen=True)
+class CandyRecipe:
+    """A permanent Candy recipe and its level formula, read from GML."""
+
+    id: str
+    tier: int
+    cost: int
+    effect: str
+    step: float
+    gate: str
+    # field -> (base, per-level step, divisor). A positive divisor represents
+    # the Gob's one extra frozen wave per three levels.
+    formulas: Tuple[Tuple[str, float, float, int], ...]
+
+    def magnitude(self, level: int) -> Dict[str, float]:
+        level = min(10, max(1, int(level)))
+        steps = level - 1
+        out: Dict[str, float] = {}
+        for name, base, slope, divisor in self.formulas:
+            out[name] = (base + math.floor(steps / divisor)
+                         if divisor > 0 else base + steps * slope)
+        return out
 
 
 @dataclass(frozen=True)
@@ -336,6 +409,19 @@ class Constants:
     # (kill_money_slope) so tuning it moves the tester with it; `load()` reads
     # it, and `gm balance check` fails if it stops being readable.
     kill_money_slope: float = 0.06
+    zombie_die_seconds: float = 0.8
+    candy_frame_hz: int = 60
+    candy_base_seconds: float = 30.0
+    candy_duration_per_rank: float = 0.10
+    candy_duration_costs: Tuple[int, ...] = (10, 20, 40, 80, 160, 320,
+                                             640, 1280, 2560, 5120)
+    specialization_level_one: int = 3
+    specialization_level_two: int = 4
+    specialization_signature_level: int = 5
+    growth_spec_unlock_rank: int = 1
+    growth_spec_rank_max: int = 5
+    specialization_bonus_per_rank: float = 0.01
+    specialization_bonus_cap: float = 0.05
 
     @property
     def rung_count(self) -> int:
@@ -357,8 +443,9 @@ class Constants:
 class Cycle:
     """How long one shot really takes - and why the shop card overstates it.
 
-    :attr:`Tower.dps` is ``damage x rate x targets``, which assumes a tower
-    fires every ``1 / fire_rate`` seconds forever.  The code does not.  One shot
+    :attr:`Tower.dps` is ``damage x rate x targets x projectiles``, which
+    assumes a tower fires every ``1 / fire_rate`` seconds forever. The code
+    does not. One shot
     is
 
         idle wait     time_offset frames      (scr_tower_normal - a STAGGER)
@@ -419,9 +506,10 @@ class Cycle:
             return 0.0
         return self.fps / period
 
-    def dps(self, damage: float, fire_rate: float, targets: int = 1) -> float:
+    def dps(self, damage: float, fire_rate: float, targets: int = 1,
+            projectiles: int = 1) -> float:
         """Delivered dps, with the cycle charged."""
-        return damage * self.rate(fire_rate) * targets
+        return damage * self.rate(fire_rate) * targets * projectiles
 
     def double_counted_frames(self, fire_rate: float) -> float:
         """The extra fire period the pre-LL-040 cycle waited."""
@@ -444,6 +532,8 @@ class Tables:
     monsters: List[Monster] = field(default_factory=list)
     bosses: List[Monster] = field(default_factory=list)
     towers: List[Tower] = field(default_factory=list)
+    candies: Dict[str, CandyRecipe] = field(default_factory=dict)
+    specializations: Dict[str, Dict[str, SpecializationPath]] = field(default_factory=dict)
     ladder: List[Ladder] = field(default_factory=list)
     constants: Constants = field(default_factory=Constants)
     status_cc: Dict[str, Dict[str, float]] = field(default_factory=dict)
@@ -478,6 +568,80 @@ class Tables:
             if t.name == name:
                 return t
         raise TableError(f"no tower {name!r} in tower_roster()")
+
+    def candy(self, candy_id: str) -> CandyRecipe:
+        try:
+            return self.candies[candy_id]
+        except KeyError as err:
+            raise TableError(f"no Candy recipe {candy_id!r} in candy_recipe_table()") from err
+
+    def specialization(self, tower: str, key: str) -> SpecializationPath:
+        try:
+            return self.specializations[tower][key]
+        except KeyError as err:
+            choices = ", ".join(self.specializations.get(tower, {}))
+            if not choices:
+                raise TableError(f"no specialization paths for {tower!r}") from err
+            raise TableError(f"no specialization {key!r} for {tower!r}; have {choices}") from err
+
+    def specialization_tier_limit(self, level: int, growth_spec_rank: int = 0) -> int:
+        """The tier gate in ``tower_spec_tier_limit()``."""
+        if level < self.constants.specialization_level_one:
+            return 0
+        if level >= self.constants.specialization_signature_level:
+            return 3
+        if level >= self.constants.specialization_level_two:
+            return (3 if growth_spec_rank >= self.constants.growth_spec_unlock_rank
+                    else 2)
+        return 1
+
+    def specialization_strength(self, growth_spec_rank: int = 0) -> float:
+        rank = min(self.constants.growth_spec_rank_max,
+                   max(0, int(growth_spec_rank)))
+        return 1.0 + min(
+            self.constants.specialization_bonus_cap,
+            self.constants.specialization_bonus_per_rank * rank)
+
+    def tower_stats(self, tower: Tower, level: int,
+                    clover_damage: float = 0.0, clover_rate: float = 0.0,
+                    clover_crit_chance: float = 0.0,
+                    clover_crit_damage: float = 0.0,
+                    growth_spec_rank: int = 0) -> TowerStats:
+        """Resolve ladder, Clover, and selected specialization effects together."""
+        damage, rate, reach = self.data_at_level(
+            tower, level, clover_damage, clover_rate)
+        limit = self.specialization_tier_limit(level, growth_spec_rank)
+        selected = (self.specialization(tower.name, tower.specialization)
+                    if tower.specialization else None)
+        active = selected.tiers[:limit] if selected is not None else ()
+        mods = {name: 0.0 for name in (
+            "damage", "rate", "range", "crit", "crit_damage", "money",
+            "income", "targets", "projectiles", "knockback")}
+        statuses = {effect.kind: effect for effect in tower.statuses}
+        for tier in active:
+            for name in mods:
+                mods[name] += getattr(tier, name)
+            for effect in tier.statuses:
+                statuses[effect.kind] = effect
+
+        strength = self.specialization_strength(growth_spec_rank)
+        for name in ("damage", "rate", "range", "crit", "crit_damage",
+                     "money", "income"):
+            mods[name] *= strength
+
+        return TowerStats(
+            damage=damage * max(0.0, 1.0 + mods["damage"]),
+            fire_rate=rate * max(0.0, 1.0 + mods["rate"]),
+            range=reach * max(0.0, 1.0 + mods["range"]),
+            targets=max(1, round(tower.targets + mods["targets"])),
+            projectiles=max(1, round(tower.projectiles + mods["projectiles"])),
+            crit_chance=min(1.0, max(0.0, tower.crit_chance
+                                     + clover_crit_chance + mods["crit"])),
+            crit_damage=max(1.0, tower.crit_damage
+                            + clover_crit_damage + mods["crit_damage"]),
+            knockback=max(0.0, mods["knockback"]),
+            money=mods["money"], income=mods["income"],
+            tier_limit=limit, statuses=tuple(statuses.values()))
 
     def monster(self, index: int, boss: bool = False) -> Monster:
         bank = self.bosses if boss else self.monsters
@@ -563,9 +727,12 @@ class Tables:
     def dps_at_level(self, tower: Tower, level: int,
                      clover_damage: float = 0.0,
                      clover_rate: float = 0.0,
-                     targets: Optional[int] = None) -> float:
+                     targets: Optional[int] = None,
+                     projectiles: Optional[int] = None) -> float:
         dmg, rate, _ = self.data_at_level(tower, level, clover_damage, clover_rate)
-        return dmg * rate * (tower.targets if targets is None else targets)
+        return (dmg * rate
+                * (tower.targets if targets is None else targets)
+                * (tower.projectiles if projectiles is None else projectiles))
 
     # -- the same figure, with the fire cycle charged (LL-040) -------------
     @property
@@ -583,17 +750,19 @@ class Tables:
     def delivered_dps_at_level(self, tower: Tower, level: int,
                                clover_damage: float = 0.0,
                                clover_rate: float = 0.0,
-                               targets: int = 1) -> float:
+                               targets: int = 1,
+                               projectiles: Optional[int] = None) -> float:
         """``dps_at_level`` with the shot CYCLE charged - the honest figure.
 
-        :meth:`dps_at_level` answers "damage x rate x targets", which is what the
-        shop card prints and what the in-game panel believes.  This answers what
+        :meth:`dps_at_level` answers "damage x rate x targets x projectiles",
+        which is what the shop card prints and what the in-game panel believes. This answers what
         a tower actually delivers once the idle stagger and the return animation
         are paid for.  The two should be printed side by side, never merged: the
         gap between them is the finding (LL-038, LL-040).
         """
         dmg, rate, _ = self.data_at_level(tower, level, clover_damage, clover_rate)
-        return self.cycle.dps(dmg, rate, targets)
+        count = tower.projectiles if projectiles is None else projectiles
+        return self.cycle.dps(dmg, rate, targets, count)
 
 
 # ---------------------------------------------------------------------------
@@ -681,7 +850,7 @@ def load(root: Path) -> Tables:
         sell_refund=float(_num(src, r"return round\(_invested\s*\*\s*([\d.]+)\)", rel)),
     )
 
-    # ---- towers: price and the four stats -----------------------------
+    # ---- towers: price and the base stats -----------------------------
     rel = "scripts/scr_tower_roster/scr_tower_roster.gml"
     for c in find_calls(src_of(rel), "tower_entry"):
         if not isinstance(c.args[0], str) or not isinstance(c.args[2], (int, float)):
@@ -707,6 +876,9 @@ def load(root: Path) -> Tables:
     base_crit_damage = float(_num(base_crit_src,
                                   r"_data\[TOWER\.crit_damage\]\s*=\s*([\d.]+)",
                                   base_crit_rel))
+    base_projectiles = int(_num(base_crit_src,
+                                r"_data\[TOWER\.projectiles\]\s*=\s*(\d+)",
+                                base_crit_rel))
     trait_src = src_of(rel)
     raw_traits = find_array_after(trait_src, "function tower_trait_table")
     trait_rows: Dict[str, Dict[str, Any]] = {}
@@ -739,16 +911,157 @@ def load(root: Path) -> Tables:
                                       float(amount), float(seconds)))
         trait_crit = row.get("crit", 0) if isinstance(row, dict) else 0
         trait_crit_damage = row.get("crit_damage", 0) if isinstance(row, dict) else 0
+        trait_money = row.get("money", 0) if isinstance(row, dict) else 0
+        trait_income = row.get("wave_income", 0) if isinstance(row, dict) else 0
         if not isinstance(trait_crit, (int, float)):
             trait_crit = 0
         if not isinstance(trait_crit_damage, (int, float)):
             trait_crit_damage = 0
+        if not isinstance(trait_money, (int, float)):
+            trait_money = 0
+        if not isinstance(trait_income, (int, float)):
+            trait_income = 0
         updated_towers.append(replace(
             tower,
             crit_chance=min(1.0, base_crit + float(trait_crit)),
             crit_damage=base_crit_damage + float(trait_crit_damage),
-            statuses=tuple(statuses)))
+            statuses=tuple(statuses),
+            projectiles=base_projectiles,
+            money_bonus=float(trait_money), wave_income=float(trait_income)))
     t.towers = updated_towers
+
+    # ---- tower specializations: all path tiers ------------------------
+    # Path effects are literal helper calls, so unwrap those helpers instead
+    # of maintaining a second set of balance numbers in Python.
+    rel = "scripts/scr_tower_specs/scr_tower_specs.gml"
+    spec_src = src_of(rel)
+    spec_rows = find_array_after(spec_src, "function tower_spec_table")
+    status_kinds = {"slow", "stun", "burn", "poison", "root", "bleed",
+                    "vuln", "vulnerable"}
+
+    def parse_spec_tier(raw: Any, where: str) -> SpecializationTier:
+        values: Dict[str, float] = {"money": 0.0, "income": 0.0,
+                                    "projectiles": 0.0}
+        if not isinstance(raw, Call):
+            raise TableError(f"{where}: expected a specialization tier call")
+        while raw.name != "tower_spec_tier":
+            if raw.name not in ("tower_spec_projectile_tier",
+                                "tower_spec_income_tier",
+                                "tower_spec_flat_income_tier") or len(raw.args) != 2:
+                raise TableError(f"{where}: unsupported tier wrapper {raw.name}")
+            inner, amount = raw.args
+            if not isinstance(amount, (int, float)) or isinstance(amount, bool):
+                raise TableError(f"{where}: invalid {raw.name} amount {amount!r}")
+            field_name = {
+                "tower_spec_projectile_tier": "projectiles",
+                "tower_spec_income_tier": "money",
+                "tower_spec_flat_income_tier": "income",
+            }[raw.name]
+            values[field_name] = (float(round(amount)) if field_name == "projectiles"
+                                  else float(amount))
+            raw = inner
+            if not isinstance(raw, Call):
+                raise TableError(f"{where}: wrapper does not contain a tier call")
+        a = _call_args(raw, 8, f"{where} tower_spec_tier")
+        names = ("damage", "rate", "range", "crit", "crit_damage",
+                 "targets", "knockback")
+        if not all(isinstance(a[i], (int, float)) and not isinstance(a[i], bool)
+                   for i in range(7)):
+            raise TableError(f"{where}: non-numeric tier modifier")
+        values.update({name: float(a[i]) for i, name in enumerate(names)})
+        if values["targets"] != round(values["targets"]):
+            raise TableError(f"{where}: target modifier must resolve to an integer")
+        statuses: List[HitStatus] = []
+        if not isinstance(a[7], list):
+            raise TableError(f"{where}: tier statuses are not an array")
+        for status in a[7]:
+            if (not isinstance(status, Call) or status.name != "tower_spec_status"
+                    or len(status.args) != 5):
+                raise TableError(f"{where}: unsupported status {status!r}")
+            kind, chance, mult, amount, seconds = status.args
+            if (not isinstance(kind, str) or kind.lower() not in status_kinds
+                    or not all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                               for v in (chance, mult, amount, seconds))):
+                raise TableError(f"{where}: invalid status row {status!r}")
+            normalized = "vuln" if kind.lower() == "vulnerable" else kind.lower()
+            statuses.append(HitStatus(normalized, float(chance), float(mult),
+                                      float(amount), float(seconds)))
+        return SpecializationTier(
+            damage=values["damage"], rate=values["rate"], range=values["range"],
+            crit=values["crit"], crit_damage=values["crit_damage"],
+            targets=int(values["targets"]),
+            projectiles=int(round(values["projectiles"])),
+            knockback=values["knockback"], money=values["money"],
+            income=values["income"], statuses=tuple(statuses))
+
+    for row in spec_rows:
+        if (not isinstance(row, dict) or not isinstance(row.get("tower"), str)
+                or not isinstance(row.get("paths"), list)):
+            raise TableError(f"{rel}: invalid tower specialization row {row!r}")
+        tower_name = row["tower"]
+        if tower_name not in {tower.name for tower in t.towers}:
+            raise TableError(f"{rel}: specialization row for unknown tower {tower_name!r}")
+        paths: Dict[str, SpecializationPath] = {}
+        for path in row["paths"]:
+            if (not isinstance(path, Call) or path.name != "tower_spec_path"
+                    or len(path.args) != 4 or not isinstance(path.args[0], str)
+                    or not isinstance(path.args[3], list)):
+                raise TableError(f"{rel} {tower_name}: invalid specialization path {path!r}")
+            key = path.args[0]
+            tiers = tuple(parse_spec_tier(tier, f"{tower_name}/{key}")
+                          for tier in path.args[3])
+            if len(tiers) != 3 or key in paths:
+                raise TableError(f"{rel} {tower_name}/{key}: expected three unique tiers")
+            paths[key] = SpecializationPath(tower_name, key, tiers)
+        if len(paths) != 2:
+            raise TableError(f"{rel} {tower_name}: expected two paths, found {len(paths)}")
+        t.specializations[tower_name] = paths
+    if len(spec_rows) != len(t.towers) or len(t.specializations) != len(t.towers):
+        raise TableError(f"{rel}: expected one specialization row per tower "
+                         f"({len(t.towers)}), found {len(spec_rows)}")
+
+    limit_at = spec_src.find("function tower_spec_tier_limit")
+    modifier_at = spec_src.find("function tower_spec_modifiers", limit_at)
+    if limit_at < 0 or modifier_at < 0:
+        raise TableError(f"{rel}: missing specialization tier gate")
+    limit_src = spec_src[limit_at:modifier_at]
+    def spec_limit(pattern: str, label: str) -> int:
+        match = re.search(pattern, limit_src)
+        if not match:
+            raise TableError(f"{rel}: cannot read {label} from tier gate")
+        return int(match.group(1))
+    level_one = spec_limit(r"if\s*\(_level\s*<\s*(\d+)\)\s*return\s+0", "L3 unlock")
+    signature_level = spec_limit(r"if\s*\(_level\s*>=\s*(\d+)\)\s*return\s+3", "signature level")
+    level_two = spec_limit(r"if\s*\(_level\s*>=\s*(\d+)\)\s*\{", "L4 unlock")
+    growth_rank_match = re.search(
+        r"clover_rank\(\s*\"growth_spec_tier\"\s*\)\s*>\s*(\d+)",
+        limit_src)
+    if not growth_rank_match:
+        raise TableError(f"{rel}: cannot read Growth signature rank gate")
+    growth_unlock_rank = int(growth_rank_match.group(1)) + 1
+
+    clover_rel = "scripts/scr_clover_tree/scr_clover_tree.gml"
+    clover_src = src_of(clover_rel)
+    clover_node = next((c for c in find_calls(clover_src, "clover_node")
+                        if len(c.args) == 6 and c.args[1] == "growth_spec_tier"), None)
+    if clover_node is None or not isinstance(clover_node.args[4], dict):
+        raise TableError(f"{clover_rel}: missing Master Gardener node effects")
+    per_rank = clover_node.args[4].get("specialization_bonus")
+    if not isinstance(per_rank, (int, float)):
+        raise TableError(f"{clover_rel}: Master Gardener has no specialization bonus")
+    rank_max = int(_num(clover_src, r"ranks\s*:\s*(\d+)", clover_rel, cast=int))
+    bonus_cap = float(_num(
+        clover_src,
+        r"function\s+clover_specialization_bonus\(\)\s*\{\s*return\s+clamp\([^,]+,\s*0\s*,\s*([\d.]+)\)",
+        clover_rel))
+    t.constants = replace(
+        t.constants, specialization_level_one=level_one,
+        specialization_level_two=level_two,
+        specialization_signature_level=signature_level,
+        growth_spec_unlock_rank=growth_unlock_rank,
+        growth_spec_rank_max=rank_max,
+        specialization_bonus_per_rank=float(per_rank),
+        specialization_bonus_cap=bonus_cap)
 
     # Control effects lose duration on elite and boss monsters.  Parse the
     # ordered assignments from the same function the game calls so resistance
@@ -873,6 +1186,98 @@ def load(root: Path) -> Tables:
     rel = "objects/_levelControl/Create_0.gml"
     constants = replace(constants, wave_seed=_num(
         src_of(rel), r"set_item_value\(\s*waves\s*,\s*(\d+)\s*\)", rel, cast=int))
+
+    # ---- the corpse lifetime ------------------------------------------
+    # Kills settle immediately, but obj_mon remains until its die clip ends.
+    # scr_zombie_die stretches either the SCML clip or fallback sheet to this
+    # duration, and scr_level_wait will not start the clear gate until the
+    # instance is gone. Read the one timing source used by both paths.
+    rel = "scripts/scr_zomb_art/scr_zomb_art.gml"
+    constants = replace(constants, zombie_die_seconds=float(_num(
+        src_of(rel), r"#macro\s+ZOMB_DIE_SECS\s+([\d.]+)", rel)))
+
+    # ---- Candy recipes, levels and live-time units -----------------------
+    # Recipe costs/effects and their level formulas live in one GML system.
+    # Read both the call table and candy_magnitude() so the simulator follows
+    # the game when a Candy changes instead of carrying a parallel balance.
+    rel = "scripts/scr_candy_system/scr_candy_system.gml"
+    candy_src = src_of(rel)
+    recipe_rows: Dict[str, Tuple[int, int, str, float, str]] = {}
+    for call in find_calls(candy_src, "candy_recipe"):
+        if (len(call.args) != 9 or not isinstance(call.args[0], str)
+                or not isinstance(call.args[3], (int, float))):
+            continue                         # the function definition
+        candy_id, _label, _icon, tier, cost, effect, step, _desc, gate = call.args
+        if not all(isinstance(value, (int, float)) for value in
+                   (tier, cost, step)) or not isinstance(effect, str):
+            raise TableError(f"{rel} {candy_id}: invalid recipe row")
+        if not isinstance(gate, str):
+            raise TableError(f"{rel} {candy_id}: invalid progression gate")
+        recipe_rows[candy_id] = (int(tier), int(cost), effect, float(step), gate)
+
+    magnitude_at = candy_src.find("function candy_magnitude")
+    if magnitude_at < 0:
+        raise TableError(f"{rel}: missing candy_magnitude()")
+    magnitude_src = candy_src[magnitude_at:]
+    cases = {
+        match.group(1): match.group(2)
+        for match in re.finditer(
+            r'case\s+"([A-Za-z0-9_]+)"\s*:(.*?)(?:break\s*;)',
+            magnitude_src, re.S)
+    }
+    for candy_id, (tier, cost, effect, step, gate) in recipe_rows.items():
+        case_body = cases.get(candy_id)
+        if case_body is None:
+            raise TableError(f"{rel} {candy_id}: no magnitude case")
+        formulas: List[Tuple[str, float, float, int]] = []
+        for assignment in re.finditer(
+                r"_out\.([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([^;]+);",
+                case_body):
+            field_name, expression = assignment.group(1), assignment.group(2).strip()
+            match = re.fullmatch(
+                r"([\d.]+)\s*\+\s*_steps\s*\*\s*_recipe\.step", expression)
+            if match:
+                formulas.append((field_name, float(match.group(1)), step, 0))
+                continue
+            match = re.fullmatch(
+                r"([\d.]+)\s*\+\s*_steps\s*\*\s*([\d.]+)", expression)
+            if match:
+                formulas.append((field_name, float(match.group(1)),
+                                 float(match.group(2)), 0))
+                continue
+            match = re.fullmatch(
+                r"([\d.]+)\s*\+\s*floor\(\s*\(?\s*_lv\s*-\s*1\s*\)?\s*/\s*(\d+)\s*\)",
+                expression)
+            if match:
+                formulas.append((field_name, float(match.group(1)), 0.0,
+                                 int(match.group(2))))
+                continue
+            raise TableError(f"{rel} {candy_id}: unsupported magnitude formula {expression!r}")
+        if not formulas:
+            raise TableError(f"{rel} {candy_id}: empty magnitude formula")
+        t.candies[candy_id] = CandyRecipe(
+            candy_id, tier, cost, effect, step, gate, tuple(formulas))
+    if len(t.candies) != 10 or len(t.candies) != len(recipe_rows):
+        raise TableError(f"{rel}: expected 10 complete Candy recipes, found {len(t.candies)}")
+
+    candy_hz = int(_num(candy_src, r"#macro CANDY_BASE_FRAME_HZ\s+(\d+)", rel,
+                        cast=int))
+    duration_seconds = float(_num(
+        candy_src,
+        r"function\s+candy_duration_seconds\s*\(\s*\)\s*\{\s*return\s+([\d.]+)\s*\*",
+        rel))
+    duration_per_rank = float(_num(
+        candy_src,
+        r"function\s+candy_duration_bonus\s*\(\s*\)\s*\{\s*return\s+candy_duration_rank\(\)\s*\*\s*([\d.]+)",
+        rel))
+    duration_costs = find_array_after(candy_src, "function candy_duration_cost")
+    if not duration_costs or not all(isinstance(value, int) for value in duration_costs):
+        raise TableError(f"{rel}: invalid candy duration cost table")
+    constants = replace(
+        constants, candy_frame_hz=candy_hz,
+        candy_base_seconds=duration_seconds,
+        candy_duration_per_rank=duration_per_rank,
+        candy_duration_costs=tuple(duration_costs))
 
     t.constants = constants
 

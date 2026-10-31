@@ -186,15 +186,15 @@ function meta_currency_items() {
 		_items[array_length(_items)] =
 			[icon_currency(CURRENCY.SHARDS), string(shards_get()), "shards", shards_get()];
 		_items[array_length(_items)] =
-			[icon_currency(CURRENCY.CANDY), "Candy "+string(candy_stock_total()), "candy", candy_stock_total()];
+			[icon_currency(CURRENCY.CANDY), ui_text_format("meta_currency_candy",{count:string(candy_stock_total())}), "candy", candy_stock_total()];
 	}
 	_items[array_length(_items)] =
-		[-1, "Towers " + string(tower_owned_count()) + "/" +
-		     string(array_length(tower_roster()))];
+		[-1, ui_text_format("meta_currency_towers",{count:string(tower_owned_count()),
+		                                 total:string(array_length(tower_roster()))})];
 	if(badge_total_earned() > 0){
 		_items[array_length(_items)] =
-			[-1, "Badges " + string(badge_total_earned()) + "/" +
-			     string(badge_total_possible())];
+			[-1, ui_text_format("meta_currency_badges",{count:string(badge_total_earned()),
+			                                  total:string(badge_total_possible())})];
 	}
 	return _items;
 }
@@ -378,9 +378,9 @@ function meta_draw_tower_wall(_x, _y, _cell, _cols, _reason) {
 			/// line the cell has
 			var _req;
 			if(_e.gate > 0 && !region_cleared(_e.gate)){
-				_req = "Clear region " + string(_e.gate);
+				_req = ui_text_format("meta_tower_gate_region",{region:string(_e.gate)});
 			} else {
-				_req = string(_e.unlock) + " seeds";
+				_req = ui_text_format("meta_tower_gate_seeds",{cost:string(_e.unlock)});
 			}
 			meta_text_fit(_cx + _w*0.5, _cy + _h - _lh, _req,
 			              c_silver, fa_center, _w - 8, _lh);
@@ -534,11 +534,11 @@ function meta_draw_worldmap() {
 	    _rc  = meta_worldmap_rects(),
 	    _m   = points_to_gui(mouse_x, mouse_y, 0);
 
-	meta_title("World Map", _g.head_mid);
+	meta_title(ui_text("meta_worldmap_title"), _g.head_mid);
 	meta_currency_draw(_g.cur);
-	if(meta_campaign_currency_unlocked()) meta_button_draw(_g.garden, "Garden Book", true);
-	meta_button_draw(_g.endless, "Endless", endless_is_unlocked());
-	meta_button_draw(_g.title,  "Title",       true);
+	if(meta_campaign_currency_unlocked()) meta_button_draw(_g.garden, ui_text("meta_worldmap_garden"), true);
+	meta_button_draw(_g.endless, ui_text("meta_worldmap_endless"), endless_is_unlocked());
+	meta_button_draw(_g.title,  ui_text("meta_worldmap_title_button"), true);
 
 	/// the region gutter, registered so a label that outgrew its column is a
 	/// finding in the dump rather than a mystery on the screen
@@ -552,7 +552,7 @@ function meta_draw_worldmap() {
 		draw_set_font(fnt_size16);
 		draw_set_halign(fa_right);
 		draw_set_colour(region_cleared(_r) ? c_lime : c_silver);
-		var _label = "Region " + string(_r),
+		var _label = ui_text_format("meta_worldmap_region",{region:string(_r)}),
 		    _label_y = _g.y0 + (_r-1)*_g.ch + _g.ch*0.5 - 8;
 		draw_text(_g.x0 - 12, _label_y, _label);
 		ui_reg_text("region", _g.x0 - 12, _label_y, _label, fa_right, fa_top);
@@ -634,14 +634,13 @@ function meta_draw_worldmap() {
 		    _msg;
 
 		if(is_undefined(_lvl)){
-			_msg = "Region " + string(_hr) + " is not available yet";
+			_msg = ui_text_format("meta_worldmap_unavailable",{region:string(_hr)});
 		} else if(stage_unlocked(_hr, _hs)){
-			_msg = _lvl.label() +
-			       "   waves " + string(_lvl.waves) +
-			       "   seeds " + string(_lvl.seeds) +
-			       (_show_badges ? "   cleared" : "");
+			_msg = ui_text_format("meta_worldmap_stage",{
+			    label:_lvl.label(), waves:string(_lvl.waves), seeds:string(_lvl.seeds),
+			    cleared:_show_badges ? ui_text("meta_worldmap_cleared") : ""});
 		} else {
-			_msg = "Locked - clear the stage before it";
+			_msg = ui_text("meta_worldmap_locked");
 		}
 
 		/// clipped, not spilled: the longest of these is ~456 units and the
@@ -663,8 +662,8 @@ function meta_draw_worldmap() {
 			    _label_y = _bar[1] + 19,
 			    _badge_x = _bar[0] + 62,
 			    _badge_y = _bar[1] + 26;
-			draw_text(_label_x,_label_y,"Badges");
-			ui_reg_text("badges.label",_label_x,_label_y,"Badges",fa_left,fa_top);
+			draw_text(_label_x,_label_y,ui_text("badges_title"));
+			ui_reg_text("badges.label",_label_x,_label_y,ui_text("badges_title"),fa_left,fa_top);
 			for(var _bi = 0; _bi < badge_count(); _bi++){
 				var _badge = badge_display_at(_bi),
 				    _spr = icon_badge(_badge),
@@ -758,7 +757,8 @@ function meta_draw_deploy() {
 	    _load  = loadout_stored(),
 	    _pal   = ui_palette();
 
-	meta_title(global.endless_setup ? "Endless Loadout" : "Deploy", _g.head_mid);
+	meta_title(global.endless_setup ? ui_text("meta_deploy_endless_title")
+		   : ui_text("meta_deploy_title"), _g.head_mid);
 	meta_currency_draw(_g.cur);
 
 	/// ---- the band's left column: the stage being deployed to.  The four
@@ -776,17 +776,17 @@ function meta_draw_deploy() {
 		draw_set_halign(fa_left);
 
 		var _stage_txt = global.endless_setup
-		                  ? ui_clip_text("Endless Mode   500 waves",_info_w)
-		                  : ui_clip_text("Region "+string(_row.region)+"   Stage "+string(_row.stage)+
-		                                 "   "+string(_row.waves)+" waves",_info_w);
+		                  ? ui_clip_text(ui_text("meta_deploy_endless_stage"),_info_w)
+		                  : ui_clip_text(ui_text_format("meta_deploy_stage",{
+		                      region:string(_row.region), stage:string(_row.stage),
+		                      waves:string(_row.waves)}),_info_w);
 		draw_text(_info[0], _info[1] + 2, _stage_txt);
 		ui_reg_text("stage", _info[0], _info[1] + 2, _stage_txt, fa_left, fa_top);
 		if(!global.endless_setup
 		&& variable_struct_exists(_row,"par_spend") && is_real(_row.par_spend)
 		&& variable_struct_exists(_row,"par_time") && is_real(_row.par_time)){
-			var _par_txt = ui_clip_text("Frugal < $"+string(_row.par_spend)
-			                            +"   Speed Grower < "+string(_row.par_time)+"s",
-			                            _info_w);
+			var _par_txt = ui_clip_text(ui_text_format("meta_deploy_par",{
+			    spend:string(_row.par_spend),time:string(_row.par_time)}),_info_w);
 			draw_text(_info[0], _info[1] + 18, _par_txt);
 			ui_reg_text("par", _info[0], _info[1] + 18, _par_txt, fa_left, fa_top);
 		}
@@ -803,15 +803,15 @@ function meta_draw_deploy() {
 	draw_set_font(fnt_size12);
 	draw_set_halign(fa_right);
 	draw_set_colour(c_white);
-	var _load_txt = "Loadout " + string(array_length(_load)) + "/" +
-	                string(loadout_size());
+	var _load_txt = ui_text_format("meta_deploy_loadout",{
+	                count:string(array_length(_load)),slots:string(loadout_size())});
 	draw_text(_actx, _acts[1] + 4, _load_txt);
 	ui_reg_text("loadout", _actx, _acts[1] + 4, _load_txt, fa_right, fa_top);
 
 	draw_set_colour(loadout_ready() ? c_silver : c_red);
 	var _hint = ui_clip_text(loadout_ready()
-	                         ? "click a slotted tower to remove it"
-	                         : "fill all " + string(loadout_size()) + " slots",
+	                         ? ui_text("meta_deploy_remove_hint")
+	                         : ui_text_format("meta_deploy_fill_hint",{slots:string(loadout_size())}),
 	                         _acts[2] - _acts[0]);
 	draw_text(_actx, _acts[1] + 22, _hint);
 	ui_reg_text("hint", _actx, _acts[1] + 22, _hint, fa_right, fa_top);
@@ -822,7 +822,7 @@ function meta_draw_deploy() {
 	if(array_length(_dh) < 4) _dh = meta_canvas_rect();
 
 	draw_set_font(fnt_size16);
-	meta_text(_dh[0], _dh[1] + 3, "Difficulty", c_silver, fa_left);
+	meta_text(_dh[0], _dh[1] + 3, ui_text("meta_deploy_difficulty"), c_silver, fa_left);
 
 	var _diffs = difficulty_data();
 	for(var _d = 0; _d < array_length(_diffs); _d++){
@@ -844,14 +844,17 @@ function meta_draw_deploy() {
 		draw_set_font(fnt_size16);
 		draw_set_halign(fa_left);
 		draw_set_colour(_sel ? c_white : _pal.ink_soft);
-		var _dn = ui_clip_text(_diffs[_d].name, _dw - 16);
+		var _diff_label = _d == 0 ? ui_text("meta_deploy_difficulty_normal")
+		                    : (_d == 1 ? ui_text("meta_deploy_difficulty_hard")
+		                              : ui_text("meta_deploy_difficulty_brutal")),
+		    _dn = ui_clip_text(_diff_label, _dw - 16);
 		draw_text(_rect[0] + 8, _rect[1] + 4, _dn);
 		ui_reg_text("difficulty", _rect[0] + 8, _rect[1] + 4, _dn, fa_left, fa_top);
 
 		draw_set_font(fnt_size12);
 		draw_set_halign(fa_right);
 		draw_set_colour(_sel ? c_lime : c_silver);
-		var _sd = "x" + string(_diffs[_d].seeds) + " seeds";
+		var _sd = ui_text_format("meta_deploy_seed_multiplier",{multiplier:string(_diffs[_d].seeds)});
 		draw_text(_rect[2] - 8, _rect[3] - 16, _sd);
 		ui_reg_text("seeds", _rect[2] - 8, _rect[3] - 16, _sd, fa_right, fa_top);
 		draw_set_halign(fa_left);
@@ -865,7 +868,7 @@ function meta_draw_deploy() {
 
 	draw_set_font(fnt_size16);
 	meta_text(_wh[0], _wh[1] + 3,
-	          ui_clip_text("Your garden - click a tower to slot it",
+	          ui_clip_text(ui_text("meta_deploy_garden_hint"),
 	                       _wh[2] - _wh[0]),
 	          c_silver, fa_left);
 
@@ -898,7 +901,7 @@ function meta_draw_deploy() {
 
 		draw_set_font(fnt_size12);
 		meta_text_fit((_sr[0]+_sr[2])*0.5, _sr[3] - _lh*2,
-		              (_nm == "") ? "empty" : _nm,
+		              (_nm == "") ? ui_text("meta_deploy_empty_slot") : _nm,
 		              (_nm == "") ? c_silver : c_white,
 		              fa_center, _sw - 10, _lh);
 	}
@@ -911,8 +914,9 @@ function meta_draw_deploy() {
 	/// button is inside the body - over the wall, at 675.  The band's right
 	/// column is empty on this screen and is the one place that can hold it.
 	var _ready = loadout_ready();
-	meta_button_draw(_g.deploy, global.endless_setup ? "Start Endless" : "Deploy", _ready);
-	meta_button_draw(_g.back,   "Back",   true);
+	meta_button_draw(_g.deploy, global.endless_setup ? ui_text("meta_deploy_start_endless")
+		                    : ui_text("meta_deploy_button"), _ready);
+	meta_button_draw(_g.back,   ui_text("meta_deploy_back"), true);
 }
 
 //==============================================================================
@@ -1081,7 +1085,7 @@ function meta_garden_stats_draw(_g) {
 
 	if(!is_struct(_it)){
 		draw_set_font(fnt_size12);
-		meta_text(_hd[0], _hd[1] + 6, "pick a plant to see its numbers",
+		meta_text(_hd[0], _hd[1] + 6, ui_text("meta_garden_pick_plant"),
 		          _pal.ink_soft, fa_left);
 		draw_set_font(fnt_size16);
 		return;
@@ -1126,10 +1130,11 @@ function meta_garden_stats_draw(_g) {
 	/// ---- show the saved path in the plant card; otherwise explain when it unlocks
 	var _spec_key=tower_spec_saved(_it.name),
 	    _spec_path=tower_spec_find(_it.name,_spec_key),
-	    _note=is_struct(_spec_path) ? "Path: "+_spec_path.label : tower_stat_note(_it.name),
+	    _note=is_struct(_spec_path) ? ui_text_format("meta_garden_path",{name:_spec_path.label}) : tower_stat_note(_it.name),
 	    _respec_cost=tower_spec_respec_cost(_it.name),
-	    _respec_text=_respec_cost > 0 ? "Reset path  "+string(_respec_cost)+" clovers"
-	                                 : "Choose a path at level 3 in a stage";
+	    _respec_text=_respec_cost > 0
+	                 ? ui_text_format("meta_garden_reset_path",{cost:string(_respec_cost)})
+	                 : ui_text("meta_garden_choose_path");
 	if(_note != ""){
 		meta_text(_nt[0], _nt[1] + 2, ui_clip_text(_note, _nt[2] - _nt[0]),
 		          _pal.gold, fa_left);
@@ -1143,19 +1148,20 @@ function meta_garden_mastery_summary_draw(_g) {
 	if(array_length(_s)<4 || array_length(_h)<4 || array_length(_gr)<4 || array_length(_nt)<4) return;
 	meta_panel(_s[0],_s[1],_s[2]-_s[0],_s[3]-_s[1],_pal.panel_base,c_black);
 	draw_set_font(fnt_size16);
-	meta_text(_h[0],_h[1]+2,"Garden Mastery  "+string(tower_mastery())+"/5",c_white,fa_left);
+	meta_text(_h[0],_h[1]+2,ui_text_format("meta_mastery_heading",{rank:string(tower_mastery())}),c_white,fa_left);
 	draw_set_font(fnt_size12);
-	meta_text(_gr[0],_gr[1],"Arrive at level "+string(tower_floor()),c_silver,fa_left);
-	meta_text(_gr[0],_gr[1]+16,"Tower cap "+string(tower_cap()),c_silver,fa_left);
+	meta_text(_gr[0],_gr[1],ui_text_format("meta_mastery_arrival",{level:string(tower_floor())}),c_silver,fa_left);
+	meta_text(_gr[0],_gr[1]+16,ui_text_format("meta_mastery_cap",{cap:string(tower_cap())}),c_silver,fa_left);
 	var _nodes=clover_master_nodes(), _rank=tower_mastery();
 	if(_rank >= array_length(_nodes)){
-		meta_text(_nt[0],_nt[1]+2,"Mastery is complete.",c_yellow,fa_left);
+		meta_text(_nt[0],_nt[1]+2,ui_text("meta_mastery_complete"),c_yellow,fa_left);
 	} else {
 		var _next=_nodes[_rank], _cost=clover_master_node_cost(_next.id),
-		    _gate=clover_master_node_unlocked(_next.id)
-		           ? "Next node ready"
-		           : "Clear Region "+string(_next.region)+" to unlock";
-		meta_text(_nt[0],_nt[1]+2,_gate+"  "+string(_cost)+" clovers",_gate=="Next node ready" ? c_lime : c_silver,fa_left);
+		    _ready=clover_master_node_unlocked(_next.id),
+		    _gate=_ready ? ui_text("meta_mastery_ready")
+		                 : ui_text_format("meta_mastery_region_gate",{region:string(_next.region)});
+		meta_text(_nt[0],_nt[1]+2,ui_text_format("meta_mastery_cost",{
+		          gate:_gate,cost:string(_cost)}),_ready ? c_lime : c_silver,fa_left);
 	}
 	draw_set_font(fnt_size16);
 }
@@ -1173,9 +1179,9 @@ function meta_draw_garden() {
 	    _pal    = ui_palette(),
 	    _focus  = _candy ? meta_garden_candy_selected(_page) : undefined;
 
-	meta_title("Garden Book", _g.head_mid);
+	meta_title(ui_text("meta_garden_title"), _g.head_mid);
 	meta_currency_draw(_g.cur);
-	var _tab_labels=["Clovers","Blood",ui_text("garden_tab_candy"),"Mastery"];
+	var _tab_labels=[ui_text("meta_garden_tab_clovers"),ui_text("meta_garden_tab_blood"),ui_text("garden_tab_candy"),ui_text("meta_garden_tab_mastery")];
 	for(var _tab=0; _tab<min(4,array_length(_g.tabs)); _tab++){
 		if(meta_garden_tab_unlocked(_tab)){
 			meta_garden_tab_draw(_g.tabs[_tab],_tab_labels[_tab],_mode==_tab);
@@ -1187,14 +1193,17 @@ function meta_draw_garden() {
 		_br = [_g.node_x, _g.node_y - 28, _g.node_x + _g.node_w, _g.node_y];
 	}
 	if(_mode == 0 && meta_garden_tab_unlocked(0)){
-		var _branch_labels=["Vitality","Offense","Growth","Harvest"],
+		var _branch_labels=[ui_text("meta_garden_branch_vitality"),ui_text("meta_garden_branch_offense"),
+		                   ui_text("meta_garden_branch_growth"),ui_text("meta_garden_branch_harvest")],
 		    _branch_index=clover_branch_index();
 		for(var _branch_tab=0; _branch_tab<min(4,array_length(_g.branch_tabs)); _branch_tab++){
 			meta_garden_tab_draw(_g.branch_tabs[_branch_tab],_branch_labels[_branch_tab],
 			                     _branch_tab==_branch_index);
 		}
 	} else if(_mode != 0){
-		var _branch_name = _candy ? ui_text("garden_candy_recipes") : (_blood ? "Blood Alchemy" : "Garden Mastery"),
+		var _branch_name = _candy ? ui_text("garden_candy_recipes")
+		                    : (_blood ? ui_text("meta_garden_blood_title")
+		                              : ui_text("meta_garden_mastery_title")),
 		    _branch_icon = _candy ? icon_currency(CURRENCY.CANDY)
 		                         : (_blood ? icon_blood(1) : icon_mastery(max(1,min(5,tower_mastery()+1))));
 		meta_panel(_br[0],_br[1],_br[2]-_br[0],_br[3]-_br[1],_pal.panel,c_black);
@@ -1205,8 +1214,8 @@ function meta_draw_garden() {
 		meta_text(_branch_text_x,(_br[1]+_br[3])*0.5-8,
 		          ui_clip_text(_branch_name,_branch_text_w),c_white,fa_left);
 		if(_candy && array_length(_g.page)>=4){
-			var _page_label = garden_candy_detail_open() ? "Back"
-			                  : "Recipes "+string(_page+1)+"/2";
+			var _page_label = garden_candy_detail_open() ? ui_text("meta_garden_recipes_back")
+			                  : ui_text_format("meta_garden_recipes_page",{page:string(_page+1)});
 			meta_button_draw(_g.page,_page_label,true);
 		}
 	}
@@ -1250,9 +1259,11 @@ function meta_draw_garden() {
 			ui_reg_text("label", _rc[0] + 54, _rc[1] + 10, _lab, fa_left, fa_top);
 			draw_set_halign(fa_right);
 			draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
-			var _rank_txt = _blood ? (_max ? "owned" : "Tier " + string(_n.tier))
-			                 : (_mastery ? (_max ? "owned" : "Mastery " + string(_n.rank))
-			                   : "rank " + string(_rank) + "/" + string(_n.ranks));
+			var _rank_txt = _blood ? (_max ? ui_text("meta_node_owned")
+			                                  : ui_text_format("meta_node_tier",{tier:string(_n.tier)}))
+			                 : (_mastery ? (_max ? ui_text("meta_node_owned")
+			                                    : ui_text_format("meta_node_mastery",{rank:string(_n.rank)}))
+			                   : ui_text_format("meta_node_rank",{rank:string(_rank),max:string(_n.ranks)}));
 			draw_text(_rc[2] - 10, _rc[1] + 10, _rank_txt);
 			ui_reg_text("rank", _rc[2] - 10, _rc[1] + 10, _rank_txt, fa_right, fa_top);
 			draw_set_font(fnt_size12);
@@ -1262,9 +1273,14 @@ function meta_draw_garden() {
 			ui_reg_text("desc", _rc[0] + 54, _rc[1] + 32, _dsc, fa_left, fa_top);
 			draw_set_halign(fa_right);
 			draw_set_colour(_max ? c_yellow : (_can ? c_lime : c_dkgray));
-			var _cost_txt = _max ? (_blood ? "unlocked" : (_mastery ? "owned" : "maxed"))
-			                 : (!_available ? (_mastery ? (_n.rank > tower_mastery()+1 ? "buy prior node" : "clear Region " + string(_n.region)) : "locked")
-			                   : string(_cost) + (_blood ? " shards" : " clovers"));
+			var _cost_txt = _max ? (_blood ? ui_text("meta_node_unlocked")
+			                           : (_mastery ? ui_text("meta_node_owned") : ui_text("meta_node_maxed")))
+			                 : (!_available ? (_mastery
+			                     ? (_n.rank > tower_mastery()+1 ? ui_text("meta_node_buy_prior")
+			                                                    : ui_text_format("meta_node_clear_region",{region:string(_n.region)}))
+			                     : ui_text("meta_node_locked"))
+			                   : (_blood ? ui_text_format("meta_node_cost_shards",{cost:string(_cost)})
+			                             : ui_text_format("meta_node_cost_clovers",{cost:string(_cost)})));
 			draw_text(_rc[2] - 10, _rc[1] + 32, _cost_txt);
 			ui_reg_text("cost", _rc[2] - 10, _rc[1] + 32, _cost_txt, fa_right, fa_top);
 			draw_set_halign(fa_left);
@@ -1277,18 +1293,18 @@ function meta_draw_garden() {
 	if(array_length(_shop_title) < 4) _shop_title = _shh;
 	draw_set_font(fnt_size16);
 	draw_set_colour(c_white);
-	meta_text(_shop_title[0],_shop_title[1]+3,"Seed Shop",c_white,fa_left);
+	meta_text(_shop_title[0],_shop_title[1]+3,ui_text("meta_garden_seed_shop"),c_white,fa_left);
 	if(_mode == 0 && array_length(_g.page)>=4){
-		meta_button_draw(_g.page,"Nodes "+string(_page+1)+"/2",true);
+		meta_button_draw(_g.page,ui_text_format("meta_garden_node_page",{page:string(_page+1)}),true);
 	}
 	meta_draw_tower_wall(_g.wall_x,_g.wall_y,_g.wall_cell,_g.wall_cols,false);
 	if(_mastery) meta_garden_mastery_summary_draw(_g);
 	else meta_garden_stats_draw(_g);
 	var _branch_fee=clover_branch_respec_fee(clover_branch_key());
 	if(_mode == 0 && _branch_fee >= 0 && array_length(_g.branch_respec) >= 4){
-		meta_button_draw(_g.branch_respec,"Respec tree  fee "+string(_branch_fee),true);
+		meta_button_draw(_g.branch_respec,ui_text_format("meta_garden_respec_tree",{fee:string(_branch_fee)}),true);
 	}
-	meta_button_draw(_g.back, "Return", true);
+	meta_button_draw(_g.back, ui_text("meta_garden_return"), true);
 }
 
 
@@ -1469,7 +1485,8 @@ function meta_draw_results() {
 	    _win = _has && (_res[$ "outcome"] == "CLEAR"),
 	    _endless = _has && (_res[$ "outcome"] == "ENDLESS");
 
-	meta_title(_endless ? "Endless Run" : (_win ? "Stage Clear" : "Stage Lost"),
+	meta_title(_endless ? ui_text("meta_results_title_endless")
+	           : (_win ? ui_text("meta_results_title_clear") : ui_text("meta_results_title_lost")),
 	           ui_meta_rect("results", "results.head.title"));
 	meta_currency_draw(_g.cur);
 
@@ -1483,7 +1500,7 @@ function meta_draw_results() {
 	/// Step is already sending the player to the map this frame.
 	if(!_has){
 		meta_text(_g.panel[0] + 40, _g.panel[1] + 60,
-		          "No result to show.", c_white, fa_left);
+		          ui_text("meta_results_empty"), c_white, fa_left);
 		return;
 	}
 
@@ -1507,8 +1524,9 @@ function meta_draw_results() {
 	/// 32pt fitted: "Region 6   Stage 10" is the widest this gets, and the
 	/// panel is only as wide as the canvas allowed
 	var _res_head = _endless
-	                ? "ENDLESS   Wave "+string(_res.waves)
-	                : "Region "+string(_res.region)+"   Stage "+string(_res.stage);
+	                ? ui_text_format("meta_results_heading_endless",{wave:string(_res.waves)})
+	                : ui_text_format("meta_results_heading_campaign",{
+	                    region:string(_res.region),stage:string(_res.stage)});
 	ui_fit_font(_res_head, (_hr[2] - _hr[0]) - 8, [32, 20, 16]);
 	draw_set_colour(c_white);
 	draw_text(_hr[0], _hr[1], _res_head);
@@ -1516,40 +1534,43 @@ function meta_draw_results() {
 
 	draw_set_font(fnt_size16);
 	draw_set_colour(_endless ? c_yellow : (_win ? c_lime : c_red));
-	var _res_word = _endless ? "RUN ENDED" : (_win ? "CLEARED" : "FAILED");
+	var _res_word = _endless ? ui_text("meta_results_ended") : (_win ? ui_text("meta_results_cleared") : ui_text("meta_results_failed"));
 	draw_text(_orow[0], _orow[1], _res_word);
 	ui_reg_text("outcome", _orow[0], _orow[1], _res_word, fa_left, fa_top);
 
 	/// Endless box choices and each whole milestone payout are banked as earned.
 	var _lines;
 	if(_endless){
+		var _reason = _res.reason == "wave_cap" ? ui_text("meta_result_reason_wave_cap")
+		            : (_res.reason == "lives_lost" ? ui_text("meta_result_reason_lives_lost")
+		                                            : string(_res.reason));
 		_lines = [
-			"Wave reached   "+string(_res.waves),
-			"Best wave      "+string(_res.best_wave),
-			"Score          "+string(_res.score),
-			"Boxes claimed  "+string(_res.boxes),
+			ui_text_format("meta_results_wave_reached",{value:string(_res.waves)}),
+			ui_text_format("meta_results_best_wave",{value:string(_res.best_wave)}),
+			ui_text_format("meta_results_score",{value:string(_res.score)}),
+			ui_text_format("meta_results_boxes",{value:string(_res.boxes)}),
 			ui_text_format("endless_result_seeds",{amount:string(_res.seeds)}),
 			ui_text_format("endless_result_clovers",{amount:string(_res.clovers)}),
-			"Run ended      "+string(_res.reason),
-			"Difficulty     "+difficulty_name(_res.difficulty)
+			ui_text_format("meta_results_run_ended",{reason:_reason}),
+			ui_text_format("meta_results_difficulty",{value:difficulty_name(_res.difficulty)})
 		];
 	} else {
 		/// A campaign loss shows what it did NOT pay (goal.md 27.3).
 		_lines = [
-			"Difficulty      "+difficulty_name(_res.difficulty),
-			"Lives left      "+string(_res.lives),
-			"Leaked          "+string(_res.leaked)
+			ui_text_format("meta_results_difficulty",{value:difficulty_name(_res.difficulty)}),
+			ui_text_format("meta_results_lives",{value:string(_res.lives)}),
+			ui_text_format("meta_results_leaked",{value:string(_res.leaked)})
 		];
 		if(_win){
-			_lines[3] = "Seeds earned    +"+string(_res.seeds);
-			_lines[4] = "Clovers earned  +"+string(_res.clovers);
+			_lines[3] = ui_text_format("meta_results_seeds",{value:string(_res.seeds)});
+			_lines[4] = ui_text_format("meta_results_clovers",{value:string(_res.clovers)});
 			var _b=_res[$ "badges"];
-			if(is_string(_b) && _b!="") _lines[5]="Badges          "+_b;
+			if(is_string(_b) && _b!="") _lines[5]=ui_text_format("meta_results_badges",{value:_b});
 		} else {
-			_lines[3] = "Seeds earned    nothing - a stage pays on a clear";
+			_lines[3] = ui_text("meta_results_no_seeds");
 		}
 		var _row=stage_get(_res.region,_res.stage);
-		if(!is_undefined(_row)) _lines[6]="Waves           "+string(_row.waves);
+		if(!is_undefined(_row)) _lines[6]=ui_text_format("meta_results_waves",{value:string(_row.waves)});
 	}
 	var _rh  = string_height("Ag"),
 	    _rw  = _rows[2] - _rows[0],
@@ -1567,9 +1588,9 @@ function meta_draw_results() {
 
 	/// the actions
 	var _next = _win ? meta_results_next(_res.region, _res.stage) : undefined;
-	meta_button_draw(_g.retry, _endless ? "Run Again" : "Retry", true);
-	meta_button_draw(_g.next,  "Next",  !is_undefined(_next));
-	meta_button_draw(_g.map,   "World Map", true);
+	meta_button_draw(_g.retry, _endless ? ui_text("meta_results_run_again") : ui_text("meta_results_retry"), true);
+	meta_button_draw(_g.next,  ui_text("meta_results_next"),  !is_undefined(_next));
+	meta_button_draw(_g.map,   ui_text("meta_results_worldmap"), true);
 }
 
 function meta_garden_candy_selected(_page) {

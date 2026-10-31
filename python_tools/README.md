@@ -77,6 +77,24 @@ python -m gm balance sim --region 4 --stage 10 --difficulty Hard --mastery 3 \
     --clover-life-loss-reduction 0.25 --clover-regen 5 \
     --clover-boss-saves 5 --spend instant  # fully ranked clover trees
 python -m gm balance sim --cycle both   # ...against the idealised fire cycle
+python -m gm balance towers --mastery 2 \
+    --specialization 'Daisy Pusher=rapid_bloom' \
+    --specialization 'Burning Ivy=wildfire'
+python -m gm balance sim --region 4 --stage 10 --difficulty Brutal \
+    --mastery 3 --growth-spec-rank 1 --spend instant \
+    --specialization 'Cannon Tulip=deadeye' \
+    --specialization 'Burning Ivy=wildfire'
+python -m gm balance sim --candy red_licorice:10:2 --candy-duration-rank 5
+python -m gm balance sim --candy jawbreaker:10 --candy gummy_worm:10 \
+    --candy everlasting_gob:4  # Candy combo; Gob freezes at first boss
+python -m gm balance sim --region 4 --stage 10 --difficulty Brutal \
+    --max-waves 5 --spend instant --seed 0
+python -m gm balance sim --region 4 --stage 10 --difficulty Brutal \
+    --max-waves 5 --spend instant --seed 0 \
+    --candy red_licorice:10 --candy frosted_flake:10 --candy fireball:10
+python -m gm balance sim --region 1 --stage 1 --max-waves 2 --spend instant
+python -m gm balance sim --region 1 --stage 1 --max-waves 2 --spend instant \
+    --candy red_licorice:10
 python -m gm balance gate --trials 20 --seed 17  # control vs DPS loadout gate
 python -m gm balance project --all-waves --profile
 python -m gm balance check       # every table still parses (the fast gate)
@@ -101,13 +119,18 @@ both copies from one buffer; the stroke is *inside* the silhouette, so no `.yy`
 changes and `roundtrip` stays at `0 differ`.
 
 `balance towers` prints four dps figures per tower and it matters which is
-which: **card** (`damage x rate x targets`, the shop's claim), **x1** (one
-target), **deliv** (x1 with the shot *cycle* charged - LL-040) and **eff**
-(deliv x coverage, i.e. what reaches the route). Every step to the right is a
-step down, and the size of each drop is the finding. It also reports dominance
-on two axis sets: on **every** axis (price, card, x1, eff) nothing in the
-roster is dominated; **on the board** (price + delivered) Pina Collider is, by
-Slender Mandrake.
+which: **card** (`damage x rate x targets x projectiles`, the roster's or
+selected path's multi-target claim), **x1** (one target), **deliv** (x1 with the shot *cycle* charged -
+LL-040) and **eff** (deliv x coverage, i.e. what reaches the route). The base
+roster data and all 24 specialization paths are read from GML. Repeat
+`--specialization 'TOWER=PATH'` to select paths for towers in the loadout;
+`--growth-spec-rank 0..5` applies Master Gardener's signature unlock and strength.
+The report resolves stats at the selected mastery floor, so the L5 Rapid Bloom
+path shows its second direct projectile. Candy is not part of this static report.
+Every step to the right is a step down, and the size of each drop is the finding.
+It also recomputes dominance for the selected paths. With the default paths,
+the base roster is not dominated on every axis (price, card, x1, eff), while
+Pina Collider is dominated on the board (price + delivered) by Slender Mandrake.
 
 `balance sim` is the other half: where `project` is a closed form (a ratio),
 `sim` steps the real rules at 60fps - monsters spawn one per 0.5s, towers run
@@ -115,11 +138,32 @@ the idle/attack/return state machine, damage lands on `fire_frame` against the
 target list, crits and on-hit statuses use seeded rolls, and status effects tick
 on every monster Step. Damage during the emerge is retained, matching the
 current GML life check; a leak applies Vitality prevention and boss saves, then
-pays half the raw kill value. It reports
+pays half the raw kill value. A kill settles immediately, but the sim keeps its
+non-targetable `obj_mon` corpse for the source-authored `ZOMB_DIE_SECS`; the clear
+gate and Candy timer end only after that instance is gone. It reports
 leaks, hearts, idle money, the split between fighting and the 354-frame wave
 gate, how many swings achieved nothing, and the widest target list any tower
 held - which is the only honest way to ask whether a `targets` cap can ever
-fill. `--seed` makes combat-effect rolls repeatable. `--cycle nominal` runs the
+fill. `--specialization 'TOWER=PATH'` is repeatable; selected paths gain their
+GML-authored tiers at L3-L5. `--growth-spec-rank 0..5` models Master Gardener's
+L4 signature unlock and up to +5% specialization strength. The sim applies
+projectile and target counts, knockback, status overrides, crit modifiers,
+hit-money, Money Marigold wave income, and the implemented Wildfire, Deadeye,
+Ripper, Tenderizer, Potent Venom, Compound Interest, and Golden Harvest
+signatures. The same options work with `balance project` and `balance towers`.
+`--seed` makes combat-effect rolls repeatable. `--candy ID[:LEVEL[:USES]]`
+adds a recipe profile; it can be repeated for concurrent recipes. Timed Candy
+starts at wave 1, uses all requested copies to extend that timer, and ticks only
+while a wave is live. `--candy-duration-rank 0..10` applies the permanent
+clover track. Everlasting Gob activates on the first boss wave while another
+Candy is active. The report records time active and Blood Orange's extra pity
+progress. Recipe unlocks, saved stock, manual activation timing and random shard
+drop rolls remain outside this simulator. The paired region 4 commands above
+use the same route, seed, and instant-buy policy; the second adds level-10
+damage, fire-rate, and burn Candy so their modeled effect can be compared in
+fight times and wave outcomes. The paired 1-1 commands compare the clear and
+Candy timer boundary: the sim should take 1,882 frames and the Candy profile
+should report 10.7s active. `--cycle nominal` runs the
 same stage on the idealised fire period instead of the state machine. `--spend`
 picks the policy: `none` buys nothing (the baseline that shows what a wave costs
 with no towers), `ceiling` re-runs

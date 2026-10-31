@@ -128,7 +128,8 @@ class YyRoundTripTests(unittest.TestCase):
     def test_all_project_files_round_trip(self):
         if PROJECT_ROOT is None:
             self.skipTest("no GameMaker project found")
-        files = sorted(PROJECT_ROOT.glob("**/*.yy"))
+        files = sorted(p for p in PROJECT_ROOT.glob("**/*.yy")
+                       if ".gmcache" not in p.relative_to(PROJECT_ROOT).parts)
         files += sorted(PROJECT_ROOT.glob("*.yyp"))
         files += sorted(PROJECT_ROOT.glob("*.resource_order"))
         self.assertGreater(len(files), 0, "expected to find project files")

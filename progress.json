@@ -2,7 +2,7 @@
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-30",
+    "updated": "2026-10-31",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set <id> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -20,12 +20,16 @@
   },
   "focus": {
     "now": [
+      "async-world-loading",
       "par-reauthor",
       "region-4-6-difficulty",
+      "normal-first-clear-path",
+      "difficulty-first-clear",
       "region-badges",
       "tower-card-upgrade-preview",
       "portrait-draw-fit",
       "combat-specs",
+      "combat-projectile-count",
       "candy-recipes",
       "candy-fast-forward-timer",
       "combat-gate-two-loadouts",
@@ -42,12 +46,17 @@
       "garden-onboarding-tab-gates",
       "gms2-room-speed-api",
       "balance-progression-sim",
+      "balance-candy-sim",
+      "balance-sim-corpse-lifecycle",
+      "balance-specialization-sim",
+      "seed-overflow-conversion",
+      "meta-screen-text-catalog",
       "endless-currency-trickle"
     ],
     "next": [
       "hud-readability-and-strings"
     ],
-    "note": "2026-10-30: LL-007 room_speed conversion is statically verified; runtime timing still awaits Rayu after reload. The full toolkit suite passes at 376 tests, 2 skipped. Balance scenes now accept saved mastery and clover bonuses; sample R4-10 Hard/Brutal still needs realistic-save review. Endless now banks 2% Seeds/Clovers every 10 cleared waves; runtime review awaits Rayu. Target-machine performance at 60 living monsters still needs measurement before texture groups change."
+    "note": "2026-10-30: LL-007 room_speed conversion is statically verified; runtime timing awaits Rayu. Normal first-clear clears all 60 stages; a seed-legal Normal R1 / Brutal R2-R6 model route also clears all 60 with gated towers and Mastery I-III. Results assume fixed z=6, instant buying and mean-field spawns. Specialization paths, Growth scaling, source-defined signatures, Candy activation profiles, and corpse timing are modeled in the balance sim; live effects remain unverified. Endless currency trickle is implemented; Seeds convert 20:1 after roster completion and the 1:2 box exchange waits for full permanent caps. Meta-screen chrome, tower shop text, and Clover, Blood, and Mastery node copy now use catalog keys; runtime fit still awaits Rayu. Target-machine performance at 60 living monsters still needs measurement."
   },
   "tasks": [
     {
@@ -385,6 +394,35 @@
       "done": "2026-10-24"
     },
     {
+      "id": "async-world-loading",
+      "title": "Asynchronous world loading with a real progress screen",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "6",
+      "size": "M",
+      "prio": 2,
+      "needs": "Reload GameMaker with global.devMode=true and enter a stage. Confirm the moonlit garden backdrop and LOADING percentage/bar appear before preparation and remain visible for at least 0.75 seconds. Expect META [LEVEL] loading screen Draw GUI End once, SCML boot: 15 entities preloaded pose=30hz, and LEVEL startup done rows=12 rigs=15. A missing draw line, blank screen, stuck percentage, warning about loading-screen draws, or room-creation spike falsifies it.",
+      "notes": "Room boot now queues SCML preparation; startup prepares one creature and terrain slice per Step, shows the loading backdrop first, and holds it for a minimum draw interval. A bounded timeout warns if the Draw GUI End counter never advances. Static roundtrip and toolkit checks pass; visual room-start check is pending.",
+      "refs": [
+        "rooms/rm_test/RoomCreationCode.gml",
+        "scripts/scr_level_boot/scr_level_boot.gml",
+        "scripts/scr_scml_rig/scr_scml_rig.gml",
+        "scripts/scr_main_startup/scr_main_startup.gml",
+        "scripts/scr_setup_main/scr_setup_main.gml",
+        "objects/_mainControl/Draw_75.gml",
+        "sprites/bck_loading/762e8c91-5110-451f-a5c4-1327f177acb6.png",
+        "lessons_learned.md",
+        "python_tools/tests/test_content.py",
+        "python_tools/tests/test_layout.py",
+        "python_tools/tests/test_balance.py"
+      ],
+      "created": "2026-10-31",
+      "updated": "2026-10-31",
+      "done": null
+    },
+    {
       "id": "audio-briefs",
       "title": "Generate the five remaining tracks (title + Desert/Jungle/Graveyard/Blood Fields)",
       "status": "done",
@@ -447,6 +485,37 @@
       "created": "2026-10-11",
       "updated": "2026-10-13",
       "done": "2026-10-13"
+    },
+    {
+      "id": "balance-candy-sim",
+      "title": "Model Candy effects and live-wave duration in balance simulations",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "tools",
+      "phase": "4",
+      "size": "L",
+      "prio": 2,
+      "needs": "Run the paired commands in python_tools/README.md after the corpse-lifecycle update: compare region 4 stage 10 Brutal, waves 1-5, with the same seed and instant-buy policy, first without Candy and then with level-10 Red Licorice, Frosted Flake, and Fireball. In this model both clear with 20 lives and zero leaks; fight time is about 88.3s without Candy and 74.8s with it. This checks the simulator only; live GameMaker behavior remains on candy-recipes.",
+      "notes": "IMPLEMENTED: balance tables parse Candy recipes, level magnitudes, duration rules, and ZOMB_DIE_SECS from GML. balance sim accepts --candy ID[:LEVEL[:USES]] and duration rank, applying active damage, range, slow, crit, burn, fire-rate, kill-money, and pity-progress effects. Timed Candy ticks normal-speed frames through all monster DIE clips until the instance-based wave clear boundary; Everlasting Gob freezes its authored number of waves at the first boss while another Candy is active. Active bonuses also affect greedy purchases. README has a reproducible no-Candy/Candy pair. gm balance check passed; the corrected deterministic 4-10 Brutal waves 1-5 comparison is 88.3s vs 74.8s, with both runs at 20 lives and zero leaks. Limits: this models a declared activation policy, not unlocks, saved stock, player timing, or random shard drops; runtime Candy acceptance remains on candy-recipes.",
+      "refs": [
+        "goal.md",
+        "economy.md",
+        "python_tools/gm/balance/tables.py",
+        "python_tools/gm/balance/policy.py",
+        "python_tools/gm/balance/sim.py",
+        "python_tools/gm/balance/report.py",
+        "python_tools/gm/cli.py",
+        "python_tools/README.md",
+        "scripts/scr_candy_system/scr_candy_system.gml",
+        "scripts/tower_levels/tower_levels.gml",
+        "scripts/scr_tower_shoot/scr_tower_shoot.gml",
+        "scripts/scr_zomb_death/scr_zomb_death.gml",
+        "scripts/scr_blood_tree/scr_blood_tree.gml"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "balance-feel-targets",
@@ -610,6 +679,29 @@
       "done": "2026-10-13"
     },
     {
+      "id": "balance-sim-corpse-lifecycle",
+      "title": "Model corpse lifetime in live-wave timing",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "tools",
+      "phase": "2",
+      "size": "M",
+      "prio": 1,
+      "needs": "Run the two-wave Region 1 stage 1 commands in python_tools/README.md, with and without --candy red_licorice:10. The sim should report 1882 total frames for both runs, wave fight times of 5.1s and 5.6s including remaining DIE clips, and 706 frames in the between-wave gates. Candy should report 10.7s active; before the corpse fix its total was 9.1s. A 1786-frame run or a timer ending at the last kill means the corpse tail is missing.",
+      "notes": "IMPLEMENTED: the simulator reads ZOMB_DIE_SECS from GML, settles each kill immediately, keeps the killed monster non-targetable through the DIE duration, and starts the clear gate/stops Candy only after no obj_mon instances remain. Leaked monsters still leave immediately. Static balance parsing and paired 1-1 simulations pass: 1882 frames in both runs, with 10.7s Candy time; the prior no-corpse sim took 1786 frames and counted 9.1s Candy. The 4-10 Brutal Candy comparison is now 88.3s without Candy vs 74.8s with three level-10 recipes, both with 20 lives and no leaks. Added LL-092 to document the model mismatch and guard rail. This card covers simulator fidelity; GameMaker acceptance remains on the gameplay cards.",
+      "refs": [
+        "python_tools/gm/balance/sim.py",
+        "scripts/scr_zombie_die/scr_zombie_die.gml",
+        "scripts/scr_level_wait/scr_level_wait.gml",
+        "scripts/scr_mon_roster/scr_mon_roster.gml",
+        "scripts/scr_zomb_art/scr_zomb_art.gml"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
+    },
+    {
       "id": "balance-sim-policy",
       "title": "The sim needs a HUMAN spending policy, not a wave-boundary greedy",
       "status": "done",
@@ -629,6 +721,33 @@
       "created": "2026-10-13",
       "updated": "2026-10-15",
       "done": "2026-10-15"
+    },
+    {
+      "id": "balance-specialization-sim",
+      "title": "Model tower specialization paths and signatures in the balance simulator",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "tools",
+      "phase": "2",
+      "size": "L",
+      "prio": 1,
+      "needs": "Review the reproducible balance sim examples in python_tools/README.md with and without --specialization \"Daisy Pusher=rapid_bloom\" and --growth-spec-rank 5. Confirm the selected path, tier unlock timing, Growth scaling, projectile count, signature effects, and output are understandable. This is simulator acceptance; GameMaker combat and UI checks remain on combat-specs and tower-l5-signatures.",
+      "notes": "IMPLEMENTED: the parser reads all 24 tower paths and tier rows from tower_spec_table, along with tier gates and Growth scaling from GML. The CLI accepts repeatable --specialization TOWER=PATH and --growth-spec-rank; sim and policy apply selected tiers as towers level, including projectile, status, income, stat, and source-defined signature behavior. README documents reproducible controls. Static balance parsing was previously green; runtime balance and combat acceptance remain on the gameplay cards.",
+      "refs": [
+        "goal.md",
+        "scripts/scr_tower_specs/scr_tower_specs.gml",
+        "scripts/scr_tower_shoot/scr_tower_shoot.gml",
+        "python_tools/gm/balance/tables.py",
+        "python_tools/gm/balance/model.py",
+        "python_tools/gm/balance/policy.py",
+        "python_tools/gm/balance/sim.py",
+        "python_tools/gm/cli.py",
+        "python_tools/README.md"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "balance-speed-ramp-divergence",
@@ -995,6 +1114,33 @@
       "done": null
     },
     {
+      "id": "combat-projectile-count",
+      "title": "Add projectile count as a distinct tower stat and implement Rapid Bloom multi-shot",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "M",
+      "prio": 2,
+      "needs": "Reload GameMaker with global.devMode=true. Take Daisy Pusher through Rapid Bloom’s signature tier (normally L5; Growth can expose it at L4). Confirm the card shows PRJ 1 -> 2 while TGT is unchanged, and that the first-shot line reports projectiles=2. Against a durable target, observe two direct-hit packets per volley with separate crit rolls; if the first packet kills it, no second packet should land. Confirm other towers remain at PRJ 1. A changed target cap, one hit, two hits after a lethal first packet, or a base tower above one falsifies it.",
+      "notes": "IMPLEMENTED: added a distinct projectiles stat with default 1; target count continues to cap distinct enemies. Each projectile is a direct-hit packet per selected target, with a separate crit and on-hit status roll; processing stops when a target dies. Rapid Bloom’s signature tier adds one projectile and no targets. Card, selection preview, tower detail, and shot diagnostic expose the count. Static inspection only; runtime balance and visuals await Rayu.",
+      "refs": [
+        "goal.md",
+        "economy.md",
+        "roadmap.md",
+        "scripts/tower_enums/tower_enums.gml",
+        "scripts/scr_towerData/scr_towerData.gml",
+        "scripts/scr_tower_specs/scr_tower_specs.gml",
+        "scripts/scr_tower_shoot/scr_tower_shoot.gml",
+        "scripts/scr_drawTowerSelected/scr_drawTowerSelected.gml",
+        "scripts/scr_tower_stats/scr_tower_stats.gml"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
+    },
+    {
       "id": "combat-resistances",
       "title": "Resistance columns on the monster data",
       "status": "review",
@@ -1309,6 +1455,31 @@
       "done": "2026-10-13"
     },
     {
+      "id": "difficulty-first-clear",
+      "title": "Model first-clear Hard and Brutal progression",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "tools",
+      "phase": "2",
+      "size": "L",
+      "prio": 1,
+      "needs": "When back, reload GameMaker and sample the seed-legal mixed route: Normal R1, then Brutal R2, R3, R4, and R6 using the recorded loadouts and mastery. Check META [LEVEL] CLEAR lines; any failed stage, unexpected locked tower, or severe leak falsifies the model. Report which segment you tested.",
+      "notes": "MEASURED 2026-10-30 with gm.balance.sim. Hard has a seed-legal R1-R3 route: starters in R1, Chillip after R1, Thornamental after R2; all clear, with 20 lives throughout R3. Fresh-save Brutal R1 with starters and no clover bonuses fails at 1-4 (20 leaks); gate 1 opens only after the full R1 clear. A mixed fresh-save path clears all 60 model stages: first-clear R1 Normal (44 seeds, 200 clovers), buy Chillip (25) and Mastery I (120); first-clear R2 Brutal with Burning Ivy/Slender Mandrake/Pina Collider/Chillip; then buy Bindweed, Thornamental, Belladonna and Mastery II; first-clear R3 Brutal with Burning Ivy/Slender Mandrake/Thornamental/Belladonna at MII; buy Cannon after R3; first-clear R4 Brutal with Burning Ivy/Slender Mandrake/Cannon/Thornamental at MII; buy Mastery III after R4; first-clear R5-R6 Brutal with Burning Ivy/Slender Mandrake/Cannon/Kaboom at MIII. Each route stage cleared in the model; the mixed route earns 3344 seeds, enough for all 2015 unlocks. Stage data totals 704 Normal, 1408 Hard, 3520 for all-Brutal first-clear arithmetic; one Normal repeat of every stage adds 160. Caveats: no-clover R1 Brutal failure is not proof that specs or clover choices cannot save it. The sim now supports GML-authored specializations and declared Candy profiles, but the recorded progression routes do not exercise either. Runs use fixed z=6, mean-field spawns, and instant buying. No data retune inferred.",
+      "refs": [
+        "goal.md",
+        "economy.md",
+        "scripts/difficulty_data/difficulty_data.gml",
+        "scripts/stage_data/stage_data.gml",
+        "scripts/scr_tower_roster/scr_tower_roster.gml",
+        "python_tools/gm/balance/sim.py",
+        "lessons_learned.md#ll-091"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
+    },
+    {
       "id": "difficulty-wiring",
       "title": "Make the difficulty columns actually change the fight",
       "status": "done",
@@ -1514,13 +1685,14 @@
       "size": "M",
       "prio": 2,
       "needs": "In an Endless run, clear waves 10, 12, 15 and 18. Confirm a modal choice of three tiered rewards, one reroll, next milestone progression, and saved currency/candy stock after returning to the menu. Expect META [ENDLESS] loot box, reroll, and box claimed lines. A repeated box threshold, duplicate tiers/kinds when alternatives exist, reward not saving, or campaign rewards from Endless falsifies the flow.",
-      "notes": "Implemented exponential box spacing, weighted tiers, three distinct-tier/mostly-distinct-kind offers, one reroll, tier-scaled rewards, candy stock, conversion sinks and save-on-claim. Endless box rewards are now included in the current implementation; tracker/runtime review remains.",
+      "notes": "Implemented exponential box spacing, weighted tiers, three distinct-tier/mostly-distinct-kind offers, one reroll, tier-scaled rewards, candy stock, conversion sinks and save-on-claim. Replaced the malformed chained ternary with explicit icon selection. Fixed all five loot-box ui_reg_text calls to use the six-argument API and unique lootbox.* names. Full YoYoGames gm-cli Linux VM compile passes with runtime 2026.0.0.23; it exposed and helped fix the _score asset-name collision (LL-094). Runtime review of icons, reward text, layout, and saved claims remains.",
       "refs": [
         "economy.md",
-        "scripts/scr_meta_schema/scr_meta_schema.gml"
+        "scripts/scr_meta_schema/scr_meta_schema.gml",
+        "scripts/scr_endless_mode/scr_endless_mode.gml"
       ],
       "created": "2026-10-15",
-      "updated": "2026-10-30",
+      "updated": "2026-10-31",
       "done": null
     },
     {
@@ -2312,10 +2484,12 @@
       "size": "S",
       "prio": 3,
       "needs": "Reload GameMaker and run a campaign stage with devMode enabled. Check the stat labels, selected-tower card, L3 path prompt, and Buy/Sell buttons, including a sale refund shown as a positive value. Open Garden Book > Candy and check its recipe, level, stock, and duration copy; pause and activate candy, then inspect the active timer and pity labels; reach an Endless box and check reward, conversion, reroll, and wave text. Confirm wording is unchanged and no text clips or displays a missing key. A clipped line, literal key, changed English value, or Sell $-N falsifies the review.",
-      "notes": "IMPLEMENTED: added a cached English key catalog and named placeholder formatting in scr_ui_text. Moved the in-run HUD labels, stage/pause messages, tower upgrade/sell buttons, tower stat and specialization previews, candy recipe names/descriptions and pause/shop/active HUD copy, plus Endless modifier, loot box, conversion, and HUD text behind keys. The 24 specialization names/descriptions now use keyed English entries. Sell now displays the positive refund amount while its internal signed value remains for affordability/accounting. English copy was preserved otherwise. Static GML parsing and project gates pass; runtime visual review remains.",
+      "notes": "IMPLEMENTED: the English key catalog and named placeholder formatter cover in-run HUD labels, stage and pause messages, tower upgrade and sell labels, stat and specialization previews, Candy shop and active HUD copy, Endless text, and Garden Book meta labels. Review found and fixed one remaining hard-coded Badges header by moving it into the same catalog. Sell displays a positive refund. Static GML parsing and project gates pass; runtime wording and fit remain for Rayu review.",
       "refs": [
         "roadmap.md",
-        "goal.md"
+        "goal.md",
+        "scripts/scr_ui_text/scr_ui_text.gml",
+        "scripts/scr_meta_screen/scr_meta_screen.gml"
       ],
       "created": "2026-10-18",
       "updated": "2026-10-30",
@@ -2684,6 +2858,33 @@
       "done": "2026-10-18"
     },
     {
+      "id": "meta-screen-text-catalog",
+      "title": "Centralize meta-screen copy in the English catalog",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "6",
+      "size": "M",
+      "prio": 3,
+      "needs": "Reload GameMaker and inspect World Map, Deploy, Garden Book (Clovers, Seed Shop, Blood, Candy, Mastery), and Results at 675x380 and 960x540. Confirm node labels and descriptions, dynamic placeholders, tower stats, and purchase states read correctly with no literal catalog keys or clipping. Press F12 and check the layout dump. A missing key, broken placeholder, changed wording, clipping, or layout finding falsifies the pass.",
+      "notes": "Completed the English catalog pass for screen chrome, tower shop stats, all 40 Clover node names and descriptions, four branch labels, five Mastery nodes, and five Blood nodes. Every key and call is statically checked: 438 catalog entries, 452 literal calls across 434 unique keys, zero missing keys. Balance parser, GML function enumeration, project round-trip, progress sync, and diff checks pass. Runtime text fit and screen layout remain for Rayu to review.",
+      "refs": [
+        "goal.md",
+        "roadmap.md",
+        "scripts/scr_meta_screen/scr_meta_screen.gml",
+        "scripts/scr_tower_stats/scr_tower_stats.gml",
+        "scripts/scr_clover_tree/scr_clover_tree.gml",
+        "scripts/scr_blood_tree/scr_blood_tree.gml",
+        "scripts/scr_ui_text/scr_ui_text.gml",
+        "lessons_learned.md#ll-067",
+        "lessons_learned.md#ll-069"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
+    },
+    {
       "id": "mon-placeholder-dress",
       "title": "A monster is dressed in its class art at spawn, not on its first Step",
       "status": "review",
@@ -2727,6 +2928,29 @@
       "created": "2026-10-18",
       "updated": "2026-10-18",
       "done": "2026-10-18"
+    },
+    {
+      "id": "normal-first-clear-path",
+      "title": "Verify a seed-legal first-clear Normal campaign path",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "tools",
+      "phase": "3",
+      "size": "M",
+      "prio": 2,
+      "needs": "On a fresh Normal save, clear Region 1 with the four starters, then buy Chillip for 25 seeds. Use Burning Ivy, Slender Mandrake, Pina Collider, and Chillip through Region 2 and Region 3 stage 7. After clearing Region 3 stage 1, confirm the remaining first-clear seed balance can buy Thornamental for 90; use it in place of Chillip for Region 3 stages 8-10 and the later regions. Spot-check R2-7, R3-7, R3-8, and stage 10 in R4, R5, and R6. A missing gate, insufficient seed balance, or leak falsifies the modeled route.",
+      "notes": "Full-campaign first-clear Normal model check, 2026-10-30: one seed-legal loadout path cleared all 60 rows with 20 lives and zero leaks. R1 uses the four free starters; after the R1 gate, Chillip costs 25 of the 44 first-clear seeds and replaces Daisy for R2 and R3 stages 1-7. R1+R2 earn 108; after Chillip, R3-1 pays 8, leaving 91 so Thornamental (90, gate 2) can be bought immediately after R3-1. Burning Ivy / Slender Mandrake / Pina Collider / Thornamental clears R3 stages 8-10 and all stages in R4-R6. All 60 runs use Normal, instant-buy, z=6, no clovers, candy, or specialization. This proves one model path alongside the separate three-replay-loadout coverage gate; it is not GameMaker or Hard/Brutal evidence.",
+      "refs": [
+        "goal.md",
+        "scripts/stage_data/stage_data.gml",
+        "scripts/scr_tower_roster/scr_tower_roster.gml",
+        "scripts/region_data/region_data.gml",
+        "python_tools/gm/balance/sim.py"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "onboarding-pass",
@@ -2783,8 +3007,8 @@
       "phase": "2",
       "size": "M",
       "prio": 2,
-      "needs": "After returning, reload GameMaker with global.devMode=true. Check Deploy thresholds on early, middle, and late stages in each region; confirm the old copied 40-90 values are gone and the displayed pairs match stage_data. Clear one Normal stage under both exclusive cutoffs and inspect META [BADGE] earned and META [LEVEL] CLEAR badges lines. Frugal must award only when gross spend < par_spend; Speed Grower only when level_elapsed_seconds < par_time. A stale value, clipped Deploy text, award at/over either cutoff, or missing qualifying award falsifies the check.",
-      "notes": "Re-authored all 60 stage rows from 540 deterministic seeded Normal instant-buy, real-cycle runs: 3 replay-eligible builds x 3 seeds per stage, at fixed terrain z=6, with no candy/specialization/mastery. All 540 cleared with 20 lives and zero leaks. Failures and leaky clears are excluded. Per stage: par_spend = ceil(median gross spend / 2), used as an exclusive cutoff so Frugal's strict less-than remains below half the median; par_time = smallest integer second strictly above the nearest-rank p75 clear time. Elapsed frames begin at first wave spawn, matching level_elapsed_seconds and excluding deploy countdown. Thresholds span $80-$379 and 201-941 seconds. This is a first-pass model estimate using mean-field creature stats, not player telemetry or live GameMaker evidence.",
+      "needs": "Reload GameMaker with global.devMode=true. Check the corrected displayed Speed Grower cutoffs on early, middle, and late Normal stages in all six regions against stage_data. Play representative clears and report whether Frugal (< par_spend) and Speed Grower (< par_time) are attainable. The corpse timing correction adds 0.8 seconds per wave; a stale display, an award at or above a cutoff, or a missing qualifying award falsifies the check.",
+      "notes": "CORRECTED 2026-10-30 after LL-092. The original 540 seeded Normal instant-buy clears all had 20 lives and zero leaks. Each wave now waits an additional source-backed 48 frames (ZOMB_DIE_SECS = 0.8s) after its last kill before the clear gate begins. All stages contain 15-60 waves in steps of five, so every run in a stage shifts by the same exact integer number of seconds: 0.8s times the wave count. This translates the p75 and the exclusive whole-second cutoff exactly, without rerunning the sample. Updated par_time for all 60 rows by 12-48s; par_spend is unchanged because combat, kills, payouts, and purchases do not change. New cutoffs span 213-989s. Model estimate only; runtime pacing remains for Rayu review.",
       "refs": [
         "scripts/stage_data/stage_data.gml",
         "scripts/scr_badges/scr_badges.gml",
@@ -2816,7 +3040,7 @@
     },
     {
       "id": "perf-60-monsters",
-      "title": "Performance: 60 monsters with statuses, sprite memory, texture groups",
+      "title": "Performance: monster drawing and death-burst frame rate",
       "status": "review",
       "owner": "cline",
       "awaiting": "rayu",
@@ -2824,17 +3048,22 @@
       "phase": "6",
       "size": "M",
       "prio": 2,
-      "needs": "Close and reload GameMaker (LL-008), set global.devMode=true, enter Endless, and reach wave 40 with at least 60 living monsters. Hold that population for 15 seconds at normal speed and capture three or more PERF W40+ lines: start, then five-second samples with target_fps=60, avg_fps, worst_ms, slow5pct, alive>=60, statused, and effects. If possible, repeat at 3x and include target_fps=180 lines. If the population is below 60, PERF W40+ waiting must report the live count. Report visible frame drops and, if GameMaker Profiler exposes it, resident texture memory; all 494 sprite resources currently share Default. A missing sample at 60+, a runtime error, or sustained average below 57fps falsifies the performance gate. Do not split texture groups until runtime measurements justify it.",
-      "notes": "STATIC AUDIT 2026-10-30: 494 registered sprite resources all use texture group Default; 2,701 root-frame PNGs cover 182.7 MiB of raw RGBA texels before atlas packing (39.4 MiB compressed on disk). Linux and Windows texture pages are 2048x2048. Added dev-only scr_perf_watch: after wave 40 it waits for at least 60 non-dying obj_mon instances, then reports five-second windows with target_fps, avg_fps, worst_ms, slow5pct (frames over budget by more than 5%), alive, statused, and effects. Population scans run once per second while waiting and once per five-second sample while measuring. These source-image totals do not equal runtime VRAM use. No texture-group split or status-loop optimization is justified until the target-machine run is measured.",
+      "needs": "Reload GameMaker (LL-008), set global.devMode=true, and replay a stage until several Spriter DIE clips overlap. Compare FPS before and during the kill burst. In Profiler expand obj_mon Draw_0, obj_mon Draw_73, and _shadows_Draw_0; capture child rows if FPS still falls. Also retain the Endless wave-40 gate: at least 60 living monsters for 15s, with three PERF W40+ samples at normal speed (and 3x if practical). Expect death-burst FPS near the pre-kill rate and bounds work no longer dominating these rows. A fall toward 15 FPS or the same bounds cost falsifies improvement; report the sample and expanded rows.",
+      "notes": "2026-10-31 profile: rm_test.CreationCode 15.594ms is a room-entry spike; recurring candidates are _shadows_Draw_0 1.225ms, obj_mon_Draw_0 0.49ms, and Draw_73 0.42ms. obj_mon inherits _shadow, and the HP bar plus shadow pass use the rig bounds path. Bounds now scans the read-only pose array once, caches static sprite alpha boxes, reuses per-draw status tint, and skips custom tint shading for white-tint rigs. gm-cli Linux VM compile passed. Filtered metadata round-trip checked 1,014 files with 0 differences; balance and progress checks passed. Toolkit suite: 376 ran, with two failures and one error outside the touched code (SimTower missing parameters, a stale garden-card expectation, and the round-trip test scanning generated .gmcache). Runtime comparison on Rayu machine still awaits a run; texture groups remain measurement-gated.",
       "refs": [
         "roadmap.md",
         "scripts/scr_perf_watch/scr_perf_watch.gml",
         "objects/_levelControl/Create_0.gml",
         "objects/_levelControl/Step_0.gml",
-        "pushing_daisies_recovered.yyp"
+        "scripts/scr_scml_rig/scr_scml_rig.gml",
+        "scripts/scr_scml_spriter_interface_system/scr_scml_spriter_interface_system.gml",
+        "scripts/scr_scml_spriter_interface_system/Spriter_Interface_System.md",
+        "objects/obj_mon/Draw_0.gml",
+        "objects/obj_mon/Draw_73.gml",
+        "scripts/scr_drawLight/scr_drawLight.gml"
       ],
       "created": "2026-10-18",
-      "updated": "2026-10-30",
+      "updated": "2026-10-31",
       "done": null
     },
     {
@@ -2858,6 +3087,26 @@
       ],
       "created": "2026-10-18",
       "updated": "2026-10-30",
+      "done": null
+    },
+    {
+      "id": "print-global-context",
+      "title": "Make print safe during global initialization",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "6",
+      "size": "S",
+      "prio": 1,
+      "needs": "Reload GameMaker with global.devMode=true. Confirm initialization reaches the title screen without an ERROR from print() or object_index, and confirm the LOADOUT DEV sandbox message appears with the global:- prefix. If an instance-context print occurs, confirm it still has object:id. Send the startup log lines; another print crash or missing instance labels falsifies the fix.",
+      "notes": "The print logger now checks that devMode exists and falls back to a global:- prefix. It reads object_index/id only after confirming those names exist on self; object asset validity is checked before object_get_name. Roundtrip, toolkit tests, balance check, progress check, and GML function extraction pass. GameMaker compile/runtime verification remains pending.",
+      "refs": [
+        "scripts/print/print.gml",
+        "scripts/scr_loadout/scr_loadout.gml"
+      ],
+      "created": "2026-10-31",
+      "updated": "2026-10-31",
       "done": null
     },
     {
@@ -2910,7 +3159,7 @@
       "size": "M",
       "prio": 2,
       "needs": "Reload GameMaker with global.devMode=true. In Normal, run Stage 10 in Regions 4, 5 and 6 with these progression-available builds: R4 use Burning Ivy/Belladonna Blitz/Cannon Tulip/Slender Mandrake, then swap Slender for Pina Collider, then swap in Chillip for the fourth slot; R5 use Burning Ivy/Belladonna Blitz/Cannon Tulip/Kaboom Kalanchoe, then Slender Mandrake, then Chillip for the fourth slot; R6 use Burning Ivy/Belladonna Blitz/Kaboom Kalanchoe/Money Marigold, then Cannon Tulip instead of Kalanchoe, then Chillip instead of Cannon. Expect each META [LEVEL] CLEAR line to show 20 lives and leaked=0. Also play Stage 1 once in each region and report if the curve feels too soft or too steep. A failed clear, leak in these builds, or severe pacing mismatch falsifies the balance.",
-      "notes": "IMPLEMENTED AND SIMULATED: regional Normal endpoints R4 18, R5 16, R6 10; ceiling buyer clears all 30 stages without leaks. Instant-buy Stage 10 has three documented progression loadouts per region that clear cleanly on Normal. Follow-up with the clover-aware simulator: R4-10 under maximum clover inputs clears Hard with 25 leaks and 51/60 lives; starter-only Brutal fails, while all three documented R4 Brutal loadouts clear with one boss leak saved. These clover values are an upper-bound stress test, not realistically earned by R4. Hard/Brutal live GameMaker behavior and a realistic saved progression profile remain unverified.",
+      "notes": "IMPLEMENTED AND SIMULATED: Normal endpoints R4 18, R5 16, R6 10; ceiling buyer clears all 30 stages without leaks. Three documented progression loadouts per region clear Stage 10 on Normal. Earlier clover-aware stress runs found R4-10 Hard clear with leaks and starter-only Brutal failure; those max-clover inputs were an upper bound, not a realistic R4 save. NEW 2026-10-30: a seed-legal mixed route clears R1 Normal then R2-R6 Brutal. R4 at Mastery II with Burning Ivy/Slender Mandrake/Cannon Tulip/Thornamental clears all ten (12-20 lives); R5 and R6 at Mastery III with Burning Ivy/Slender Mandrake/Cannon Tulip/Kaboom Kalanchoe also clear all ten (R5 19-20 lives; R6 20). This route follows region gates and earns enough clovers for Mastery III after R4. Fixed terrain z=6, instant-buy policy, mean-field creature stats; no candy or specializations. Runtime and player execution remain unverified.",
       "refs": [
         "scripts/stage_data/stage_data.gml",
         "scripts/region_data/region_data.gml",
@@ -2930,8 +3179,8 @@
       "phase": "5",
       "size": "M",
       "prio": 3,
-      "needs": "Reload GameMaker with global.devMode=true. Clear a Normal stage without losing lives using exactly one tower type, then replay using four distinct types; confirm Untouched, Purist and Botanist. Clear Brutal and a clean Normal stage for Brutalist and Exterminator, then hover a cleared map tile: all seven medal icons must reflect the saved per-stage awards and persist after relaunch. Verify Frugal and Speed Grower read the Deploy thresholds; those values are provisional until par-reauthor, so do not judge attainability yet. Missing or incorrect awards, icons or persistence falsifies the implementation.",
-      "notes": "IMPLEMENTED IN CODE: preserved the original save IDs, added counters for gross run spend, successful tower placements/types, actual lives lost, and active-stage seconds; awards all seven medals on clear and saves by region/stage. The map hover now displays all seven actual medal sprites tinted from that stage's saved awards. Frugal and Speed Grower use the stage row values and show them in Deploy; those copied thresholds remain provisional until par-reauthor is completed. Awaiting GameMaker runtime and visual review.",
+      "needs": "Reload GameMaker with global.devMode=true. Clear a Normal stage without losing lives using exactly one tower type, then replay using four distinct types; confirm Untouched, Purist and Botanist. Clear Brutal and a clean Normal stage for Brutalist and Exterminator, then hover a cleared map tile: all seven medals must reflect saved awards and persist after relaunch. Confirm Frugal and Speed Grower display the stage_data cutoffs; test a clear below each cutoff and report whether these model-derived targets feel attainable. Missing or incorrect awards, icons, persistence, or pacing falsifies the implementation.",
+      "notes": "IMPLEMENTED IN CODE: preserved the original save IDs, added counters for gross run spend, successful tower placements/types, actual lives lost, and active-stage seconds; awards all seven medals on clear and saves by region/stage. The map hover displays all seven actual medal sprites tinted from that stage’s saved awards. Frugal and Speed Grower use the stage row values and show them in Deploy. `par-reauthor` populated all 60 rows from 540 deterministic Normal model runs; thresholds are first-pass estimates awaiting player pacing review, not missing data.",
       "refs": [
         "scripts/scr_badges/scr_badges.gml",
         "scripts/stage_data/stage_data.gml"
@@ -3112,6 +3361,26 @@
       "done": "2026-10-07"
     },
     {
+      "id": "scml-health-bar-anchor",
+      "title": "Keep zombie health bars stable during walk animation",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "3",
+      "size": "S",
+      "prio": 2,
+      "needs": "Reload GameMaker and run a stage with walking zombies. Follow a zombie while its legs and arms animate and as it changes position/facing. Confirm its HP bar keeps a fixed width and ground-relative anchor without gait vibration, while following the zombie root. A bar that bobs with limb poses or stops following the zombie falsifies it.",
+      "notes": "HP bars now use a cached root-relative envelope unioned across sampled walk poses and transform it with the zombie position, facing, rotation, and current scale. Shadows still use current-pose bounds. Static checks pass; in-game visual review is pending.",
+      "refs": [
+        "scripts/scr_scml_rig/scr_scml_rig.gml",
+        "objects/obj_mon/Draw_73.gml"
+      ],
+      "created": "2026-10-31",
+      "updated": "2026-10-31",
+      "done": null
+    },
+    {
       "id": "scml-mon-rig",
       "title": "Monsters draw as Spriter SCML rigs: SCML first, sheets fallback, 30hz pose",
       "status": "review",
@@ -3236,14 +3505,14 @@
       "phase": "2",
       "size": "S",
       "prio": 1,
-      "needs": "Close and reload GameMaker (LL-008), set global.devMode = true, view the title Grumble walking, then run a stage with a wave. Expect META [SCML] walk leg angle clamp Grumble-Mulch upper=down+/-30 lower bend=0..+/-30 samples=262 upper bones=2 lower bones=2 foot bones=2. The hip-to-knee directions should sweep within 30 degrees of vertical down; each knee should bend from straight to at most 30 degrees in its original direction; feet should stay oriented while the stride remains natural. Idle, grab, and die remain unchanged. Falsifiers: missing bone counts, a WARNING, feet tilt or slide, legs remain crouched, or the gait loses alternation.",
-      "notes": "Replaced the constant +60 lower-leg offset with per-key geometry remapping. The full hip-to-knee swing maps to +/-30 degrees about SCML straight down (270 degrees); each knee bend maps to 0 through +/-30 degrees in its original direction. Child foot keys counterrotate by the combined upper/lower angle change at each matching timestamp. Static analysis of embedded walk clips found 24 upper/lower/foot pairs across 12 conventional bipeds, and Grumble maps to the requested ranges. Awaiting in-game visual review.",
+      "needs": "Reload GameMaker with global.devMode=true. Watch Grumble Mulch walking on the title screen, then observe zombies walking in a stage. Expect META [SCML] walk leg angle clamp Grumble-Mulch upper=down+/-30 lower bend=0..+/-30 and no WARNING. Confirm the feet move smoothly without snapping or sliding and the knees remain less crouched while the stride alternates. A jerky foot, lost gait, tilted foot, or warning falsifies it.",
+      "notes": "Upper legs are remapped to +/-30 degrees around straight down; lower-leg bend is limited to 0..+/-30 degrees in its original direction and child feet counterrotate. Corrected SCML spin directions and interpolated rendered poses smooth the 30 Hz samples. Static checks pass; title and stage visuals are pending.",
       "refs": [
         "scripts/scr_scml_rig/scr_scml_rig.gml",
         "lessons_learned.md"
       ],
       "created": "2026-10-29",
-      "updated": "2026-10-29",
+      "updated": "2026-10-31",
       "done": null
     },
     {
@@ -3265,6 +3534,32 @@
         "scripts/scr_scml_rig/scr_scml_rig.gml"
       ],
       "created": "2026-10-28",
+      "updated": "2026-10-30",
+      "done": null
+    },
+    {
+      "id": "seed-overflow-conversion",
+      "title": "Convert seed overflow to clovers after roster unlock",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "3",
+      "size": "S",
+      "prio": 2,
+      "needs": "With global.devMode=true and a disposable save, load a save with every tower owned and 45 Seeds. Expect META [SEED] overflow converted seeds=40 clovers=+2 remainder=5 ratio=20:1 and META [SAVE] loaded seed overflow converted clovers=+2 persisted=1; confirm the saved balance remains 5 Seeds and gains 2 Clovers after relaunch. Then earn Seeds and verify each full 20 converts while the remainder combines. In Endless, before the full permanent garden is capped, verify the offer previews the 20:1 result and remainder; only after every permanent cap should Seed boxes convert at 1:2. Wrong ratios, lost remainder, conversion before roster completion, or no persistence falsifies the fix.",
+      "notes": "IMPLEMENTED: Seed balances convert on load for existing saves and after the final tower unlock or any later Seed award. Each complete 20 Seeds yields one Clover, with remainder below 20 retained. Endless Seed boxes use the slow 20:1 path after roster completion and reserve the 1:2 exchange for a fully capped permanent garden; the offer shows expected Clovers and the held Seed remainder. Added seed and save diagnostics plus LL-093.",
+      "refs": [
+        "scripts/initialize_game/initialize_game.gml",
+        "scripts/scr_meta_seeds/scr_meta_seeds.gml",
+        "scripts/scr_meta_unlock/scr_meta_unlock.gml",
+        "scripts/scr_endless_mode/scr_endless_mode.gml",
+        "scripts/scr_ui_text/scr_ui_text.gml",
+        "goal.md",
+        "economy.md",
+        "lessons_learned.md#ll-093"
+      ],
+      "created": "2026-10-30",
       "updated": "2026-10-30",
       "done": null
     },
@@ -3467,6 +3762,34 @@
       "done": "2026-10-14"
     },
     {
+      "id": "terrain-inner-corners",
+      "title": "Use dual-grid terrain tiles for seamless corners",
+      "status": "next",
+      "owner": "both",
+      "awaiting": "none",
+      "area": "art",
+      "phase": "6",
+      "size": "L",
+      "prio": 2,
+      "needs": "",
+      "notes": "Revised plan based on the dual-grid approach: retain the existing per-cell height/biome map, but render each terrain layer on a second grid offset half a tile. Each rendered tile samples the four painted cells meeting at its center/corner, yielding 16 masks (empty mask draws nothing) and 15 visible tiles rather than a 47-tile blob set. Prototype Dirt first; keep frame 0 empty and frame 16 as the existing full cap, choose a consistent 4-bit corner order and explicit frame lookup, and preserve per-layer tint/depth. Render a W+1 by H+1 output grid with outside cells empty. Update `scr_buildTiles`/builder path and art contract only after the prototype confirms mask orientation and top-cap behavior. Validate all 16 masks, diagonal-only touch, inner/outer corners, holes, map edges, and final-scale seams; then port the 15-piece layout to the other five biome atlases. Check 32.32px scaled art centered on each grid vertex and preserve the existing height/remap logic unless the fixture exposes a conflict.",
+      "refs": [
+        "art_descriptions.md",
+        "scripts/test_tile/test_tile.gml",
+        "scripts/set_bitmask/set_bitmask.gml",
+        "scripts/scr_buildTiles/scr_buildTiles.gml",
+        "sprites/spr_dirt_128x/spr_dirt_128x.yy",
+        "sprites/spr_swamp_128x/spr_swamp_128x.yy",
+        "sprites/spr_desert_128x/spr_desert_128x.yy",
+        "sprites/spr_jungle_128x/spr_jungle_128x.yy",
+        "sprites/spr_graveyard_128x/spr_graveyard_128x.yy",
+        "sprites/spr_blood_128x/spr_blood_128x.yy"
+      ],
+      "created": "2026-10-31",
+      "updated": "2026-10-31",
+      "done": null
+    },
+    {
       "id": "test-file-orphaned-tests",
       "title": "Two geometry tests were nested inside the __main__ block and never ran",
       "status": "done",
@@ -3602,8 +3925,8 @@
       "phase": "2",
       "size": "S",
       "prio": 1,
-      "needs": "Reload and run with global.devMode = true. Select towers at L2 and L3+; confirm DMG, RNG, SHOTS/s, TGT, DPS, crit, specialization tier/effects and price match the actual purchase. At L2 compare both path summaries before choosing; after each choice/upgrade expect TOWER  specialization and TOWER  level N ring ... lines. Wrong values, missing effect text, clipped UI, or absent logs falsify it.",
-      "notes": "IMPLEMENTED: next rung resolves through tower_data_at_level and tower_spec_apply_data, previews current/next damage, range, effective shots per second, targets, DPS, crit chance/multiplier, specialization tier and price. The L3 choice panel compares both paths’ active numeric/status effects; the selected tower card summarizes the chosen path’s current and next-tier effects. Rate is labeled SHOTS/s. Awaiting Rayu runtime comparison and legibility review.",
+      "needs": "Reload and run with global.devMode = true. Select towers at L2 and L3+; confirm DMG, RNG, SHOTS/s, TGT, PRJ, per-target DPS, crit, specialization tier/effects and price match the actual purchase. At L2 compare both path summaries before choosing; at the Rapid Bloom signature confirm PRJ changes from 1 to 2 while TGT stays fixed. After each choice/upgrade expect TOWER  specialization and TOWER  level N ring ... lines. Wrong values, missing effect text, clipped UI, or absent logs falsify it.",
+      "notes": "IMPLEMENTED: next rung resolves through tower_data_at_level and tower_spec_apply_data, previews current/next damage, range, effective shots per second, targets, projectiles, per-target DPS, crit chance/multiplier, specialization tier and price. The L3 choice panel compares both paths’ active numeric/status effects; the selected tower card summarizes the chosen path’s current and next-tier effects. Rate is labeled SHOTS/s. Awaiting Rayu runtime comparison and legibility review.",
       "refs": [
         "scripts/scr_drawTowerSelected/scr_drawTowerSelected.gml",
         "scripts/tower_levels/tower_levels.gml"
@@ -3713,11 +4036,16 @@
       "phase": "2",
       "size": "L",
       "prio": 2,
-      "needs": "Reload GameMaker with global.devMode=true. At tier 3, test Deadeye crit with a second target in range, Wildfire burn-kill with a neighbor within 64px, Tenderizer hitting a vulnerable foe, Ripper hitting a bleeding foe, Potent Venom reaching five stacks, and Marigold wave 2+ / wave 5. Expect TOWER  signature Deadeye ricochet, Wildfire spread, Tenderizer exposed bonus, Ripper bleeding crit, Potent Venom burst, Compound Interest wave, and Golden Harvest wave lines as applicable; missing an effect under those conditions falsifies it.",
-      "notes": "IMPLEMENTED. Audited all 24 path tier-3 rows. Seventeen already add an observable status or target behavior; the seven mostly numerical paths now have explicit triggers: Deadeye critical ricochet; Wildfire burn spread on death; Tenderizer bonus direct damage against vulnerable foes; Ripper crit bonus against bleeding foes; Potent Venom burst on reaching five poison stacks; Compound Interest compounds 2% per wave to +20%; Golden Harvest pays a 5-money bonus every fifth clear. All tier-3 summaries show as SIG on the tower card, including Growth-tree L4 tier-3 unlock. Signature values scale with Growth specialization strength where applicable. Awaiting runtime review.",
-      "refs": [],
+      "needs": "Reload GameMaker with global.devMode=true and run a stage with a tower that has a saved specialization. Let it complete multiple shots through the strike frame; the previous local variable _spec_key fatal must not recur. Then test the tier-3 signatures: Deadeye crit with a second target, Wildfire burn-kill with a neighbor within 64px, Tenderizer against a vulnerable foe, Ripper against a bleeding foe, Potent Venom at five poison stacks, and Marigold wave 2+ / wave 5. Also check Daisy Rapid Bloom at signature tier: PRJ 2 with the same TGT and two direct-hit packets per selected target. Missing signature effects, a changed target cap, lethal extra hits, or any runtime error falsifies the fix.",
+      "notes": "Fixed a runtime scope bug caught by Rayu: _spec_key was local to if(state_time == 0), but scr_tower_shoot is invoked again on later frames at the strike. obj_tower now initializes shot_spec_key, and each shot captures its specialization there for hit, status, and signature callbacks. Added LL-095. Full YoYoGames gm-cli Linux VM compile passes with runtime 2026.0.0.23 and reports no GML errors. The runtime re-test remains with Rayu.",
+      "refs": [
+        "scripts/scr_tower_shoot/scr_tower_shoot.gml",
+        "objects/obj_tower/Create_0.gml",
+        "scripts/scr_tower_specs/scr_tower_specs.gml",
+        "lessons_learned.md"
+      ],
       "created": "2026-10-30",
-      "updated": "2026-10-30",
+      "updated": "2026-10-31",
       "done": null
     },
     {

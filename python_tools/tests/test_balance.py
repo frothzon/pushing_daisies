@@ -1006,6 +1006,7 @@ class SlowTowerTests(unittest.TestCase):
         tw = sim.SimTower(
             cell=(0, 0), tower=slow, level=1, x=200.0, y=200.0,
             hit=1.0, rate=slow.fire_rate, reach=300.0, targets=1,
+            projectiles=1, knockback=0.0,
             time_offset=int(round(s.cycle_obj.offset_mean)), mode="real")
         s.towers.append(tw)
         s.monsters.append(sim.SimMonster(

@@ -40,9 +40,8 @@ function scr_level_boot() {
 	             "  (plants, monsters, gravestones)");
 
 	/// ---- the Spriter players (scr_scml_rig) ---------------------------
-	/// A fresh room entry means every old player's monster is gone: remove
-	/// them all, clear the caches, and PRELOAD the fifteen definitions so
-	/// no first spawn ever pays the decode.  Runs on EVERY entry (LL-049),
-	/// so a room_restart() can never inherit a stale player list.
+	/// A fresh room entry means every old player's monster is gone. Reset
+	/// players/caches here, then let the loading state prepare one creature
+	/// per Step before gameplay can spawn it (LL-049).
 	zomb_scml_reset();
 }

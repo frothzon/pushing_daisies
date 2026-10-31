@@ -35,7 +35,7 @@ function initialize_game() {
 	/// Every UI log line is gated on this (ui_log, scr_meta_log, print), so
 	/// it is the switch that makes the log the thing to read after a reload.
 	/// Flip it back to false when the layer is trusted.
-	global.devMode = false;   /// set developer mode
+	global.devMode = true;   /// set developer mode
 
 	/// One line that PROVES the fonts mapped, for global.devMode = true.
 	/// Nothing else in the game can show a font metric.  Read it as:
@@ -101,6 +101,14 @@ function initialize_game() {
 	/// never stop the game starting, so this always hands back a usable
 	/// struct - the worst case is a fresh save.
 	global.meta = scr_load_meta();
+	/// Upgrade existing saves too: a player who already owns the full
+	/// roster should not need another Seed reward to receive overflow.
+	var _loaded_seed_overflow = seeds_convert_overflow();
+	if(_loaded_seed_overflow > 0){
+		var _overflow_saved = scr_save_meta();
+		scr_meta_log("SAVE", "loaded seed overflow converted clovers=+",
+		             _loaded_seed_overflow, " persisted=", _overflow_saved);
+	}
 
 	/// The loadout is the four towers the player brought into this run.
 	///

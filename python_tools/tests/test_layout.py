@@ -780,9 +780,12 @@ class GardenCardTests(unittest.TestCase):
     def test_the_grid_holds_six_numbers_in_two_columns_of_three(self):
         stats = self.read(TOWER_STATS_REL)
         combat = stats[stats.index("var _d = tower_data_at_level("):]
-        labels = re.findall(r'label\s*:\s*"([A-Z]+)"', combat)
-        self.assertEqual(["DAMAGE", "RATE", "DPS", "RANGE", "TARGETS", "PRICE"],
-                         labels)
+        labels = re.findall(
+            r'label\s*:\s*ui_text(?:_format)?\("meta_tower_stat_([a-z_]+)"',
+            combat)
+        self.assertEqual(
+            ["damage", "rate", "dps", "range", "targets_projectiles", "price"],
+            labels)
 
         screen = self.read(META_SCREEN_REL)
         self.assertIn("(_i mod 2)", screen, "the grid is no longer two columns")

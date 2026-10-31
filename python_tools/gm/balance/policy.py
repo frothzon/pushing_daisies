@@ -50,14 +50,15 @@ from .tables import Tower
 class Buy:
     """One purchase: a tower, in a cell, at a level, and what it is worth.
 
-    TWO dps figures, because ``damage x rate x targets`` is a claim about
-    CONGESTION:
+    TWO dps figures, because ``damage x rate x targets x projectiles`` is a
+    claim about CONGESTION:
 
     * ``dps`` is the single-target figure with the fire CYCLE charged (LL-040) -
       what the tower does when one monster is in range, which is the normal case
       on a long route.  It is the only figure a budget should be ranked by, and
       it is what :func:`plan` ranks on;
-    * ``dps_multi`` is the roster's own ``x targets`` on its NOMINAL dps - what
+    * ``dps_multi`` is the roster's own ``targets x projectiles`` on its
+      NOMINAL dps - what
       the shop card and the in-game panel print, and what
       :attr:`effective_multi` has to reproduce when it models the panel.
 
@@ -75,7 +76,7 @@ class Buy:
     price: float
     dps: float                    # single-target, CYCLE CHARGED, at this level
     coverage: float               # 0 < c <= 1, the share of the route it shoots
-    dps_multi: float = 0.0        # damage x rate x targets (the panel's figure)
+    dps_multi: float = 0.0        # damage x rate x targets x projectiles
 
     @property
     def effective(self) -> float:
@@ -245,7 +246,10 @@ def plan(scene: Scene, money: float, cov: Optional[Coverage] = None,
          clover_damage: Optional[float] = None,
          clover_rate: Optional[float] = None,
          limit: Optional[int] = None, spread: bool = False,
-         standing: Sequence[Tuple[Cell, Tower, int]] = ()) -> Plan:
+         standing: Sequence[Tuple[Cell, Tower, int]] = (),
+         candy_damage: float = 0.0, candy_rate: float = 0.0,
+         candy_range: float = 0.0, candy_crit_chance: float = 0.0,
+         candy_crit_damage: float = 0.0) -> Plan:
     """Spend ``money`` on the best effective-dps-per-dollar the route allows.
 
     The greedy is the whole model of "optimal": every candidate is scored by
@@ -272,6 +276,11 @@ def plan(scene: Scene, money: float, cov: Optional[Coverage] = None,
     because a rung on an existing one is invisible to it - which is why the sim
     never upgraded anything.  Their cells count as taken.
 
+    The ``candy_*`` inputs are the currently active shared-axis bonuses. They
+    adjust the ranking and the build's estimate together; :class:`Sim` supplies
+    them from the same live-wave timer used by combat, so an expired Candy
+    cannot keep influencing purchases.
+
     Returns a :class:`Plan`.  Never overspends, never reuses a cell.
     """
     if clover_damage is None:
@@ -287,30 +296,50 @@ def plan(scene: Scene, money: float, cov: Optional[Coverage] = None,
     # the union of route samples already covered - only used when spread=True
     covered = frozenset()
 
+    def stats_at(t, lvl):
+        return scene.tables.tower_stats(
+            t, lvl, clover_damage, clover_rate,
+            scene.clover_crit_chance, scene.clover_crit_damage,
+            scene.growth_spec_rank)
+
+    def crit_at(t, lvl):
+        stats = stats_at(t, lvl)
+        chance = min(1.0, max(0.0, stats.crit_chance + candy_crit_chance))
+        damage = max(1.0, stats.crit_damage + candy_crit_damage)
+        return 1.0 + chance * (damage - 1.0)
+
     def dps_at(t, lvl):
-        return scene.tables.delivered_dps_at_level(
-            t, lvl, clover_damage, clover_rate, targets=1) * scene.expected_crit_multiplier(t)
+        stats = stats_at(t, lvl)
+        return scene.tables.cycle.dps(
+            stats.damage * (1.0 + candy_damage),
+            stats.fire_rate * (1.0 + candy_rate), targets=1,
+            projectiles=stats.projectiles) * crit_at(t, lvl)
+
+    def card_dps_at(t, lvl):
+        stats = stats_at(t, lvl)
+        return (stats.damage * stats.fire_rate * stats.targets
+                * stats.projectiles * (1.0 + candy_damage)
+                * (1.0 + candy_rate) * crit_at(t, lvl))
 
     def rng_at(t, lvl):
-        return scene.tables.data_at_level(t, lvl, clover_damage,
-                                          clover_rate)[2]
+        return stats_at(t, lvl).range * (1.0 + candy_range)
 
     # hoisted: the floor-level dps and range of every tower in the loadout.
     # `dps` is SINGLE-target with the fire CYCLE charged - the honest ranking
-    # key (LL-040) - and `dps_multi` keeps the roster's own `x targets` nominal,
+    # key (LL-040) - and `dps_multi` keeps the roster's own `targets x
+    # projectiles` nominal,
     # because that is the panel's belief and `effective_multi` has to model it.
     #
     # The ranking key MUST be the delivered figure: the cycle costs a fast
     # tower proportionally more than a slow one (1.97x on a Daisy Pusher
-    # against 1.16x on a Cannon Tulip), so ranking on `damage x rate x targets`
+    # against 1.16x on a Cannon Tulip), so ranking on nominal multi-hit DPS
     # would order the roster wrongly and the greedy would buy the wrong tower.
     options = []
     for t in scene.loadout:
         if t.price <= 0:
             continue
         dps = dps_at(t, scene.floor_level)
-        multi = scene.tables.dps_at_level(t, scene.floor_level,
-                                          clover_damage, clover_rate) * scene.expected_crit_multiplier(t)
+        multi = card_dps_at(t, scene.floor_level)
         options.append((t, dps, multi, rng_at(t, scene.floor_level)))
 
     # what is on the board, and what each of those is worth right now.  ONE
@@ -361,9 +390,7 @@ def plan(scene: Scene, money: float, cov: Optional[Coverage] = None,
                 if best is None or density > best[0]:
                     best = (density, cell, Buy(
                         cell, t, nxt, price, dps, c_cov,
-                        scene.tables.dps_at_level(t, nxt, clover_damage,
-                                                  clover_rate)
-                        * scene.expected_crit_multiplier(t)), rng)
+                        card_dps_at(t, nxt)), rng)
 
         if best is None:
             break

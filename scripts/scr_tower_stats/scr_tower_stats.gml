@@ -31,12 +31,12 @@ function tower_stat_lines(_name) {
 
 	if(tower_trait_get(_name,"passive",false)){
 		var _income = tower_wave_income(_name,1,tower_spec_saved(_name));
-		_out[0] = { label : "INCOME", value : "+$"+string_format(_income,1,2)+"/wave" };
-		_out[1] = { label : "LEVEL 1–2", value : "$1/wave" };
-		_out[2] = { label : "LEVEL 3–4", value : "$2/wave" };
-		_out[3] = { label : "LEVEL 5", value : "$3/wave" };
-		_out[4] = { label : "LEVEL 6–10", value : "+8%/level" };
-		_out[5] = { label : "PRICE", value : "$"+string(_e.price) };
+		_out[0] = { label : ui_text("meta_tower_stat_income"), value : ui_text_format("meta_tower_stat_income_value",{income:string_format(_income,1,2)}) };
+		_out[1] = { label : ui_text("meta_tower_stat_level_1_2"), value : "$1/wave" };
+		_out[2] = { label : ui_text("meta_tower_stat_level_3_4"), value : "$2/wave" };
+		_out[3] = { label : ui_text("meta_tower_stat_level_5"), value : "$3/wave" };
+		_out[4] = { label : ui_text("meta_tower_stat_level_6_10"), value : ui_text("meta_tower_stat_mastery_bonus") };
+		_out[5] = { label : ui_text("meta_tower_stat_price"), value : "$"+string(_e.price) };
 		return _out;
 	}
 
@@ -47,14 +47,16 @@ function tower_stat_lines(_name) {
 	var _dmg  = _d[TOWER.damage],
 	    _rate = _d[TOWER.fire_rate],
 	    _tgt  = _d[TOWER.targets],
-	    _dps  = _dmg * _rate;
+	    _projectiles = array_length(_d) > TOWER.projectiles && is_real(_d[TOWER.projectiles])
+	                   ? max(1,round(_d[TOWER.projectiles])) : 1,
+	    _dps  = _dmg * _rate * _projectiles;
 
-	_out[0] = { label : "DAMAGE",  value : string(round(_dmg)) };
-	_out[1] = { label : "RATE",    value : string(_rate) + "/s" };
-	_out[2] = { label : "DPS",     value : string(round(_dps)) };
-	_out[3] = { label : "RANGE",   value : string(round(_d[TOWER.range])) };
-	_out[4] = { label : "TARGETS", value : string(_tgt) };
-	_out[5] = { label : "PRICE",   value : "$" + string(_e.price) };
+	_out[0] = { label : ui_text("meta_tower_stat_damage"), value : string(round(_dmg)) };
+	_out[1] = { label : ui_text("meta_tower_stat_rate"), value : ui_text_format("meta_tower_stat_rate_value",{rate:string(_rate)}) };
+	_out[2] = { label : ui_text("meta_tower_stat_dps"), value : string(round(_dps)) };
+	_out[3] = { label : ui_text("meta_tower_stat_range"), value : string(round(_d[TOWER.range])) };
+	_out[4] = { label : ui_text("meta_tower_stat_targets_projectiles"), value : string(_tgt)+" / "+string(_projectiles) };
+	_out[5] = { label : ui_text("meta_tower_stat_price"), value : "$" + string(_e.price) };
 	return _out;
 }
 
@@ -120,11 +122,13 @@ function tower_stat_state(_name) {
 	var _e = tower_entry_find(_name);
 	if(is_undefined(_e)) return "";
 
-	if(tower_owned(_name))       return "owned";
-	if(!tower_gate_met(_name))   return "locked - clear region " + string(tower_unlock_gate(_name));
+	if(tower_owned(_name))       return ui_text("meta_tower_owned");
+	if(!tower_gate_met(_name))   return ui_text_format("meta_tower_locked_region",{region:string(tower_unlock_gate(_name))});
 
-	var _cost = string(_e.unlock) + " seeds";
-	return tower_can_unlock(_name) ? _cost + " - click to buy" : _cost;
+	var _cost = string(_e.unlock);
+	return tower_can_unlock(_name)
+	       ? ui_text_format("meta_tower_seed_buy",{cost:_cost})
+	       : ui_text_format("meta_tower_seed_cost",{cost:_cost});
 }
 
 /// Is the buy line good news?  Owned and affordable are lime; everything else

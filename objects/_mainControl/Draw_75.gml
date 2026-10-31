@@ -16,27 +16,33 @@ if(grab_surf){
     pause_surf = scr_drawBlurScreen();
 }
 
-if(state == scr_main_startup){
+if(variable_instance_exists(id, "load_visible") && load_visible){
     var _w = display_get_gui_width(),
         _h = display_get_gui_height();
     draw_background_stretched(bck_loading,0,0,_w,_h);
     
     /// draw load bar
-    var _x2 = lerp(1,_w-124,load_amount);
+    var _bar_width = max(_w - 132, 1),
+        _fill_width = max(1, _bar_width * clamp(load_amount, 0, 1));
     draw9slice(spr_loadBack,64,_h-64,_w-128,32,c_white,1);
-    draw9slice(spr_loadFront,66,_h-62,_x2,28,c_white,1);
+    draw9slice(spr_loadFront,66,_h-62,_fill_width,28,c_white,1);
     
     /// draw load text
     draw_set_font(fnt_size32);
     draw_set_halign(fa_center);
-    draw_set_halign(fa_middle);
+    draw_set_valign(fa_middle);
     ////
-    var _txt = "LOADING...";
+    var _txt = "LOADING... " + string(round(clamp(load_amount, 0, 1) * 100)) + "%";
     draw_text_outline(_w*0.5,_h*0.5,_txt,c_white,c_black,3);
     ////
     draw_set_halign(fa_left);
-    draw_set_halign(fa_top);
+    draw_set_valign(fa_top);
     draw_set_font(fnt_size16);
+    load_draw_frames++;
+    if(!load_draw_reported){
+        load_draw_reported = true;
+        scr_meta_log("LEVEL", "loading screen Draw GUI End");
+    }
 }
 
 /// draw pause

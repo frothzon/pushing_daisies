@@ -16,7 +16,8 @@
 /// THE HALF-RATE POSE: set_pose_rate(player, SCML_POSE_HZ, phase) - the
 /// playback clock and events still advance EVERY step, only the bone/part
 /// evaluation drops to 30hz, and each monster carries its own phase so a
-/// crowd's evaluations spread across frames instead of spiking one.
+/// crowd's evaluations spread across frames instead of spiking one. Draw
+/// interpolates the last two part samples; attachment queries stay sampled.
 
 /// The collection key the Spriter GML Interface gave the zombie import.
 #macro SCML_COLLECTION "zombies"
@@ -57,6 +58,29 @@ function zomb_scml_signed_angle(_angle) {
 	while(_angle > 180) _angle -= 360;
 	while(_angle < -180) _angle += 360;
 	return _angle;
+}
+
+function zomb_scml_repair_angle_spins(_keys, _key_count, _stride, _looping) {
+	if(!is_array(_keys) || !is_real(_key_count) || _key_count <= 0
+	   || !is_real(_stride) || _stride < 11
+	   || _key_count * _stride > array_length(_keys)) return false;
+
+	for(var _k = 0; _k < _key_count; _k++){
+		var _next = _k + 1;
+		if(_next >= _key_count){
+			if(_looping) _next = 0;
+			else {
+				_keys[_k * _stride + 10] = 0;
+				continue;
+			}
+		}
+
+		var _base = _k * _stride,
+		    _next_base = _next * _stride,
+		    _delta = zomb_scml_signed_angle(_keys[_next_base + 3] - _keys[_base + 3]);
+		_keys[_base + 10] = abs(_delta) < 0.001 ? 0 : sign(_delta);
+	}
+	return true;
 }
 
 function zomb_scml_find_bone_timeline(_timelines, _name) {
@@ -338,18 +362,21 @@ function zomb_scml_walk_leg_fix(_entity) {
 			}
 
 			if(_upper_changed){
+				zomb_scml_repair_angle_spins(_upper_keys, _upper_timeline.key_count, _stride, _clip.looping);
 				variable_struct_set(_upper_copy, "keys", _upper_keys);
 				_timelines[_u] = _upper_copy;
 				_upper_bones_changed++;
 				_clip_changed = true;
 			}
 			if(_lower_changed){
+				zomb_scml_repair_angle_spins(_lower_keys, _lower_timeline.key_count, _stride, _clip.looping);
 				variable_struct_set(_lower_copy, "keys", _lower_keys);
 				_timelines[_lower_index] = _lower_copy;
 				_lower_bones_changed++;
 				_clip_changed = true;
 			}
 			if(_foot_changed){
+				zomb_scml_repair_angle_spins(_foot_keys, _foot_timeline.key_count, _stride, _clip.looping);
 				variable_struct_set(_foot_copy, "keys", _foot_keys);
 				_timelines[_foot_index] = _foot_copy;
 				_foot_bones_changed++;
@@ -612,7 +639,7 @@ function zomb_scml_state() {
 /// Draw the calling monster as its rigged player. Auto mode draws the full
 /// rig normally and clips only the above-water half for a monster in water.
 /// Explicit submerged and reflection modes share the same clipping and tint.
-function zomb_scml_draw(_rig, _mode = SCML_DRAW_AUTO, _reflection_alpha = 0.35) {
+function zomb_scml_draw(_rig, _mode = SCML_DRAW_AUTO, _reflection_alpha = 0.35, _tint = undefined) {
 	if(!zomb_scml_active(_rig)) return false;
 	if(_mode == SCML_DRAW_AUTO){
 		_mode = (variable_instance_exists(id, "inWater") && inWater)
@@ -650,11 +677,17 @@ function zomb_scml_draw(_rig, _mode = SCML_DRAW_AUTO, _reflection_alpha = 0.35) 
 		zomb_scml_bounds(_rig);
 	}
 
-	var _uniform = zomb_scml_tint_uniform(),
-		_tint = status_tint();
+	if(is_undefined(_tint)) _tint = status_tint();
+	var _uniform = -1;
+	/// White is the common case: avoid switching to a custom shader when no
+	/// status tint needs to be applied to this rig.
+	if(_tint != c_white) _uniform = zomb_scml_tint_uniform();
 	if(_uniform >= 0){
 		shader_set(shd_scml_tint);
 		shader_set_uniform_color(_uniform, _tint, 1);
+	} else {
+		/// Keep the draw state local even when this rig needs no custom tint.
+		shader_reset();
 	}
 
 	var _previous_scissor = undefined;
@@ -737,26 +770,52 @@ function zomb_scml_remove() {
 /// so sprite_get_bbox_* is their painted-pixel box, not a union of animation
 /// frames. The API's part x/y is the SCML pivot; pivot_x/y are normalized on
 /// the canvas, with pivot_y measured up from the bottom.
-function zomb_scml_part_alpha_bounds(_part) {
-	if(!is_struct(_part)) return undefined;
-	var _required = ["sprite", "width", "height", "pivot_x", "pivot_y", "x", "y"];
-	for(var _i = 0; _i < array_length(_required); _i++){
-		if(!variable_struct_exists(_part, _required[_i])) return undefined;
+function zomb_scml_sprite_alpha_bbox(_sprite) {
+	if(!sprite_exists(_sprite)) return undefined;
+	if(!variable_global_exists("scml_sprite_alpha_bbox")
+	   || !is_struct(global.scml_sprite_alpha_bbox)){
+		global.scml_sprite_alpha_bbox = {};
+	}
+	var _key = string(_sprite);
+	if(variable_struct_exists(global.scml_sprite_alpha_bbox, _key)){
+		return global.scml_sprite_alpha_bbox[$ _key];
 	}
 
+	var _bbox = {
+		left: sprite_get_bbox_left(_sprite),
+		right: sprite_get_bbox_right(_sprite) + 1,
+		top: sprite_get_bbox_top(_sprite),
+		bottom: sprite_get_bbox_bottom(_sprite) + 1
+	};
+	if(_bbox.right <= _bbox.left || _bbox.bottom <= _bbox.top) return undefined;
+	global.scml_sprite_alpha_bbox[$ _key] = _bbox;
+	return _bbox;
+}
+
+/// Bounds one active local pose. The pose array is read-only here; the root
+/// position is applied without cloning each part struct (SCML-custom).
+function zomb_scml_part_alpha_bounds(_part, _root_x, _root_y) {
+	if(!is_struct(_part)) return undefined;
+	if(!variable_struct_exists(_part, "sprite")
+	   || !variable_struct_exists(_part, "width")
+	   || !variable_struct_exists(_part, "height")
+	   || !variable_struct_exists(_part, "pivot_x")
+	   || !variable_struct_exists(_part, "pivot_y")
+	   || !variable_struct_exists(_part, "x")
+	   || !variable_struct_exists(_part, "y")) return undefined;
+
 	var _spr = _part.sprite;
-	if(!sprite_exists(_spr)) return undefined;
 
 	var _width = _part.width,
 		_height = _part.height,
 		_pivot_x = _part.pivot_x,
 		_pivot_y = _part.pivot_y,
-		_x = _part.x,
-		_y = _part.y;
+		_x = _part.x + _root_x,
+		_y = _root_y - _part.y;
 	if(!is_real(_width) || _width <= 0) return undefined;
 	if(!is_real(_height) || _height <= 0) return undefined;
 	if(!is_real(_pivot_x) || !is_real(_pivot_y)) return undefined;
-	if(!is_real(_x) || !is_real(_y)) return undefined;
+	if(!is_real(_root_x) || !is_real(_root_y) || !is_real(_x) || !is_real(_y)) return undefined;
 
 	var _sx = 1,
 		_sy = 1,
@@ -765,11 +824,12 @@ function zomb_scml_part_alpha_bounds(_part) {
 	if(variable_struct_exists(_part, "scale_y") && is_real(_part.scale_y)) _sy = _part.scale_y;
 	if(variable_struct_exists(_part, "angle") && is_real(_part.angle)) _angle = _part.angle;
 
-	var _left = sprite_get_bbox_left(_spr),
-		_right = sprite_get_bbox_right(_spr) + 1,
-		_top = sprite_get_bbox_top(_spr),
-		_bottom = sprite_get_bbox_bottom(_spr) + 1;
-	if(_right <= _left || _bottom <= _top) return undefined;
+	var _bbox = zomb_scml_sprite_alpha_bbox(_spr);
+	if(!is_struct(_bbox)) return undefined;
+	var _left = _bbox.left,
+		_right = _bbox.right,
+		_top = _bbox.top,
+		_bottom = _bbox.bottom;
 
 	var _pivot_px = _pivot_x * _width,
 		_pivot_py = (1 - _pivot_y) * _height,
@@ -808,6 +868,9 @@ function zomb_scml_scale_fix(_entity, _sheet) {
 	if(!variable_global_exists("scml_fix_map") || !is_struct(global.scml_fix_map)){
 		global.scml_fix_map = {};
 	}
+	if(!variable_global_exists("scml_walk_bounds_map") || !is_struct(global.scml_walk_bounds_map)){
+		global.scml_walk_bounds_map = {};
+	}
 	if(variable_struct_exists(global.scml_fix_map, _entity)){
 		return global.scml_fix_map[$ _entity];
 	}
@@ -836,16 +899,20 @@ function zomb_scml_scale_fix(_entity, _sheet) {
 
 			/// sixteen poses across the walk clip; union the transformed
 			/// alpha bounds, not the much larger transparent part canvases
-			var _h_max = 0, _w_max = 0;
+			var _h_max = 0, _w_max = 0, _walk_bounds = undefined;
 			for(var _s = 0; _s < 16; _s++){
 				_sys.seek(_scratch, _dur * _s / 16);
 
 				var _min_x = 0, _max_x = 0, _min_y = 0, _max_y = 0,
-				    _any  = false;
-				for(var _p = 0; _p < array_length(_def.parts); _p++){
-					var _part = _sys.get_part_world(_scratch, _def.parts[_p]);
-					if(is_undefined(_part)) continue;
-					var _bounds = zomb_scml_part_alpha_bounds(_part);
+				    _any  = false,
+				    _parts = _sys.get_parts_pose(_scratch);
+				if(!is_array(_parts)) continue;
+				for(var _p = 0; _p < array_length(_parts); _p++){
+					var _part = _parts[_p];
+					if(!is_struct(_part)
+					   || !variable_struct_exists(_part, "active")
+					   || !_part.active) continue;
+					var _bounds = zomb_scml_part_alpha_bounds(_part, 0, 0);
 					if(is_undefined(_bounds)) continue;
 
 					if(!_any){
@@ -861,9 +928,18 @@ function zomb_scml_scale_fix(_entity, _sheet) {
 				if(_any){
 					_h_max = max(_h_max, _max_y - _min_y);
 					_w_max = max(_w_max, _max_x - _min_x);
+					if(is_undefined(_walk_bounds)){
+						_walk_bounds = {left:_min_x, right:_max_x, top:_min_y, bottom:_max_y};
+					}else{
+						_walk_bounds.left = min(_walk_bounds.left, _min_x);
+						_walk_bounds.right = max(_walk_bounds.right, _max_x);
+						_walk_bounds.top = min(_walk_bounds.top, _min_y);
+						_walk_bounds.bottom = max(_walk_bounds.bottom, _max_y);
+					}
 				}
 			}
 			_sys.remove_player(_scratch);
+			if(is_struct(_walk_bounds)) global.scml_walk_bounds_map[$ _entity] = _walk_bounds;
 
 			/// the target: the ORIGINAL walk sheet's art bbox, height the
 			/// anchor, width logged for eyeballing
@@ -899,11 +975,9 @@ function zomb_scml_scale_fix(_entity, _sheet) {
 }
 
 
-/// Boot/reset: remove every tracked player (their monsters died with the
-/// room they were in), clear the caches a re-import would change, and
-/// PRELOAD every definition - the interface doc's advice - so no first
-/// spawn ever pays the decode.  Called from scr_level_boot, which runs on
-/// EVERY entry to the stage room (LL-049).
+/// Boot/reset: clear stale players and caches, then queue the shared
+/// entity list. scr_main_startup prepares one entity per Step while the
+/// loading screen is visible (LL-049).
 function zomb_scml_reset() {
 	var _players = zomb_scml_players();
 	for(var _i = array_length(_players) - 1; _i >= 0; _i--){
@@ -914,14 +988,18 @@ function zomb_scml_reset() {
 	global.scml_spawn_count = 0;
 
 	global.scml_walk_leg_adjusted = {};
-	var _entities = zomb_scml_entities();
-	for(var _e = 0; _e < array_length(_entities); _e++){
-		zomb_scml().describe_entity(SCML_COLLECTION, _entities[_e]);
-		zomb_scml_walk_leg_fix(_entities[_e]);
-	}
+	global.scml_fix_map = {};
+	global.scml_walk_bounds_map = {};
+	global.scml_boot_entities = zomb_scml_entities();
+	global.scml_boot_cursor = 0;
+	global.scml_boot_loaded = 0;
+	global.scml_boot_done = (array_length(global.scml_boot_entities) == 0);
 
-	scr_meta_log("SCML", "boot: ", array_length(_entities),
-	             " entities preloaded  pose=", SCML_POSE_HZ, "hz");
+	scr_meta_log("SCML", "boot queued: ", array_length(global.scml_boot_entities),
+	             " entities; preparation runs per frame");
+	if(global.scml_boot_done){
+		scr_meta_log("SCML", "boot: 0 entities preloaded  pose=", SCML_POSE_HZ, "hz");
+	}
 }
 
 
@@ -1000,10 +1078,10 @@ function zomb_scml_water_scissor(_mode, _seam_y, _previous) {
 }
 
 /// Current posed rig footprint in room coordinates. It is measured from each
-/// part's painted alpha bbox and cached for this draw frame, shared by the HP
-/// bar and shadow pass instead of reading spr_mon's 32x32 placeholder.
+/// part's painted alpha bbox and cached for this draw frame for the shadow pass.
+/// The HP bar uses the stable walk envelope so its anchor does not follow the gait.
 function zomb_scml_bounds(_rig) {
-	if(!zomb_scml_active(_rig)) return undefined;
+	/// Draw, HP-bar, and shadow callers already confirmed an active rig.
 	var _rot = 0;
 	if(variable_instance_exists(id, "rot_angle") && is_real(rot_angle)) _rot = rot_angle;
 	var _fix = 1;
@@ -1031,16 +1109,19 @@ function zomb_scml_bounds(_rig) {
 	zomb_scml().set_transform(zomb_scml_player(), x, y, _rot,
 		_scale_x, _scale_y, _alpha);
 
-	var _definition = zomb_scml().describe_entity(SCML_COLLECTION, _rig.scml);
-	if(!is_struct(_definition)
-	   || !variable_struct_exists(_definition, "parts")
-	   || !is_array(_definition.parts)) return undefined;
+	/// The previous path asked get_part_world() for each named part. That
+	/// method scanned the whole pose array on every request (N scans of N
+	/// parts). Read the active pose array once, then measure each part once.
+	var _parts = zomb_scml().get_parts_pose(zomb_scml_player());
+	if(!is_array(_parts)) return undefined;
 
 	var _left = 0, _right = 0, _top = 0, _bottom = 0, _any = false;
-	for(var _i = 0; _i < array_length(_definition.parts); _i++){
-		var _part = zomb_scml().get_part_world(zomb_scml_player(), _definition.parts[_i]);
-		if(is_undefined(_part)) continue;
-		var _part_bounds = zomb_scml_part_alpha_bounds(_part);
+	for(var _i = 0; _i < array_length(_parts); _i++){
+		var _part = _parts[_i];
+		if(!is_struct(_part)
+		   || !variable_struct_exists(_part, "active")
+		   || !_part.active) continue;
+		var _part_bounds = zomb_scml_part_alpha_bounds(_part, x, y);
 		if(is_undefined(_part_bounds)) continue;
 		if(!_any){
 			_left = _part_bounds.left;
@@ -1069,4 +1150,138 @@ function zomb_scml_bounds(_rig) {
 		scr_meta_log("SCML", "bounds ", _rig.scml, " ", round(_right - _left), "x", round(_bottom - _top));
 	}
 	return scml_draw_bounds;
+}
+
+/// Stable root-relative walk envelope for the zombie HP bar. Unlike current
+/// pose bounds, this does not change as the legs cycle; it still follows the
+/// instance's current position, facing, rotation, and emergence scale.
+function zomb_scml_health_bounds(_rig) {
+	if(!is_struct(_rig)
+	   || !variable_struct_exists(_rig, "scml")
+	   || !is_string(_rig.scml)
+	   || !variable_global_exists("scml_walk_bounds_map")
+	   || !is_struct(global.scml_walk_bounds_map)
+	   || !variable_struct_exists(global.scml_walk_bounds_map, _rig.scml)) return undefined;
+
+	var _local = global.scml_walk_bounds_map[$ _rig.scml];
+	if(!is_struct(_local)
+	   || !variable_struct_exists(_local, "left")
+	   || !variable_struct_exists(_local, "right")
+	   || !variable_struct_exists(_local, "top")
+	   || !variable_struct_exists(_local, "bottom")
+	   || !is_real(_local.left) || !is_real(_local.right)
+	   || !is_real(_local.top) || !is_real(_local.bottom)) return undefined;
+
+	var _rotation = 0;
+	if(variable_instance_exists(id, "rot_angle") && is_real(rot_angle)) _rotation = rot_angle;
+	var _fix = 1;
+	if(variable_struct_exists(_rig, "scml_fix") && is_real(_rig.scml_fix)) _fix = _rig.scml_fix;
+	var _scale_x = image_xscale * _fix,
+	    _scale_y = image_yscale * _fix,
+	    _cos = dcos(_rotation),
+	    _sin = dsin(_rotation),
+	    _left = 0,
+	    _right = 0,
+	    _top = 0,
+	    _bottom = 0;
+
+	for(var _corner = 0; _corner < 4; _corner++){
+		var _local_x = ((_corner mod 2) == 0) ? _local.left : _local.right,
+		    _local_y = (_corner < 2) ? _local.top : _local.bottom,
+		    _dx = _local_x * _scale_x,
+		    _dy = _local_y * _scale_y,
+		    _world_x = x + _cos * _dx + _sin * _dy,
+		    _world_y = y - _sin * _dx + _cos * _dy;
+		if(_corner == 0){
+			_left = _world_x; _right = _world_x;
+			_top = _world_y; _bottom = _world_y;
+		}else{
+			_left = min(_left, _world_x); _right = max(_right, _world_x);
+			_top = min(_top, _world_y); _bottom = max(_bottom, _world_y);
+		}
+	}
+	return {left:_left, right:_right, top:_top, bottom:_bottom};
+}
+
+/// The walk sheet paired with an SCML entity for its per-creature scale cache.
+function zomb_scml_walk_sheet(_entity) {
+	switch(_entity){
+		case "Grumble-Mulch":       return spr_grumble_walk;
+		case "dome-alone":          return spr_dome_alone_walk;
+		case "Professor-Cerebrisk": return spr_professor_walk;
+		case "Sir-Tusk-A-Lot":      return spr_tusk_walk;
+		case "Sub-Zero-Self-Esteem": return spr_zero_walk;
+		case "Newly-Turned":        return spr_newly_turned_walk;
+		case "Bog-Wader":           return spr_bog_wader_walk;
+		case "Sandblasted":         return spr_sand_blasted_walk;
+		case "Rootbound":           return spr_root_bound_walk;
+		case "Shroud":              return spr_shroud_walk;
+		case "Harvester":           return spr_harvester_walk;
+		case "Foreman-Rustlung":    return spr_foreman_rustlung_walk;
+		case "Orchid-Widow":        return spr_orchid_walk;
+		case "Bellringer":          return spr_bell_ringer_walk;
+		case "Gardener":            return spr_gardener_walk;
+	}
+	return -1;
+}
+
+/// Number of entity tasks queued by zomb_scml_reset().
+function zomb_scml_boot_count() {
+	if(!variable_global_exists("scml_boot_entities")) return 0;
+	if(!is_array(global.scml_boot_entities)) return 0;
+	return array_length(global.scml_boot_entities);
+}
+
+/// Process one creature's definition, walk correction, and scale measurement.
+/// Called once per loading Step so room creation never performs the full batch.
+function zomb_scml_boot_step() {
+	if(!variable_global_exists("scml_boot_done")) return true;
+	if(global.scml_boot_done) return true;
+	if(!variable_global_exists("scml_boot_entities")){
+		global.scml_boot_done = true;
+		return true;
+	}
+	if(!variable_global_exists("scml_boot_cursor")){
+		global.scml_boot_done = true;
+		return true;
+	}
+	if(!is_array(global.scml_boot_entities)){
+		global.scml_boot_done = true;
+		return true;
+	}
+	if(!variable_global_exists("scml_boot_loaded")) global.scml_boot_loaded = 0;
+
+	var _entities = global.scml_boot_entities,
+	    _cursor = global.scml_boot_cursor;
+	if(_cursor < 0 || _cursor >= array_length(_entities)){
+		global.scml_boot_done = true;
+		return true;
+	}
+
+	var _entity = _entities[_cursor];
+	if(is_string(_entity) && _entity != ""){
+		var _sys = zomb_scml(),
+		    _def = _sys.describe_entity(SCML_COLLECTION, _entity);
+		if(!is_undefined(_def)){
+			zomb_scml_walk_leg_fix(_entity);
+			global.scml_boot_loaded++;
+			var _sheet = zomb_scml_walk_sheet(_entity);
+			if(sprite_exists(_sheet)) zomb_scml_scale_fix(_entity, _sheet);
+		} else {
+			scr_meta_log("SCML", "WARNING boot could not describe ", _entity);
+		}
+	}
+
+	global.scml_boot_cursor = _cursor + 1;
+	if(global.scml_boot_cursor >= array_length(_entities)){
+		global.scml_boot_done = true;
+		if(global.scml_boot_loaded == array_length(_entities)){
+			scr_meta_log("SCML", "boot: ", global.scml_boot_loaded,
+			             " entities preloaded  pose=", SCML_POSE_HZ, "hz");
+		} else {
+			scr_meta_log("SCML", "boot: ", global.scml_boot_loaded, " of ",
+			             array_length(_entities), " entities preloaded  pose=", SCML_POSE_HZ, "hz");
+		}
+	}
+	return global.scml_boot_done;
 }

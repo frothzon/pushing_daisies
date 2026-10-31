@@ -304,7 +304,8 @@ function endless_offer_make(_tier, _box_number, _used_kinds) {
 	}
 	if(array_length(_available) == 0) _available = _kinds;
 	var _kind = _available[irandom(array_length(_available)-1)],
-	    _lo = 0, _hi = 0, _candy_id = "", _label = "", _convert = false;
+	    _lo = 0, _hi = 0, _candy_id = "", _label = "",
+	    _convert = false, _convert_mode = 0;
 
 	switch(_tier){
 		case 0: _lo=5; _hi=10; break;
@@ -342,19 +343,27 @@ function endless_offer_make(_tier, _box_number, _used_kinds) {
 	}
 	var _amount = max(1,round(irandom_range(_lo,_hi)*(1+0.15*_box_number)));
 
-	/// Preserve value after permanent sinks are all capped.
-	if(_kind == "seeds" && endless_towers_capped()){
+	/// Seed overflow is a slow 20:1 conversion once the roster is owned.
+	/// The separate 1:2 loot-box exchange is reserved for a fully capped garden.
+	if(_kind == "seeds" && endless_meta_capped()){
 		_convert = true;
+		_convert_mode = 2;
 		_label = ui_text("endless_label_seeds_to_clovers");
+	} else if(_kind == "seeds" && endless_towers_capped()){
+		_convert = true;
+		_convert_mode = 1;
+		_label = ui_text("endless_label_seed_overflow");
 	} else if(_kind == "clovers" && endless_meta_capped()){
 		_convert = true;
+		_convert_mode = 3;
 		_label = ui_text("endless_label_clovers_to_shards");
 	} else if(_kind != "candy" && _label == ""){
 		_label = _kind == "seeds" ? ui_text("endless_label_seeds")
 		        : (_kind == "clovers" ? ui_text("endless_label_clovers") : ui_text("endless_label_shards"));
 	}
 	return { tier:_tier, tier_name:endless_tier_name(_tier), kind:_kind,
-	         candy_id:_candy_id, amount:_amount, label:_label, convert:_convert };
+	         candy_id:_candy_id, amount:_amount, label:_label,
+	         convert:_convert, convert_mode:_convert_mode };
 }
 
 function endless_offer_generate(_box_number) {
@@ -453,7 +462,8 @@ function endless_box_step() {
 	    _amount = _offer.amount,
 	    _kind = _offer.kind;
 	if(_kind == "seeds"){
-		if(_offer.convert) clovers_add(_amount*2); else seeds_add(_amount);
+		if(_offer.convert_mode == 2) clovers_add(_amount*2);
+		else seeds_add(_amount);
 	} else if(_kind == "clovers"){
 		if(_offer.convert){
 			var _carry = variable_global_exists("meta") && is_struct(global.meta)
@@ -476,6 +486,7 @@ function endless_box_step() {
 	global.endless_box_offers = [];
 	scr_save_meta();
 	scr_meta_log("ENDLESS","box claimed kind=",_kind," amount=",_amount,
+	             " conversion=",_offer.convert_mode,
 	             " box=",global.endless_box_count,
 	             " next_wave=",global.endless_box_next_wave);
 	scr_level_request(LEVEL_STATE.SPAWN);
@@ -497,7 +508,7 @@ function endless_box_draw() {
 	draw_set_colour(c_white);
 	var _head = ui_text_format("endless_box_heading",{box:string(global.endless_box_count+1),wave:string(get_item_value(STATINV.waves))});
 	draw_text(_w*0.5,_h*0.17,_head);
-	ui_reg_text("lootbox","heading",_w*0.5,_h*0.17,_head,fa_center,fa_middle);
+	ui_reg_text("lootbox.heading",_w*0.5,_h*0.17,_head,fa_center,fa_middle);
 	for(var _i = 0; _i < array_length(_offers); _i++){
 		var _r = endless_box_option_rect(_i),
 		    _offer = _offers[_i],
@@ -510,17 +521,27 @@ function endless_box_draw() {
 		draw_set_colour(c_yellow);
 		draw_text((_r[0]+_r[2])*0.5,_r[1]+24,_offer.tier_name);
 		var _kind = _offer.kind,
-		    _icon = (_kind == "seeds") ? icon_currency(CURRENCY.SEEDS)
-		          : (_kind == "clovers") ? icon_currency(CURRENCY.CLOVERS)
-		          : (_kind == "shards") ? icon_currency(CURRENCY.SHARDS)
-		          : icon_candy(_offer.candy_id),
-		    _cy = _r[1]+(_r[3]-_r[1])*0.48;
+		    _icon = -1;
+		if(_kind == "seeds") _icon = icon_currency(CURRENCY.SEEDS);
+		else if(_kind == "clovers") _icon = icon_currency(CURRENCY.CLOVERS);
+		else if(_kind == "shards") _icon = icon_currency(CURRENCY.SHARDS);
+		else _icon = icon_candy(_offer.candy_id);
+		var _cy = _r[1]+(_r[3]-_r[1])
+		         * ((_kind == "seeds" && _offer.convert_mode == 1) ? 0.36 : 0.48);
 		if(sprite_exists(_icon)) icon_draw(_icon,(_r[0]+_r[2])*0.5,_cy,48,"endless_reward");
 		draw_set_font(fnt_size20);
 		draw_set_colour(c_white);
-		var _value = ui_text_format("endless_offer_amount",{amount:string(_offer.amount),label:_offer.label});
-		if(_offer.convert && _kind == "seeds"){
+		var _value = ui_text_format("endless_offer_amount",{amount:string(_offer.amount),label:_offer.label}),
+		    _overflow_remainder = "";
+		if(_offer.convert && _kind == "seeds" && _offer.convert_mode == 2){
 			_value = ui_text_format("endless_seeds_to_clovers",{amount:string(_offer.amount),converted:string(_offer.amount*2)});
+		} else if(_offer.convert && _kind == "seeds" && _offer.convert_mode == 1){
+			var _preview = seeds_overflow_preview(_offer.amount);
+			_value = ui_text_format("endless_seed_overflow_gain",{
+			    amount:string(_offer.amount),clovers:string(_preview.clovers)});
+			_overflow_remainder = ui_text_format("endless_seed_overflow_remainder",{
+			    remainder:string(_preview.remainder)});
+			draw_set_font(fnt_size12);
 		} else if(_offer.convert && _kind == "clovers"){
 			var _carry = variable_global_exists("meta") && is_struct(global.meta)
 			             && variable_struct_exists(global.meta,"endless_clover_shard_carry")
@@ -533,9 +554,17 @@ function endless_box_draw() {
 			         ? ui_text_format("endless_shards_meter_gain",{amount:string(_whole),remainder:string(_remainder)})
 			         : ui_text_format("endless_shards_meter",{amount:string(_total)});
 		}
-		draw_text((_r[0]+_r[2])*0.5,_r[3]-32,ui_clip_text(_value,_r[2]-_r[0]-12));
+		if(_overflow_remainder != ""){
+			var _value_x = (_r[0]+_r[2])*0.5;
+			draw_text(_value_x,_r[3]-42,ui_clip_text(_value,_r[2]-_r[0]-12));
+			draw_text(_value_x,_r[3]-26,_overflow_remainder);
+			ui_reg_text("lootbox.offer."+string(_i),_value_x,_r[3]-42,_value,fa_center,fa_middle);
+			ui_reg_text("lootbox.offer."+string(_i)+".remainder",_value_x,_r[3]-26,_overflow_remainder,fa_center,fa_middle);
+		} else {
+			draw_text((_r[0]+_r[2])*0.5,_r[3]-32,ui_clip_text(_value,_r[2]-_r[0]-12));
+			ui_reg_text("lootbox.offer."+string(_i),(_r[0]+_r[2])*0.5,_r[3]-32,_value,fa_center,fa_middle);
+		}
 		ui_reg_box("lootbox","offer."+string(_i),_r[0],_r[1],_r[2],_r[3]);
-		ui_reg_text("lootbox","offer",(_r[0]+_r[2])*0.5,_r[3]-32,_value,fa_center,fa_middle);
 	}
 	var _rr = endless_box_reroll_rect(),
 	    _enabled = global.endless_box_rerolls > 0,
@@ -547,7 +576,7 @@ function endless_box_draw() {
 	draw_set_font(fnt_size16);
 	draw_text((_rr[0]+_rr[2])*0.5,(_rr[1]+_rr[3])*0.5,_rlabel);
 	ui_reg_box("lootbox","reroll",_rr[0],_rr[1],_rr[2],_rr[3]);
-	ui_reg_text("lootbox","reroll",(_rr[0]+_rr[2])*0.5,(_rr[1]+_rr[3])*0.5,_rlabel,fa_center,fa_middle);
+	ui_reg_text("lootbox.reroll",(_rr[0]+_rr[2])*0.5,(_rr[1]+_rr[3])*0.5,_rlabel,fa_center,fa_middle);
 	draw_set_halign(fa_left);
 	draw_set_valign(fa_top);
 	draw_set_font(fnt_size16);
@@ -561,7 +590,7 @@ function endless_finish(_reason,_leaked) {
 	if(variable_global_exists("endless_result_written")
 	&& is_bool(global.endless_result_written) && global.endless_result_written) return false;
 	var _wave = max(0,get_item_value(STATINV.waves)),
-	    _score = max(0,get_item_value(STATINV.points)),
+	    _run_score = max(0,get_item_value(STATINV.points)),
 	    _lives = max(0,get_item_value(STATINV.life)),
 	    _boxes = variable_global_exists("endless_box_count")
 	             && is_real(global.endless_box_count) ? global.endless_box_count : 0,
@@ -578,10 +607,10 @@ function endless_finish(_reason,_leaked) {
 		if(variable_struct_exists(global.meta,"endless_best_score")
 		&& is_real(global.meta[$ "endless_best_score"])) _best_score=global.meta[$ "endless_best_score"];
 		global.meta[$ "endless_best_wave"] = max(_best_wave,_wave);
-		global.meta[$ "endless_best_score"] = max(_best_score,_score);
+		global.meta[$ "endless_best_score"] = max(_best_score,_run_score);
 	}
 	var _new_best = (_wave > _best_wave),
-	    _new_score = (_score > _best_score),
+	    _new_score = (_run_score > _best_score),
 	    _final_best = max(_best_wave,_wave),
 	    _difficulty = variable_global_exists("difficulty") && is_real(global.difficulty)
 	                  ? global.difficulty : DIFFICULTY.NORMAL;
@@ -590,7 +619,7 @@ function endless_finish(_reason,_leaked) {
 		region:0, stage:0, difficulty:_difficulty, lives:_lives,
 		leaked:is_real(_leaked) ? _leaked : 0,
 		seeds:_trickle_seeds, clovers:_trickle_clovers, badges:"",
-		waves:_wave, score:_score, best_wave:_final_best, boxes:_boxes
+		waves:_wave, score:_run_score, best_wave:_final_best, boxes:_boxes
 	};
 	global.endless_result_written = true;
 	global.endless_active = false;
@@ -599,7 +628,7 @@ function endless_finish(_reason,_leaked) {
 	scr_music_stop();
 	scr_save_meta();
 	scr_meta_log("ENDLESS","ended reason=",_reason," wave=",_wave,
-	             " score=",_score," boxes=",_boxes," best_wave=",_final_best,
+	             " score=",_run_score," boxes=",_boxes," best_wave=",_final_best,
 	             " new_wave_best=",_new_best," new_score_best=",_new_score,
 	             " milestone seeds=",_trickle_seeds," clovers=",_trickle_clovers);
 	return true;

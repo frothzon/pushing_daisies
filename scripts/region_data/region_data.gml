@@ -33,25 +33,26 @@
 /// region 1's stage shape, which means these five curves are the numbers
 /// their stages were built against from the first play - not a promise.
 ///
-/// These curve values were first-pass assumptions for regions 2-6, carried from
-/// region 1's original curve factor. Normal simulation has now replaced that
-/// assumption for regions 4-6; regions 2-3 still need a full ten-stage fit.
+/// The original endpoints for regions 2-6 were estimates copied from region 1.
+/// The current Normal model gate now covers all six regions: current endpoints
+/// 13 / 19 / 26 / 18 / 16 / 10 put all 60 stage rows inside the curve band.
+/// Three distinct progression-available four-tower builds cleared every row in
+/// 180 deterministic instant-buy simulations with 20 lives and zero leaks.
 ///
-/// Region 1's curve_end 13 was confirmed in play on Normal (2026-10-13). The
-/// later tower reprice and roster changes require separate current verification
-/// before treating that observation as a universal balance result.
+/// A seed-aware follow-up found one legal first-clear Normal path through all
+/// 60 rows: use the four starters in Region 1; buy Chillip for 25 seeds after
+/// the Region 1 gate and use it through R2 and R3 stage 7; after R3 stage 1,
+/// buy Thornamental for 90 seeds and use it from R3 stage 8 through R6 stage 10.
+/// The 60 deterministic instant-buy runs all cleared with 20 lives and zero
+/// leaks, at terrain z=6 with no clovers, candy, or specialization.
 ///
-/// NORMAL FIT + TIME-STEP SIM, 2026-10-30. On the current roster, the existing
-/// 34/42/52 ceilings leaked in regions 4/5 and emptied region 6's lives on its
-/// opening stage under the ceiling-buy policy. The fitter plus simulator tested
-/// candidate endpoints on all ten stage lengths and found clean, zero-leak
-/// clears at region 4 = 18, region 5 = 16, and region 6 = 10. Region 2 = 19 and
-/// region 3 = 26 remain the prior estimates; this pass only checked their
-/// opening stages. The simulation is model evidence, not live play. The instant-buy policy with
-/// only the four free starters still loses many late rows. Progression-available
-/// high-DPS loadouts clear stage 10 cleanly in each region, including three
-/// distinct examples per region; that is not a full all-stage, three-loadout
-/// proof, and Hard/Brutal remain unverified.
+/// This is a model result, not live player winnability or Hard/Brutal evidence.
+/// Starter-only loses late R2 and R3 stages, so progression unlocks matter.
+/// GameMaker play remains a separate review gate.
+
+/// Region 1's curve_end 13 was also confirmed in play on Normal (2026-10-13).
+/// The later tower reprice and roster changes mean that observation is not a
+/// substitute for the current all-region model gate or a fresh player check.
 
 /// One biome.
 function region_row(_region, _name, _biome, _seeds,
@@ -119,7 +120,7 @@ function region_tower_range_multiplier(_region, _wave) {
 function region_terrain_style(_biome, _layer) {
 	var _atlas = spr_dirt_128x,
 	    _dark = make_colour_rgb(97, 63, 16),
-	    _light = make_colour_rgb(199, 193, 135),
+	    _lighting = make_colour_rgb(199, 193, 135),
 	    _fallback = false;
 
 	switch(_biome){
@@ -127,50 +128,50 @@ function region_terrain_style(_biome, _layer) {
 			if(_layer < 3){
 				_atlas = spr_dirt_128x;
 				_dark = make_colour_rgb(97, 63, 16);
-				_light = make_colour_rgb(199, 193, 135);
+				_lighting = make_colour_rgb(199, 193, 135);
 			} else if(_layer < 5){
 				_atlas = spr_sand_128x;
 				_dark = make_colour_rgb(128, 115, 45);
-				_light = c_orange;
+				_lighting = c_orange;
 			} else if(_layer < 9){
 				_atlas = spr_grass_128x;
 				_dark = make_colour_rgb(97, 63, 16);
-				_light = c_lime;
+				_lighting = c_lime;
 			} else {
 				_atlas = spr_thick_128x;
 				_dark = make_colour_rgb(97, 63, 16);
-				_light = c_yellow;
+				_lighting = c_yellow;
 			}
 			break;
 
 		case BIOME.SWAMP:
 			_atlas = spr_swamp_128x;
 			_dark = make_colour_rgb(59, 70, 48);
-			_light = make_colour_rgb(110, 122, 69);
+			_lighting = make_colour_rgb(110, 122, 69);
 			break;
 
 		case BIOME.DESERT:
 			_atlas = spr_desert_128x;
 			_dark = make_colour_rgb(138, 115, 80);
-			_light = make_colour_rgb(214, 195, 154);
+			_lighting = make_colour_rgb(214, 195, 154);
 			break;
 
 		case BIOME.JUNGLE:
 			_atlas = spr_jungle_128x;
 			_dark = make_colour_rgb(35, 58, 38);
-			_light = make_colour_rgb(79, 107, 52);
+			_lighting = make_colour_rgb(79, 107, 52);
 			break;
 
 		case BIOME.GRAVEYARD:
 			_atlas = spr_graveyard_128x;
 			_dark = make_colour_rgb(58, 63, 73);
-			_light = make_colour_rgb(118, 124, 116);
+			_lighting = make_colour_rgb(118, 124, 116);
 			break;
 
 		case BIOME.BLOOD_FIELDS:
 			_atlas = spr_blood_128x;
 			_dark = make_colour_rgb(74, 42, 40);
-			_light = make_colour_rgb(138, 59, 52);
+			_lighting = make_colour_rgb(138, 59, 52);
 			break;
 
 		default:
@@ -183,7 +184,7 @@ function region_terrain_style(_biome, _layer) {
 		_fallback = true;
 	}
 
-	return {atlas:_atlas, dark:_dark, light:_light, fallback:_fallback};
+	return {atlas:_atlas, dark:_dark, light:_lighting, fallback:_fallback};
 }
 
 /// How many waves a stage of this region has - THE wave rule.

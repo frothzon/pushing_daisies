@@ -107,6 +107,16 @@ and add its row to the index.
 | [LL-088](#ll-088) | Ordinary leaks cost zero lives without Vitality, and 25% Vitality prevents 75%; raw leak counts also differ from lives lost | FIXED |
 | [LL-089](#ll-089) | A range Candy changes targeting but the tower's light radius stays at its old size | WATCH |
 | [LL-090](#ll-090) | Active Candy timers cover the speed controls, while Blood Orange pity covers the stage stats | WATCH |
+| [LL-091](#ll-091) | Campaign seed totals do not match the per-stage awards, or a seed threshold is treated as an unlocked tower | FIXED |
+| [LL-092](#ll-092) | The balance sim ends a wave on the last kill, while the game still has a corpse playing its DIE animation | FIXED |
+| [LL-093](#ll-093) | Seeds stay inert after all towers are bought; Endless box seeds convert too early | FIXED |
+| [LL-094](#ll-094) | gm-cli says `Cannot set a constant ("_score") to a value`; a local identifier collides with an object resource | FIXED |
+| [LL-095](#ll-095) | `scr_tower_shoot` reads a local shot key on the strike frame, but it was declared only at state entry | FIXED |
+| [LL-096](#ll-096) | SCML bounds and shadow draws repeatedly searched every rig part each frame | FIXED |
+| [LL-097](#ll-097) | The stage-entry frame freezes before the loading screen can draw; room creation spends ~15 ms preloading all Spriter rigs | FIXED |
+| [LL-098](#ll-098) | Spriter feet jerk after leg correction even though the walk keys are dense and the game runs near 60 fps | FIXED |
+| [LL-099](#ll-099) | Zombie HP bars vibrate as the feet move, even though the zombie root follows a smooth path | FIXED |
+| [LL-100](#ll-100) | Enabling dev mode makes global initialization crash when `print()` reads `object_index` | FIXED |
 
 ---
 
@@ -1866,7 +1876,7 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 
 * For these one-frame Spriter part sprites, measure `sprite_get_bbox_*()` and transform the painted rectangle from the part's actual SCML pivot through its sampled scale and angle. Do not use the full canvas as the visible bounds, and do not treat a joint pivot as the rectangle centre.
 * Keep the resulting scale uniform on the whole rig. That preserves authored proportions while matching the visible art height to the legacy walk sheet.
-* Compare the measured `rig=` height and `fix=` in `META [SCML] normalize` with the on-screen creature. A plausible number is not proof that the pixels being measured are the pixels being drawn.
+* Compare the measured `rig=` height and `fix=` in `META [SCML] normalize` with the on-screen creature. A plausible number is not proof that the pixels being measured are the pixels being drawn. Pass explicit root coordinates to `zomb_scml_part_alpha_bounds`: (0, 0) for the scratch scale probe, and the monster's room position for its live bounds.
 
 **Files.** `scripts/scr_scml_rig/scr_scml_rig.gml`, `scripts/scr_scml_spriter_interface_system/scr_scml_spriter_interface_system.gml`, `sprites/spr_scmlsi_5173b77a_pelvis_art_237feb3a/spr_scmlsi_5173b77a_pelvis_art_237feb3a.yy`.
 
@@ -1961,6 +1971,148 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 **Rule.** Anchor the active Candy panel through a named flex node, reserve its maximum height clear of speed, weather, stats, tower card, and Endless HUD, and draw pity progress inside the same panel. Keep the layout check's node count and the Candy runtime acceptance criteria in sync.
 
 **Files.** `scripts/scr_candy_system/scr_candy_system.gml`, `scripts/scr_ui_layout_hud/scr_ui_layout_hud.gml`, `objects/_levelControl/Draw_64.gml`.
+
+---
+
+<a name="ll-091"></a>
+## LL-091 — Region base seeds undercount the stage-row economy
+
+**Look for.** Campaign seed totals such as 620 Normal / 3,100 Brutal, or claims that a tower is purchasable after reaching its seed cost even though its region gate is still closed.
+
+**Cause.** `region_data` stores a base seed value, but `stage_data` applies a ten-stage ladder: `B, B, B, B+1, B+1, B+1, B+2, B+2, B+2, B+5`. Multiplying only the regional base by ten undercounts all six regions. Also, first-clear seeds can reach 25 before the Region 1 boss clears `region_cleared(1)`, so affordability and unlock availability are separate conditions.
+
+**Rule.** Sum the authored `stage_row.seeds` values, apply the selected difficulty multiplier, and floor each repeat award per stage. For purchase timing, check both the seed balance and the tower's region gate; a threshold reached early does not bypass `region_cleared`.
+
+**Files.** `scripts/region_data/region_data.gml`, `scripts/stage_data/stage_data.gml`, `scripts/scr_meta_progress/scr_meta_progress.gml`, `scripts/scr_meta_unlock/scr_meta_unlock.gml`, `python_tools/gm/balance/tables.py`, `economy.md`, `goal.md`.
+
+**See also.** [LL-021](#ll-021), [LL-038](#ll-038), [LL-042](#ll-042)
+
+---
+<a name="ll-092"></a>
+## LL-092 — The balance sim ended waves before their corpses finished dying
+
+**Look for.** The sim starts its between-wave gate and pauses Candy timers on the last kill, but GameMaker continues the wave through the DIE animation.
+
+**Cause.** The sim removed a monster as soon as its life reached zero. In the game, `scr_zomb_death()` settles the kill and requests `ZOMB_STATE.DIE`; the `obj_mon` remains until `scr_zombie_die()` sees the non-looping sheet or SCML clip end. Both paths use `ZOMB_DIE_SECS`. `scr_level_wait()` starts the 354-frame clear gate only when `instance_number(obj_mon) == 0`, and `candy_run_wave_end()` is called at that same boundary.
+
+**Rule.** Settle money, damage, and kill effects immediately, but keep killed monsters as non-targetable corpses for the source-backed DIE duration. Start the clear gate and stop Candy ticking only after no live monsters or corpses remain. Leaks still remove monsters immediately.
+
+**Files.** `python_tools/gm/balance/{tables,sim}.py`, `scripts/scr_zomb_art/scr_zomb_art.gml`, `scripts/scr_zombie_die/scr_zombie_die.gml`, `scripts/scr_level_wait/scr_level_wait.gml`, `scripts/scr_candy_system/scr_candy_system.gml`.
+
+**See also.** [LL-079](#ll-079), [LL-080](#ll-080), [LL-087](#ll-087)
+
+
+---
+<a name="ll-093"></a>
+## LL-093 — Seeds stayed inert after the roster was complete, and box conversion started early
+
+**Look for.** The tower shop is fully owned but Seeds keep accumulating with no use, or an Endless Seed offer turns into two Clovers before the permanent upgrades are capped.
+
+**Cause.** The seed award path only incremented the saved balance, and an existing save could keep its old Seed balance until another reward arrived. Endless boxes separately used tower ownership as the trigger for the much stronger 1:2 exchange, although the economy reserves that exchange for a fully capped garden.
+
+**Rule.** On load and after the final tower unlock, convert each complete 20-seed group into one Clover; apply the same rule to every later Seed reward and preserve a remainder under 20. Convert Endless box Seeds at 1:2 only after the whole permanent garden is capped; show the actual 20:1 result and remainder before the choice.
+
+**Files.** `scripts/initialize_game/initialize_game.gml`, `scripts/scr_meta_seeds/scr_meta_seeds.gml`, `scripts/scr_meta_unlock/scr_meta_unlock.gml`, `scripts/scr_endless_mode/scr_endless_mode.gml`, `scripts/scr_ui_text/scr_ui_text.gml`, `economy.md` §2.3 and §7.4.
+
+**See also.** [LL-061](#ll-061), [LL-091](#ll-091)
+
+---
+<a name="ll-094"></a>
+## LL-094 — A local identifier collided with a GameMaker object resource
+
+**Look for.** `gm-cli compile` reports `Cannot set a constant ("_score") to a value` and malformed assignment at a comma in a `var` declaration, even though the local declaration looks valid.
+
+**Cause.** The project contains an object resource named `_score`. GML resolves that identifier as an asset constant, so assigning the local variable with the same name fails compilation.
+
+**Rule.** Avoid local names that match project asset names; use a distinct semantic name such as `_run_score`. Use `gm-cli compile` to catch compiler errors that function enumeration and text-based checks cannot detect.
+
+**Files.** `scripts/scr_endless_mode/scr_endless_mode.gml`, `objects/_score/_score.yy`.
+
+**See also.** [LL-005](#ll-005)
+
+---
+<a name="ll-095"></a>
+## LL-095 — A local declared at state entry does not survive the next Step call
+
+**Look for.** `local variable _spec_key(...) not set before reading it` in `scr_tower_shoot` on the strike frame, even though the variable was assigned when the swing began.
+
+**Cause.** `scr_tower_shoot` runs again on every Step. `_spec_key` was declared only inside `if(state_time == 0)`, so the next invocation had no local value when the delayed hit and signature callbacks read it.
+
+**Rule.** Any shot data needed across frames belongs on the tower instance: initialize it in Create, capture it when the shot starts, and read that persistent field on later frames. A local lasts only for its function invocation.
+
+**Files.** `scripts/scr_tower_shoot/scr_tower_shoot.gml`, `objects/obj_tower/Create_0.gml`.
+
+**See also.** [LL-003](#ll-003), [LL-054](#ll-054), [LL-062](#ll-062)
+
+---
+<a name="ll-096"></a>
+## LL-096 — Rig bounds rescanned every part for each part, in the draw and shadow hot paths
+
+**Look for.** A frame-rate drop with Spriter monsters, and the profiler shows `obj_mon` drawing or `_shadows_Draw_0` high. Bounds code loops every part name and calls `get_part_world()`, which itself scans the whole pose array; the tint shader also runs on rigs with no active tint.
+
+**Cause.** Each rig bounds pass performed N linear searches over N pose entries (quadratic work), cloned each matching pose, and queried the same static sprite alpha box every frame. Every untinted rig also switched to the custom tint shader and back. `obj_mon` inherits `_shadow`, so the bounds work feeds both the HP bar and the recurring shadow pass.
+
+**Rule.** Expose a read-only bulk pose view and scan active parts once. Cache immutable sprite alpha boxes by sprite id, use the stable sampled walk envelope for HP bars, and keep current-pose bounds for shadows. Keep the custom status shader off when the tint is white while restoring the default draw state.
+
+**Files.** `scripts/scr_scml_rig/scr_scml_rig.gml`, `scripts/scr_scml_spriter_interface_system/scr_scml_spriter_interface_system.gml`, `scripts/scr_scml_spriter_interface_system/Spriter_Interface_System.md`, `objects/obj_mon/obj_mon.yy`.
+
+**See also.** [LL-071](#ll-071), [LL-084](#ll-084)
+
+---
+<a name="ll-097"></a>
+## LL-097 — Room creation did fifteen Spriter preloads before the first loading-screen Draw
+
+**Look for.** Entering a stage appears frozen before the loading screen can draw. The GameMaker profile attributes about 15.6 ms (166.8% of a frame) to `rm_test.CreationCode`, and there is no progress update during the work.
+
+**Cause.** `scr_level_boot()` ran `zomb_scml_reset()` from Room Creation Code, and reset synchronously described and corrected every SCML entity in one event. The existing loader then prepared terrain in Steps, but its image and bar were only shown after that earlier batch completed. Monster scale measurement also repeated a full 16-pose pass over every part using nested per-part pose searches. After moving preparation into Steps, the loading panel could still be skipped when its state check changed early or be too brief to notice.
+
+**Rule.** Room Creation Code should only clear stale players and queue preparation. Let the main startup Step process one creature at a time, combine that count with terrain slices in the loading percentage, and show the first backdrop Draw before doing the work. Keep an explicit `load_visible` flag independent of the state method comparison, and require a short minimum display time after the work completes. The one-time `META [LEVEL] loading screen Draw GUI End` line proves that draw event ran; the screen still needs a visual check. During a scale probe, read one bulk pose snapshot and pass its scratch root explicitly. GameMaker's `room_goto` switches rooms at the end of the calling event; the engine's room transition itself is not a GML background task.
+
+**Files.** `rooms/rm_test/RoomCreationCode.gml`, `scripts/scr_level_boot/scr_level_boot.gml`, `scripts/scr_scml_rig/scr_scml_rig.gml`, `scripts/scr_main_startup/scr_main_startup.gml`, `objects/_mainControl/Draw_75.gml`, `sprites/bck_loading`.
+
+**See also.** [LL-049](#ll-049), [LL-084](#ll-084), [LL-096](#ll-096)
+
+---
+<a name="ll-098"></a>
+## LL-098 — Spriter feet jerk after leg correction even though the walk keys are dense and the game runs near 60 fps
+
+**Look for.** A zombie's feet snap between poses while the animation clock advances smoothly; the walk clip has dense keys and the rig is deliberately evaluated at 30 Hz.
+
+**Cause.** Two sampling details stacked up: the renderer held each evaluated pose for two display frames, and the runtime leg fix changed key angles without changing SCML's per-key `spin` direction. The stale spin could unwrap a corrected angle along the long route.
+
+**Rule.** After modifying an angle timeline, recompute each key's spin toward the next corrected key, including the final-to-first link of looping clips. Preserve the 30 Hz pose budget by interpolating the last two rendered part samples between evaluations; wait for two samples after a seek or clip change before blending. Attachment queries still report the latest evaluated pose.
+
+**Files.** `scripts/scr_scml_rig/scr_scml_rig.gml`, `scripts/scr_scml_spriter_interface_system/scr_scml_spriter_interface_system.gml`, `scripts/scr_scml_spriter_interface_system/Spriter_Interface_System.md`.
+
+**See also.** [LL-085](#ll-085), [LL-096](#ll-096)
+
+---
+<a name="ll-099"></a>
+## LL-099 — Zombie HP bars vibrate as the feet move, even though the zombie root follows a smooth path
+
+**Look for.** The health bar's left, right, or bottom edge shifts with a walk cycle while the monster's path and root position are steady.
+
+**Cause.** `obj_mon/Draw_73` anchored the bar to `zomb_scml_bounds()`, which measures the current animated pose. Arms and legs change that rectangle every sample, so the bar inherits gait motion.
+
+**Rule.** Union the painted alpha bounds over the existing walk-pose samples during rig preparation. Transform that fixed root-relative envelope by the monster's position, facing, rotation, and current scale for the health bar. Keep current-pose bounds for shadows, which should follow the image.
+
+**Files.** `scripts/scr_scml_rig/scr_scml_rig.gml`, `objects/obj_mon/Draw_73.gml`.
+
+**See also.** [LL-084](#ll-084), [LL-096](#ll-096)
+
+---
+<a name="ll-100"></a>
+## LL-100 — A debug print called during global initialization aborts startup
+
+**Look for.** `Variable <unknown_object>.object_index ... not set before reading it` in `print()` while a global initialization script runs with `global.devMode = true`.
+
+**Cause.** The project logger always read the instance-only `object_index` and `id` built-ins. A call from a global script has no object instance, so the diagnostic itself threw and stopped initialization.
+
+**Rule.** Guard `global.devMode` before reading it. Build a global-safe log prefix by default, and read instance built-ins only after checking the current `self` scope contains them. Diagnostics must work both from object events and from global/struct scopes.
+
+**Files.** `scripts/print/print.gml`, `scripts/scr_loadout/scr_loadout.gml`, `scripts/initialize_game/initialize_game.gml`.
+
+**See also.** [LL-002](#ll-002), [LL-003](#ll-003)
 
 ---
 ## Adding an entry

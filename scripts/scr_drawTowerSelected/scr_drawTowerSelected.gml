@@ -36,6 +36,9 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 	    _dmg = _data[TOWER.damage],
 	    _range = _data[TOWER.range],
 	    _targets = _data[TOWER.targets],
+	    _current_projectiles = array_length(_data) > TOWER.projectiles
+	                           && is_real(_data[TOWER.projectiles])
+	                           ? clamp(round(_data[TOWER.projectiles]),1,10) : 1,
 	    _base = variable_instance_exists(id, "base_data") ? base_data : undefined,
 	    _base_price = variable_instance_exists(id, "base_price") && is_real(base_price) ? base_price : 0,
 	    _stagger = variable_instance_exists(id, "time_offset") && is_real(time_offset) ? max(0, time_offset) : 4.5,
@@ -86,12 +89,15 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 	if(array_length(_next_data) > TOWER.crit_damage){
 		if(is_real(_next_data[TOWER.crit_damage])) _next_crit_multiplier_base = _next_data[TOWER.crit_damage];
 	}
-	var _next_spec_mods = tower_spec_modifiers(_name,_spec_key,_can_upgrade ? _level+1 : _level),
+	var _next_projectiles = array_length(_next_data) > TOWER.projectiles
+	                        && is_real(_next_data[TOWER.projectiles])
+	                        ? clamp(round(_next_data[TOWER.projectiles]),1,10) : 1,
+	    _next_spec_mods = tower_spec_modifiers(_name,_spec_key,_can_upgrade ? _level+1 : _level),
 	    _next_eff_rate = _fps / max(1, tower_cycle_frames(_next_data[TOWER.fire_rate], _return_seconds) + _stagger),
 	    _next_crit_chance = clamp(_next_crit_base + tower_trait_get(_name, "crit", 0) + _next_spec_mods.crit, 0, 1),
 	    _next_crit_multiplier = max(1, _next_crit_multiplier_base + tower_trait_get(_name, "crit_damage", 0) + _next_spec_mods.crit_damage),
-	    _current_dps = _dmg * _current_eff_rate * _crit_factor,
-	    _next_dps = _next_data[TOWER.damage] * _next_eff_rate
+	    _current_dps = _dmg * _current_eff_rate * _current_projectiles * _crit_factor,
+	    _next_dps = _next_data[TOWER.damage] * _next_eff_rate * _next_projectiles
 	                * (1 + _next_crit_chance * (_next_crit_multiplier - 1));
 
 	/// The card frame and heading.
@@ -135,14 +141,18 @@ function tower_card_draw_selected(_x, _y, _w, _h, _max_level) {
 		draw_text_outline(_x+176, _y+40,
 		    ui_text_format("tower_card_rate",{current:string_format(_current_eff_rate,1,2),change:_can_upgrade ? " -> "+string_format(_next_eff_rate,1,2) : ""}),
 		    c_white, c_black, 1);
-		draw_set_font(fnt_size16);
+		draw_set_font(fnt_size12);
 		draw_text_outline(_x+176, _y+60,
 		    ui_text_format("tower_card_targets",{
 		        current:string(_targets),
 		        change:_can_upgrade && _next_data[TOWER.targets] != _targets
-		              ? " -> "+string(_next_data[TOWER.targets]) : ""
+		              ? " -> "+string(_next_data[TOWER.targets]) : "",
+		        projectiles:string(_current_projectiles),
+		        projectile_change:_can_upgrade && _next_projectiles != _current_projectiles
+		                          ? " -> "+string(_next_projectiles) : ""
 		    }),
 		    c_white, c_black, 1);
+		draw_set_font(fnt_size16);
 		draw_text_outline(_x+12, _y+80,
 		    ui_text_format("tower_card_dps",{current:string(round(_current_dps)),change:_can_upgrade ? " -> "+string(round(_next_dps)) : ""}),
 		    c_yellow, c_black, 1);

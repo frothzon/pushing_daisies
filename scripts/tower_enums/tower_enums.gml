@@ -3,7 +3,7 @@ function tower_enums() {
 
 	enum TOWER{
 	    range, damage, fire_rate, effect, level, targets,
-	    crit_chance, crit_damage
+	    crit_chance, crit_damage, projectiles
 	};
 
 	/// The three slots of a tower's sprite_list, in the order the roster

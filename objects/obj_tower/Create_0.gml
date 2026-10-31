@@ -53,10 +53,12 @@ anim_reported = array(false, false, false);
 /// nothing reads another scope (AGENTS rule 6, LL-062).  It was called
 /// damage_calc, and scr_do_damage read it from here.
 shot_damage = 0;
+shot_projectiles = 1;
 shot_crit_chance = 0.05;
 shot_crit_multiplier = 1.50;
 shot_knockback = 0;
 shot_money_bonus = 0;
+shot_spec_key = ""; /// specialization path locked for this swing
 
 /// ---- the statuses THIS swing will land (scr_tower_shoot) -----------
 /// The creator assigns `name` AFTER instance_create, so this starts empty

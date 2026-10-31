@@ -52,8 +52,10 @@ function tower_unlock(_name) {
 
 	if(!is_struct(global.meta[$ "towers"])) global.meta[$ "towers"] = {};
 	global.meta[$ "towers"][$ _name] = true;
+	var _overflow_clovers = seeds_convert_overflow();
 	scr_meta_log("SEED", "unlocked tower '", _name, "' cost=", _c,
-	             " seeds_left=", seeds_get());
+	             " seeds_left=", seeds_get(),
+	             " overflow_clovers=+", _overflow_clovers);
 	return true;
 }
 

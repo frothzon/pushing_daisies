@@ -281,7 +281,10 @@ def cmd_roundtrip(args: argparse.Namespace) -> int:
     if args.paths:
         paths = [Path(p) for p in args.paths]
     else:
-        paths = sorted(root.glob("**/*.yy"))
+        # GameMaker's local tool cache can contain vendor .yy templates. They
+        # are not resources in this project and must not make the gate red.
+        paths = sorted(p for p in root.glob("**/*.yy")
+                       if ".gmcache" not in p.relative_to(root).parts)
         paths += sorted(root.glob("*.yyp"))
         paths += sorted(root.glob("*.resource_order"))
     ok = bad = 0
@@ -322,8 +325,24 @@ def cmd_balance(args: argparse.Namespace) -> int:
             print(line)
         return 0
 
+    selected_specializations = {}
+    for raw in args.specialization or []:
+        if "=" not in raw:
+            print(f"invalid --specialization {raw!r}; use TOWER=PATH", file=sys.stderr)
+            return 2
+        tower_name, path_key = (part.strip() for part in raw.rsplit("=", 1))
+        if not tower_name or not path_key:
+            print(f"invalid --specialization {raw!r}; use TOWER=PATH", file=sys.stderr)
+            return 2
+        if tower_name in selected_specializations:
+            print(f"duplicate --specialization for {tower_name!r}", file=sys.stderr)
+            return 2
+        selected_specializations[tower_name] = path_key
+
     progression = {
         "mastery": args.mastery,
+        "growth_spec_rank": args.growth_spec_rank,
+        "specializations": selected_specializations,
         "clover_damage": args.clover_damage,
         "clover_rate": args.clover_rate,
         "clover_crit_chance": args.clover_crit_chance,
@@ -358,7 +377,9 @@ def cmd_balance(args: argparse.Namespace) -> int:
                      (6, 1, "high-HP wave: Harvester"))
         print(report.rule(f"combat gate - {args.trials} seeded trials, Brutal"))
         gate_waves = args.max_waves if args.max_waves is not None else 5
-        print("   Fixed four-tower floor-level deployments, no specialization or candy, same route cells;")
+        setup = ("selected specialization paths" if selected_specializations
+                 else "no specialization")
+        print(f"   Fixed four-tower floor-level deployments, {setup}, no candy, same route cells;")
         print("   combat-only run (no purchases). Setup cost is shown separately.")
         print(f"   seeds {args.seed}..{args.seed + args.trials - 1}; first {gate_waves} waves per scenario")
         for region, stage, label in scenarios:
@@ -583,10 +604,30 @@ def cmd_balance(args: argparse.Namespace) -> int:
         from .balance import sim as bsim
         from .balance import terrain as bterrain
         scene = scene_for(args.difficulty)
+        candy_uses = []
+        for raw in args.candy or []:
+            parts = raw.split(":")
+            if len(parts) > 3 or not parts[0]:
+                print(f"invalid --candy {raw!r}; use id[:level[:uses]]", file=sys.stderr)
+                return 2
+            try:
+                level = int(parts[1]) if len(parts) > 1 else 1
+                count = int(parts[2]) if len(parts) > 2 else 1
+                scene.tables.candy(parts[0])
+            except (ValueError, btables.TableError) as err:
+                print(f"invalid --candy {raw!r}: {err}", file=sys.stderr)
+                return 2
+            if not 1 <= level <= 10 or count < 1:
+                print(f"invalid --candy {raw!r}; level is 1..10 and uses must be positive",
+                      file=sys.stderr)
+                return 2
+            candy_uses.append(bsim.CandyUse(parts[0], level, count))
         ter = bterrain.Terrain(args.z, "uniform")
         wants = ["real", "nominal"] if args.cycle == "both" else [args.cycle]
         runs = {mode: bsim.Sim(scene, ter=ter, cycle=mode, spend=args.spend,
-                               max_waves=args.max_waves, seed=args.seed).run()
+                               max_waves=args.max_waves, seed=args.seed,
+                               candies=candy_uses,
+                               candy_duration_rank=args.candy_duration_rank).run()
                 for mode in wants}
         lines = report.sim_report(runs[wants[0]], scene)
         lines += report.sim_findings(runs[wants[0]], scene)
@@ -614,7 +655,8 @@ def cmd_balance(args: argparse.Namespace) -> int:
                 problems.append(f"{name}: no slot can reach the route")
         print(f"   tables    {len(t.regions)} regions, {len(t.towers)} towers, "
               f"{len(t.monsters)}+{len(t.bosses)} creatures, "
-              f"{len(t.ladder)} ladder rungs")
+              f"{len(t.ladder)} ladder rungs, "
+              f"{len(t.specializations)} towers/{sum(len(paths) for paths in t.specializations.values())} specialization paths")
         print(f"   route     {round(scene.route_length)}px over "
               f"{len(scene.routes)} spawns, {scene.slots} slots")
         print(f"   waves     {len(rows)} projected for "
@@ -747,6 +789,10 @@ def build_parser() -> argparse.ArgumentParser:
                    choices=["Normal", "Hard", "Brutal"])
     p.add_argument("--mastery", type=int, choices=range(6), default=0,
                    help="garden mastery rank 0-5; raises tower arrival level and cap")
+    p.add_argument("--growth-spec-rank", type=int, choices=range(6), default=0,
+                   help="Growth Master Gardener rank 0-5; unlocks tier 3 at L4 and strengthens specs")
+    p.add_argument("--specialization", action="append", metavar="TOWER=PATH",
+                   help="sim/project/towers: choose a path by tower name, repeatable")
     p.add_argument("--clover-damage", type=_non_negative_fraction, default=0.0,
                    help="persistent tower damage bonus as a fraction (0.10 = +10%%)")
     p.add_argument("--clover-rate", type=_non_negative_fraction, default=0.0,
@@ -789,6 +835,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="sim/gate: stop after N waves instead of running the stage out (gate default 5)")
     p.add_argument("--seed", type=int, default=0,
                    help="sim/gate: seeded combat-effect rolls (default 0)")
+    p.add_argument("--candy", action="append", metavar="ID[:LEVEL[:USES]]",
+                   help="sim: add a Candy profile, e.g. red_licorice:10:2 (repeatable)")
+    p.add_argument("--candy-duration-rank", type=int, choices=range(11), default=0,
+                   help="sim: permanent duration track rank 0-10 (default 0)")
     p.add_argument("--trials", type=int, default=20,
                    help="gate: seeded repetitions per loadout and scenario")
     p.add_argument("--param", default="curve_end",

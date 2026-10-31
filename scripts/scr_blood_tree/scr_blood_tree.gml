@@ -2,17 +2,17 @@
 
 function blood_tree_nodes() {
 	return [
-		{ id:"blood_magnet", tier:1, name:"Blood Magnet", label:"Blood Magnet", ranks:1, cost:2,
-		  desc:"Pity progress fills 10% faster", pity_fill:0.10 },
-		{ id:"hemorrhagic_harvest", tier:2, name:"Hemorrhagic Harvest", label:"Hemorrhagic Harvest", ranks:1, cost:4,
-		  desc:"Pity progress fills 25% faster", pity_fill:0.25 },
-		{ id:"crimson_appetite", tier:3, name:"Crimson Appetite", label:"Crimson Appetite", ranks:1, cost:8,
-		  desc:"Elites have a 10% extra-shard chance", elite_extra:0.10 },
-		{ id:"blood_moon", tier:4, name:"Blood Moon", label:"Blood Moon", ranks:1, cost:12,
-		  desc:"10% chance per wave to double pity fill", moon_chance:0.10,
+		{ id:"blood_magnet", tier:1, name:"Blood Magnet", label:ui_text("blood_node_blood_magnet_name"), ranks:1, cost:2,
+		  desc:ui_text("blood_node_blood_magnet_desc"), pity_fill:0.10 },
+		{ id:"hemorrhagic_harvest", tier:2, name:"Hemorrhagic Harvest", label:ui_text("blood_node_hemorrhagic_harvest_name"), ranks:1, cost:4,
+		  desc:ui_text("blood_node_hemorrhagic_harvest_desc"), pity_fill:0.25 },
+		{ id:"crimson_appetite", tier:3, name:"Crimson Appetite", label:ui_text("blood_node_crimson_appetite_name"), ranks:1, cost:8,
+		  desc:ui_text("blood_node_crimson_appetite_desc"), elite_extra:0.10 },
+		{ id:"blood_moon", tier:4, name:"Blood Moon", label:ui_text("blood_node_blood_moon_name"), ranks:1, cost:12,
+		  desc:ui_text("blood_node_blood_moon_desc"), moon_chance:0.10,
 		  moon_fill:1.0 },
-		{ id:"crimson_garden", tier:5, name:"Crimson Garden", label:"Crimson Garden", ranks:1, cost:20,
-		  desc:"Unlocks special Blood Shard content", content:true }
+		{ id:"crimson_garden", tier:5, name:"Crimson Garden", label:ui_text("blood_node_crimson_garden_name"), ranks:1, cost:20,
+		  desc:ui_text("blood_node_crimson_garden_desc"), content:true }
 	];
 }
 

@@ -131,6 +131,7 @@ function tower_data_at_level(_base, _level, _clover_dmg, _clover_rate) {
 	if(!is_array(_base)) return undefined;
 
 	var _out = array_duplicate(_base);
+	if(array_length(_out) <= TOWER.projectiles) _out[TOWER.projectiles] = 1;
 	_out[TOWER.damage]    = _base[TOWER.damage]    * (1 + _clover_dmg)  * tower_level_damage(_level);
 	_out[TOWER.fire_rate] = _base[TOWER.fire_rate] * (1 + _clover_rate) * tower_level_firerate(_level);
 	_out[TOWER.range]     = _base[TOWER.range]                          * tower_level_range(_level);

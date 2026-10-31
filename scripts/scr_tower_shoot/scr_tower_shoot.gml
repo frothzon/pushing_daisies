@@ -1,4 +1,17 @@
-/// @description  scr_tower_shoot()
+/// @description Stop a multi-hit volley once its target has died.
+function tower_shot_target_alive(_target) {
+	if(!scr_isValidInstance(_target) || zomb_is_dying(_target)) return false;
+	var _alive = false;
+	with(_target){
+		if(variable_instance_exists(id,"data") && is_array(data)
+		&& array_length(data) > MON.life && is_real(data[MON.life])){
+			_alive = data[MON.life] > 0;
+		}
+	}
+	return _alive;
+}
+
+/// @description scr_tower_shoot()
 function scr_tower_shoot() {
 	/*
 	    shoot the object
@@ -34,10 +47,14 @@ function scr_tower_shoot() {
 	    swing_frame  = min(_period, _cap);
 	    frame_number = swing_frame;   /// kept: the logs and older readers name it
 	    image_speed  = scr_tower_animSpeed(TOWER_ANIM.attack, swing_frame);
-	    /// LOCKED at the shot, not read at the strike: a swing that has
-	    /// started is committed (LL-054), so an upgrade bought mid-swing
-	    /// lands on the NEXT shot.  This is also where crit will roll.
+	    /// Damage and projectile count lock at shot start (LL-054), so an
+	    /// upgrade bought mid-swing lands on the NEXT shot. Crit rolls once
+	    /// for each direct-hit packet at the strike.
 	    shot_damage  = data[TOWER.damage];
+	    shot_projectiles = 1;
+	    if(array_length(data) > TOWER.projectiles && is_real(data[TOWER.projectiles])){
+	        shot_projectiles = clamp(floor(data[TOWER.projectiles]),1,10);
+	    }
 	    /// Crit is locked with this swing and rolled per direct target. DoT
 	    /// uses scr_do_damage directly and never enters this block (goal.md 6).
 	    var _base_crit = 0.05,
@@ -48,9 +65,11 @@ function scr_tower_shoot() {
 	    if(array_length(data) > TOWER.crit_damage){
 	        if(is_real(data[TOWER.crit_damage])) _base_crit_damage = data[TOWER.crit_damage];
 	    }
-	    var _spec_key = variable_instance_exists(id,"specialization")
-	                    && is_string(specialization) ? specialization : "",
-	        _spec_mods = tower_spec_modifiers(name,_spec_key,data[TOWER.level]);
+	    /// This value survives later Step calls; a local declared in this
+	    /// entry block would be gone before the strike frame.
+	    shot_spec_key = variable_instance_exists(id,"specialization")
+	                    && is_string(specialization) ? specialization : "";
+	    var _spec_mods = tower_spec_modifiers(name,shot_spec_key,data[TOWER.level]);
 	    shot_crit_chance = clamp(_base_crit + tower_trait_get(name, "crit", 0)
 	                                      + _spec_mods.crit, 0, 1);
 	    shot_crit_multiplier = max(1, _base_crit_damage
@@ -66,7 +85,7 @@ function scr_tower_shoot() {
 	    /// re-read at the strike could describe a tower the player sold in
 	    /// between.  Locked at the shot for exactly the reason shot_damage is
 	    /// (LL-054): a swing that has started is committed.
-	    var _status_specs = tower_spec_shot_statuses(name,_spec_key,data[TOWER.level]);
+	    var _status_specs = tower_spec_shot_statuses(name,shot_spec_key,data[TOWER.level]);
 	    shot_statuses = [];
 	    for(var _ss = 0; _ss < array_length(_status_specs); _ss++){
 	        var _spec = _status_specs[_ss];
@@ -96,7 +115,7 @@ function scr_tower_shoot() {
 	    if(!shot_reported){
 	        shot_reported = true;
 	        print("TOWER  first shot  rate=", data[TOWER.fire_rate],
-	              "  period=", _period, "  swing=", swing_frame,
+	              "  projectiles=",shot_projectiles,"  period=", _period, "  swing=", swing_frame,
 	              "  strike=", fire_frame);
 	    }
 	}
@@ -145,10 +164,11 @@ function scr_tower_shoot() {
 	    /// point of the argument (LL-062).
 	    for(var _i = 0; _i < array_length(target); _i++){
 	        var _hit = target[_i];
-	        if(scr_isValidInstance(_hit)){
+	        for(var _projectile = 0; _projectile < shot_projectiles; _projectile++){
+	            if(!tower_shot_target_alive(_hit)) break;
 	            var _hit_damage = shot_damage,
 	                _signature_crit = tower_spec_signature_crit_bonus(
-	                    name,_spec_key,data[TOWER.level],_hit),
+	                    name,shot_spec_key,data[TOWER.level],_hit),
 	                _hit_crit_chance = clamp(shot_crit_chance+_signature_crit,0,1),
 	                _is_critical = (_hit_crit_chance > 0)
 	                               && (random(1) < _hit_crit_chance);
@@ -158,7 +178,7 @@ function scr_tower_shoot() {
 	                _hit_damage *= shot_crit_multiplier;
 	            }
 	            var _signature_damage = tower_spec_signature_damage_bonus(
-	                name,_spec_key,data[TOWER.level],_hit);
+	                name,shot_spec_key,data[TOWER.level],_hit);
 	            if(_signature_damage > 0){
 	                _hit_damage *= 1+_signature_damage;
 	                print("TOWER  signature Tenderizer exposed bonus=",
@@ -170,7 +190,7 @@ function scr_tower_shoot() {
 	            }
 	            scr_do_damage(target, _i, _hit_damage, _is_critical);
 	            if(_is_critical){
-	                tower_spec_signature_on_hit(name,_spec_key,data[TOWER.level],
+	                tower_spec_signature_on_hit(name,shot_spec_key,data[TOWER.level],
 	                    x,y,tower_effective_range(data[TOWER.range]),target,_hit_damage,true);
 	            }
 	        }
@@ -195,34 +215,36 @@ function scr_tower_shoot() {
 	            || !is_real(_effect.frames) || _effect.frames <= 0) continue;
 	            for(var _s = 0; _s < array_length(target); _s++){
 	                var _status_target = target[_s];
-	                if(scr_isValidInstance(_status_target)
-	                && random(1) < _effect.chance){
-	                    var _effect_mult = variable_struct_exists(_effect, "mult")
-	                                       && is_real(_effect.mult) ? _effect.mult : 1,
-	                        _effect_amount = variable_struct_exists(_effect, "amount")
-	                                         && is_real(_effect.amount) ? _effect.amount : 0;
-	                    if(_effect.kind == STATUS.SLOW){
-	                        var _slow_bonus=candy_active_magnitude("slow");
-	                        _effect_mult=max(0.05,1-(1-_effect_mult)*(1+_slow_bonus));
-	                    }
-	                    if(_effect.kind == STATUS.BURN){
-	                        _effect_amount *= 1+candy_active_magnitude("burn_damage");
-	                    }
-	                    var _poison_before = (_effect.kind == STATUS.POISON)
-	                        ? tower_spec_target_status_stacks(_status_target,STATUS.POISON) : 0;
-	                    status_apply(_status_target, _effect.kind, _effect_mult,
-	                                 _effect.frames, _effect_amount);
-	                    if(_effect.kind == STATUS.POISON){
-	                        tower_spec_signature_poison_burst(name,_spec_key,
-	                            data[TOWER.level],_status_target,_effect_amount,_poison_before);
-	                    }
-	                    if(_effect.kind == STATUS.BURN){
-	                        tower_spec_mark_wildfire(_status_target,name,_spec_key,
-	                            data[TOWER.level]);
-	                    }
-	                    if(_effect.kind == STATUS.BURN && name == "Kaboom Kalanchoe"){
-	                        with(_status_target){
-	                            fx_play(spr_kalanchoe_burn_marker,x,y-20,0.60,8,true);
+	                for(var _projectile = 0; _projectile < shot_projectiles; _projectile++){
+	                    if(!tower_shot_target_alive(_status_target)) break;
+	                    if(random(1) < _effect.chance){
+	                        var _effect_mult = variable_struct_exists(_effect, "mult")
+	                                           && is_real(_effect.mult) ? _effect.mult : 1,
+	                            _effect_amount = variable_struct_exists(_effect, "amount")
+	                                             && is_real(_effect.amount) ? _effect.amount : 0;
+	                        if(_effect.kind == STATUS.SLOW){
+	                            var _slow_bonus=candy_active_magnitude("slow");
+	                            _effect_mult=max(0.05,1-(1-_effect_mult)*(1+_slow_bonus));
+	                        }
+	                        if(_effect.kind == STATUS.BURN){
+	                            _effect_amount *= 1+candy_active_magnitude("burn_damage");
+	                        }
+	                        var _poison_before = (_effect.kind == STATUS.POISON)
+	                            ? tower_spec_target_status_stacks(_status_target,STATUS.POISON) : 0;
+	                        status_apply(_status_target, _effect.kind, _effect_mult,
+	                                     _effect.frames, _effect_amount);
+	                        if(_effect.kind == STATUS.POISON){
+	                            tower_spec_signature_poison_burst(name,shot_spec_key,
+	                                data[TOWER.level],_status_target,_effect_amount,_poison_before);
+	                        }
+	                        if(_effect.kind == STATUS.BURN){
+	                            tower_spec_mark_wildfire(_status_target,name,shot_spec_key,
+	                                data[TOWER.level]);
+	                        }
+	                        if(_effect.kind == STATUS.BURN && name == "Kaboom Kalanchoe"){
+	                            with(_status_target){
+	                                fx_play(spr_kalanchoe_burn_marker,x,y-20,0.60,8,true);
+	                            }
 	                        }
 	                    }
 	                }

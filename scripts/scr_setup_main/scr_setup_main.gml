@@ -20,9 +20,17 @@ function scr_setup_main() {
 	/// loading
 	load_amount = 0;
 	load_finished = false;
+	load_visible = true;
+	load_draw_reported = false;
+	load_draw_frames = 0;
+	load_min_draws = 0;
 
-	load_counter = 0
+	load_counter = 0;
 	load_max = 0;
+	load_rig_counter = 0;
+	load_rig_max = 0;
+	load_map_ready = false;
+	load_seed = 0;
 	load_bg = bck_tile_dirt;
 	load_color = c_white;
 

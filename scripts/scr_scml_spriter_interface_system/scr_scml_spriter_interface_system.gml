@@ -385,6 +385,9 @@ function SpriterInterfaceSystem() {
     self.root_pose = [0, 0, 0, 1, 1, 1];
     self.sample = array_create(9, 0);
     self.object_pose = [];
+    self.render_pose_previous = [];
+    self.render_pose_sampled = false;
+    self.render_pose_ready = false;
     self.image_overrides = {};
     self.bone_overrides = {};
     self.part_overrides = {};
@@ -396,7 +399,26 @@ function SpriterInterfaceSystem() {
     self.deferred = [];
     self.draw_debug = false;
     self._clip = function() { return self.clip_index < 0 ? undefined : self.definition.animations[self.clip_index]; };
-    self._set_time = function(_evaluate = true) {
+    self._snapshot_render_pose = function() {
+        var _count = array_length(self.object_pose),
+            _stride = 9,
+            _previous = array_create(_count * _stride, 0);
+        for(var _i = 0; _i < _count; ++_i) {
+            var _pose = self.object_pose[_i], _base = _i * _stride;
+            if (!is_struct(_pose) || !variable_struct_exists(_pose, "active") || !_pose.active) continue;
+            _previous[_base] = 1;
+            _previous[_base + 1] = _pose.x;
+            _previous[_base + 2] = _pose.y;
+            _previous[_base + 3] = _pose.angle;
+            _previous[_base + 4] = _pose.scale_x;
+            _previous[_base + 5] = _pose.scale_y;
+            _previous[_base + 6] = _pose.alpha;
+            _previous[_base + 7] = _pose.sprite;
+            _previous[_base + 8] = _pose.subimage;
+        }
+        self.render_pose_previous = _previous;
+    };
+    self._set_time = function(_evaluate = true, _interpolate = false) {
         var _clip = self._clip();
         if (is_undefined(_clip)) return;
         if (self.loop_override == false || (is_undefined(self.loop_override) && !_clip.looping)) {
@@ -404,7 +426,18 @@ function SpriterInterfaceSystem() {
         } else {
             self.time_ms = ((self.clock_ms mod _clip.duration) + _clip.duration) mod _clip.duration;
         }
-        if (_evaluate) self.system._spriter_evaluate(self);
+        if (_evaluate) {
+            if (_interpolate) self._snapshot_render_pose();
+            self.system._spriter_evaluate(self);
+            if (_interpolate) {
+                self.render_pose_ready = self.render_pose_sampled;
+                self.render_pose_sampled = true;
+            } else {
+                self._snapshot_render_pose();
+                self.render_pose_ready = false;
+                self.render_pose_sampled = false;
+            }
+        }
     };
     /// @function SpriterPlayer.play
     /// @param {String} animation_name Clip to start.
@@ -670,6 +703,10 @@ function SpriterInterfaceSystem() {
         }
         return undefined;
     };
+    /// @function SpriterPlayer.get_parts_pose
+    /// @description Read-only active and inactive part pose array, relative to the player's root.
+    /// @returns {Array} The current pose array; callers must not mutate it.
+    self.get_parts_pose = function() { return self.object_pose; };
     /// @function SpriterPlayer.update
     /// @param {Real} delta_seconds Elapsed seconds since the previous update; playback speed scales this value.
     /// @returns {Struct} This player after advancing and dispatching crossed events.
@@ -696,7 +733,7 @@ function SpriterInterfaceSystem() {
             if (_evaluate_pose) self.pose_elapsed_ms = self.pose_elapsed_ms mod self.pose_interval_ms;
         }
         var _finished = !_loop && ((self.speed > 0 && self.clock_ms >= _clip.duration) || (self.speed < 0 && self.clock_ms <= 0));
-        self._set_time(_evaluate_pose || _finished);
+        self._set_time(_evaluate_pose || _finished, true);
         if (_finished) self.playing = false;
         if (array_length(_events) > 0) self.system._spriter_dispatch(self, _events);
         return self;
@@ -707,20 +744,47 @@ function SpriterInterfaceSystem() {
     /// @returns {Struct} This player after drawing all active image parts in z order.
     self.draw = function(_x, _y) {
         self.root_x = _x; self.root_y = _y; // Pose is maintained by update and the mutation methods.
+        var _previous = self.render_pose_previous,
+            _stride = 9,
+            _use_interpolation = self.pose_interval_ms > 0
+                && self.render_pose_ready
+                && is_array(_previous)
+                && array_length(_previous) >= array_length(self.object_pose) * _stride,
+            _blend = _use_interpolation
+                ? clamp(self.pose_elapsed_ms / self.pose_interval_ms, 0, 1) : 1;
         for (var _i = 0; _i < array_length(self.object_pose); ++_i) {
             var _o = self.object_pose[_i];
             if (!_o.active || _o.sprite < 0 || _o.alpha <= 0) continue;
+            var _part_x = _o.x,
+                _part_y = _o.y,
+                _sx = _o.scale_x,
+                _sy = _o.scale_y,
+                _angle = _o.angle,
+                _part_alpha = _o.alpha,
+                _base = _i * _stride;
+            if (_use_interpolation
+               && _previous[_base] > 0
+               && _previous[_base + 7] == _o.sprite
+               && _previous[_base + 8] == _o.subimage) {
+                _part_x = lerp(_previous[_base + 1], _o.x, _blend);
+                _part_y = lerp(_previous[_base + 2], _o.y, _blend);
+                _sx = lerp(_previous[_base + 4], _o.scale_x, _blend);
+                _sy = lerp(_previous[_base + 5], _o.scale_y, _blend);
+                _part_alpha = lerp(_previous[_base + 6], _o.alpha, _blend);
+                var _angle_delta = _o.angle - _previous[_base + 3];
+                while (_angle_delta > 180) _angle_delta -= 360;
+                while (_angle_delta < -180) _angle_delta += 360;
+                _angle = _previous[_base + 3] + _angle_delta * _blend;
+            }
             var _w = _o.width, _h = _o.height;
             var _px = _o.pivot_x * _w, _py = (1 - _o.pivot_y) * _h;
-            var _sx = _o.scale_x, _sy = _o.scale_y;
-            var _angle = _o.angle;
             var _c = dcos(_angle), _s = dsin(_angle);
             var _dx = (sprite_get_xoffset(_o.sprite) - _px) * _sx;
             var _dy = (_py - sprite_get_yoffset(_o.sprite)) * _sy;
-            var _draw_x = _x + _o.x + _c * _dx - _s * _dy;
-            var _draw_y = _y - (_o.y + _s * _dx + _c * _dy);
+            var _draw_x = _x + _part_x + _c * _dx - _s * _dy;
+            var _draw_y = _y - (_part_y + _s * _dx + _c * _dy);
             var _subimage = _o.subimage;
-            draw_sprite_ext(_o.sprite, _subimage, _draw_x, _draw_y, _sx, _sy, _angle, c_white, clamp(_o.alpha, 0, 1));
+            draw_sprite_ext(_o.sprite, _subimage, _draw_x, _draw_y, _sx, _sy, _angle, c_white, clamp(_part_alpha, 0, 1));
         }
         if (self.show_bones) self.draw_bones(_x, _y);
         return self;
@@ -2989,6 +3053,10 @@ function SpriterInterfaceSystem() {
     /// @description Named-player get_part_world; time arguments use milliseconds, positions use room pixels, and angles use degrees.
     /// @returns {Any} undefined for an unknown player; otherwise the underlying result.
     _sys.get_part_world=method(_sys,function(_player_name,_part) {var _p=self._player(_player_name);if(is_undefined(_p))return undefined;return _p.get_part_world(_part);});
+    /// @function SpriterInterfaceSystem.get_parts_pose(_player_name)
+    /// @description Read-only part pose array relative to the named player root.
+    /// @returns {Array|Undefined} The current pose array, or undefined for an unknown player.
+    _sys.get_parts_pose=method(_sys,function(_player_name) {var _p=self._player(_player_name);if(is_undefined(_p))return undefined;return _p.get_parts_pose();});
     /// @function SpriterInterfaceSystem.on(_player_name,_event,_callback)
     /// @description Named-player on; time arguments use milliseconds, positions use room pixels, and angles use degrees.
     /// @returns {Any} undefined for an unknown player; otherwise the underlying result.
