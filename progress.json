@@ -1565,6 +1565,27 @@
       "done": "2026-10-18"
     },
     {
+      "id": "dual-grid-library",
+      "title": "Build reusable dual-grid mask and renderer library",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "6",
+      "size": "M",
+      "prio": 1,
+      "needs": "",
+      "notes": "Added reusable TL/TR/BL/BR mask sampling, optional atlas frame lookup, W+1 by H+1 layer rendering with per-layer scale/tint/depth, and cell-aligned cap overlays. The builder exposes an opt-in dual-grid flag and frame map; existing callers stay on the legacy path until terrain atlases are converted.",
+      "refs": [
+        "scripts/scr_dual_grid/scr_dual_grid.gml",
+        "scripts/scr_iniTileBuilder/scr_iniTileBuilder.gml",
+        "scripts/Sprite_Layer_Manager/Sprite_Layer_Manager.gml"
+      ],
+      "created": "2026-10-31",
+      "updated": "2026-10-31",
+      "done": "2026-10-31"
+    },
+    {
       "id": "econ-rung-price",
       "title": "Decide the rung price vs rung worth fix",
       "status": "done",
@@ -3763,7 +3784,7 @@
     },
     {
       "id": "terrain-inner-corners",
-      "title": "Use dual-grid terrain tiles for seamless corners",
+      "title": "Convert terrain atlases and activate dual-grid rendering",
       "status": "next",
       "owner": "both",
       "awaiting": "none",
@@ -3772,7 +3793,7 @@
       "size": "L",
       "prio": 2,
       "needs": "",
-      "notes": "Revised plan based on the dual-grid approach: retain the existing per-cell height/biome map, but render each terrain layer on a second grid offset half a tile. Each rendered tile samples the four painted cells meeting at its center/corner, yielding 16 masks (empty mask draws nothing) and 15 visible tiles rather than a 47-tile blob set. Prototype Dirt first; keep frame 0 empty and frame 16 as the existing full cap, choose a consistent 4-bit corner order and explicit frame lookup, and preserve per-layer tint/depth. Render a W+1 by H+1 output grid with outside cells empty. Update `scr_buildTiles`/builder path and art contract only after the prototype confirms mask orientation and top-cap behavior. Validate all 16 masks, diagonal-only touch, inner/outer corners, holes, map edges, and final-scale seams; then port the 15-piece layout to the other five biome atlases. Check 32.32px scaled art centered on each grid vertex and preserve the existing height/remap logic unless the fixture exposes a conflict.",
+      "notes": "After the reusable dual-grid library is ready, reauthor the six terrain atlases for the 15 visible corner masks and switch the stage builder to the dual-grid path. Keep frame 0 empty and frame 16 for the full interior/top cap. Prototype Dirt first; validate all 16 masks, diagonal-only contact, inner/outer corners, holes, map boundaries, layered tints/depth, and final-scale seams before porting the other biomes. The current atlases are still the old side-neighbor art, so do not enable the new renderer against them.",
       "refs": [
         "art_descriptions.md",
         "scripts/test_tile/test_tile.gml",
@@ -5743,6 +5764,12 @@
       "who": "cline",
       "task": "goal-no-armor-terms",
       "what": "Replaced stale armored-wave language with high-HP/Hardened wording and +35% HP, consistent with goal.md §6 and economy.md."
+    },
+    {
+      "date": "2026-10-31",
+      "who": "cline",
+      "task": "dual-grid-library",
+      "what": "Added reusable dual-grid mask and layer-rendering helpers with an opt-in builder path; existing terrain atlases remain on the legacy renderer until converted."
     }
   ]
 }

@@ -117,6 +117,7 @@ and add its row to the index.
 | [LL-098](#ll-098) | Spriter feet jerk after leg correction even though the walk keys are dense and the game runs near 60 fps | FIXED |
 | [LL-099](#ll-099) | Zombie HP bars vibrate as the feet move, even though the zombie root follows a smooth path | FIXED |
 | [LL-100](#ll-100) | Enabling dev mode makes global initialization crash when `print()` reads `object_index` | FIXED |
+| [LL-101](#ll-101) | `load_max` cells appear on every terrain slice after dual-grid conversion | FIXED |
 
 ---
 
@@ -2113,6 +2114,20 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 **Files.** `scripts/print/print.gml`, `scripts/scr_loadout/scr_loadout.gml`, `scripts/initialize_game/initialize_game.gml`.
 
 **See also.** [LL-002](#ll-002), [LL-003](#ll-003)
+
+---
+<a name="ll-101"></a>
+## LL-101 — A terrain override shapes a dual-grid edge but must not draw the whole higher layer
+
+**Look for.** After switching layered terrain to dual-grid, the highest `load_max` cells appear on lower slices where the legacy renderer drew no tile for them.
+
+**Cause.** The old renderer selected a tile from the current height band, then treated `load_max` as an occupied neighbor while building that tile's edge mask. A direct dual-grid mask treated the override as a full member of every band, so vertices surrounded only by `load_max` cells produced extra terrain.
+
+**Rule.** In a layered dual-grid draw, require at least one cell from the active height band at each render vertex. Then include the override in that vertex's corner mask so it shapes adjacency without creating a tile by itself.
+
+**Files.** `scripts/scr_dual_grid/scr_dual_grid.gml`, `scripts/scr_iniTileBuilder/scr_iniTileBuilder.gml`.
+
+**See also.** [LL-081](#ll-081)
 
 ---
 ## Adding an entry
