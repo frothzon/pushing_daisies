@@ -103,7 +103,8 @@ and add its row to the index.
 | [LL-084](#ll-084) | The new Spriter zombies look **squat** even though scale normalization says the rig is 2–3× larger than its sheet | FIXED |
 | [LL-085](#ll-085) | Biped Spriter zombies still look **crouched while walking**: the walk plays, but the knees stay folded | WATCH |
 | [LL-086](#ll-086) | A fresh save shows zero balances for every future currency before the player can earn them | FIXED |
-| [LL-087](#ll-087) | The late-region balance sim started every tower at level 1 and ignored permanent clover offense | FIXED |
+| [LL-087](#ll-087) | The late-region balance sim started every tower at level 1 and ignored permanent clover progression | FIXED |
+| [LL-088](#ll-088) | Ordinary leaks cost zero lives without Vitality, and 25% Vitality prevents 75%; raw leak counts also differ from lives lost | FIXED |
 
 ---
 
@@ -1907,17 +1908,32 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 ---
 
 <a name="ll-087"></a>
-## LL-087 — The late-region balance sim started every tower at level 1 and ignored permanent clover offense
+## LL-087 — The late-region balance sim started every tower at level 1 and ignored permanent clover progression
 
-**Look for.** A late-region stage appears impossible in the headless sim even though the campaign grants mastery and the garden has permanent tower damage or fire-rate bonuses.
+**Look for.** A late-region stage appears impossible in the headless sim even though the campaign grants mastery, tower bonuses, more money, extra lives, or leak protection.
 
-**Cause.** `model.resolve()` always built its `Scene` at Mastery 0 with zero clover offense. The planner therefore deployed at L1, priced rungs against the wrong cap, and ignored persistent damage/rate bonuses while measuring a region whose difficulty assumes those upgrades are reachable.
+**Cause.** `model.resolve()` always built its `Scene` at Mastery 0 with zero clover bonuses. The planner therefore deployed at L1, priced rungs against the wrong cap, and ignored persisted offense, economy, and vitality upgrades while measuring a region whose difficulty assumes those upgrades are reachable.
 
-**Rule.** Keep a fresh-save default, but thread explicit mastery and clover bonuses through scene resolution, rung pricing, greedy planning, the time-step sim, fit/gate scenarios and the CLI. Report the inputs with each sim result so a clear or failure always identifies its progression assumptions. Mastery raises floor and cap together; the planner must still have the same four money-bought rungs.
+**Rule.** Keep a fresh-save default, but thread explicit mastery and every combat/economy clover bonus through scene resolution, rung pricing, greedy planning, the time-step sim, fit/gate scenarios and the CLI. Bound inputs to what the trees can grant, and print them with results. Mastery raises floor and cap together; the planner must still have the same four money-bought rungs.
 
 **Files.** `python_tools/gm/balance/{model,policy,sim,report}.py`, `python_tools/gm/cli.py`, `python_tools/tests/test_balance.py`.
 
 **See also.** [LL-038](#ll-038), [LL-040](#ll-040), [LL-042](#ll-042), [LL-048](#ll-048)
+
+---
+
+<a name="ll-088"></a>
+## LL-088 — Leak loss was inverted, and raw leaks differ from lives lost
+
+**Look for.** An ordinary leak costs no life in a fresh garden, or 25% Vitality prevents three out of four lives; a progressed run's life total may also differ from its raw leak count.
+
+**Cause.** `lose_life` and the simulator accumulated the prevention bonus as life loss. With no bonus, the carry stayed at zero; at 25%, it accumulated only 0.25 per leak, reversing the intended effect. Vitality can also save boss leaks and restores lives every fifth cleared wave. Raw leak count is still useful for badges, but is not the same as lives lost. The leak payout calls `scr_kill_money` with the raw creature payout at half scale; it does not pass the clover kill-money or boss-reward bonuses used by `scr_zomb_death`.
+
+**Rule.** Accumulate `1 - prevention` as the fraction of a life actually lost, then carry the remainder; zero prevention costs one life per leak and 25% prevention costs three lives per four leaks. Boss saves skip that loss. Report actual life balance separately from raw leak count, regenerate after each fifth cleared wave, and update ending lives after regeneration. Keep leak payouts on the raw half-value path unless the GML caller passes kill bonuses.
+
+**Files.** `scripts/lose_life/lose_life.gml`, `scripts/scr_level_wait/scr_level_wait.gml`, `scripts/scr_zomb_death/scr_zomb_death.gml`, `python_tools/gm/balance/{sim,report}.py`, `python_tools/tests/test_balance.py`.
+
+**See also.** [LL-042](#ll-042), [LL-087](#ll-087)
 
 ---
 ## Adding an entry

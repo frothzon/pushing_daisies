@@ -647,6 +647,10 @@ with ☘️ clovers instead, rising from 30 to 60 seconds (`economy.md` §3.5).
 Honey** increases kill money. Both affect economies rather than combat
 (`economy.md` §6.5).
 
+The shipped catalog has ten recipes. In addition to the five examples below,
+it includes Frosted Flake, Blood Bonbon, Everlasting Gob, Blood Orange, and
+Money Honey. `economy.md` §6 owns the complete recipe list and all magnitudes.
+
 Level-1 examples:
 
 ### 🍬 Red Licorice
@@ -705,34 +709,24 @@ What feeding it more *does*:
 
 **The two special (rare) candies follow the same rule** — 🍊 Blood Orange and 🍯 Money Honey are one instance each, extended by feeding them. Their specialness is their tier, their gate and their meta effect, not a stacking exception, because stacking no longer exists anywhere.
 
-That lets players deliberately create absurd builds without letting the numbers become infinite.
+That lets players combine different candy effects into a build while repeated
+stock of one recipe only extends its timer.
 
 ---
 
 # 18. Candy Creates Build Runs
 
-Now Endless becomes much more interesting.
+Endless becomes more interesting when Candy complements the four-tower loadout.
+Different recipes can be active together, each at its own level-set magnitude.
+For example, a damage run can combine level-10 Red Licorice (+19% damage),
+Blood Bonbon (+43% damage and +14% crit damage), Sour Drop (+14.5% crit
+chance), and Fireball Candy (+38% burn damage). Consuming another copy extends
+that recipe's timer; it does not raise its magnitude.
 
-You might enter with:
-
-**4 towers**
-
-and consume:
-
-- +50% damage
-- +30% crit
-- +40% burn
-- +20% range
-
-Suddenly your build is fundamentally different.
-
-Another player might choose:
-
-- +80% slow
-- +50% stun duration
-- +40% root duration
-
-and create a **control build**.
+A control-leaning run can use Gummy Worm (+28.5% slow effectiveness) alongside
+towers and specializations that slow, stun, or root. Jawbreaker and Frosted
+Flake can support that build with +19% range and +19% fire rate. The Candy
+catalog does not grant stun or root duration; those remain tower effects.
 
 ---
 

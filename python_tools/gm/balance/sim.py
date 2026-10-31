@@ -10,9 +10,10 @@ disagreed about what a tower delivers.
 This module time-steps the real rules at the real frame rate instead, so the
 things a ratio cannot express become measurable:
 
-* **leaks and hearts.**  A leak costs one life and pays HALF a kill
-  (``lose_life``, economy.md 4.5 - it paid nothing before 2026-10-18, which
-  turned the first leak into an income cut too), and the stage FAILS at zero
+* **leaks and hearts.**  A leak applies Vitality prevention and boss saves to
+  the life loss, then pays HALF the raw kill value (``lose_life``, economy.md
+  4.5 - it paid nothing before 2026-10-18, which turned the first leak into an
+  income cut too), and the stage FAILS at zero
   (``scr_main_normal``), so "how many leak" is the
   outcome that matters - not "is supply >= demand".
 * **money is earned as it lands.**  A kill pays in the frame it dies
@@ -755,7 +756,8 @@ class Sim:
             return True
         return False
 
-    def _payout(self, base: float, boss: bool = False, scale: float = 1.0) -> int:
+    def _payout(self, base: float, boss: bool = False, scale: float = 1.0,
+                clover_bonus: bool = True) -> int:
         """``scr_kill_money``: the ramp, the column, and the CARRIED fraction.
 
         Three rules in the order the game applies them:
@@ -777,8 +779,11 @@ class Sim:
         # `scale` is the LEAK share (0.5): it multiplies BEFORE the floor, so
         # the fraction is carried like every other fraction (LL-042).  Halving
         # the rounded payout instead would pay 0 for the cheapest creature.
-        bonus = self.scene.clover_kill_money
-        if boss:
+        # scr_zomb_death applies clover kill/boss bonuses to kills. lose_life
+        # calls scr_kill_money with the raw monster payout, so a leak receives
+        # half the base payout and carries its fraction without those bonuses.
+        bonus = self.scene.clover_kill_money if clover_bonus else 0.0
+        if boss and clover_bonus:
             bonus += self.scene.clover_boss_reward
         want = base * (1 + bonus) * ramp * self.diff.money * scale + self.money_carry
         pay = math.floor(want)
@@ -800,26 +805,28 @@ class Sim:
             self.cur.money_earned += paid
 
     def _leak(self, m: SimMonster) -> None:
-        """``lose_life``: one life, and HALF a kill's money (economy.md 4.5).
+        """``lose_life``: Vitality-adjusted life loss and HALF raw kill money.
 
         A leak used to pay nothing, so it cost a life AND the income the kill
-        would have paid - the starvation spiral in the 2026-10-12 log.  The
-        game pays ``floor(scr_kill_money(...) * 0.5)`` now, and this is the
-        same number: the same ``_payout`` (ramp, column, carry) halved, never
-        a second opinion about what a wave earned (LL-042).
+        would have paid - the starvation spiral in the 2026-10-12 log. The game
+        passes the raw creature payout to scr_kill_money at half scale; the
+        clover kill and boss bonuses are only supplied by scr_zomb_death.
         """
         life_loss = 0
         if m.boss and self.boss_saves_remaining > 0:
             self.boss_saves_remaining -= 1
         else:
-            self.life_loss_carry += self.scene.clover_life_loss_reduction
+            # lose_life carries the fraction of a life actually lost. With
+            # no Vitality this is one per leak; 25% prevention loses 3 per 4.
+            self.life_loss_carry += 1.0 - self.scene.clover_life_loss_reduction
             life_loss = math.floor(self.life_loss_carry)
             self.life_loss_carry -= life_loss
             self.lives -= life_loss
         if self.cur is not None:
             self.cur.lives_lost += life_loss
             self.cur.lives_end = self.lives
-        paid = self._payout(m.kill_money, boss=m.boss, scale=0.5)
+        paid = self._payout(m.kill_money, boss=m.boss, scale=0.5,
+                            clover_bonus=False)
         self.money += paid
         self.out.money_earned += paid
         m.alive, m.leaked = False, True
@@ -1062,6 +1069,7 @@ class Sim:
                 if self.wave % 5 == 0 and self.scene.clover_regen > 0:
                     self.lives = min(self.life_max,
                                      self.lives + self.scene.clover_regen)
+                self.cur.lives_end = self.lives
             done = (self.wave >= self.scene.waves
                     or (self.max_waves is not None and self.wave >= self.max_waves))
             self.pending = "CLEAR" if done else "SPAWN"

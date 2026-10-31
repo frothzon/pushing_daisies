@@ -554,15 +554,15 @@
     {
       "id": "balance-progression-sim",
       "title": "Balance simulator: model earned mastery and clover bonuses",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "tools",
       "phase": "5",
       "size": "M",
       "prio": 2,
-      "needs": null,
-      "notes": "Follow-up audit found Scene and Sim still omit four persisted Offense/utility effects that apply to late-region play: clover crit chance/damage, upgrade-cost discount, starting money, and kill/boss money. Add explicit scenario inputs for every relevant clover combat/economy bonus (not seeds/medals), thread them through resolution, policy, sim, report, fit/gate, and tests; keep fresh-garden defaults.",
+      "needs": "Reload GameMaker with global.devMode=true. In a fresh save, let an ordinary zombie leak and confirm META [LEVEL] leak - life drops by one; with 25% Vitality, four ordinary leaks should cost three lives total, while boss saves and fifth-wave regen remain separate. Any ordinary leak costing zero, or 25% prevention costing only one life over four leaks, falsifies the fix.",
+      "notes": "IMPLEMENTED 2026-10-30: bounded all 12 relevant clover inputs through model, planner, sim, reports, fit/gate and CLI; fixed GML and simulator life-loss carry so zero prevention costs one life per ordinary leak and 25% prevents one of four. Leak payout follows raw half-value caller; reports track actual lives separately from leaks. Full suite: 376 tests, 2 skipped; roundtrip: 1014 files, 0 differ; balance check green. Max-tree R4-10 Hard clears with leaks; three documented R4 Brutal loadouts clear with one boss leak saved, while starter-only fails. Max-tree values are not a plausible R4 save, so no difficulty retune is inferred.",
       "refs": [
         "goal.md",
         "economy.md",
@@ -573,6 +573,9 @@
         "python_tools/gm/balance/report.py",
         "python_tools/gm/cli.py",
         "python_tools/tests/test_balance.py",
+        "scripts/lose_life/lose_life.gml",
+        "scripts/scr_level_wait/scr_level_wait.gml",
+        "scripts/scr_zomb_death/scr_zomb_death.gml",
         "lessons_learned.md"
       ],
       "created": "2026-10-30",
@@ -1468,6 +1471,23 @@
       "created": "2026-10-13",
       "updated": "2026-10-30",
       "done": "2026-10-18"
+    },
+    {
+      "id": "endless-currency-trickle",
+      "title": "Endless milestone currency trickle",
+      "status": "doing",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "code",
+      "phase": "4",
+      "size": "S",
+      "prio": 2,
+      "needs": "",
+      "notes": "",
+      "refs": [],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": null
     },
     {
       "id": "endless-loot-box",
@@ -2855,7 +2875,7 @@
       "size": "M",
       "prio": 2,
       "needs": "Reload GameMaker with global.devMode=true. In Normal, run Stage 10 in Regions 4, 5 and 6 with these progression-available builds: R4 use Burning Ivy/Belladonna Blitz/Cannon Tulip/Slender Mandrake, then swap Slender for Pina Collider, then swap in Chillip for the fourth slot; R5 use Burning Ivy/Belladonna Blitz/Cannon Tulip/Kaboom Kalanchoe, then Slender Mandrake, then Chillip for the fourth slot; R6 use Burning Ivy/Belladonna Blitz/Kaboom Kalanchoe/Money Marigold, then Cannon Tulip instead of Kalanchoe, then Chillip instead of Cannon. Expect each META [LEVEL] CLEAR line to show 20 lives and leaked=0. Also play Stage 1 once in each region and report if the curve feels too soft or too steep. A failed clear, leak in these builds, or severe pacing mismatch falsifies the balance.",
-      "notes": "IMPLEMENTED AND SIMULATED: regional Normal endpoints changed R4 34->18, R5 42->16, R6 52->10. With the time-step ceiling buyer, all ten stages in each region clear with zero leaks (30/30). On the more player-like instant buyer, the four free starters still fail many late rows; this is not a player-winnability proof. Progression-available instant-buy checks at Stage 10 found three clean distinct loadouts per region, each with 20 lives. R4 control-only and starter builds fail, so the game review uses three DPS/hybrid variants. Hard/Brutal and live GameMaker behavior remain unverified.",
+      "notes": "IMPLEMENTED AND SIMULATED: regional Normal endpoints R4 18, R5 16, R6 10; ceiling buyer clears all 30 stages without leaks. Instant-buy Stage 10 has three documented progression loadouts per region that clear cleanly on Normal. Follow-up with the clover-aware simulator: R4-10 under maximum clover inputs clears Hard with 25 leaks and 51/60 lives; starter-only Brutal fails, while all three documented R4 Brutal loadouts clear with one boss leak saved. These clover values are an upper-bound stress test, not realistically earned by R4. Hard/Brutal live GameMaker behavior and a realistic saved progression profile remain unverified.",
       "refs": [
         "scripts/stage_data/stage_data.gml",
         "scripts/region_data/region_data.gml",

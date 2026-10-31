@@ -18,7 +18,9 @@ function lose_life() {
 			_life_loss=0;
 		} else {
 			if(!variable_instance_exists(id,"clover_life_loss_carry")) clover_life_loss_carry=0;
-			clover_life_loss_carry += clover_life_loss_reduction();
+			/// Accumulate the fraction of a life actually lost: without Vitality,
+			/// every leak costs one; 25% prevention saves one loss per four leaks.
+			clover_life_loss_carry += 1 - clover_life_loss_reduction();
 			_life_loss = floor(clover_life_loss_carry);
 			clover_life_loss_carry -= _life_loss;
 		}

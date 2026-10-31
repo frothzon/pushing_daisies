@@ -70,7 +70,12 @@ python -m gm balance towers      # the roster: card dps vs delivered, and domina
 python -m gm balance afford      # the income curve against the ladder prices
 python -m gm balance sim         # time-step a whole stage: leaks, hearts, the gate
 python -m gm balance sim --region 4 --stage 10 --difficulty Hard --mastery 3 \
-    --clover-damage 0.10 --clover-rate 0.05  # model the garden's earned power
+    --clover-damage 0.35 --clover-rate 0.05 --clover-crit-chance 0.05 \
+    --clover-crit-damage 0.25 --clover-upgrade-discount 0.25 \
+    --clover-kill-money 0.20 --clover-starting-money 15 \
+    --clover-boss-reward 0.25 --clover-max-life 40 \
+    --clover-life-loss-reduction 0.25 --clover-regen 5 \
+    --clover-boss-saves 5 --spend instant  # fully ranked clover trees
 python -m gm balance sim --cycle both   # ...against the idealised fire cycle
 python -m gm balance gate --trials 20 --seed 17  # control vs DPS loadout gate
 python -m gm balance project --all-waves --profile
@@ -109,7 +114,8 @@ Slender Mandrake.
 the idle/attack/return state machine, damage lands on `fire_frame` against the
 target list, crits and on-hit statuses use seeded rolls, and status effects tick
 on every monster Step. Damage during the emerge is retained, matching the
-current GML life check; a leak costs one life and pays half a kill. It reports
+current GML life check; a leak applies Vitality prevention and boss saves, then
+pays half the raw kill value. It reports
 leaks, hearts, idle money, the split between fighting and the 354-frame wave
 gate, how many swings achieved nothing, and the widest target list any tower
 held - which is the only honest way to ask whether a `targets` cap can ever
@@ -124,10 +130,12 @@ greedy scores UNION coverage (`dps x the share of route nothing else shoots`)
 and is handed the towers already standing, so it spreads along the route and
 buys rungs as well as placements (LL-048).
 
-Progression defaults to a fresh garden (`--mastery 0`, no clover bonuses).
-Pass the saved mastery rank and total offense-tree damage/fire-rate fractions
-to model a progressed save; mastery raises both the free arrival floor and the
-upgrade cap, keeping the four in-run rungs intact.
+Progression defaults to a fresh garden (`--mastery 0`, no clover bonuses). Pass
+the saved mastery rank and the accumulated clover-tree totals to model a
+progressed save. Inputs are bounded by the current fully ranked trees. The
+report prints mastery, all offense/economy/vitality bonuses, and real remaining
+lives after prevention, boss saves, and regeneration; mastery raises both the
+free arrival floor and upgrade cap, keeping the four in-run rungs intact.
 
 `balance gate` runs the current control and damage four-tower builds on the
 first five Brutal waves of the fast Shroud and high-HP Harvester stages. It

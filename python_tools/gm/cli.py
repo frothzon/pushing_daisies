@@ -369,6 +369,9 @@ def cmd_balance(args: argparse.Namespace) -> int:
                                     **progression)
                 for name, names in loadouts.items()
             }
+            if region == scenarios[0][0]:
+                for line in report.progression_lines(scenes["control"]):
+                    print(line)
             cells = bsim.common_deployment_cells(list(scenes.values()), count=4)
             print(report.rule(f"Region {region}-{stage} - {label}"))
             print("   common cells " + ", ".join(f"{c[0]},{c[1]}" for c in cells))
@@ -487,6 +490,8 @@ def cmd_balance(args: argparse.Namespace) -> int:
         print(report.rule(f"fit {args.param} on region {args.region}, "
                           f"{args.difficulty}, stages "
                           f"{', '.join(str(s) for s in stages)}"))
+        for line in report.progression_lines(scene_for(args.difficulty)):
+            print(line)
         for c in rows:
             mark = "->" if c.inside else "  "
             if c.inside:

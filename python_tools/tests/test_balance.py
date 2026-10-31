@@ -175,6 +175,7 @@ class TableTests(unittest.TestCase):
         self.assertEqual([2, 4, 5, 8],
                          [self.t.rung_price(5, lvl) for lvl in (1, 2, 3, 4)])
         self.assertEqual(-1.0, self.t.rung_price(5, 5))   # past the cap
+        self.assertEqual(8, self.t.rung_price(20, 1, discount=0.25))
 
     def test_data_at_level_is_measured_against_the_base(self):
         daisy = self.t.tower("Daisy Pusher")
@@ -508,12 +509,52 @@ class ModelTests(unittest.TestCase):
         with self.assertRaises(tables.TableError):
             model.resolve(PROJECT_ROOT, mastery=6)
 
+    def test_scene_models_and_bounds_every_clover_combat_economy_bonus(self):
+        scene = model.resolve(
+            PROJECT_ROOT, mastery=5, clover_damage=0.35, clover_rate=0.05,
+            clover_crit_chance=0.05, clover_crit_damage=0.25,
+            clover_upgrade_discount=0.25, clover_kill_money=0.20,
+            clover_starting_money=15, clover_boss_reward=0.25,
+            clover_max_life=40, clover_life_loss_reduction=0.25,
+            clover_regen=5, clover_boss_saves=5)
+        self.assertEqual(40, scene.starting_money)
+        self.assertEqual(60, scene.clover_max_life + self.t.constants.start_life)
+        self.assertAlmostEqual(1.075, scene.expected_crit_multiplier(
+            self.t.tower("Daisy Pusher")))
+        invalid = (
+            ("clover_damage", 0.36), ("clover_rate", 0.06),
+            ("clover_crit_chance", 0.06), ("clover_crit_damage", 0.26),
+            ("clover_upgrade_discount", 0.26), ("clover_kill_money", 0.21),
+            ("clover_starting_money", 16), ("clover_boss_reward", 0.26),
+            ("clover_max_life", 41), ("clover_life_loss_reduction", 0.26),
+            ("clover_regen", 6), ("clover_boss_saves", 6))
+        for key, value in invalid:
+            with self.subTest(key=key):
+                with self.assertRaises(tables.TableError):
+                    model.resolve(PROJECT_ROOT, **{key: value})
+
+    def test_starting_purse_and_boss_reward_follow_their_gml_rules(self):
+        base = model.resolve(PROJECT_ROOT, region=1, stage=1)
+        starting = model.resolve(PROJECT_ROOT, region=1, stage=1,
+                                 clover_starting_money=15)
+        self.assertEqual(15, model.money_through(starting, 0)
+                         - model.money_through(base, 0))
+
+        boss_bonus = model.resolve(PROJECT_ROOT, region=1, stage=1,
+                                   clover_boss_reward=0.25)
+        base_boss_pay = (model.money_through(base, 7)
+                         - model.money_through(base, 6))
+        bonus_boss_pay = (model.money_through(boss_bonus, 7)
+                          - model.money_through(boss_bonus, 6))
+        self.assertEqual(2, bonus_boss_pay - base_boss_pay)
+
     def test_policy_uses_the_scene_clover_bonuses(self):
         scene = model.resolve(PROJECT_ROOT, region=1, stage=1,
                               clover_damage=0.10, clover_rate=0.02)
         buy = policy.plan(scene, 100, limit=1).buys[0]
         expected = scene.tables.delivered_dps_at_level(
             buy.tower, scene.floor_level, 0.10, 0.02, targets=1)
+        expected *= scene.expected_crit_multiplier(buy.tower)
         self.assertAlmostEqual(expected, buy.dps)
 
     def test_the_demand_is_one_creature_on_a_boss_wave(self):
@@ -747,6 +788,66 @@ class SimTests(unittest.TestCase):
         # kill each (which is what would reward leaking).
         self.assertLess(o.money_earned, float(o.leaks))
         self.assertAlmostEqual(o.leaks / 2.0, o.money_earned, delta=1.5)
+
+    def test_unreduced_leak_costs_one_life(self):
+        scene = model.resolve(PROJECT_ROOT, region=1, stage=1)
+        runner = sim.Sim(scene, ter=terrain.Terrain(6.0), spend="none")
+        runner._init_level()
+        runner.wave = 1
+        runner.cur = sim.WaveResult(1, False, 1, 1, 0, 0,
+                                    lives_start=runner.lives,
+                                    lives_end=runner.lives)
+        runner._leak(sim.SimMonster(wave=1, kill_money=1))
+        self.assertEqual(19, runner.lives)
+        self.assertEqual(1, runner.cur.lives_lost)
+        self.assertEqual(19, runner.cur.lives_end)
+
+    def test_clover_leak_prevention_carries_and_does_not_boost_leak_payouts(self):
+        scene = model.resolve(PROJECT_ROOT, region=1, stage=1,
+                              clover_kill_money=0.20,
+                              clover_life_loss_reduction=0.25,
+                              clover_boss_reward=0.25)
+        runner = sim.Sim(scene, ter=terrain.Terrain(6.0), spend="none")
+        runner._init_level()
+        runner.wave = 1
+        runner.cur = sim.WaveResult(1, False, 4, 4, 0, 0,
+                                    lives_start=runner.lives,
+                                    lives_end=runner.lives)
+        for _ in range(4):
+            runner._leak(sim.SimMonster(wave=1, kill_money=1))
+        self.assertEqual(17, runner.lives)
+        self.assertEqual(3, runner.cur.lives_lost)
+        self.assertEqual(17, runner.cur.lives_end)
+        self.assertEqual(4, runner.cur.leaks)
+        self.assertEqual(2, runner.cur.money_earned)
+
+    def test_boss_saves_and_fifth_wave_regeneration_update_real_lives(self):
+        scene = model.resolve(PROJECT_ROOT, region=1, stage=1,
+                              clover_max_life=40, clover_regen=5,
+                              clover_boss_saves=1,
+                              clover_kill_money=0.20,
+                              clover_boss_reward=0.25)
+        runner = sim.Sim(scene, ter=terrain.Terrain(6.0), spend="none")
+        runner._init_level()
+        runner.wave = 6
+        runner.cur = sim.WaveResult(6, True, 1, 8, 0, 0,
+                                    lives_start=runner.lives,
+                                    lives_end=runner.lives)
+        runner._leak(sim.SimMonster(boss=True, wave=6, kill_money=8))
+        self.assertEqual(60, runner.lives)
+        self.assertEqual(0, runner.cur.lives_lost)
+        self.assertEqual(4, runner.cur.money_earned)
+
+        runner.wave = 5
+        runner.lives = 50
+        runner.cur = sim.WaveResult(5, False, 1, 1, 0, 0,
+                                    lives_start=runner.lives,
+                                    lives_end=runner.lives)
+        runner.monsters = []
+        runner.spawn_timer = 1
+        runner._step_wait()
+        self.assertEqual(55, runner.lives)
+        self.assertEqual(55, runner.cur.lives_end)
 
     def test_no_towers_loses_the_stage(self):
         o = self.run_(spend="none").run()
@@ -1172,6 +1273,26 @@ class ReportTests(unittest.TestCase):
         self.assertIn("the shot cycle", text)
         self.assertIn("$/eff", text)
         self.assertRegex(text, r"NO CHOICE|A CHOICE")
+
+    def test_tower_report_prices_include_expected_critical_hits(self):
+        scene = model.resolve(PROJECT_ROOT, clover_crit_chance=0.05,
+                              clover_crit_damage=0.25)
+        text = "\n".join(report.towers_report(scene))
+        self.assertIn("expected direct-hit criticals", text)
+        self.assertIn("crit +5.0%/+0.25x", text)
+
+    def test_sim_report_names_progression_and_uses_actual_wave_lives(self):
+        scene = model.resolve(PROJECT_ROOT, mastery=2,
+                              clover_life_loss_reduction=0.25,
+                              clover_regen=5, clover_boss_saves=3)
+        out = sim.Sim(scene, ter=terrain.Terrain(6.0), spend="none",
+                      max_waves=1).run()
+        text = "\n".join(report.sim_report(out, scene))
+        self.assertIn("mastery 2", text)
+        self.assertIn("leak prevention 25.0%", text)
+        self.assertIn("regen +5/5 waves", text)
+        self.assertIn("boss saves 3", text)
+        self.assertIn(f"{out.waves[0].lives_end:>7}", text)
 
     def test_the_congestion_ceiling_uses_one_unit(self):
         # the bug this test exists for: `x1` was raw dps while `full` was

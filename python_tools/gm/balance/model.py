@@ -175,29 +175,31 @@ def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal"
     if not isinstance(mastery, int) or isinstance(mastery, bool) or not 0 <= mastery <= 5:
         raise TableError("mastery must be an integer from 0 through 5")
     fractions = (
-        ("clover_damage", clover_damage, None),
-        ("clover_rate", clover_rate, None),
-        ("clover_crit_chance", clover_crit_chance, None),
-        ("clover_crit_damage", clover_crit_damage, None),
+        ("clover_damage", clover_damage, 0.35),
+        ("clover_rate", clover_rate, 0.05),
+        ("clover_crit_chance", clover_crit_chance, 0.05),
+        ("clover_crit_damage", clover_crit_damage, 0.25),
         ("clover_upgrade_discount", clover_upgrade_discount, 0.25),
-        ("clover_kill_money", clover_kill_money, None),
-        ("clover_boss_reward", clover_boss_reward, None),
+        ("clover_kill_money", clover_kill_money, 0.20),
+        ("clover_boss_reward", clover_boss_reward, 0.25),
         ("clover_life_loss_reduction", clover_life_loss_reduction, 0.25),
     )
     for label, value, ceiling in fractions:
         if (not isinstance(value, (int, float)) or isinstance(value, bool)
                 or not math.isfinite(value) or value < 0
                 or (ceiling is not None and value > ceiling)):
-            raise TableError(f"{label} must be a finite, non-negative fraction")
+            limit = f" and at most {ceiling:g}" if ceiling is not None else ""
+            raise TableError(f"{label} must be a finite fraction from 0{limit}")
     integers = (
-        ("clover_starting_money", clover_starting_money),
-        ("clover_max_life", clover_max_life),
-        ("clover_regen", clover_regen),
-        ("clover_boss_saves", clover_boss_saves),
+        ("clover_starting_money", clover_starting_money, 15),
+        ("clover_max_life", clover_max_life, 40),
+        ("clover_regen", clover_regen, 5),
+        ("clover_boss_saves", clover_boss_saves, 5),
     )
-    for label, value in integers:
-        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-            raise TableError(f"{label} must be a non-negative integer")
+    for label, value, ceiling in integers:
+        if (not isinstance(value, int) or isinstance(value, bool)
+                or value < 0 or value > ceiling):
+            raise TableError(f"{label} must be an integer from 0 through {ceiling}")
     m = m if m is not None else geometry.load_map(root, room=room,
                                                   cell=t.constants.cell)
     reg = t.region(region)

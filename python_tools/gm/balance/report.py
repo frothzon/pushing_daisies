@@ -105,6 +105,7 @@ def project_report(scene: Scene, cov=None, ter: Optional[terrain.Terrain] = None
            f"-> m({scene.waves}) "
            f"{t.life_mult(scene.stage.region, scene.waves, scene.waves):g}"
            f"   floor bite {model.FLOOR_BITE:g}  ceiling bite {model.CEILING_BITE:g}"]
+    out.extend(progression_lines(scene))
     for r in model.project(scene, ter, waves=waves, cov=cov):
         out.append(row_line(r))
     return out
@@ -198,6 +199,7 @@ def feel_report(scene_for) -> List[str]:
     scene - the caller should not have to know what changes between them.
     """
     out = [rule("the profile: worst bite, and where the wall is, per difficulty")]
+    out.extend(progression_lines(scene_for("Normal")))
     out.append(f"   {'difficulty':<10} {'worst bite':>10} {'at wave':>8} "
                f"{'1st HIGH':>9}  reading")
     for name in ("Normal", "Hard", "Brutal"):
@@ -274,33 +276,37 @@ def towers_report(scene: Scene, cov=None) -> List[str]:
     cyc = t.cycle
     cov = policy.coverage_for(scene, cache=cov)
     out = [rule("the roster, priced four ways")]
+    out.extend(progression_lines(scene))
     out.append(f"   the shot cycle: {cyc.fps}/rate + {cyc.offset_mean:g} stagger "
                f"+ {cyc.return_frames:g} return frames (LL-040)")
+    out.append("   Damage figures include expected direct-hit criticals.")
     out.append(f"   {'tower':<18}{'$':>4}{'dmg':>5}{'rate':>5}{'tgt':>4}"
-               f"{'card':>7}{'x1':>7}{'deliv':>7}{'cover':>7}{'eff':>6}{'$/eff':>8}")
+               f"{'crit':>6}{'card':>7}{'x1':>7}{'deliv':>7}{'cover':>7}{'eff':>6}{'$/eff':>8}")
 
     rows: List[dict] = []
     for w in scene.loadout:
+        crit = scene.expected_crit_multiplier(w)
         dmg, rate, reach = t.data_at_level(w, scene.floor_level,
                                            scene.clover_damage, scene.clover_rate)
         card = t.dps_at_level(w, scene.floor_level, scene.clover_damage,
-                              scene.clover_rate)
+                              scene.clover_rate) * crit
         x1 = t.dps_at_level(w, scene.floor_level, scene.clover_damage,
-                            scene.clover_rate, targets=1)
+                            scene.clover_rate, targets=1) * crit
         dlv = t.delivered_dps_at_level(w, scene.floor_level, scene.clover_damage,
-                                       scene.clover_rate, targets=1)
+                                       scene.clover_rate, targets=1) * crit
         cover = _best_coverage(cov, scene, reach)
         eff = dlv * cover
-        eff_multi = cyc.dps(dmg, rate, w.targets) * cover
+        eff_multi = cyc.dps(dmg, rate, w.targets) * crit * cover
         dollar = (w.price / eff) if eff > 0 else float("inf")
         out.append(f"   {w.name:<18}{w.price:>4g}{dmg:>5.3g}{rate:>5.3g}"
-                   f"{w.targets:>4d}{card:>7.1f}{x1:>7.1f}{dlv:>7.1f}"
+                   f"{w.targets:>4d}{crit:>6.2f}{card:>7.1f}{x1:>7.1f}{dlv:>7.1f}"
                    f"{cover:>7.3f}{eff:>6.1f}{dollar:>8.2f}")
         rows.append({"tower": w, "price": w.price, "deliv": dlv, "cover": cover,
                      "eff": eff, "eff_multi": eff_multi, "dollar": dollar,
-                     "card": card, "x1": x1, "reach": reach})
+                     "card": card, "x1": x1, "crit": crit, "reach": reach})
 
-    out.append("   card = the shop.  x1 = one target.  deliv = x1 less the cycle. "
+    out.append("   crit = expected direct-hit multiplier.  card = the shop.  "
+               "x1 = one target.  deliv = x1 less the cycle. "
                "eff = deliv x cover.")
 
     # ---- the same tower, priced three ways ------------------------------
@@ -383,10 +389,7 @@ def sim_report(o, scene=None) -> List[str]:
            if scene is not None else "")
     out.append(f"   {who}cycle {o.cycle}   spend {o.spend}   z {o.terrain_z:g}")
     if scene is not None:
-        out.append(f"   progression mastery {scene.mastery}   "
-                   f"floor L{scene.floor_level}/cap L{scene.tables.cap(scene.mastery)}   "
-                   f"clover damage +{scene.clover_damage:.1%}   "
-                   f"fire rate +{scene.clover_rate:.1%}")
+        out.extend(progression_lines(scene))
     if o.failed:
         verdict = "FAILED"
     elif o.truncated:
@@ -400,9 +403,7 @@ def sim_report(o, scene=None) -> List[str]:
     out.append(f"   {'wave':>4}{'n':>4}{'hp':>8}{'fight':>7}{'gate':>7}"
                f"{'kills':>7}{'leak':>6}{'lives':>7}{'money':>7}{'spent':>7}"
                f"{'tow':>5}")
-    lives = o.start_life
     for w in o.waves:
-        lives -= w.leaks
         # the gate is the 354 frames the countdown runs, INCLUSIVE of the frame
         # it lands on; fighting is everything from the first spawn to the frame
         # the field emptied.  They add up to the wave's whole span.
@@ -410,7 +411,7 @@ def sim_report(o, scene=None) -> List[str]:
         fight = (w.clear_frame - w.spawn_frame) if w.clear_frame else w.frames
         out.append(f"   {w.wave:>4}{w.count:>4}{w.hp:>8.0f}"
                    f"{fight / 60:>7.1f}{gate / 60:>7.1f}{w.kills:>7}{w.leaks:>6}"
-                   f"{max(0, lives):>7}{w.money_earned:>7.0f}{w.spent:>7.0f}"
+                   f"{max(0, w.lives_end):>7}{w.money_earned:>7.0f}{w.spent:>7.0f}"
                    f"{w.towers:>5}")
     out.append("")
     out.append(f"   money    started {o.start_money:.0f}  earned {o.money_earned:.0f}  "
@@ -429,6 +430,22 @@ def sim_report(o, scene=None) -> List[str]:
     else:
         out.append(f"   walking  nothing died; peak {o.peak_alive} alive at once")
     return out
+
+
+def progression_lines(scene: Scene) -> List[str]:
+    """Name all progression inputs that can change a balance result."""
+    return [
+        f"   progression mastery {scene.mastery}   "
+        f"floor L{scene.floor_level}/cap L{scene.tables.cap(scene.mastery)}   "
+        f"damage +{scene.clover_damage:.1%}   rate +{scene.clover_rate:.1%}   "
+        f"crit +{scene.clover_crit_chance:.1%}/+{scene.clover_crit_damage:.2f}x",
+        f"   economy upgrade -{scene.clover_upgrade_discount:.1%}   "
+        f"kill +{scene.clover_kill_money:.1%}   start +${scene.clover_starting_money}   "
+        f"boss +{scene.clover_boss_reward:.1%}",
+        f"   vitality max life +{scene.clover_max_life}   "
+        f"leak prevention {scene.clover_life_loss_reduction:.1%}   "
+        f"regen +{scene.clover_regen}/5 waves   boss saves {scene.clover_boss_saves}",
+    ]
 
 
 def sim_findings(o, scene=None) -> List[str]:
@@ -515,6 +532,7 @@ def afford_report(scene: Scene) -> List[str]:
     alternative at the same moment.
     """
     out = [rule("when the money can buy what")]
+    out.extend(progression_lines(scene))
     waves = scene.waves
     prices = sorted({w.price for w in scene.loadout if w.price > 0})
     out.append(f"   {'wave':>4}{'money':>9}  " +
