@@ -339,6 +339,8 @@ function ui_text_catalog_en() {
 		endless_label_clovers : "Clovers",
 		endless_label_shards : "Shards",
 		endless_label_candy_stock : "Candy stock",
+		endless_result_seeds : "Milestone seeds  +{amount}",
+		endless_result_clovers : "Milestone clovers  +{amount}",
 		endless_label_seeds_to_clovers : "Seeds -> Clovers",
 		endless_label_clovers_to_shards : "Clovers -> Shards",
 		endless_mod_heavy_growth : "Heavy Growth",

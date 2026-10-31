@@ -4,6 +4,8 @@
 /// Currency choices are persistent and saved immediately when claimed.
 
 enum ENDLESS_MOD { NONE, HP, SPEED, HARDENED, SPLIT_SPAWN, BOSS, RANGE, ELITE, FINAL_BOSS };
+#macro ENDLESS_TRICKLE_INTERVAL 10
+#macro ENDLESS_TRICKLE_RATE 0.02
 
 function endless_is_active() {
 	return variable_global_exists("endless_active")
@@ -25,6 +27,11 @@ function endless_begin() {
 	global.endless_box_pending = false;
 	global.endless_box_rerolls = 0;
 	global.endless_box_offers = [];
+	global.endless_trickle_last_wave = 0;
+	global.endless_trickle_seed_carry = 0;
+	global.endless_trickle_clover_carry = 0;
+	global.endless_trickle_seeds = 0;
+	global.endless_trickle_clovers = 0;
 	global.endless_result_written = false;
 	scr_meta_log("ENDLESS","start difficulty=",difficulty_name(global.difficulty),
 	             " loadout=",string(loadout_stored())," cap=",endless_wave_cap(),
@@ -54,6 +61,77 @@ function endless_wave_stage(_wave) {
 	if(!is_real(_wave)) _wave = 1;
 	var _within = max(0,_wave-1) mod 60;
 	return clamp(1+floor(_within/6),1,10);
+}
+
+/// Pay a small, banked Seeds/Clovers share every ten cleared Endless waves.
+/// The stage baseline follows the region/stage currently represented by this
+/// wave. Fractional shares carry through this run so floor() cannot erase them
+/// (LL-042). Forced path-safety clears do not earn a milestone payout.
+function endless_currency_trickle(_wave, _wave_forced) {
+	if(!endless_is_active() || !is_real(_wave) || _wave < ENDLESS_TRICKLE_INTERVAL
+	|| _wave mod ENDLESS_TRICKLE_INTERVAL != 0) return false;
+	if(!is_bool(_wave_forced)) _wave_forced = true;
+	if(!variable_global_exists("meta") || !is_struct(global.meta)) return false;
+
+	var _last = variable_global_exists("endless_trickle_last_wave")
+	           && is_real(global.endless_trickle_last_wave)
+	           ? global.endless_trickle_last_wave : 0;
+	if(_wave <= _last) return false;
+	global.endless_trickle_last_wave = _wave;
+	if(_wave_forced){
+		scr_meta_log("ENDLESS","milestone skipped wave=",_wave," reason=forced");
+		return false;
+	}
+
+	var _region = endless_wave_region(_wave),
+	    _stage = endless_wave_stage(_wave),
+	    _row = stage_get(_region,_stage),
+	    _difficulty = variable_global_exists("difficulty") && is_real(global.difficulty)
+	                  ? clamp(floor(global.difficulty),0,DIFFICULTY.BRUTAL)
+	                  : DIFFICULTY.NORMAL;
+	if(!is_struct(_row)){
+		scr_meta_log("ENDLESS","milestone skipped wave=",_wave,
+		             " region=",_region," stage=",_stage," reason=no-stage-data");
+		return false;
+	}
+
+	var _lives = get_item_value(STATINV.life);
+	if(!is_real(_lives)) _lives = 0;
+	var _seed_base = stage_seed_reward(_row,_difficulty,true),
+	    _clover_base = clovers_award(_lives,_difficulty,0),
+	    _seed_carry = variable_global_exists("endless_trickle_seed_carry")
+	                  && is_real(global.endless_trickle_seed_carry)
+	                  ? global.endless_trickle_seed_carry : 0,
+	    _clover_carry = variable_global_exists("endless_trickle_clover_carry")
+	                    && is_real(global.endless_trickle_clover_carry)
+	                    ? global.endless_trickle_clover_carry : 0,
+	    _seed_total = _seed_base*ENDLESS_TRICKLE_RATE+_seed_carry,
+	    _clover_total = _clover_base*ENDLESS_TRICKLE_RATE+_clover_carry,
+	    _seed_paid = floor(_seed_total),
+	    _clover_paid = floor(_clover_total);
+	global.endless_trickle_seed_carry = _seed_total-_seed_paid;
+	global.endless_trickle_clover_carry = _clover_total-_clover_paid;
+
+	if(_seed_paid > 0) seeds_add(_seed_paid);
+	if(_clover_paid > 0) clovers_add(_clover_paid);
+	global.endless_trickle_seeds = (variable_global_exists("endless_trickle_seeds")
+	                               && is_real(global.endless_trickle_seeds)
+	                               ? max(0,floor(global.endless_trickle_seeds)) : 0)
+	                              + _seed_paid;
+	global.endless_trickle_clovers = (variable_global_exists("endless_trickle_clovers")
+	                                 && is_real(global.endless_trickle_clovers)
+	                                 ? max(0,floor(global.endless_trickle_clovers)) : 0)
+	                                + _clover_paid;
+	var _saved = false;
+	if(_seed_paid > 0 || _clover_paid > 0) _saved = scr_save_meta();
+	scr_meta_log("ENDLESS","milestone wave=",_wave,
+	             " region=",_region," stage=",_stage," lives=",floor(_lives),
+	             " seeds=+",_seed_paid," clovers=+",_clover_paid,
+	             " carry=",string_format(global.endless_trickle_seed_carry,1,2),"/",
+	             string_format(global.endless_trickle_clover_carry,1,2),
+	             " totals=",global.endless_trickle_seeds,"/",
+	             global.endless_trickle_clovers," saved=",_saved);
+	return true;
 }
 
 function endless_enemy_pool(_wave) {
@@ -487,6 +565,12 @@ function endless_finish(_reason,_leaked) {
 	    _lives = max(0,get_item_value(STATINV.life)),
 	    _boxes = variable_global_exists("endless_box_count")
 	             && is_real(global.endless_box_count) ? global.endless_box_count : 0,
+	    _trickle_seeds = variable_global_exists("endless_trickle_seeds")
+	                     && is_real(global.endless_trickle_seeds)
+	                     ? max(0,floor(global.endless_trickle_seeds)) : 0,
+	    _trickle_clovers = variable_global_exists("endless_trickle_clovers")
+	                       && is_real(global.endless_trickle_clovers)
+	                       ? max(0,floor(global.endless_trickle_clovers)) : 0,
 	    _best_wave = 0, _best_score = 0;
 	if(variable_global_exists("meta") && is_struct(global.meta)){
 		if(variable_struct_exists(global.meta,"endless_best_wave")
@@ -504,7 +588,8 @@ function endless_finish(_reason,_leaked) {
 	global.level_result = {
 		outcome:"ENDLESS", mode:"ENDLESS", reason:_reason,
 		region:0, stage:0, difficulty:_difficulty, lives:_lives,
-		leaked:is_real(_leaked) ? _leaked : 0, seeds:0, clovers:0, badges:"",
+		leaked:is_real(_leaked) ? _leaked : 0,
+		seeds:_trickle_seeds, clovers:_trickle_clovers, badges:"",
 		waves:_wave, score:_score, best_wave:_final_best, boxes:_boxes
 	};
 	global.endless_result_written = true;
@@ -515,7 +600,8 @@ function endless_finish(_reason,_leaked) {
 	scr_save_meta();
 	scr_meta_log("ENDLESS","ended reason=",_reason," wave=",_wave,
 	             " score=",_score," boxes=",_boxes," best_wave=",_final_best,
-	             " new_wave_best=",_new_best," new_score_best=",_new_score);
+	             " new_wave_best=",_new_best," new_score_best=",_new_score,
+	             " milestone seeds=",_trickle_seeds," clovers=",_trickle_clovers);
 	return true;
 }
 

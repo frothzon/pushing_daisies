@@ -363,7 +363,7 @@ nothing here should be fitted by arithmetic alone (LL-038).
 | L4 | 1.00 × base price | 2.25 |
 | L5 | 1.50 × base price | 3.75 |
 
-**Sell refunds 60% of everything invested** (placement + upgrades). Today's code refunds 25–50% of *current* price, which punishes the experimentation a loadout game depends on.
+**Sell refunds 60% of everything invested** (placement + upgrades), returning part of the commitment when the player experiments with a loadout.
 
 *Growth tree nodes reduce all four prices by up to 25%.*
 
@@ -382,11 +382,11 @@ nothing here should be fitted by arithmetic alone (LL-038).
 | L9 | ×1.85 | ×1.36 | ×1.26 | — |
 | L10 | ×2.00 | ×1.42 | ×1.30 | — |
 
-**The coupling that must never be forgotten:** today's L5 is ×16 damage and `scr_level_difficulty` (`life *= power(2, wave/5−2) + 0.2*(wave−1)`) is written for that. Ship §4.4 without rewriting that scaling and the game becomes unplayable. They are one change.
+**The ladder and stage curve are coupled.** The current base-relative L1–L10 table replaces the former compounding path to ×16 damage at L5. Refit stage difficulty and rerun the balance checks whenever the ladder changes; changing only one side invalidates the tuning.
 
 **Which rows money actually buys.** A tower *arrives* at the garden's floor (`goal.md` §4; `start = cap − 4`) and the four rows above that floor are the ones bought in-run. So at mastery V, money buys L7→L10 (×1.59 → ×2.00) — still about +8% per rung, because the rungs are defined against the base rather than compounding. **The relative value of money never changes, at any point in the campaign**; that is the entire reason the floor and the cap move together.
 
-**Visuals are normalised by a fixed 10**, not by the current cap — the existing `lerp(0.25, 0.70, level / tower_max_level)` in `_levelControl/Step_0.gml:117` must become `level / 10` with adjusted endpoints, or a tower placed at floor 6 would be indistinguishable from one placed at floor 3.
+**Level visuals use the fixed ten-level ladder.** Towers keep their placed size; the ring color carries the absolute level from 2–10, and the hover label supplies the exact level. The ring is not normalized to the current mastery cap (`goal.md` §4).
 
 ### 4.5 Wave count and biome curve
 
@@ -709,6 +709,12 @@ Two candies act on the **economies** rather than on combat — and because nothi
 
 The Endless bands follow `goal.md` §22. The wave-40 Hardened band uses **35% more HP** (`HP x1.35`) as the v1 proxy for armor: `goal.md` §2 cuts armor to avoid adding a second resistance matrix. Waves 80–89 force the existing elite class (1.5x health, 1.1x speed); the Endless band does not multiply that health bonus a second time.
 
+### 7.6 Endless milestone currency
+
+Every **10 cleared waves**, Endless banks a small Seeds and Clovers payout in addition to loot boxes. Each milestone earns **2%** of the full first-clear Seeds reward for the region/stage represented by that Endless wave, plus **2%** of the current-life Clovers reward at the run's difficulty. The Clovers baseline is recomputed from lives after the wave's regeneration.
+
+Fractions carry independently across milestones for the duration of the run; only whole currency is added and saved. A path-safety-forced wave does not earn its milestone payout. This keeps Endless progress tied to the current campaign economy without rounding every small share down to zero.
+
 ## 8. Badges 🏅 (medals only in v1)
 
 One medal per badge per stage, stored in the save. **No art in v1** — the record is the reward.
@@ -776,7 +782,7 @@ Adjust **one** of these at a time, log first, and only after the previous one ha
 
 | Question | Recommendation |
 | --- | --- |
-| Does Endless pay seeds/clovers outside boxes? | Yes, a small trickle (~2% of a stage per 10 waves) so a long run is not purely a candy farm |
+| Does Endless pay seeds/clovers outside boxes? | Resolved 2026-10-30: yes; see §7.6 for the 2%-per-10-cleared-waves rule |
 | Is Crimson Garden a new mode or a region-6 modifier? | A modifier — it reuses the wave-modifier system and costs no new screens |
 | Does `par_spend` scale with difficulty? | No. Par is par, and Brutal making *Frugal* harder is a feature, not a bug |
 | Do cadies apply to the whole loadout or one tower? | The whole loadout — it is a run-wide power fantasy, not a focus-fire tool |

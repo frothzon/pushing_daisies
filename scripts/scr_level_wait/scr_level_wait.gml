@@ -98,6 +98,11 @@ function scr_level_wait() {
 	            scr_meta_log("CLOVER","wave ",wave_count," regeneration +",
 	                         min(_regen,max(0,_life_max-_life_now))," life");
 	        }
+	        if(endless_is_active()){
+	            var _trickle_forced = variable_instance_exists(id,"wave_forced")
+	                                 && is_bool(wave_forced) ? wave_forced : true;
+	            endless_currency_trickle(wave_count,_trickle_forced);
+	        }
 			if(endless_box_due(wave_count)){
 				endless_box_begin(wave_count);
 				scr_level_request(LEVEL_STATE.LOOT);
@@ -156,6 +161,7 @@ function scr_level_wait() {
 	    }
 	    if(_stuck > 0){
 	        level_forced = true;
+	        wave_forced = true;
 	        scr_meta_log("PATH", "WARNING: ", _stuck,
 	                     " stuck monster(s) cleared so the wave can end (",
 	                     _before - _stuck, " still walking)");
@@ -172,6 +178,7 @@ function scr_level_wait() {
 	       && !wait_valve_fired && wait_stuck >= _fps * 600){
 	        wait_valve_fired = true;
 	        level_forced      = true;
+	        wave_forced       = true;
 	        scr_meta_log("PATH", "WARNING: wave ", wave_count,
 	                     " ran 10 minutes with ", instance_number(obj_mon),
 	                     " monster(s) alive - clearing them");

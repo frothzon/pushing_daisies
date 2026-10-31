@@ -41,12 +41,13 @@
       "garden-nav",
       "garden-onboarding-tab-gates",
       "gms2-room-speed-api",
-      "balance-progression-sim"
+      "balance-progression-sim",
+      "endless-currency-trickle"
     ],
     "next": [
       "hud-readability-and-strings"
     ],
-    "note": "2026-10-30: LL-007 room_speed conversion is statically verified; runtime timing still awaits Rayu after reload. The full toolkit suite now passes at 369 tests, 2 skipped. Balance scenes now accept saved mastery and clover offense bonuses; sample R4-10 Hard/Brutal runs still fail, so use actual save values before deciding on difficulty data. Target-machine performance at 60 living monsters still needs measurement before texture groups change."
+    "note": "2026-10-30: LL-007 room_speed conversion is statically verified; runtime timing still awaits Rayu after reload. The full toolkit suite passes at 376 tests, 2 skipped. Balance scenes now accept saved mastery and clover bonuses; sample R4-10 Hard/Brutal still needs realistic-save review. Endless now banks 2% Seeds/Clovers every 10 cleared waves; runtime review awaits Rayu. Target-machine performance at 60 living monsters still needs measurement before texture groups change."
   },
   "tasks": [
     {
@@ -920,13 +921,13 @@
       "size": "S",
       "prio": 2,
       "needs": "",
-      "notes": "A tower is PLACED at draw_scale 0.5, but the purchase tween is tower_selection.draw_scale = lerp(0.25, 0.70, _frac) with _frac = level/10 and a cap of 5 (objects/_levelControl/Step_0.gml line 180). So the first upgrade takes a tower to about 0.34, and even the cap only reaches 0.475 - upgrading makes a tower SMALLER and it never gets back to the size it was placed at. Either normalise the tween to the cap of 5 (0.25 .. 0.70 across levels 1-5), or bring the placed size down to match the ladder. (was fix-tower-upgrade-scale)  STILL TRUE 2026-10-14, and the ladder moved under it: tower_cap() is 5 + mastery with tower_floor() = cap - 4, so `_frac = level/10` spans 0.10-0.50 at zero mastery (draw_scale 0.295-0.475 - never reaching the 0.5 it was placed at) and only 0.52 at the first mastery node. Step_0.gml line 180 still reads lerp(0.25,0.70,_frac). ANSWERED 2026-10-14: neither of the two options this card offered. The card asked whether to normalise the tween to the cap (0.25..0.70 across levels 1-5) or to bring the placed size down to match the ladder. Both keep a size cue that has to be re-derived every time the ladder moves - and both leave the original complaint in place, that an upgrade is the one purchase in the game that makes the thing you bought LOOK SMALLER (a placed 0.5 becomes 0.34 at L2 and does not regain 0.5 until L10). DECISION: the size stops carrying the level. draw_scale is frozen at the placed 0.5 and the level is carried by an outline colour - level 1 has none, levels 2-10 each get their own - which is legible at any level, costs no new art, and cannot be made wrong by a ladder change. See tower-level-look (the wiring) and tower-level-palette (the colours).",
+      "notes": "RESOLVED: tower draw_scale stays at its placed size. Absolute level is carried by a ring color (L2-L10) and the hover label; mastery does not alter the visual scale. The L6-L10 palette is finalized in tower_levels.gml and tracked for runtime review under tower-ring-mastery-palette.",
       "refs": [
         "objects/_levelControl/Step_0.gml",
         "scripts/tower_levels/tower_levels.gml"
       ],
       "created": "2026-10-13",
-      "updated": "2026-10-15",
+      "updated": "2026-10-30",
       "done": "2026-10-15"
     },
     {
@@ -1475,16 +1476,27 @@
     {
       "id": "endless-currency-trickle",
       "title": "Endless milestone currency trickle",
-      "status": "doing",
+      "status": "review",
       "owner": "cline",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "code",
       "phase": "4",
       "size": "S",
       "prio": 2,
-      "needs": "",
-      "notes": "",
-      "refs": [],
+      "needs": "Reload GameMaker with global.devMode=true and run Endless through wave 10. Expect one META [ENDLESS] milestone line showing wave, region/stage, payout, fractional carries, cumulative totals, and saved=1 whenever a whole unit is banked; the Results screen and MENU results log must match the run totals, which remain in the save after loss. At wave 20, confirm a second milestone uses the current lives and wave region/stage. A duplicate payout, lost fraction, missing save, mismatch, or payout on a path-forced wave falsifies it.",
+      "notes": "IMPLEMENTED 2026-10-30: every 10th cleared Endless wave banks 2% of the matching region/stage full first-clear Seeds reward and 2% of current-life Clovers at the run difficulty. Independent fractional carries preserve sub-unit shares for that run; wave-forced safety clears are skipped; whole rewards save immediately and run totals appear in results. Static gates passed: roundtrip 1014 files/0 differ; toolkit 376 tests/2 skipped; balance and progress checks green; all touched scripts parsed; no literal \\\\r and the mixed-ending Create event retained its original CRLF/LF pattern. Runtime visual/save review remains.",
+      "refs": [
+        "economy.md",
+        "goal.md",
+        "scripts/scr_endless_mode/scr_endless_mode.gml",
+        "scripts/scr_level_wait/scr_level_wait.gml",
+        "scripts/scr_level_spawn/scr_level_spawn.gml",
+        "objects/_levelControl/Create_0.gml",
+        "scripts/scr_meta_screen/scr_meta_screen.gml",
+        "scripts/scr_ui_text/scr_ui_text.gml",
+        "objects/Menu/Step_0.gml",
+        "lessons_learned.md"
+      ],
       "created": "2026-10-30",
       "updated": "2026-10-30",
       "done": null

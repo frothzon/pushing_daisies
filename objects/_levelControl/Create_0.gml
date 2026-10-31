@@ -155,6 +155,7 @@ for(var _ai = 0; _ai < _armed; _ai++){
 /// scr_level_wait() should not earn the exterminator medal.
 level_leaked = 0;
 level_forced = false;
+wave_forced = false;
 level_life_losses = 0;
 level_money_spent = 0;
 level_tower_types = {};

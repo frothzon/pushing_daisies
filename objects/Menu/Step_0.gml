@@ -551,7 +551,8 @@ switch(menu_state){
                 var _lr = global.level_result;
                 if(_lr.outcome == "ENDLESS"){
                     print("MENU  results Endless wave ",_lr.waves," score ",_lr.score,
-                          " boxes ",_lr.boxes," best ",_lr.best_wave);
+                          " boxes ",_lr.boxes," best ",_lr.best_wave,
+                          " seeds +",_lr.seeds," clovers +",_lr.clovers);
                 } else {
                     print("MENU  results ", _lr.outcome, " ", _lr.region, "-", _lr.stage,
                           " lives ", _lr.lives, " leaked ", _lr.leaked,

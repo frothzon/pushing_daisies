@@ -774,6 +774,12 @@ So:
 
 This becomes a very nice psychological system.
 
+Every **10th cleared wave** also pays a small Seeds and Clovers trickle. Each
+milestone grants 2% of the matching region/stage's full first-clear Seeds
+reward and 2% of the current-life Clovers reward at the run's difficulty;
+fractional shares carry between milestones. Whole payouts bank immediately,
+even if the Endless run later ends in a loss.
+
 ---
 
 # 20. Endless Loot Boxes
@@ -929,21 +935,21 @@ The whole system now forms a nice circular economy:
                     ▼
                  ENDLESS
                     │
-          ┌─────────┴─────────┐
-          ▼                   ▼
-     LOOT BOXES           ZOMBIE KILLS
-          │                   │
-          ▼                   ▼
-  🌱 🩸 ☘️ 🍬              🩸 BLOOD SHARDS
-                              │
-                              ▼
-                       BLOOD TECH TREE
-                              │
-                              ▼
-                          MORE CANDY
-                              │
-                              ▼
-                        STRONGER RUNS
+       ┌────────────┼─────────────┐
+       ▼            ▼             ▼
+  LOOT BOXES   EVERY 10 WAVES  ZOMBIE KILLS
+       │        🌱 + ☘️            │
+       ▼                          ▼
+ 🌱 🩸 ☘️ 🍬                 🩸 BLOOD SHARDS
+                                  │
+                                  ▼
+                           BLOOD TECH TREE
+                                  │
+                                  ▼
+                              MORE CANDY
+                                  │
+                                  ▼
+                            STRONGER RUNS
 ```
 
 That's the core system I'd build around.
@@ -1146,15 +1152,17 @@ Five screens, all on the same state-machine + button pattern that `objects/Menu`
 
 Nothing is shown before it can be acted on. Four currencies on screen at stage 1 is the single most likely way to lose a new player.
 
-## 27.6 Technical prerequisites (this is largely why Phase 0 exists)
+## 27.6 Technical foundations (implemented; runtime review is tracked separately)
 
-* **A working save.** `scr_save_static` / `scr_load_static` build their path from `working_directory`, and the load call in `scr_setup_statinv` is commented out — the entire meta layer has nowhere to live until that is fixed. Copy the `gameOptions.dat` pattern from `scr_saveOptions` / `scr_loadOptions`, which correctly resolves into the per-user save area.
+* **Meta save.** `initialize_game` loads `global.meta` through `scr_load_meta`; `scr_meta_file` uses the GameMaker save area, and `scr_save_meta` writes through a temporary file before replacing the save. `scr_save_static` / `scr_load_static` remain unused because in-run inventory is not persistent.
 * **Per-stage life**, not per-run: `life` starts at 20 in `_levelControl/Create_0.gml` and is decremented by `scripts/lose_life`.
-* **`room_speed` → `game_get_speed(gamespeed_fps)`** before any status-effect timing is written (LL-007).
-* **Level flow → `enum` + `switch`** before stage phases are layered on it (LL-004; the Menu is the reference implementation).
-* **Path integrity.** A placement must never be able to pocket a zombie, and a broken path must heal itself (`roadmap.md` §4.4.1). Any rule that can leave a wave un-completable is a soft-lock, and a soft-lock in a 60-stage campaign costs a player an entire session.
-* **The pause snapshot** must own its own alpha and assume nothing about surface sizes (`roadmap.md` §4.4.2). A UI overlay that reads another state's fade variable is a UI overlay that will one day be invisible.
-* **The tower card** is the surface the loadout and mastery UI will grow out of, so it is worth building once, properly (`roadmap.md` §4.4.3).
+* **Timing.** Live GML reads and sets speed through `game_get_speed(gamespeed_fps)` / `game_set_speed`; the project-wide `room_speed` sweep is complete (LL-007).
+* **Level and monster flows** use `enum` + `switch` with request/apply transitions, following the Menu pattern (LL-004, LL-080).
+* **Path integrity.** A placement must never be able to pocket a zombie, and a broken path must heal itself (`roadmap.md` §4.4.1). The wait-state safety valve also handles a monster that cannot progress.
+* **The pause snapshot** owns its own alpha and assumes nothing about surface sizes (`roadmap.md` §4.4.2).
+* **The tower card** is a fixed panel with in-card upgrade/sell actions and current-to-next purchase previews (`roadmap.md` §4.4.3).
+
+GameMaker runtime checks for these foundations remain on the corresponding `progress.json` review cards.
 
 ---
 

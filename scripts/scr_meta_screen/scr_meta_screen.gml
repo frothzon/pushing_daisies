@@ -1520,7 +1520,7 @@ function meta_draw_results() {
 	draw_text(_orow[0], _orow[1], _res_word);
 	ui_reg_text("outcome", _orow[0], _orow[1], _res_word, fa_left, fa_top);
 
-	/// Endless writes no campaign rewards; boxes were banked as they were chosen.
+	/// Endless box choices and each whole milestone payout are banked as earned.
 	var _lines;
 	if(_endless){
 		_lines = [
@@ -1528,6 +1528,8 @@ function meta_draw_results() {
 			"Best wave      "+string(_res.best_wave),
 			"Score          "+string(_res.score),
 			"Boxes claimed  "+string(_res.boxes),
+			ui_text_format("endless_result_seeds",{amount:string(_res.seeds)}),
+			ui_text_format("endless_result_clovers",{amount:string(_res.clovers)}),
 			"Run ended      "+string(_res.reason),
 			"Difficulty     "+difficulty_name(_res.difficulty)
 		];

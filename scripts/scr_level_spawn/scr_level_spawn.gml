@@ -62,6 +62,7 @@ function scr_level_spawn() {
 
 	//--------------------------- choose the creature
 	if(level_state_time == 0){
+		wave_forced = false;
 		wave_count++;
 		if(is_struct(_row) && variable_struct_exists(_row,"region")
 		&& _row.region == 4){

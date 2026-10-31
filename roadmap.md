@@ -210,22 +210,20 @@ No new screens, no currencies, no art, no balance. Phase 0 is invisible on purpo
 | 0.11 | Bug 3 — the tower UI | **done** | 7 files; see §4.7.3 |
 | 0.12 | Deprecated / legacy API audit | **done in the touched files** | and one entry corrected: `instance_create` is a GameMaker **compatibility script**, not a bug (§4.7.4) |
 
-**What is deliberately NOT done, and why:**
+**Phase 0 handoff notes (status reviewed 2026-10-30):**
 
-* The **project-wide** `room_speed` sweep (~35 files) is still outstanding. It is
-  its own commit with the gates run over it; mixing it in would have buried the
-  three bug fixes. Until it lands, treat every remaining `room_speed` as a live
-  timing bug (LL-007).
-* **`stage_data` is not yet consumed by a Deploy screen** — that is Phase 1.
-  Phase 0 consumes it for the wave count and the spawn pool, which is what the
-  gate asks for.
-* **`scr_save_static` / `scr_load_static` stay in the tree, unwired.** A static
-  inventory is per-run state and should not be saved at all; they now document
-  that rather than pretending to work. The things that *do* persist live in
-  `global.meta`.
-* **Main flow still uses the old runner.** `_mainControl` keeps `scr_runState`;
-  migrating it is Phase 1's first task (§5.1). Only the *level* flow moved, which
-  is what Phase 0 needed.
+* The project-wide **`room_speed` sweep**, which was outstanding at Phase 0
+  close, is now complete: 26 live reads/writes across 19 GML files use the
+  current speed API. Remaining textual mentions are historical comments
+  (LL-007; progress card `gms2-room-speed-api`).
+* **`stage_data` now feeds the Deploy screen** as well as wave counts and spawn
+  pools; the world map, Deploy, results, and Garden Book are Menu states.
+* **`scr_save_static` / `scr_load_static` remain in the tree, unwired by
+  design.** In-run inventory is transient; persistent progression loads from
+  `global.meta` during initialization and saves through `scr_save_meta`.
+* **Main flow still uses the legacy runner.** `_mainControl` keeps
+  `scr_runState`; the level and monster flows use `enum` + `switch`. Main-flow
+  migration remains a separate roadmap task rather than a Phase 0 prerequisite.
 
 #### 4.7.1 Bug 1 as built — refuse, then always heal
 
