@@ -23,7 +23,7 @@ verification, resource-editing, line-ending, and GameMaker reload rules.
 | --- | --- | --- | --- | --- |
 | **0** | Foundations | — | a save that works, stage/difficulty data, level flow on `enum` + `switch`, `room_speed` fixed | a stage declared in **data** is playable, progress survives a restart, and the three Phase-0 bugs of §4.4 pass their acceptance tests |
 | **1** | Vertical slice | Phase 0 | region 1: 10 stages, 3 difficulties, seeds, one clover branch, 3 badges, world map, Deploy screen, 6 towers | **clear → unlock → farm → badge → quit → still there** |
-| **2** | Combat depth | Phase 1 | crit, burn/slow/stun, persistent levels 1–5, specializations, the `scr_level_difficulty` rewrite | winnable *and* losable for the right reasons; two loadouts play differently |
+| **2** | Combat depth | Phase 1 | crit, burn/slow/stun, in-run levels 1–5, specializations, the `scr_level_difficulty` rewrite | winnable *and* losable for the right reasons; two loadouts play differently |
 | **3** | Garden Book | Phase 2 | four trees, five master nodes, currency HUD, per-tower mastery | every currency earnable *and* spendable; nothing inert |
 | **4** | Endless, candy, shards | Phase 3 | endless mode, 1.2× boxes, choice-of-three, pity counter, blood tree, candy | a run reaches box 5+; a shard drops in a normal session |
 | **5** | Content | Phase 4 | regions 2–6: 5 biomes, 5 mechanics, 5 bosses, 6 zombies, 6 towers, 50 stages | the campaign is completable; `economy.md` §9 checkpoints hold |
@@ -466,7 +466,7 @@ Return button, which is what that state's `hide` calls always meant.
 | 2.1 | **Crit** — 5% / ×1.5 baseline, additive chance, direct hits only | `scr_do_damage`, `scr_towerData`, `tower_enums` | `goal.md` §6 |
 | 2.2 | **Statuses: burn, slow, stun** (the three the game needs first) | new `scr_status_*`, `objects/obj_mon` | one instance per status per zombie; durations in `game_get_speed` frames |
 | 2.3 | **Resistances** — zombie / elite / boss columns | `mon_enums`, `scr_makeMonster` | `goal.md` §7; elites introduced here |
-| 2.4 | **Persistent tower level** — the level a tower ends a stage at is stored per tower in the save, so upgrade money is never lost between stages | save schema, `objects/obj_tower` | money buys the rungs in-run; **no XP per kill** — mastery is the five clover nodes, 3.3 and `goal.md` §4 |
+| 2.4 | **In-run tower levels** — money buys four rungs from the garden's free arrival floor; tower levels reset next stage, while saved Garden Mastery sets the floor and cap | `scripts/tower_levels`, save mastery | `goal.md` §§4 and 13; no per-kill XP or per-tower level save |
 | 2.5 | **Specializations at L3** — two per tower, stored per tower, respec costs clovers | new `scr_spec_*` | 12 specs for the 6 shipped towers; Seeds remain content-only (`goal.md` §1) |
 | 2.6 | **`scr_level_difficulty` rewrite** — the new curve from `economy.md` §4.4 | `scripts/scr_level_difficulty` | **atomic with 2.4**: the old function exists to match a ×16 L5 |
 | 2.7 | **Tower stat vocabulary** — extend `enum TOWER` and `scr_towerData` with crit/status fields | `tower_enums`, `scr_towerData` | append fields at the **end** of the enum: every existing index must keep its meaning |
@@ -475,7 +475,7 @@ Return button, which is what that state's `hide` calls always meant.
 
 ### 6.2 Gate
 
-A stage is winnable **and** losable for the right reasons (not because a number moved), and two different 4-tower loadouts produce measurably different wave-by-wave outcomes. Specifically: a slow/root loadout survives longer against a fast wave than a pure-DPS loadout, and a pure-DPS loadout kills an armoured wave faster than a control loadout.
+A stage is winnable **and** losable for the right reasons (not because a number moved), and two different 4-tower loadouts produce measurably different wave-by-wave outcomes. Specifically: a slow/root loadout survives longer against a fast wave than a pure-DPS loadout, and a pure-DPS loadout kills a high-HP wave faster than a control loadout. V1 has no armor stat (`goal.md` §6).
 
 ### 6.3 Falsifier
 
@@ -492,7 +492,7 @@ ramp and the level ladder are **one change**.
 | — | Waves are a **rule**: 15 in stage 1, +5 a stage, in every biome | `region_data` (new) |
 | — | The per-biome HP curve — the same wave-1 fight everywhere, steeper per region | `region_data` + `GameLevelData.life_mult()` |
 | 2.6 | `scr_level_difficulty` rewritten off that curve (was `2^(wave/5-2) + 0.2(w-1)`: ×1036 at wave 60) | `scripts/scr_level_difficulty` |
-| 2.4 part | The §4.4 ladder — a level is `base × ladder` and never compounds; cap and floor come from the garden | `tower_levels` (new) |
+| 2.4 | The in-run §4 ladder — a level is `base × ladder` and never compounds; cap and floor come from saved Garden Mastery | `tower_levels` (new) |
 | — | `difficulty_data`'s hp / speed / count / money columns are now **read**. Before this, Brutal only paid better; it never fought harder. | `difficulty_data` + 4 call sites |
 
 **Decided, not open:** the rung-price vs rung-worth mismatch — `economy.md`
@@ -501,10 +501,10 @@ ladder and the prices keep their values and the `scr_curve`/`gm balance`
 read-out stays the way to see it. Reopening it is a new decision.
 
 **Decided, not open:** per-kill **mastery XP** was retired on 2026-10-19
-(`mastery-xp`). `goal.md` §4 and §13 make mastery the five **clover** master
-nodes - one floor, one cap, no per-tower levelling - and 3.3 is the card that
-builds it. A second, XP-driven ladder beside it would be a second answer to the
-same question, so what is left of 2.4 is only "the level persists in the save".
+(`mastery-xp`). `goal.md` §4 and §13 define tower levels as **run-only**; the
+five **clover** Mastery nodes permanently set one shared arrival floor and cap.
+The older 2.4 premise that a tower's purchased level persists in the save was
+superseded by that design. No per-tower level is saved.
 
 **Still open:** `par_spend` / `par_time` re-authored for 15–60 wave stages
 (`par-reauthor` - Frugal and Speed Grower are unearnable until it lands).

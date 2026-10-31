@@ -71,7 +71,7 @@ The player can therefore choose:
 
 **Choose exactly four towers before each stage; only those four can be placed.**
 This keeps the battlefield readable and makes each loadout a counter to the
-stage's enemies. For a Swamp stage with fast, armored, and regenerating zombies,
+stage's enemies. For a Swamp stage with fast, high-HP, and regenerating zombies,
 a loadout could combine Daisy Pusher (cheap DPS), Burning Ivy (regeneration
 counter), Slender Mandrake (multi-target), and a slow/control tower.
 
@@ -875,7 +875,7 @@ Zombies +20% speed.
 
 ### Wave 40
 
-Armored zombies.
+Hardened zombies: +35% HP. V1 has no armor stat (§6); this is the durable-wave modifier.
 
 ### Wave 50
 
@@ -1214,7 +1214,7 @@ So a Normal-only player **cannot** unlock the whole roster — they have to meet
 | --- | --- | --- |
 | **0. Foundations** | a save that works; `stage` / `region` / `difficulty` data; level flow → `enum` + `switch`; `room_speed` fixed | a stage declared in data is playable and progress survives a restart — *nothing player-visible ships* |
 | **1. Vertical slice** | region 1: 10 data-driven stages, 3 difficulties, seeds, one clover branch, badges, Deploy screen, world map, 6 towers | **clear stage 1 → unlock a tower → farm clovers → replay for a badge → quit → it is all still there** |
-| **2. Combat depth** | crit, burn/slow/stun, persistent levels 1–5, specializations, the `scr_level_difficulty` rewrite | a stage is winnable *and* losable for the right reasons; two loadouts play measurably differently |
+| **2. Combat depth** | crit, burn/slow/stun, in-run tower levels 1–5, specializations, the `scr_level_difficulty` rewrite | a stage is winnable *and* losable for the right reasons; two loadouts play measurably differently |
 | **3. Garden Book** | the four trees, all five master nodes, currency HUD, the mastery panel | every currency can be earned *and* spent; none is inert |
 | **4. Endless, candy, shards** | endless mode, 1.2× boxes, choice-of-three, the pity counter, the blood tree, candy recipes | a run reaches box 5+; a shard drops in a normal session |
 | **5. Content** | regions 2–6: 5 biomes, 5 mechanics, 5 bosses, 6 zombies, 6 towers, 50 stages | the full campaign is completable and the §28.2 checkpoints hold |

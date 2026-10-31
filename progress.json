@@ -2238,6 +2238,27 @@
       "done": null
     },
     {
+      "id": "goal-no-armor-terms",
+      "title": "Align armored-wave wording with the no-armor rule",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "docs",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "",
+      "notes": "goal.md §6 and economy.md define no armor stat; a few examples still call high-HP durability armored. Align the examples and phase gate with the implemented HP modifier.",
+      "refs": [
+        "goal.md",
+        "roadmap.md",
+        "economy.md"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
+    },
+    {
       "id": "hover-cell-level",
       "title": "Hover a plant: light its cell, print its level, ring its range",
       "status": "done",
@@ -3039,6 +3060,26 @@
       "created": "2026-10-17",
       "updated": "2026-10-18",
       "done": "2026-10-18"
+    },
+    {
+      "id": "roadmap-level-persistence",
+      "title": "Clarify run-only tower levels in the phase plan",
+      "status": "done",
+      "owner": "cline",
+      "awaiting": "none",
+      "area": "docs",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "",
+      "notes": "The detailed goal.md §§4 and 13 explicitly say tower levels reset each stage; Phase 2 summaries still call levels persistent. Align both summaries to the governing detailed design.",
+      "refs": [
+        "goal.md",
+        "roadmap.md"
+      ],
+      "created": "2026-10-30",
+      "updated": "2026-10-30",
+      "done": "2026-10-30"
     },
     {
       "id": "run-script-dispatch",
@@ -5362,6 +5403,18 @@
       "who": "cline",
       "task": "toolkit-test-contract-sync",
       "what": "Aligned three stale toolkit assertions with the current documented regional curve, spawn function boundary, and separate HUD layout; full 366-test suite is green."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "roadmap-level-persistence",
+      "what": "Resolved the phase-plan contradiction: tower levels are run-only; saved Garden Mastery sets the shared arrival floor and cap, matching goal.md §§4 and 13."
+    },
+    {
+      "date": "2026-10-30",
+      "who": "cline",
+      "task": "goal-no-armor-terms",
+      "what": "Replaced stale armored-wave language with high-HP/Hardened wording and +35% HP, consistent with goal.md §6 and economy.md."
     }
   ]
 }
