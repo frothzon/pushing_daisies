@@ -66,6 +66,17 @@ def _non_negative_fraction(text: str) -> float:
     return value
 
 
+def _non_negative_int(text: str) -> int:
+    """Parse a non-negative whole clover rank total."""
+    try:
+        value = int(text)
+    except ValueError as err:
+        raise argparse.ArgumentTypeError("must be a whole number") from err
+    if value < 0:
+        raise argparse.ArgumentTypeError("must be non-negative")
+    return value
+
+
 def _target_file(resource: "project_mod.Resource", event: Optional[str]) -> Path:
     if event is None:
         if resource.type == "GMScript":
@@ -311,11 +322,25 @@ def cmd_balance(args: argparse.Namespace) -> int:
             print(line)
         return 0
 
+    progression = {
+        "mastery": args.mastery,
+        "clover_damage": args.clover_damage,
+        "clover_rate": args.clover_rate,
+        "clover_crit_chance": args.clover_crit_chance,
+        "clover_crit_damage": args.clover_crit_damage,
+        "clover_upgrade_discount": args.clover_upgrade_discount,
+        "clover_kill_money": args.clover_kill_money,
+        "clover_starting_money": args.clover_starting_money,
+        "clover_boss_reward": args.clover_boss_reward,
+        "clover_max_life": args.clover_max_life,
+        "clover_life_loss_reduction": args.clover_life_loss_reduction,
+        "clover_regen": args.clover_regen,
+        "clover_boss_saves": args.clover_boss_saves,
+    }
     scene_for = lambda diff: model.resolve(  # noqa: E731
         root, region=args.region, stage=args.stage, difficulty=diff,
         loadout=args.loadout, spawns=args.spawns, z=args.z,
-        mastery=args.mastery, clover_damage=args.clover_damage,
-        clover_rate=args.clover_rate)
+        **progression)
 
     if args.action == "gate":
         from .balance import sim as bsim
@@ -341,9 +366,7 @@ def cmd_balance(args: argparse.Namespace) -> int:
                 name: model.resolve(root, region=region, stage=stage,
                                     difficulty="Brutal", loadout=names,
                                     spawns=args.spawns, z=args.z,
-                                    mastery=args.mastery,
-                                    clover_damage=args.clover_damage,
-                                    clover_rate=args.clover_rate)
+                                    **progression)
                 for name, names in loadouts.items()
             }
             cells = bsim.common_deployment_cells(list(scenes.values()), count=4)
@@ -417,9 +440,7 @@ def cmd_balance(args: argparse.Namespace) -> int:
                                            stage=args.stage, difficulty=name,
                                            loadout=args.loadout,
                                            spawns=args.spawns, z=args.z,
-                                           mastery=args.mastery,
-                                           clover_damage=args.clover_damage,
-                                           clover_rate=args.clover_rate))
+                                           **progression))
         for line in lines:
             print(line)
         return 0
@@ -451,9 +472,7 @@ def cmd_balance(args: argparse.Namespace) -> int:
                 scene = model.resolve(root, region=args.region, stage=st,
                                       difficulty=args.difficulty,
                                       loadout=args.loadout, spawns=args.spawns,
-                                      z=args.z, t=t2, mastery=args.mastery,
-                                      clover_damage=args.clover_damage,
-                                      clover_rate=args.clover_rate)
+                                      z=args.z, t=t2, **progression)
                 cov = policy.coverage_for(scene)
                 rows = model.all_waves(scene, cov=cov)
                 out.append(bfit.StageFit(
@@ -511,9 +530,7 @@ def cmd_balance(args: argparse.Namespace) -> int:
                     scene = model.resolve(root, region=args.region, stage=st,
                                           difficulty=args.difficulty,
                                           loadout=args.loadout, spawns=args.spawns,
-                                          z=args.z, t=t2, mastery=args.mastery,
-                                          clover_damage=args.clover_damage,
-                                          clover_rate=args.clover_rate)
+                                          z=args.z, t=t2, **progression)
                     o = bsim.Sim(scene, ter=bterrain.Terrain(args.z),
                                  spend="ceiling").run()
                     holds = holds and o.cleared_all
@@ -729,6 +746,26 @@ def build_parser() -> argparse.ArgumentParser:
                    help="persistent tower damage bonus as a fraction (0.10 = +10%%)")
     p.add_argument("--clover-rate", type=_non_negative_fraction, default=0.0,
                    help="persistent fire-rate bonus as a fraction (0.05 = +5%%)")
+    p.add_argument("--clover-crit-chance", type=_non_negative_fraction, default=0.0,
+                   help="additive critical chance from the Offense tree (0.01 = +1%%)")
+    p.add_argument("--clover-crit-damage", type=_non_negative_fraction, default=0.0,
+                   help="additive critical multiplier from Offense (0.05 = +0.05x)")
+    p.add_argument("--clover-upgrade-discount", type=_non_negative_fraction, default=0.0,
+                   help="rung price discount from Growth (maximum 0.25)")
+    p.add_argument("--clover-kill-money", type=_non_negative_fraction, default=0.0,
+                   help="additive kill-money bonus from Growth and Harvest")
+    p.add_argument("--clover-starting-money", type=_non_negative_int, default=0,
+                   help="flat starting money bonus from Growth and Harvest")
+    p.add_argument("--clover-boss-reward", type=_non_negative_fraction, default=0.0,
+                   help="additive boss payout bonus from Harvest")
+    p.add_argument("--clover-max-life", type=_non_negative_int, default=0,
+                   help="extra starting and maximum lives from Vitality")
+    p.add_argument("--clover-life-loss-reduction", type=_non_negative_fraction,
+                   default=0.0, help="fractional life-loss prevention (maximum 0.25)")
+    p.add_argument("--clover-regen", type=_non_negative_int, default=0,
+                   help="lives restored every five cleared waves")
+    p.add_argument("--clover-boss-saves", type=_non_negative_int, default=0,
+                   help="boss leaks prevented per stage")
     p.add_argument("--loadout", nargs="+", metavar="TOWER",
                    help="the four towers to price (default: the starters)")
     p.add_argument("--spawns", default="all", choices=["all", "first"],

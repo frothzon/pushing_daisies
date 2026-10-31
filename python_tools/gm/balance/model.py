@@ -60,6 +60,16 @@ class Scene:
     floor_level: int = 1
     clover_damage: float = 0.0
     clover_rate: float = 0.0
+    clover_crit_chance: float = 0.0
+    clover_crit_damage: float = 0.0
+    clover_upgrade_discount: float = 0.0
+    clover_kill_money: float = 0.0
+    clover_starting_money: int = 0
+    clover_boss_reward: float = 0.0
+    clover_max_life: int = 0
+    clover_life_loss_reduction: float = 0.0
+    clover_regen: int = 0
+    clover_boss_saves: int = 0
 
     @property
     def waves(self) -> int:
@@ -86,6 +96,18 @@ class Scene:
     def longest_route(self) -> List[Point]:
         return max(self.routes, key=geometry.polyline_length)
 
+    @property
+    def starting_money(self) -> int:
+        """The GML opening purse, including its difficulty and clover bonuses."""
+        return (round(self.tables.constants.start_money * self.difficulty.life)
+                + self.clover_starting_money)
+
+    def expected_crit_multiplier(self, tower: Tower) -> float:
+        """Expected direct-hit multiplier after tower traits and clover tech."""
+        chance = min(1.0, max(0.0, tower.crit_chance + self.clover_crit_chance))
+        damage = max(1.0, tower.crit_damage + self.clover_crit_damage)
+        return 1.0 + chance * (damage - 1.0)
+
     # -- the loadout ------------------------------------------------------
     def placement(self) -> Tuple[Tower, float, float]:
         """The best dps-per-dollar tower a placement can buy: (tower, dps, price).
@@ -98,8 +120,9 @@ class Scene:
         for t in self.loadout:
             if t.price <= 0:
                 continue
-            dps = self.tables.dps_at_level(t, self.floor_level,
-                                           self.clover_damage, self.clover_rate)
+            dps = (self.tables.dps_at_level(t, self.floor_level,
+                                            self.clover_damage, self.clover_rate)
+                   * self.expected_crit_multiplier(t))
             density = dps / t.price
             if best is None or density > best[0]:
                 best = (density, t, dps)
@@ -116,9 +139,11 @@ class Scene:
         the live finding, printed by ``gm balance project``.
         """
         tower, dps_floor, price = self.placement()
-        dps_cap = self.tables.dps_at_level(tower, self.tables.cap(self.mastery),
-                                           self.clover_damage, self.clover_rate)
-        total = price * self.tables.constants.rung_total
+        dps_cap = (self.tables.dps_at_level(
+            tower, self.tables.cap(self.mastery), self.clover_damage,
+            self.clover_rate) * self.expected_crit_multiplier(tower))
+        total = (price * self.tables.constants.rung_total
+                 * (1.0 - self.clover_upgrade_discount))
         return (dps_cap - dps_floor) / total if total > 0 else 0.0
 
 
@@ -126,6 +151,16 @@ def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal"
             loadout: Optional[Sequence[str]] = None, spawns: str = "all",
             z: float = 6.0, mastery: int = 0,
             clover_damage: float = 0.0, clover_rate: float = 0.0,
+            clover_crit_chance: float = 0.0,
+            clover_crit_damage: float = 0.0,
+            clover_upgrade_discount: float = 0.0,
+            clover_kill_money: float = 0.0,
+            clover_starting_money: int = 0,
+            clover_boss_reward: float = 0.0,
+            clover_max_life: int = 0,
+            clover_life_loss_reduction: float = 0.0,
+            clover_regen: int = 0,
+            clover_boss_saves: int = 0,
             room: str = "rm_test", t: Optional[Tables] = None,
             m: Optional[LevelMap] = None) -> Scene:
     """Build the scene for one stage: tables, map, route, slots, loadout.
@@ -139,11 +174,30 @@ def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal"
     t = t if t is not None else tables.load(root)
     if not isinstance(mastery, int) or isinstance(mastery, bool) or not 0 <= mastery <= 5:
         raise TableError("mastery must be an integer from 0 through 5")
-    for label, value in (("clover_damage", clover_damage),
-                         ("clover_rate", clover_rate)):
+    fractions = (
+        ("clover_damage", clover_damage, None),
+        ("clover_rate", clover_rate, None),
+        ("clover_crit_chance", clover_crit_chance, None),
+        ("clover_crit_damage", clover_crit_damage, None),
+        ("clover_upgrade_discount", clover_upgrade_discount, 0.25),
+        ("clover_kill_money", clover_kill_money, None),
+        ("clover_boss_reward", clover_boss_reward, None),
+        ("clover_life_loss_reduction", clover_life_loss_reduction, 0.25),
+    )
+    for label, value, ceiling in fractions:
         if (not isinstance(value, (int, float)) or isinstance(value, bool)
-                or not math.isfinite(value) or value < 0):
+                or not math.isfinite(value) or value < 0
+                or (ceiling is not None and value > ceiling)):
             raise TableError(f"{label} must be a finite, non-negative fraction")
+    integers = (
+        ("clover_starting_money", clover_starting_money),
+        ("clover_max_life", clover_max_life),
+        ("clover_regen", clover_regen),
+        ("clover_boss_saves", clover_boss_saves),
+    )
+    for label, value in integers:
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise TableError(f"{label} must be a non-negative integer")
     m = m if m is not None else geometry.load_map(root, room=room,
                                                   cell=t.constants.cell)
     reg = t.region(region)
@@ -162,6 +216,16 @@ def resolve(root, *, region: int = 1, stage: int = 1, difficulty: str = "Normal"
         floor_level=t.floor(mastery),
         clover_damage=float(clover_damage),
         clover_rate=float(clover_rate),
+        clover_crit_chance=float(clover_crit_chance),
+        clover_crit_damage=float(clover_crit_damage),
+        clover_upgrade_discount=float(clover_upgrade_discount),
+        clover_kill_money=float(clover_kill_money),
+        clover_starting_money=clover_starting_money,
+        clover_boss_reward=float(clover_boss_reward),
+        clover_max_life=clover_max_life,
+        clover_life_loss_reduction=float(clover_life_loss_reduction),
+        clover_regen=clover_regen,
+        clover_boss_saves=clover_boss_saves,
     )
 
     starts = m.spawns[:1] if spawns == "first" else list(m.spawns)
@@ -262,7 +326,7 @@ def money_through(scene: Scene, wave: int) -> float:
     """
     t, diff = scene.tables, scene.difficulty
     pool = list(range(len(scene.monsters)))
-    money = t.constants.start_money * diff.life
+    money = scene.starting_money
     carry = 0.0
     kill_money = mean_field(scene.monsters, pool, "kill_money", 1)
     spawn_count = mean_field(scene.monsters, pool, "spawn_count", 5)
@@ -270,12 +334,14 @@ def money_through(scene: Scene, wave: int) -> float:
     for k in range(1, wave + 1):
         if t.is_boss_wave(scene.stage.region, scene.stage.stage, k):
             n, base, ramp = 1, k + 1, 1.0
+            bonus = scene.clover_kill_money + scene.clover_boss_reward
         else:
             n = t.wave_count(spawn_count, k, diff.count)
             base, ramp = kill_money, 1 + slope * max(0, k - 1)
+            bonus = scene.clover_kill_money
         # n kills of the same value: n successive floor-with-carry applications
         # pay the same whole dollars as one floor over the total
-        want = n * (base * ramp * diff.money) + carry
+        want = n * (base * (1 + bonus) * ramp * diff.money) + carry
         money += math.floor(want)
         carry = want - math.floor(want)
     return money

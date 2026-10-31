@@ -205,7 +205,8 @@ def rung_price(tower: Tower, level: int, scene: Scene,
     """What the NEXT rung costs, or -1 at the cap (``tower_upgrade_price``)."""
     if mastery is None:
         mastery = scene.mastery
-    return scene.tables.rung_price(tower.price, level, mastery)
+    return scene.tables.rung_price(tower.price, level, mastery,
+                                   scene.clover_upgrade_discount)
 
 
 @dataclass
@@ -288,7 +289,7 @@ def plan(scene: Scene, money: float, cov: Optional[Coverage] = None,
 
     def dps_at(t, lvl):
         return scene.tables.delivered_dps_at_level(
-            t, lvl, clover_damage, clover_rate, targets=1)
+            t, lvl, clover_damage, clover_rate, targets=1) * scene.expected_crit_multiplier(t)
 
     def rng_at(t, lvl):
         return scene.tables.data_at_level(t, lvl, clover_damage,
@@ -309,7 +310,7 @@ def plan(scene: Scene, money: float, cov: Optional[Coverage] = None,
             continue
         dps = dps_at(t, scene.floor_level)
         multi = scene.tables.dps_at_level(t, scene.floor_level,
-                                          clover_damage, clover_rate)
+                                          clover_damage, clover_rate) * scene.expected_crit_multiplier(t)
         options.append((t, dps, multi, rng_at(t, scene.floor_level)))
 
     # what is on the board, and what each of those is worth right now.  ONE
@@ -361,7 +362,8 @@ def plan(scene: Scene, money: float, cov: Optional[Coverage] = None,
                     best = (density, cell, Buy(
                         cell, t, nxt, price, dps, c_cov,
                         scene.tables.dps_at_level(t, nxt, clover_damage,
-                                                  clover_rate)), rng)
+                                                  clover_rate)
+                        * scene.expected_crit_multiplier(t)), rng)
 
         if best is None:
             break

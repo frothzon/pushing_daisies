@@ -530,7 +530,8 @@ class Tables:
     def floor(self, mastery: int = 0) -> int:
         return self.constants.mastery_floor_base + mastery
 
-    def rung_price(self, base_price: float, level: int, mastery: int = 0) -> float:
+    def rung_price(self, base_price: float, level: int, mastery: int = 0,
+                   discount: float = 0.0) -> float:
         """``tower_upgrade_price``: the next rung above ``level``, or -1.
 
         Rungs are counted from the garden's FLOOR, so money always buys the
@@ -541,7 +542,9 @@ class Tables:
         rung = int(round(level)) - self.floor(mastery) + 1
         if rung < 1 or rung > self.constants.rung_count:
             return -1.0
-        return round(base_price * self.constants.rung_costs[rung - 1])
+        discount = min(0.25, max(0.0, discount))
+        return round(base_price * self.constants.rung_costs[rung - 1]
+                     * (1 - discount))
 
     def data_at_level(self, tower: Tower, level: int,
                       clover_damage: float = 0.0,

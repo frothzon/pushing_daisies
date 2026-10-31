@@ -203,6 +203,8 @@ class WaveResult:
     life: float = 0.0              # per-monster life, after the curve and difficulty
     speed: float = 1.0             # the pool's mean MON.speed
     kill_money: float = 1.0        # what one kill pays before the difficulty column
+    lives_start: int = 0
+    lives_end: int = 0
     kills: int = 0
     leaks: int = 0
     lives_lost: int = 0
@@ -390,8 +392,11 @@ class Sim:
         # x1.25 column really is +25% over a wave instead of +0%.
         self.money_carry = 0.0
         self.frame = 0
-        self.lives = int(t.constants.start_life)
-        self.money = t.constants.start_money * self.diff.life
+        self.life_max = t.constants.start_life + scene.clover_max_life
+        self.lives = self.life_max
+        self.life_loss_carry = 0.0
+        self.boss_saves_remaining = scene.clover_boss_saves
+        self.money = scene.starting_money
         self.monsters: List[SimMonster] = []
         self.towers: List[SimTower] = []
         self.built: set = set()
@@ -523,8 +528,12 @@ class Sim:
         if not monster.alive:
             return
         hit = tower.hit
-        if self.rng.random() < tower.tower.crit_chance:
-            hit *= tower.tower.crit_damage
+        crit_chance = min(1.0, max(
+            0.0, tower.tower.crit_chance + self.scene.clover_crit_chance))
+        crit_damage = max(
+            1.0, tower.tower.crit_damage + self.scene.clover_crit_damage)
+        if self.rng.random() < crit_chance:
+            hit *= crit_damage
         self._deal_damage(monster, hit, tower.tower_index)
         if monster.life <= 0:
             return
@@ -768,7 +777,10 @@ class Sim:
         # `scale` is the LEAK share (0.5): it multiplies BEFORE the floor, so
         # the fraction is carried like every other fraction (LL-042).  Halving
         # the rounded payout instead would pay 0 for the cheapest creature.
-        want = base * ramp * self.diff.money * scale + self.money_carry
+        bonus = self.scene.clover_kill_money
+        if boss:
+            bonus += self.scene.clover_boss_reward
+        want = base * (1 + bonus) * ramp * self.diff.money * scale + self.money_carry
         pay = math.floor(want)
         self.money_carry = want - pay
         return int(pay)
@@ -796,7 +808,17 @@ class Sim:
         same number: the same ``_payout`` (ramp, column, carry) halved, never
         a second opinion about what a wave earned (LL-042).
         """
-        self.lives -= 1
+        life_loss = 0
+        if m.boss and self.boss_saves_remaining > 0:
+            self.boss_saves_remaining -= 1
+        else:
+            self.life_loss_carry += self.scene.clover_life_loss_reduction
+            life_loss = math.floor(self.life_loss_carry)
+            self.life_loss_carry -= life_loss
+            self.lives -= life_loss
+        if self.cur is not None:
+            self.cur.lives_lost += life_loss
+            self.cur.lives_end = self.lives
         paid = self._payout(m.kill_money, boss=m.boss, scale=0.5)
         self.money += paid
         self.out.money_earned += paid
@@ -1000,7 +1022,8 @@ class Sim:
             self.cur = WaveResult(
                 wave=self.wave, boss=boss, count=count, hp=count * life,
                 spawn_frame=self.frame, end_frame=self.frame, life=life,
-                speed=speed, kill_money=kill_money, money_start=self.money,
+                speed=speed, kill_money=kill_money, lives_start=self.lives,
+                lives_end=self.lives, money_start=self.money,
                 towers=len(self.towers))
             self.out.waves.append(self.cur)
             before = len(self.towers)
@@ -1036,6 +1059,9 @@ class Sim:
                 self.cur.end_frame = self.frame
                 self.cur.towers = len(self.towers)
                 self.cur.money_end = self.money
+                if self.wave % 5 == 0 and self.scene.clover_regen > 0:
+                    self.lives = min(self.life_max,
+                                     self.lives + self.scene.clover_regen)
             done = (self.wave >= self.scene.waves
                     or (self.max_waves is not None and self.wave >= self.max_waves))
             self.pending = "CLEAR" if done else "SPAWN"
