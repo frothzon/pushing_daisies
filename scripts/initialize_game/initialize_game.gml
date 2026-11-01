@@ -35,7 +35,7 @@ function initialize_game() {
 	/// Every UI log line is gated on this (ui_log, scr_meta_log, print), so
 	/// it is the switch that makes the log the thing to read after a reload.
 	/// Flip it back to false when the layer is trusted.
-	global.devMode = true;   /// set developer mode
+	global.devMode = false;   /// set developer mode
 
 	/// One line that PROVES the fonts mapped, for global.devMode = true.
 	/// Nothing else in the game can show a font metric.  Read it as:

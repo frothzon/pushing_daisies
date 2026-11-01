@@ -2206,6 +2206,23 @@
       "done": "2026-10-20"
     },
     {
+      "id": "gamemaker-version-switcher",
+      "title": "Add a cross-platform GameMaker version switcher",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "tools",
+      "phase": "2",
+      "size": "S",
+      "prio": 2,
+      "needs": "Review the version labels and use --dry-run on the Windows installation. On Linux, verify the beta profile loads; run the switch only with that IDE closed.",
+      "notes": "Created switch_gamemaker_version.py and a usage guide. It switches only the IDEVersion and two extension records between 2024.14.4.222/v0 and the project beta version 2026.100.0.1139/v1, preserves other fields, refuses non-default extension settings, checks for an open GameMaker process, and keeps timestamped backups outside the asset browser.",
+      "refs": [],
+      "created": "2026-11-01",
+      "updated": "2026-11-01",
+      "done": null
+    },
+    {
       "id": "garden-currency-hud",
       "title": "Currency HUD: all four, with a new-value highlight",
       "status": "review",
