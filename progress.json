@@ -2415,6 +2415,23 @@
       "done": "2026-10-07"
     },
     {
+      "id": "gm-version-compatibility",
+      "title": "Target the installed GameMaker 2024.14 version",
+      "status": "review",
+      "owner": "cline",
+      "awaiting": "rayu",
+      "area": "code",
+      "phase": "2",
+      "size": "S",
+      "prio": 1,
+      "needs": "Open the project in GameMaker 2024.14.4.222 and confirm it loads, then run the title screen and a stage. A version warning, failed load, or compile error means the downgrade is incomplete.",
+      "notes": "Changed only the losslessly parsed MetaData.IDEVersion from 2026.100.0.1139 to 2024.14.4.222. The refreshed zombie runtime is also based on 2024.14.4.222. Compiler-backed Windows VM build succeeded with zero errors or warnings and no project source changes. gmtool compile prevalidation separately reports existing unrelated findings for duplicate NOTES and a legacy targeted collision event.",
+      "refs": [],
+      "created": "2026-11-01",
+      "updated": "2026-11-01",
+      "done": null
+    },
+    {
       "id": "gms2-room-speed-api",
       "title": "Replace obsolete room_speed uses across live GML",
       "status": "review",
