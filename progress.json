@@ -1567,15 +1567,15 @@
     {
       "id": "dual-grid-demo-room",
       "title": "Build direct-boot dual-grid showcase room",
-      "status": "review",
+      "status": "done",
       "owner": "cline",
-      "awaiting": "rayu",
+      "awaiting": "none",
       "area": "code",
       "phase": "6",
       "size": "M",
       "prio": 1,
-      "needs": "Reload the project in GameMaker and run. Send a screenshot of the DUAL-GRID TERRAIN TEST room. Confirm mask 0 is empty, frames 1-15 show the TL/TR/BL/BR masks, and the rendered map shows the edge, hole, inner notch, and diagonal-only pair without gaps. Missing META [DGRID] demo ready, a blank map, a wrong corner, or any gap falsifies the check.",
-      "notes": "Added a direct-start 960x540 room with a runtime-generated patterned 16-frame debug atlas, all 16 mask previews, and a rendered sample map. RoomOrderNodes puts it first; global.startRoom remains rm_test. The debug atlas is deleted by the object's CleanUp event. Awaiting Rayu's screenshot to review runtime visuals.",
+      "needs": "Reload the project and run the demo with global.devMode=true. Copy every META [DGRID] line from debug.log, including any stop=, first_add, renderer stats, and final demo ready lines. Include any runtime error following renderer first_add begin. The trace should show which validation stages pass, mask counts, frame rejects, whether add_tile returns, and final tile count.",
+      "notes": "Rayu runtime trace confirmed both invalid type guards: the DS grid passed ds_exists but initially failed is_real, and the generated atlas passed sprite_exists while atlas_is_real=0. After removing those guards, the latest run reached all 121 valid masks, rejected 0 frames, called add_tile 121 times, received tile id 100 on the first call, and drew 121 tiles. Screenshot confirms the edge, hole, notch, diagonal pair, and isolated cell render.",
       "refs": [
         "scripts/scr_dual_grid/scr_dual_grid.gml",
         "objects/obj_dual_grid_demo/Create_0.gml",
@@ -1586,7 +1586,7 @@
       ],
       "created": "2026-10-31",
       "updated": "2026-10-31",
-      "done": null
+      "done": "2026-10-31"
     },
     {
       "id": "dual-grid-library",
@@ -3808,16 +3808,16 @@
     },
     {
       "id": "terrain-inner-corners",
-      "title": "Convert terrain atlases and activate dual-grid rendering",
-      "status": "next",
+      "title": "Round inner bends and activate dual-grid terrain for every tileset",
+      "status": "review",
       "owner": "both",
-      "awaiting": "none",
+      "awaiting": "rayu",
       "area": "art",
       "phase": "6",
       "size": "L",
       "prio": 2,
-      "needs": "",
-      "notes": "After the reusable dual-grid library is ready, reauthor the six terrain atlases for the 15 visible corner masks and switch the stage builder to the dual-grid path. Keep frame 0 empty and frame 16 for the full interior/top cap. Prototype Dirt first; validate all 16 masks, diagonal-only contact, inner/outer corners, holes, map boundaries, layered tints/depth, and final-scale seams before porting the other biomes. The current atlases are still the old side-neighbor art, so do not enable the new renderer against them.",
+      "needs": "Reload GameMaker, set global.devMode=true, and run one stage in Regions 1-6. Expect LEVEL terrain lines with frames=17 mode=dualgrid fallback=0 for all nine atlases, including Grass strata Dirt/Sand/Grass/Thick. Confirm rounded bends and no seams; any fallback, missing tile, square bend or seam falsifies it. Send the log lines and screenshots.",
+      "notes": "Added nine static dual-grid atlases with material-specific rounded masks 7, 11, 13, and 14; preserved source art for other masks and frame 16. Stage terrain now uses dual-grid across all biome layers and logs the atlas/mode/frame count for every row. Static resource, frame-copy, GML, and project round-trip checks passed; waiting for runtime visual review.",
       "refs": [
         "art_descriptions.md",
         "scripts/test_tile/test_tile.gml",
@@ -5800,6 +5800,18 @@
       "who": "cline",
       "task": "dual-grid-demo-room",
       "what": "Added a direct-start debug room with a procedural mask atlas, all 16 previews, a rendered terrain fixture, and an explicit screenshot review checklist."
+    },
+    {
+      "date": "2026-10-31",
+      "who": "cline",
+      "task": "dual-grid-demo-room",
+      "what": "Reviewed Rayu screenshot: atlas mask gallery worked, terrain renderer returned zero tiles, and labels overlapped/clipped. Reopened the demo for renderer diagnosis and layout correction."
+    },
+    {
+      "date": "2026-10-31",
+      "who": "cline",
+      "task": "dual-grid-demo-room",
+      "what": "Runtime trace found and fixed is_real false negatives on the DS Grid Handle and runtime atlas. The renderer now adds 121 tiles with no invalid masks or frames; Rayu screenshot confirms the terrain sample renders."
     }
   ]
 }

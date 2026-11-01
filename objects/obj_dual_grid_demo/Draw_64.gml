@@ -4,7 +4,7 @@ draw_set_alpha(1);
 draw_set_font(fnt_size32);
 draw_text(20, 14, "DUAL-GRID TERRAIN TEST");
 draw_set_font(fnt_size16);
-draw_text(20, 54, "Generated debug atlas | mask bits TL=1 TR=2 BL=4 BR=8");
+draw_text(20, 54, "Dirt dual-grid | rounded bends: masks 7, 11, 13, 14");
 
 /// Mask palette: each sample is one atlas frame at enlarged scale.
 draw_set_color(make_colour_rgb(29, 35, 33));
@@ -24,12 +24,10 @@ for(var _mask = 0; _mask <= 15; _mask++){
 		draw_sprite_ext(atlas_id, _mask, _tile_x + 30, _tile_y + 30,
 		                0.46, 0.46, 0, c_white, 1);
 	}
-	var _bits = string((_mask mod 2))
-	          + string(floor(_mask / 2) mod 2)
-	          + string(floor(_mask / 4) mod 2)
-	          + string(floor(_mask / 8) mod 2);
 	draw_set_color(c_white);
-	draw_text(_tile_x + 2, _tile_y + 60, string(_mask) + "  " + _bits);
+	draw_set_font(fnt_size12);
+	draw_text(_tile_x + 26, _tile_y + 60, string(_mask));
+	draw_set_font(fnt_size16);
 }
 
 /// Rendered sample uses the same 32px cell spacing as the game.
@@ -37,7 +35,7 @@ draw_set_font(fnt_size20);
 draw_set_color(c_white);
 draw_text(360, 83, "RENDERED MAP | 32px CELLS");
 draw_set_font(fnt_size16);
-draw_text(360, 105, "Edge, hole, inner notch and diagonal-only pair");
+draw_text(360, 105, "Edge | hole | notch | diagonal-only pair");
 draw_set_alpha(0.35);
 draw_set_color(c_white);
 for(var _gx = 0; _gx <= demo_grid_width; _gx++){
@@ -53,10 +51,10 @@ for(var _gy = 0; _gy <= demo_grid_height; _gy++){
 draw_set_alpha(1);
 draw_set_color(c_white);
 draw_text(360, 466, "Map edge: x=0   Hole: (4,3)-(5,4)");
-draw_text(360, 488, "Diagonal-only cells: (11,1) and (12,2) | tile count: "
-	      + string(demo_tile_count));
+draw_text(360, 488, "Diagonal pair: (11,1) / (12,2)");
+draw_text(700, 488, "Tiles: " + string(demo_tile_count));
 if(!sprite_exists(atlas_id)){
 	draw_set_color(c_red);
-	draw_text(360, 512, "Debug atlas failed; check META [DGRID] ERROR.");
+	draw_text(360, 512, "Atlas failed; check META [DGRID] ERROR.");
 }
 draw_set_color(c_white);

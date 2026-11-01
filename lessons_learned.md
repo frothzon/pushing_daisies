@@ -118,6 +118,8 @@ and add its row to the index.
 | [LL-099](#ll-099) | Zombie HP bars vibrate as the feet move, even though the zombie root follows a smooth path | FIXED |
 | [LL-100](#ll-100) | Enabling dev mode makes global initialization crash when `print()` reads `object_index` | FIXED |
 | [LL-101](#ll-101) | `load_max` cells appear on every terrain slice after dual-grid conversion | FIXED |
+| [LL-102](#ll-102) | The dual-grid renderer skips every tile because a static manager method fails an instance-field check | FIXED |
+| [LL-103](#ll-103) | A valid DS Grid Handle is rejected because `is_real()` returns false | FIXED |
 
 ---
 
@@ -813,7 +815,7 @@ nothing written - fix the values above and try again
 <a name="ll-034"></a>
 ## LL-034 — A guard that asks a TYPE question about an asset refuses the asset
 
-**Look for.** Every stage is **silent** - no region theme, ever - while the title and world-map themes play; the log blames the track: `META  [MUSIC] region 1 "Wilted Sprouts" has no track yet - playing nothing`.
+**Look for.** Every stage is **silent** - no region theme, ever - while the title and world-map themes play; the log blames the track: `META  [MUSIC] region 1 "Wilted Sprouts" has no track yet - playing nothing`. A dual-grid renderer can similarly report `atlas_exists=1 atlas_is_real=0` and skip every tile.
 
 **Cause.** **A guard asked a TYPE question about an asset**: `is_real(sound)` is **false for an asset reference** (it is not a real number, whatever the runtime calls the type) - so the guard refused a track that was there, and its message blamed the track. The menu path skips that guard, which is why only levels were silent.
 
@@ -826,7 +828,7 @@ nothing written - fix the values above and try again
 * **A guard that refuses a good value is worse than no guard** — it converts a working feature into silence, and its message blames the data. Test a guard against a REAL row first, not only against the broken case it was written for.
 * **Grep for the shape, not the function**: a numeric type test (`is_real`, `is_int64`) applied to something that is not a number. The project's convention for an asset is `is_undefined(x) || !sprite_exists(x)` — see `scr_scale_sprite`.
 
-**Files.** `scripts/scr_music_start_level/scr_music_start_level.gml`, `scripts/music_data/music_data.gml`, `scripts/scr_playMusic/scr_playMusic.gml`, `objects/obj_title/Step_0.gml`, `objects/Menu/Step_0.gml`.
+**Files.** `scripts/scr_music_start_level/scr_music_start_level.gml`, `scripts/music_data/music_data.gml`, `scripts/scr_playMusic/scr_playMusic.gml`, `objects/obj_title/Step_0.gml`, `objects/Menu/Step_0.gml`, `scripts/scr_dual_grid/scr_dual_grid.gml`.
 
 **See also.** [LL-021](#ll-021), [LL-002](#ll-002)
 
@@ -2128,6 +2130,34 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 **Files.** `scripts/scr_dual_grid/scr_dual_grid.gml`, `scripts/scr_iniTileBuilder/scr_iniTileBuilder.gml`.
 
 **See also.** [LL-081](#ll-081)
+
+---
+<a name="ll-102"></a>
+## LL-102 — A struct-field check rejects a callable static method on the tile manager
+
+**Look for.** The dual-grid draw helper returns zero tiles even though the tile manager is a valid constructor instance and exposes `add_tile` for normal terrain drawing.
+
+**Cause.** `variable_struct_exists()` checks fields stored directly on the instance. A `static` method declared by its constructor is resolved through the constructor's static chain, so the instance-field check can reject a method that `is_callable()` can call.
+
+**Rule.** Validate the manager as a struct, then test the method with `is_callable()`; do not require a direct instance field for a constructor's static method.
+
+**Files.** `scripts/scr_dual_grid/scr_dual_grid.gml`, `scripts/Sprite_Layer_Manager/Sprite_Layer_Manager.gml`.
+
+**See also.** [LL-001](#ll-001)
+
+---
+<a name="ll-103"></a>
+## LL-103 — `is_real()` rejects a valid DS Grid Handle
+
+**Look for.** `ds_exists(grid, ds_type_grid)` returns true, while a helper guarded by `is_real(grid)` returns its invalid-input sentinel; the dual-grid preflight showed `grid=1 sample_mask=-1`.
+
+**Cause.** `ds_grid_create()` returns a DS Grid Handle, not a real-number contract. Testing its runtime representation with `is_real()` rejects a live handle before any grid cells are read.
+
+**Rule.** Validate data-structure references with `ds_exists(reference, expected_type)`; do not add `is_real()` as a second guard on the handle.
+
+**Files.** `scripts/scr_dual_grid/scr_dual_grid.gml`.
+
+**See also.** [LL-034](#ll-034)
 
 ---
 ## Adding an entry

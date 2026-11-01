@@ -8,7 +8,7 @@
 /// @param tile_h
 /// @param depth
 /// @param cap-img
-/// @param use_dual_grid Opt in only after the terrain atlas uses dual-grid corner-mask frames.
+/// @param use_dual_grid Draw the atlas as a four-corner dual-grid terrain layer.
 /// @param dual_grid_frame_map Optional array mapping masks 0..15 to zero-based atlas frames.
 function scr_iniTileBuilder(argument0, argument1, argument2, argument3, argument4, argument5, argument6, argument7, argument8, argument9=false, argument10=undefined) {
 	var _oldGrid    = argument0,
@@ -29,8 +29,9 @@ function scr_iniTileBuilder(argument0, argument1, argument2, argument3, argument
 	var grid_ = ds_grid_create(width_, height_);
 	ds_grid_copy(grid_, _oldGrid);
 
-	///--------------------- calculate image indices
-	var _wc = background_get_width(_bg) div _ww;
+	///--------------------- calculate image indices only for the legacy background atlas
+	var _wc = 0;
+	if(!_useDualGrid) _wc = background_get_width(_bg) div _ww;
 
 	//---------------------- turn data into an array
 	var _data = [height_, width_, _min, _max, _bg, _c1, _ww, _hh, _dp, _wc, _gnd];

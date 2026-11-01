@@ -221,26 +221,31 @@ while the walk cycle remains mandatory (§4.2).
 | Naming | `spr_<character>_portrait` |
 | Used by | the "Up Next…" textbox, via `MON.portrait` — **every new monster and boss needs one** |
 
-### 3.4 Terrain atlases — greyscale, 17 frames, tinted by code
+### 3.4 Terrain atlases — greyscale, dual-grid, 17 frames, tinted by code
 
-This is the least obvious contract in the project, so it is spelled out:
+Terrain uses a derived dual-grid atlas for every terrain material. The original
+`spr_<material>_128x` atlases remain the authored source; the in-game terrain
+builder selects the matching `spr_<material>_dualgrid_128x` atlas.
 
-* A terrain atlas is **one sprite, 128×128, 17 frames**, drawn at `0.2525`
-  scale (≈32.3 px) as a sprite-layer tile.
+* Every atlas is **one 128×128 sprite with 17 frames**, drawn at `0.2525`
+  scale (≈32.3 px) as a sprite-layer tile. The dual-grid renderer places tiles
+  on the corners shared by four height-map cells.
 * **The art is greyscale.** Colour is applied at draw time with
   `layer_sprite_blend()` — a multiply. Existing atlases average ~150–175 grey
   precisely so a tint does not crush them. **Do not bake biome colour into the
   atlas**: it multiplies twice and turns to mud.
-* **Frame 0 is empty.** Frames 1–16 are the 16 neighbour combinations, indexed
-  by `1 + east·1 + north·2 + west·4 + south·8` (`set_bitmask`). Frame 1 = an
-  isolated single tile; frame 16 = an interior tile with solid neighbours on
-  all four sides.
-* Because frame 16 tiles butt against each other, **its four edges must be
-  seamless**. The isolated tile (1) needs a designed edge — it is the only place
-  the player sees the underside of the terrain.
-* The highest ground row is drawn from **frame 16 of `spr_dirt_128x`**, tinted
-  `rgb(64,37,11)` — the dark top-soil cap. A new biome atlas does not replace
-  that cap; changing it is a code/config job, not a sprite.
+* Frame 0 is transparent. Frames 1–15 map directly to dual-grid masks with bit
+  order TL=1, TR=2, BL=4, BR=8; frame index equals mask. Frame 16 is the original
+  full-cell cap art. The ground top-soil cap still uses frame 16 of
+  `spr_dirt_128x`, tinted `rgb(64,37,11)`.
+* Inner bends 7, 11, 13, and 14 use a rounded, hand-shaped frame for that
+  material, rotated in quarter turns to preserve the same silhouette and edge
+  treatment in all orientations. They replace the sharp inner corners from the
+  cardinal source atlas. Frame 16's opposite edge pixels must still match.
+* The nine material atlases are Dirt, Sand, Grass, Thick Grass, Swamp, Desert,
+  Jungle, Graveyard, and Blood Fields. Grass uses Dirt/Sand/Grass/Thick Grass
+  across its authored four elevation strata; the other regions use their
+  named material throughout.
 * Rows are tinted with a `merge_colour()` between two colours per band, so a
   biome reads as *value* first, hue second. Design in greyscale: the tile's
   silhouette (cracks, tufts, puddles) is what survives.
@@ -563,18 +568,20 @@ accent is reserved for future prop art and is not baked into the atlas:
 | Graveyard | `#3A3F49` | `#767C74` | candle `#D9B36A` |
 | Blood Fields | `#4A2A28` | `#8A3B34` | bone `#D8CDBB` |
 
-**The atlas wiring landed (2026-10-30).** `GameLevelData.biome` selects all five
-regional atlases in `region_terrain_style()`; Grass keeps its existing four
-elevation strata. `scr_iniTileBuilder` still draws the highest top-soil cap
-from dirt, unchanged. The startup log names the stage biome, first atlas, and
-fallback flag, so an atlas mismatch is visible without guessing from the
-screenshot.
+**Dual-grid art and wiring landed (2026-10-31).** `GameLevelData.biome`
+selects one of the nine dual-grid atlases through `region_terrain_style()`;
+Grass keeps its four elevation strata. The level startup log reports the atlas,
+frame count, render mode, and fallback for each terrain row. `scr_iniTileBuilder`
+uses the dual-grid corner masks, while the highest top-soil cap still draws
+frame 16 from dirt. Runtime review must confirm every region and Grass stratum
+uses the intended atlas and has no gaps, square inner bends, or seams.
 
-**Acceptance.** In regions 1-6, confirm the title `LEVEL terrain biome=...`
-line names the stage biome and expected atlas, startup still ends with
-`rows=12`, and all six grounds render without missing tiles. Region 5 should
-show `spr_graveyard_128x fallback=0` with the Graveyard tint. The top-soil cap
-stays unchanged and tile edges must not seam.
+**Acceptance.** With `global.devMode=true`, run stages in regions 1–6 and check
+`LEVEL terrain ... frames=17 mode=dualgrid fallback=0` for every terrain
+material. Grass should report Dirt, Sand, Grass, and Thick Grass on its four
+strata; Regions 2–6 should report Swamp, Desert, Jungle, Graveyard, and Blood
+Fields. Startup must finish with `rows=12`, and the top-soil cap stays unchanged.
+Any fallback, missing tile, square bend, or visible seam falsifies the pass.
 
 ---
 

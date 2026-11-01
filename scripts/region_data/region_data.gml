@@ -114,11 +114,11 @@ function region_tower_range_multiplier(_region, _wave) {
 	return region_sandstorm_active(_region,_wave) ? 0.80 : 1.00;
 }
 
-/// The terrain atlas and elevation tint for one biome/layer. Grass retains its
-/// authored four-band strata; the other biomes use their own atlas at every
-/// elevation. Graveyard uses the documented dirt fallback until its atlas lands.
+/// The dual-grid terrain atlas and elevation tint for one biome/layer. Grass
+/// retains its authored four-band strata; every terrain material has its own
+/// 17-frame corner-mask atlas.
 function region_terrain_style(_biome, _layer) {
-	var _atlas = spr_dirt_128x,
+	var _atlas = spr_dirt_dualgrid_128x,
 	    _dark = make_colour_rgb(97, 63, 16),
 	    _lighting = make_colour_rgb(199, 193, 135),
 	    _fallback = false;
@@ -126,50 +126,50 @@ function region_terrain_style(_biome, _layer) {
 	switch(_biome){
 		case BIOME.GRASS:
 			if(_layer < 3){
-				_atlas = spr_dirt_128x;
+				_atlas = spr_dirt_dualgrid_128x;
 				_dark = make_colour_rgb(97, 63, 16);
 				_lighting = make_colour_rgb(199, 193, 135);
 			} else if(_layer < 5){
-				_atlas = spr_sand_128x;
+				_atlas = spr_sand_dualgrid_128x;
 				_dark = make_colour_rgb(128, 115, 45);
 				_lighting = c_orange;
 			} else if(_layer < 9){
-				_atlas = spr_grass_128x;
+				_atlas = spr_grass_dualgrid_128x;
 				_dark = make_colour_rgb(97, 63, 16);
 				_lighting = c_lime;
 			} else {
-				_atlas = spr_thick_128x;
+				_atlas = spr_thick_dualgrid_128x;
 				_dark = make_colour_rgb(97, 63, 16);
 				_lighting = c_yellow;
 			}
 			break;
 
 		case BIOME.SWAMP:
-			_atlas = spr_swamp_128x;
+			_atlas = spr_swamp_dualgrid_128x;
 			_dark = make_colour_rgb(59, 70, 48);
 			_lighting = make_colour_rgb(110, 122, 69);
 			break;
 
 		case BIOME.DESERT:
-			_atlas = spr_desert_128x;
+			_atlas = spr_desert_dualgrid_128x;
 			_dark = make_colour_rgb(138, 115, 80);
 			_lighting = make_colour_rgb(214, 195, 154);
 			break;
 
 		case BIOME.JUNGLE:
-			_atlas = spr_jungle_128x;
+			_atlas = spr_jungle_dualgrid_128x;
 			_dark = make_colour_rgb(35, 58, 38);
 			_lighting = make_colour_rgb(79, 107, 52);
 			break;
 
 		case BIOME.GRAVEYARD:
-			_atlas = spr_graveyard_128x;
+			_atlas = spr_graveyard_dualgrid_128x;
 			_dark = make_colour_rgb(58, 63, 73);
 			_lighting = make_colour_rgb(118, 124, 116);
 			break;
 
 		case BIOME.BLOOD_FIELDS:
-			_atlas = spr_blood_128x;
+			_atlas = spr_blood_dualgrid_128x;
 			_dark = make_colour_rgb(74, 42, 40);
 			_lighting = make_colour_rgb(138, 59, 52);
 			break;
@@ -180,7 +180,7 @@ function region_terrain_style(_biome, _layer) {
 	}
 
 	if(!sprite_exists(_atlas)){
-		_atlas = spr_dirt_128x;
+		_atlas = spr_dirt_dualgrid_128x;
 		_fallback = true;
 	}
 

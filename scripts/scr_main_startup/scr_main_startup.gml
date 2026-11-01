@@ -56,21 +56,25 @@ function scr_main_startup() {
 				_fallback_log = _style.fallback ? 1 : 0;
 			}
 
-			if(load_counter == 0){
-				var _biome_name = (is_struct(_row)
-				                   && variable_struct_exists(_row, "biome_name")
-				                   && is_string(_row.biome_name))
-				                  ? _row.biome_name : "unknown";
-				var _atlas_name = sprite_exists(load_bg)
-				                  ? sprite_get_name(load_bg) : "none";
-				scr_meta_log("LEVEL", "terrain biome=", _biome_name,
-				             " atlas=", _atlas_name,
-				             " fallback=", _fallback_log);
+			var _biome_name = (is_struct(_row)
+			                   && variable_struct_exists(_row, "biome_name")
+			                   && is_string(_row.biome_name))
+			                  ? _row.biome_name : "unknown",
+			    _atlas_name = "none",
+			    _atlas_frames = 0;
+			if(sprite_exists(load_bg)){
+				_atlas_name = sprite_get_name(load_bg);
+				_atlas_frames = sprite_get_number(load_bg);
 			}
+			scr_meta_log("LEVEL", "terrain biome=", _biome_name,
+			             " layer=", load_counter,
+			             " atlas=", _atlas_name,
+			             " frames=", _atlas_frames,
+			             " mode=dualgrid fallback=", _fallback_log);
 
 			/// Place one terrain slice per Step so progress stays observable.
 			scr_iniTileBuilder(ground_map, load_counter, load_counter + 5,
-			                   load_bg, load_color, 32, 32, _depth, spr_dirt_128x);
+			                   load_bg, load_color, 32, 32, _depth, spr_dirt_128x, true);
 			load_counter++;
 		}
 
