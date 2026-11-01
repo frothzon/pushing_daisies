@@ -120,6 +120,7 @@ and add its row to the index.
 | [LL-101](#ll-101) | `load_max` cells appear on every terrain slice after dual-grid conversion | FIXED |
 | [LL-102](#ll-102) | The dual-grid renderer skips every tile because a static manager method fails an instance-field check | FIXED |
 | [LL-103](#ll-103) | A valid DS Grid Handle is rejected because `is_real()` returns false | FIXED |
+| [LL-104](#ll-104) | The extension record version stays newer after downgrading the project IDE version | FIXED |
 
 ---
 
@@ -2157,6 +2158,21 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 **See also.** [LL-034](#ll-034)
 
 ---
+<a name="ll-104"></a>
+## LL-104 — Changing the project IDE version does not downgrade extension records
+
+**Look for.** Opening a project in GameMaker 2024.14 reports `Cannot find function to change GMExtension version from v1 to v0` for extension resources, even after changing `MetaData.IDEVersion`.
+
+**Cause.** The project metadata version and each resource record version are separate. The installed 2024.14 ProjectTool has no converter for this extension version transition. A known-good GameMaker 2024.14 project stores the extension root record as v0.
+
+**Rule.** Compare the extension record against a known-good project opened by the target IDE. Use `python_tools/gm.yy.Document` to downgrade it, remove v1-only fields only when they contain defaults (`maccodeinjection=""`, `macProps=false`), restore the legacy empty `ConfigValues` field, and preserve `files` and `IncludedResources`. Compile, then reload in the IDE; compiler success alone does not prove the editor can open the project.
+
+**Files.** `extensions/Simple_Game_Engine/Simple_Game_Engine.yy`, `extensions/Static_Inventory/Static_Inventory.yy`, `pushing_daisies_recovered.yyp`.
+
+**See also.** [LL-009](#ll-009)
+
+---
+
 ## Adding an entry
 
 Use the next free `LL-0NN`, add an index row, and keep the same four fields:
