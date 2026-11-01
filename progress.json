@@ -2,7 +2,7 @@
   "meta": {
     "schema": 1,
     "project": "Pushing Daisies",
-    "updated": "2026-10-31",
+    "updated": "2026-11-01",
     "viewer": "rayu",
     "how_to": "The source of truth for what we are doing. Edit it with `python -m gm progress set <id> key=value ...` (or by hand), then run `python -m gm progress build`. PROGRESS.md and progress.html are GENERATED from this file - never edit them. `status` is where the work is; `awaiting` is WHOSE TURN IT IS; a backlog card has awaiting \"none\" because nobody is holding it yet."
   },
@@ -3542,7 +3542,7 @@
     },
     {
       "id": "scml-walk-leg-straighten",
-      "title": "Straighten the zombie walk knees at runtime",
+      "title": "Use authored upright walk poses and remove runtime knee clamp",
       "status": "review",
       "owner": "cline",
       "awaiting": "rayu",
@@ -3550,14 +3550,14 @@
       "phase": "2",
       "size": "S",
       "prio": 1,
-      "needs": "Reload GameMaker with global.devMode=true. Watch Grumble Mulch walking on the title screen, then observe zombies walking in a stage. Expect META [SCML] walk leg angle clamp Grumble-Mulch upper=down+/-30 lower bend=0..+/-30 and no WARNING. Confirm the feet move smoothly without snapping or sliding and the knees remain less crouched while the stride alternates. A jerky foot, lost gait, tilted foot, or warning falsifies it.",
-      "notes": "Upper legs are remapped to +/-30 degrees around straight down; lower-leg bend is limited to 0..+/-30 degrees in its original direction and child feet counterrotate. Corrected SCML spin directions and interpolated rendered poses smooth the 30 Hz samples. Static checks pass; title and stage visuals are pending.",
+      "needs": "Close and reload GameMaker with global.devMode=true. Watch Grumble-Mulch on the title screen and biped zombies in a stage. Confirm knees stay straighter as the feet and pelvis move, no walk-leg angle clamp is reported, and attacks and deaths still use their own poses. A crouched gait, frozen limb, or missing animation falsifies it.",
+      "notes": "Updated the zombie collection from the 2026-11-01 package. All 15 entities and 60 animations now use the raised-hip, straighter-leg authored keys. Removed runtime leg and foot key rewriting; retained independent uniform size normalization. Sprite PNGs were unchanged, so the existing tight alpha-bbox metadata and resource identities were preserved. Kept a bulk pose snapshot accessor for the bounds adapter. In-game visual review is pending.",
       "refs": [
         "scripts/scr_scml_rig/scr_scml_rig.gml",
         "lessons_learned.md"
       ],
       "created": "2026-10-29",
-      "updated": "2026-10-31",
+      "updated": "2026-11-01",
       "done": null
     },
     {

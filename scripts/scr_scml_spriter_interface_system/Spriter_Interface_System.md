@@ -113,7 +113,7 @@ Transforms contain `x`, `y`, `angle`, `scale_x`, `scale_y`, and `alpha`.
 - `clear_bone_transform(player, bone)`, `clear_part_transform(player, part)`, and `clear_transforms(player)` restore authored sampling.
 - `get_bone_world(player, bone)` returns room-space position, angle, scales, and alpha.
 - `get_part_world(player, part)` also returns image/pivot details; inactive parts return `undefined`.
-- `get_parts_pose(player)` returns the current pose array relative to the root; treat it as read-only. Use it to scan active parts once instead of looking up each part by name.
+- `get_parts_pose(player)` returns the read-only current pose array relative to the root; use it to scan active parts once.
 
 Local SCML coordinates use upward Y. Drawing and world queries use downward room Y. Angles are counter-clockwise degrees. Spriter component transforms are preserved, including mirrored-parent rotation and nonuniform scales, without inherited affine shear.
 
@@ -155,4 +155,4 @@ spriter_interface_system.set_pose_rate(player_name, 20, player_index / count);
 spriter_interface_system.set_pose_rate(player_name, 0);
 ```
 
-The playback clock and animation events advance on every update. Drawing interpolates between the last two evaluated part poses across one evaluation interval, after both samples are available; this keeps a 30 Hz crowd smooth on a 60 Hz draw without evaluating every bone twice as often. This adds up to one interval of visual latency. Bone/part world-transform queries still return the latest evaluated pose, so use full rate for units that need current attachment coordinates. Seek, animation changes, image/character-map and pose overrides, and root rotation, scale or alpha changes force a fresh pose and restart interpolation. Root position changes alone move the existing pose without reevaluation. Non-looping clips always evaluate their final pose. Staggered evaluation reduces average work; it does not guarantee a frame budget under frame spikes, callback-driven mutations, or other game workloads.
+The playback clock and animation events advance on every update. The drawn pose and bone/part world-transform queries hold the most recently evaluated pose between evaluations; this can make motion less smooth and attachment positions lag by up to an evaluation interval. Seek, animation changes, image/character-map and pose overrides, and root rotation, scale or alpha changes force a fresh pose. Root position changes alone move the existing pose without reevaluation. Non-looping clips always evaluate their final pose. Use full rate for units requiring current attachment coordinates or the smoothest motion. Staggered evaluation reduces average work; it does not guarantee a frame budget under frame spikes, callback-driven mutations, or other game workloads.

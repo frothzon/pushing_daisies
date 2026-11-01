@@ -101,7 +101,7 @@ and add its row to the index.
 | [LL-082](#ll-082) | **Every monster spawns with one sprite for both its walk and its death** - a 32x32 still, the same picture for every creature and every state, while fifteen rigs of real art sit unused; `Sprite-ind: spr_mon` in the Draw print and no error | FIXED |
 | [LL-083](#ll-083) | The boot trace says **`RIG   walker N <creature> slots=4 walk=none idle=none attack=none die=none` for every creature** while the art sits in the bank row - every monster wears the one-frame `spr_mon` for walk AND death, `is_real()` on an enum slot answered false, and no error anywhere; the second hit of LL-034's landmine, and the diagnosis was sitting unread in the run log | FIXED |
 | [LL-084](#ll-084) | The new Spriter zombies look **squat** even though scale normalization says the rig is 2–3× larger than its sheet | FIXED |
-| [LL-085](#ll-085) | Biped Spriter zombies still look **crouched while walking**: the walk plays, but the knees stay folded | WATCH |
+| [LL-085](#ll-085) | The runtime knee clamp masked crouched authored keys; straight-leg poses now live in the package | WATCH |
 | [LL-086](#ll-086) | A fresh save shows zero balances for every future currency before the player can earn them | FIXED |
 | [LL-087](#ll-087) | The late-region balance sim started every tower at level 1 and ignored permanent clover progression | FIXED |
 | [LL-088](#ll-088) | Ordinary leaks cost zero lives without Vitality, and 25% Vitality prevents 75%; raw leak counts also differ from lives lost | FIXED |
@@ -114,7 +114,7 @@ and add its row to the index.
 | [LL-095](#ll-095) | `scr_tower_shoot` reads a local shot key on the strike frame, but it was declared only at state entry | FIXED |
 | [LL-096](#ll-096) | SCML bounds and shadow draws repeatedly searched every rig part each frame | FIXED |
 | [LL-097](#ll-097) | The stage-entry frame freezes before the loading screen can draw; room creation spends ~15 ms preloading all Spriter rigs | FIXED |
-| [LL-098](#ll-098) | Spriter feet jerk after leg correction even though the walk keys are dense and the game runs near 60 fps | FIXED |
+| [LL-098](#ll-098) | 30 Hz SCML pose sampling can look stepped because each evaluated pose is held between updates | WATCH |
 | [LL-099](#ll-099) | Zombie HP bars vibrate as the feet move, even though the zombie root follows a smooth path | FIXED |
 | [LL-100](#ll-100) | Enabling dev mode makes global initialization crash when `print()` reads `object_index` | FIXED |
 | [LL-101](#ll-101) | `load_max` cells appear on every terrain slice after dual-grid conversion | FIXED |
@@ -1888,24 +1888,22 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 ---
 
 <a name="ll-085"></a>
-## LL-085 — The Spriter walk keys keep the knees folded even when the rig is scaled correctly
+## LL-085 — Upright zombie legs belong in the authored animation data
 
-**Look for.** Grumble-Mulch and other biped Spriter zombies play the walk cycle but keep a crouched silhouette; the lower-leg joints are visibly bent through the stride.
+**Look for.** A rigged zombie keeps a crouched silhouette even though its scale matches the older walk sheet; the walk clip's knees remain visibly folded.
 
-**Cause.** The authored local transforms are embedded in the imported walk timeline key arrays. The original SCML source is unavailable, but the runtime definition still contains those keys. A scale correction can match the art height, but it cannot change a crouched pose. A persistent set_bone_transform override would replace the sampled pose and freeze that joint walk motion. Also, a raw bone rotation is not the limb's direction: the knee joint offset and parent rotation contribute to the hip-to-knee angle, while the ankle offset contributes to the knee bend. Changing either leg angle changes the world angle inherited by the child foot.
+**Cause.** The imported animation keys themselves carried that posture. A runtime angle clamp rewrote leg and foot keys after loading, which could distort the stride and duplicate work that belongs in the animation source.
 
 **Rule.**
 
-* Clone the described runtime definition and pair upper-leg, lower-leg, foot, and pelvis keys by timestamp. In SCML's upward-Y coordinate system, measure the hip-to-knee direction from the joint vector and map the full walk swing to 30° either side of straight down (270°). Map knee bend to 0° through 30° in its existing direction. This preserves key timing and the stride's motion while limiting the pose.
-* Counterrotate each child `b_foot_*` key by the combined upper- and lower-leg angle changes at that timestamp. The foot keeps its world orientation while the ankle follows the reshaped stride. Leave idle, attack, and die alone.
-* Match only conventional biped `b_leg_*` / `b_leg_*_lower` / `b_foot_*` pairs. Rigs with a mass, chain, or root instead of knees have different anatomy and must not receive a leg correction by name accident.
-* Keep the per-entity META [SCML] walk leg angle clamp line, including changed bone and key counts, and inspect title Grumble and stage walkers after reloading GameMaker. The log proves the key arrays were changed; only the animation on screen proves the pose looks right.
+* Raise the pelvis and author straight standing knees in the SCML animation, then regenerate and update the managed animation package.
+* Remove temporary runtime leg-key mutation once the package contains the corrected poses. Keep animation playback and sprite-size normalization separate from posture authoring.
+* When the generated runtime changes its public API, update project adapters at their call sites. Preserve a bulk read-only pose snapshot when draw-time bounds depend on a single linear scan.
+* Preserve existing sprite metadata when packaged images are unchanged. Some generated package exports contain full-canvas bbox placeholders even though the project has tighter alpha bounds.
 
-**Files.** scripts/scr_scml_rig/scr_scml_rig.gml, scripts/scr_scml_spriter_interface_system/Spriter_Interface_System.md.
+**Files.** `scripts/scr_scml_rig/scr_scml_rig.gml`, `scripts/scr_scml_spriter_interface_system/scr_scml_spriter_interface_system.gml`, `scripts/scr_scml_spriter_interface_system/Spriter_Interface_System.md`.
 
-**See also.** [LL-084](#ll-084), [LL-081](#ll-081), [LL-072](#ll-072)
-
----
+**See also.** [LL-084](#ll-084), [LL-098](#ll-098), [LL-096](#ll-096)
 
 <a name="ll-086"></a>
 ## LL-086 — The meta bar introduced every currency on a fresh save, before the player could earn them
@@ -2077,19 +2075,18 @@ This is [LL-034](#ll-034)'s landmine (`is_real(mus_world1)` refusing every regio
 
 ---
 <a name="ll-098"></a>
-## LL-098 — Spriter feet jerk after leg correction even though the walk keys are dense and the game runs near 60 fps
+## LL-098 — A 30 Hz SCML pose rate holds samples between evaluations
 
-**Look for.** A zombie's feet snap between poses while the animation clock advances smoothly; the walk clip has dense keys and the rig is deliberately evaluated at 30 Hz.
+**Look for.** The animation clock advances smoothly, but limbs can hold their pose for two display frames when a rig is evaluated at 30 Hz on a 60 fps room.
 
-**Cause.** Two sampling details stacked up: the renderer held each evaluated pose for two display frames, and the runtime leg fix changed key angles without changing SCML's per-key `spin` direction. The stale spin could unwrap a corrected angle along the long route.
+**Cause.** The optimized runtime advances clocks and events each Step while evaluating bones and parts at the configured pose interval. The current package draws the last evaluated pose without blending, trading visual smoothness for lower evaluation cost.
 
-**Rule.** After modifying an angle timeline, recompute each key's spin toward the next corrected key, including the final-to-first link of looping clips. Preserve the 30 Hz pose budget by interpolating the last two rendered part samples between evaluations; wait for two samples after a seek or clip change before blending. Attachment queries still report the latest evaluated pose.
+**Rule.** Keep the 30 Hz rate for units where the performance headroom matters. Use full pose rate for a prominently viewed unit or one needing current attachment coordinates. Do not rewrite authored leg keys or angle spin to hide sample stepping; any later smoothing change should include a measured draw and update cost.
 
 **Files.** `scripts/scr_scml_rig/scr_scml_rig.gml`, `scripts/scr_scml_spriter_interface_system/scr_scml_spriter_interface_system.gml`, `scripts/scr_scml_spriter_interface_system/Spriter_Interface_System.md`.
 
 **See also.** [LL-085](#ll-085), [LL-096](#ll-096)
 
----
 <a name="ll-099"></a>
 ## LL-099 — Zombie HP bars vibrate as the feet move, even though the zombie root follows a smooth path
 
